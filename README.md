@@ -2,18 +2,30 @@
 
 帮助项目作者对照源码与讲解，逐步读懂自己的项目。当前处于首版需求讨论阶段，尚无可安装产品。
 
+> **⚠ D-001 · 作者明确暂缓（2026-11-14，U10）**
+>
+> **网页运行方式尚未决定：单文件导出、本地服务，或服务兼导出。先讨论功能，再回来裁决。**
+>
+> 当前入口：[文档块与讲解组织](specs/001-first-release/06-document-blocks.md)，按 U13 先从块身份、源码映射等底层继续讨论。正式暂缓登记见[规格总入口](specs/001-first-release/spec.md)；没有作者明确指示，不新增待定项。
+
+当前确认结果：[文档块与讲解组织](specs/001-first-release/06-document-blocks.md)。U12 已认可取消纯源码块、区分三种理解记录，并授权 AI 确定超大阈值：源码超过 60 行或讲解超过 1,200 个非空白字符，只警告并告知用户。
+
+U14—U16 已认可连续源码范围、整文件完整覆盖，以及“文档路径＋块 ID”定位；块 ID 为 8 位随机小写字母和数字、同篇唯一，与阅读顺序分离。
+
 ## 当前文档
 
-先读[规格总入口](specs/001-first-release/spec.md)，再按基础依赖顺序讨论：
+先读[规格总入口](specs/001-first-release/spec.md)。以下保留文档结构，当前按 U13 从文档块底层继续，D-001 仍暂缓：
 
 1. [源码版本与更新依据](specs/001-first-release/01-source-version.md)：讲解对应哪一版源码、更新比较什么。
 2. [资料目录与文件映射](specs/001-first-release/02-document-layout.md)：docs/aftertaste、命名、定位和资料归属。
 3. [网页承载与技术选择](specs/001-first-release/03-web-delivery.md)：资料怎样进入阅读页，随后比较语言与框架。
 4. [阅读模式](specs/001-first-release/04-reading-modes.md)：保留已确认的两种模式，基础讨论后继续完善。
+5. [阅读记录与讲解反馈](specs/001-first-release/05-reading-feedback.md)：书签、注释与局部理解标记的方向和已确认部分。
+6. [文档块与讲解组织](specs/001-first-release/06-document-blocks.md)：已认可的块规则与本轮明确提出的建议分开记录。
 
 [需求质量检查](specs/001-first-release/checklists/requirements.md)记录未解决项。文档顺序表示讨论顺序，不代表技术方案已批准。
 
-作者原文仍保存在外层实验仓库的[任务](../tasks/AR1-回甘首版需求设计/task.md)与[调整 U4](../tasks/AR1-回甘首版需求设计/amendments.md)中，历史不搬移或重复抄写。这些链接在当前本机有效；独立克隆或发布前需处理原文交接。
+作者原文仍保存在外层实验仓库的[任务](../tasks/AR1-回甘首版需求设计/task.md)与[调整 U4—U16](../tasks/AR1-回甘首版需求设计/amendments.md)中，历史不搬移或重复抄写。这些链接在当前本机有效；独立克隆或发布前需处理原文交接。
 
 ## 仓库状态
 
