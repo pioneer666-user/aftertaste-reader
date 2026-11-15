@@ -6,7 +6,7 @@
 >
 > **网页运行方式尚未决定：单文件导出、本地服务，或服务兼导出。先讨论功能，再回来裁决。**
 >
-> 当前入口：[源码版本与更新依据](specs/001-first-release/01-source-version.md)，按 U24 逐项深入更新细节；作者目前只认可更新大方向，具体机制不能推定获批。正式暂缓登记见[规格总入口](specs/001-first-release/spec.md)；没有作者明确指示，不新增待定项。
+> 当前入口：[阅读记录与讲解反馈](specs/001-first-release/05-reading-feedback.md)，按 U38 开始讨论书签、标记、笔记与待办。更新设计已确认部分继续有效，未确认候选不自动获批。正式暂缓登记见[规格总入口](specs/001-first-release/spec.md)；没有作者明确指示，不新增待定项。
 
 当前确认结果：[文档块与讲解组织](specs/001-first-release/06-document-blocks.md)。U12 已认可取消纯源码块、区分三种理解记录，并授权 AI 确定超大阈值：源码超过 60 行或讲解超过 1,200 个非空白字符，只警告并告知用户。
 
@@ -38,7 +38,9 @@ U34 已确认当前讲解在 docs/aftertaste/current 下镜像源码；更新说
 
 U36 明确脚本与工具面向 AI 调用，需要沟通的信息交给 AI 转达。主动收尾脚本的提议及本轮建议见 [01](specs/001-first-release/01-source-version.md)；具体接口和中断重试尚未批准，未实现。
 
-先读[规格总入口](specs/001-first-release/spec.md)。以下保留文档结构，当前按 U13 从文档块底层继续，D-001 仍暂缓：
+U37—U38 已确认程序将 current 中本次实际变化的文档复制到历史 after，固定供回顾，不重复生成正文。允许进入阅读功能讨论；既有三种块理解状态不重开，其余功能先明确用途与范围。
+
+先读[规格总入口](specs/001-first-release/spec.md)。以下保留文档结构，当前按 U38 进入 05 阅读功能，D-001 仍暂缓：
 
 1. [源码版本与更新依据](specs/001-first-release/01-source-version.md)：讲解对应哪一版源码、更新比较什么。
 2. [资料目录与文件映射](specs/001-first-release/02-document-layout.md)：docs/aftertaste、命名、定位和资料归属。
@@ -49,7 +51,7 @@ U36 明确脚本与工具面向 AI 调用，需要沟通的信息交给 AI 转�
 
 [需求质量检查](specs/001-first-release/checklists/requirements.md)记录未解决项。文档顺序表示讨论顺序，不代表技术方案已批准。
 
-作者原文仍保存在外层实验仓库的[任务](../tasks/AR1-回甘首版需求设计/task.md)与[调整 U4—U36](../tasks/AR1-回甘首版需求设计/amendments.md)中，历史不搬移或重复抄写。这些链接在当前本机有效；独立克隆或发布前需处理原文交接。
+作者原文仍保存在外层实验仓库的[任务](../tasks/AR1-回甘首版需求设计/task.md)与[调整 U4—U38](../tasks/AR1-回甘首版需求设计/amendments.md)中，历史不搬移或重复抄写。这些链接在当前本机有效；独立克隆或发布前需处理原文交接。
 
 ## 仓库状态
 
