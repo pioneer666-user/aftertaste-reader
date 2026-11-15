@@ -6,7 +6,7 @@
 >
 > **网页运行方式尚未决定：单文件导出、本地服务，或服务兼导出。先讨论功能，再回来裁决。**
 >
-> 当前入口：[阅读记录与讲解反馈](specs/001-first-release/05-reading-feedback.md)，按 U38 开始讨论书签、标记、笔记与待办。更新设计已确认部分继续有效，未确认候选不自动获批。正式暂缓登记见[规格总入口](specs/001-first-release/spec.md)；没有作者明确指示，不新增待定项。
+> 当前入口：[Skill 设计讨论地图](specs/001-first-release/07-skill-design-map.md)，按 U59 盘点既有约定与仍需讨论的内容，尚未编写 Skill。下文保留阶段进展，各分册后续确认优先；未确认候选不自动获批。正式暂缓登记见[规格总入口](specs/001-first-release/spec.md)；没有作者明确指示，不新增待定项。
 
 当前确认结果：[文档块与讲解组织](specs/001-first-release/06-document-blocks.md)。U12 已认可取消纯源码块、区分三种理解记录，并授权 AI 确定超大阈值：源码超过 60 行或讲解超过 1,200 个非空白字符，只警告并告知用户。
 
@@ -42,7 +42,7 @@ U37—U38 已确认程序将 current 中本次实际变化的文档复制到历�
 
 U39 补齐生成更新说明及单文档即时校验要求，逐文件操作建议见 01。真实阅读需求已记入 05：全局笔记记录以后处理的问题，不理解块待闭环再解释，块注释用于收藏回看；当前建议书签附可选备注，不默认再建独立待办功能。
 
-先读[规格总入口](specs/001-first-release/spec.md)。以下保留文档结构，当前按 U38 进入 05 阅读功能，D-001 仍暂缓：
+先读[规格总入口](specs/001-first-release/spec.md)。以下保留基础分册，并增加跨分册的 Skill 讨论索引；D-001 仍暂缓：
 
 1. [源码版本与更新依据](specs/001-first-release/01-source-version.md)：讲解对应哪一版源码、更新比较什么。
 2. [资料目录与文件映射](specs/001-first-release/02-document-layout.md)：docs/aftertaste、命名、定位和资料归属。
@@ -50,10 +50,11 @@ U39 补齐生成更新说明及单文档即时校验要求，逐文件操作建�
 4. [阅读模式](specs/001-first-release/04-reading-modes.md)：保留已确认的两种模式，基础讨论后继续完善。
 5. [阅读记录与讲解反馈](specs/001-first-release/05-reading-feedback.md)：书签、注释与局部理解标记的方向和已确认部分。
 6. [文档块与讲解组织](specs/001-first-release/06-document-blocks.md)：已认可的块规则与本轮明确提出的建议分开记录。
+7. [Skill 设计讨论地图](specs/001-first-release/07-skill-design-map.md)：职责、既有决定、未完成接口及建议的讨论顺序；不预定 Skill 数量。
 
 [需求质量检查](specs/001-first-release/checklists/requirements.md)记录未解决项。文档顺序表示讨论顺序，不代表技术方案已批准。
 
-作者原文仍保存在外层实验仓库的[任务](../tasks/AR1-回甘首版需求设计/task.md)与[调整 U4—U39](../tasks/AR1-回甘首版需求设计/amendments.md)中，历史不搬移或重复抄写。这些链接在当前本机有效；独立克隆或发布前需处理原文交接。
+作者原文仍保存在外层实验仓库的[任务](../tasks/AR1-回甘首版需求设计/task.md)与[调整记录](../tasks/AR1-回甘首版需求设计/amendments.md)中，历史不搬移或重复抄写。这些链接在当前本机有效；独立克隆或发布前需处理原文交接。
 
 ## 仓库状态
 
