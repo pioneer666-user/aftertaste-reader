@@ -36,6 +36,8 @@ U34 已确认当前讲解在 docs/aftertaste/current 下镜像源码；更新说
 
 ## 当前文档
 
+U36 明确脚本与工具面向 AI 调用，需要沟通的信息交给 AI 转达。主动收尾脚本的提议及本轮建议见 [01](specs/001-first-release/01-source-version.md)；具体接口和中断重试尚未批准，未实现。
+
 先读[规格总入口](specs/001-first-release/spec.md)。以下保留文档结构，当前按 U13 从文档块底层继续，D-001 仍暂缓：
 
 1. [源码版本与更新依据](specs/001-first-release/01-source-version.md)：讲解对应哪一版源码、更新比较什么。
@@ -47,7 +49,7 @@ U34 已确认当前讲解在 docs/aftertaste/current 下镜像源码；更新说
 
 [需求质量检查](specs/001-first-release/checklists/requirements.md)记录未解决项。文档顺序表示讨论顺序，不代表技术方案已批准。
 
-作者原文仍保存在外层实验仓库的[任务](../tasks/AR1-回甘首版需求设计/task.md)与[调整 U4—U35](../tasks/AR1-回甘首版需求设计/amendments.md)中，历史不搬移或重复抄写。这些链接在当前本机有效；独立克隆或发布前需处理原文交接。
+作者原文仍保存在外层实验仓库的[任务](../tasks/AR1-回甘首版需求设计/task.md)与[调整 U4—U36](../tasks/AR1-回甘首版需求设计/amendments.md)中，历史不搬移或重复抄写。这些链接在当前本机有效；独立克隆或发布前需处理原文交接。
 
 ## 仓库状态
 
