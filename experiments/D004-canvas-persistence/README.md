@@ -73,7 +73,7 @@ Remove-Item Env:BROWSER
 
 ### 证据和结果
 
-完整浏览器取证对应初始实现候选 `36b3450b509bda5f66491af22b3f6c08921db3a4`，`evidence/source-hashes.json` 绑定该轮实际取证源文件。独审后的修复候选在最终 [handoff](../../docs/work/D004-canvas-persistence/handoff.md) 记录。必要原始证据已入库，普通运行产物位于下述忽略目录。
+完整浏览器取证对应初始实现候选 `36b3450b509bda5f66491af22b3f6c08921db3a4`，`evidence/source-hashes.json` 绑定该轮实际取证源文件。独审后的修复候选为 `75441a894bc662a03c1cc1528faaff11cf3744e5`，定向复核通过，详见最终 [handoff](../../docs/work/D004-canvas-persistence/handoff.md)。必要原始证据已入库，普通运行产物位于下述忽略目录。
 
 | 检查 | 实际结果和证据 |
 | --- | --- |
