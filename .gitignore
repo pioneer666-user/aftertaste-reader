@@ -1,3 +1,8 @@
 # 本地下载的上游工具源码和压缩包；版本与重建来源见.tools/README.md
 /.tools/*
 !/.tools/README.md
+
+# 可再生成的任务日志、截图与工具运行缓存；关键证据摘要入库。
+/.local/
+/.agents/.local/
+**/experiments/**/.local/
