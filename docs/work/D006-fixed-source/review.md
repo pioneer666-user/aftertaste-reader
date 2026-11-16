@@ -53,3 +53,44 @@
 未检查其他操作系统、真实用户项目、30 秒超时与 64 MiB 上限注入、Windows 权限拒绝及页面教学效果。审查过程未修改产品、规范、测试或 Git。
 
 **完成发现 1、2 的修复与回归验证后需要复核。**
+
+---
+
+## 修复复核原文
+
+**复核结论为通过。**
+
+绑定修复候选 `195e00ff0fc2f1ce941e3adebf9942f0b0593fcf`，比较初始候选 `cc824df1f9f0d049e3031bed20047c498f8a9957`。本次复核覆盖原发现 1、2，以及共享校验、CLI 诊断、关联测试和 002 材料增量。
+
+### 发现 1 已关闭
+
+application 提供共享的 `validateSourcePath`，CLI 在 `repository.locate` 前调用。新增真实命令测试以越界路径和空 PATH 验证前置拒绝，得到 `INVALID_PATH`、退出 2。
+
+CLI 汇合请求中已知的 `projectRoot`、`commit`、`path` 与操作诊断。缺失项目测试返回 `PROJECT_UNAVAILABLE`，上下文完整保留这三个字段。正常读取继续调用原 `FixedSourceService.read`，固定提交取源链路保持一致。
+
+### 发现 2 已关闭
+
+项目根的共享判定在 Windows 要求完整盘符或 UNC 根。`FixedSourceService.pin/read` 与 CLI 使用同一判定。
+
+新增回归验证了无盘符根路径从 C、D 两个盘符的 cwd 调用时均在定位前返回 `INVALID_ARGUMENT`、退出 2。完整绝对项目路径从这两个 cwd 执行 pin/read 均成功，返回同一项目根及 A 的内容。
+
+### 独立复验
+
+在 Node `24.11.1`、Windows 上串行执行以下检查。
+
+```powershell
+node --test --test-concurrency=1 tests/unit/fixed-source.test.mjs
+node --test --test-concurrency=1 --test-name-pattern='CLI 在定位前|Windows 无盘符' tests/integration/fixed-source.test.mjs
+git diff --check
+git status --short
+git rev-parse HEAD
+```
+
+- 单元测试 3/3 通过。
+- 两项 CLI 回归 2/2 通过，零跳过，耗时约 7.3 秒。
+- 空白检查通过，工作区干净，HEAD 与复核候选一致。
+- 复用执行提供的修复后 typecheck/build 和完整串行测试 14/14 证据。后续增补的跨盘成功断言已在本次定向复验中覆盖。
+
+原两项 P2 均关闭，本次增量未发现新的需修复问题。审查过程未修改产品、规范、测试或 Git。
+
+其他操作系统、实际 UNC Git 共享、超时与输出上限注入、Windows 权限拒绝、真实用户项目及教学页面仍未验证。作者体验与首版完整验收继续按后续任务安排。

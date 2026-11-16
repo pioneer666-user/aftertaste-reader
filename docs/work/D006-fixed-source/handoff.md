@@ -12,7 +12,7 @@
 ### 版本及正式流程
 
 - dev 基线为 `a5c1fb7465ec8479f46c6b46bbd0bbc845025e8e`，批准任务为 `task.md@8d51ad849a281870967c0c4ef1f2a95d180b7aac`，实际接续 HEAD 为 `1afb7fd`，接单时工作区干净。
-- 初始实现候选为 `cc824df1f9f0d049e3031bed20047c498f8a9957`（`feat: 实现D006固定提交取源与命令入口`）。独审后的行为修复另提交，修复候选和最终纯记录状态在下方记录。
+- 初始实现候选为 `cc824df1f9f0d049e3031bed20047c498f8a9957`（`feat: 实现D006固定提交取源与命令入口`）。行为修复候选为 `195e00ff0fc2f1ce941e3adebf9942f0b0593fcf`（`fix: 收紧D006路径前置校验并补齐读取诊断`）。其后的 `docs: 归档D006独审复核与最终回执` 只整理审查原文、回执和任务完成标记，复用此行为候选的验证与独审。
 - 按官方 speckit-specify、plan、tasks 完成本批完整流程，实际调用 resolve-template、setup-plan、setup-tasks 和 prerequisite 脚本。采用过程级 `SPECIFY_FEATURE_DIRECTORY=specs/002-fixed-source`，只读检查另加 `SPECIFY_FEATURE_NO_PERSIST=1`。本机 feature.json 为被忽略的功能定位状态。
 - spec/plan/tasks 按官方必需栏目和关系维护，生成 research、data-model、contracts、quickstart 和 16 项需求质量检查。未发现扩展 hooks 配置。
 - analyze 对真实材料只读核对，7 项 FR 和 4 项 SC 全部有任务覆盖，共 12 项任务，覆盖率 100%，歧义、重复、未映射任务及 Constitution 冲突均为 0。再经 implement 前置核验，需求质量检查 16/16，按清单串行实施。实施和后续修复保持同一 002 材料结构。
@@ -68,7 +68,7 @@ git diff --check
 
 未参与实现的 `/root/d006_review` 已按 Ponytail Review 和 Sharp Edges 审查候选 `cc824df1f9f0d049e3031bed20047c498f8a9957`，结论为需修复，首轮完整原文归 [review.md](review.md)。接受两项 P2 发现，分别为 CLI 前置路径校验/读取失败上下文，以及 Windows 无盘符根路径随 cwd 盘符改变目标。
 
-修复复用 application 的项目/源码路径校验，CLI 在 locate 前校验，并汇合读取上下文。Windows 完整路径需含盘符或 UNC 根。新增两项真实 CLI 回归，在原候选构建产物上先观察 2/2 失败，再对修复构建运行。两项发现第 1 轮修复均验证通过。修复后的 typecheck/build 通过，全套 14/14、零跳过，耗时 77.7 秒。随后在 Windows 专项测试补充完整绝对路径从 C 盘和 D 盘 cwd 的 pin/read 成功断言，再定向运行两项回归 2/2 通过，耗时 7.4 秒。产品源码在这两次通过间相同。修复提交后交原审查者复核。
+修复复用 application 的项目/源码路径校验，CLI 在 locate 前校验，并汇合读取上下文。Windows 完整路径需含盘符或 UNC 根。新增两项真实 CLI 回归，在原候选构建产物上先观察 2/2 失败，再对修复构建运行。两项发现第 1 轮修复均验证通过。修复后的 typecheck/build 通过，全套 14/14、零跳过，耗时 77.7 秒。随后在 Windows 专项测试补充完整绝对路径从 C 盘和 D 盘 cwd 的 pin/read 成功断言，再定向运行两项回归 2/2 通过，耗时 7.4 秒。产品源码在这两次通过间相同。原审查者已对 `195e00f` 复核通过，两项 P2 均关闭。独立复验 unit 3/3、两项 CLI 回归 2/2、零跳过，跨盘完整路径成功断言已覆盖。完整原文追加在同一 review.md。
 
 ### 未验证项与限制
 
@@ -80,5 +80,5 @@ git diff --check
 ## 作者验收与 Git
 
 - 本批为底层能力，作者无需执行技术命令。作者体验验收不适用，页面和教学体验归后续批准任务。
-- 唯一 Git 写负责人为本执行，分支继续为 `codex/feat-fixed-source`，按任务保留候选供主脑接回。最终工作区与提交状态在收尾补记。
+- 唯一 Git 写负责人为本执行，分支继续为 `codex/feat-fixed-source`，按任务保留候选供主脑接回。交回时工作区干净。dev 当前为 `a5c1fb7465ec8479f46c6b46bbd0bbc845025e8e`，成果以本地候选提交交回，分支保持 `codex/feat-fixed-source`。
 - 本批范围无调整，无需新增 amendments。当前技术细化均在 D006 授权内，无新增产品取舍待作者决定。

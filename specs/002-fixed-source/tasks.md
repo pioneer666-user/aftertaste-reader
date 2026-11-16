@@ -63,7 +63,7 @@
 
 - [x] T010 核 README.md、src/README.md、tests/README.md 当前状态和 specs/002-fixed-source/quickstart.md 真实示例
 - [x] T011 串行运行 typecheck/build/test 和 quickstart，在 docs/work/D006-fixed-source/handoff.md 记录环境、范围、命令、结果和未验项
-- [ ] T012 固定成果候选提交，调用独立审查，保存 docs/work/D006-fixed-source/review.md，处理/复核发现并完成 handoff.md
+- [x] T012 固定成果候选提交，调用独立审查，保存 docs/work/D006-fixed-source/review.md，处理/复核发现并完成 handoff.md
 
 ## Dependencies & Execution Order
 
