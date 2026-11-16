@@ -1,0 +1,28 @@
+{
+  "name": "d004-canvas-persistence",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": { "node": ">=24 <25" },
+  "scripts": {
+    "check": "vue-tsc --noEmit",
+    "build": "vite build",
+    "start": "node server.ts",
+    "test": "node --test checks/behavior.test.ts",
+    "browser": "node checks/browser.ts"
+  },
+  "dependencies": {
+    "@vue-flow/core": "1.48.2",
+    "fastify": "5.12.8",
+    "vue": "3.5.45"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@vitejs/plugin-vue": "6.0.11",
+    "node": "24.22.3",
+    "playwright": "1.56.1",
+    "typescript": "5.9.3",
+    "vite": "8.3.8",
+    "vue-tsc": "3.1.1"
+  }
+}
