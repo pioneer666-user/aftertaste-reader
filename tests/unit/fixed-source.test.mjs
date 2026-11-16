@@ -27,7 +27,7 @@ test('不合法输入在调用 adapter 前拒绝', async () => {
     async resolveCommit() { called = true; return commit; },
     async readFile() { called = true; throw Error(); },
   });
-  for (const value of [null, {}, '', 'relative', 42]) {
+  for (const value of [null, {}, '', 'relative', 42, ...(process.platform === 'win32' ? ['\\project', '/project'] : [])]) {
     await assert.rejects(service.pin(value), { code: 'INVALID_ARGUMENT' });
   }
   for (const revision of ['', '-h', '--output=evil', null, 42, 'HEAD\0', '\uD800']) {

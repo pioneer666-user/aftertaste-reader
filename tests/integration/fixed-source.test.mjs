@@ -206,3 +206,37 @@ test('SHA256 仓库与提交树字面特殊路径', async () => {
   assert.equal(fixed.commit.length, 64);
   assert.equal((await service.read(fixed, '[literal].ts')).content, 'sha256');
 });
+
+test('CLI 在定位前拒绝越界，定位失败保留读取依据', async () => {
+  const root = await newSandbox();
+  const commit = 'a'.repeat(40);
+  const invalid = cli(['read', '--project', root, '--commit', commit, '--path', '../outside.ts'], workspace, { PATH: '' });
+  assert.equal(invalid.status, 2);
+  const invalidProblem = JSON.parse(invalid.stderr).error;
+  assert.equal(invalidProblem.code, 'INVALID_PATH');
+  assert.equal(invalidProblem.context.commit, commit);
+  assert.equal(invalidProblem.context.path, '../outside.ts');
+  const projectRoot = path.join(root, 'missing');
+  const missing = cli(['read', '--project', projectRoot, '--commit', commit, '--path', 'a.ts']);
+  assert.equal(missing.status, 1);
+  assert.deepEqual(JSON.parse(missing.stderr).error.context, { projectRoot, commit, path: 'a.ts' });
+});
+
+test('Windows 无盘符根路径从不同 cwd 均在定位前拒绝', { skip: process.platform !== 'win32' }, async () => {
+  const f = await createFixture();
+  const driveLess = f.projectRoot.slice(2);
+  for (const cwd of [f.runRoot, path.parse(process.execPath).root]) {
+    const pinned = cli(['pin', '--project', driveLess], cwd, { PATH: '' });
+    assert.equal(pinned.status, 2);
+    assert.equal(JSON.parse(pinned.stderr).error.code, 'INVALID_ARGUMENT');
+    const read = cli(['read', '--project', driveLess, '--commit', f.commitA, '--path', 'other.ts'], cwd, { PATH: '' });
+    assert.equal(read.status, 2);
+    assert.equal(JSON.parse(read.stderr).error.code, 'INVALID_ARGUMENT');
+    const absolute = cli(['pin', '--project', f.projectRoot, '--revision', f.commitA], cwd);
+    assert.equal(absolute.status, 0, absolute.stderr);
+    assert.equal(JSON.parse(absolute.stdout).source.projectRoot, f.projectRoot);
+    const absoluteRead = cli(['read', '--project', f.projectRoot, '--commit', f.commitA, '--path', 'other.ts'], cwd);
+    assert.equal(absoluteRead.status, 0, absoluteRead.stderr);
+    assert.equal(JSON.parse(absoluteRead.stdout).file.content, 'A\n');
+  }
+});

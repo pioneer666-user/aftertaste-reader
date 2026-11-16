@@ -12,7 +12,7 @@
 ### 版本及正式流程
 
 - dev 基线为 `a5c1fb7465ec8479f46c6b46bbd0bbc845025e8e`，批准任务为 `task.md@8d51ad849a281870967c0c4ef1f2a95d180b7aac`，实际接续 HEAD 为 `1afb7fd`，接单时工作区干净。
-- 实现候选由本回执所在的 `feat: 实现D006固定提交取源与命令入口` 提交固定，精确哈希在后续独审原文中记录。修复及最后纯记录提交在下方补记。
+- 初始实现候选为 `cc824df1f9f0d049e3031bed20047c498f8a9957`（`feat: 实现D006固定提交取源与命令入口`）。独审后的行为修复另提交，修复候选和最终纯记录状态在下方记录。
 - 按官方 speckit-specify、plan、tasks 完成本批完整流程，实际调用 resolve-template、setup-plan、setup-tasks 和 prerequisite 脚本。采用过程级 `SPECIFY_FEATURE_DIRECTORY=specs/002-fixed-source`，只读检查另加 `SPECIFY_FEATURE_NO_PERSIST=1`。本机 feature.json 为被忽略的功能定位状态。
 - spec/plan/tasks 按官方必需栏目和关系维护，生成 research、data-model、contracts、quickstart 和 16 项需求质量检查。未发现扩展 hooks 配置。
 - analyze 对真实材料只读核对，7 项 FR 和 4 项 SC 全部有任务覆盖，共 12 项任务，覆盖率 100%，歧义、重复、未映射任务及 Constitution 冲突均为 0。再经 implement 前置核验，需求质量检查 16/16，按清单串行实施。实施和后续修复保持同一 002 材料结构。
@@ -46,7 +46,7 @@ npm.cmd test
 git diff --check
 ```
 
-最终实现代码的 typecheck/build 和串行测试均通过，测试 12/12，通过耗时 75.7 秒。独立运行 quickstart 建库入口及真实 pin/read，样例为 `.local/D006-fixed-source/run-ouxjKI/`，A 为 `3eaa9ddc15a4a68ff492ad38e70f4d8ae8c17595`，子项目映射为 `packages/小 项目`，目标文本 38 字节且与预期完全一致，越界路径返回 INVALID_PATH、退出 2。空白检查与最终 Spec Kit 前置检查通过。测试的稳定证据为已提交的测试和合成建库入口，沙盒目录可重建，未以忽略目录日志作为唯一依据。
+初始实现候选的 typecheck/build 和串行测试均通过，测试 12/12，通过耗时 75.7 秒。独立运行 quickstart 建库入口及真实 pin/read，样例为 `.local/D006-fixed-source/run-ouxjKI/`，A 为 `3eaa9ddc15a4a68ff492ad38e70f4d8ae8c17595`，子项目映射为 `packages/小 项目`，目标文本 38 字节且与预期完全一致，越界路径返回 INVALID_PATH、退出 2。空白检查与最终 Spec Kit 前置检查通过。测试的稳定证据为已提交的测试和合成建库入口，沙盒目录可重建，未以忽略目录日志作为唯一依据。
 
 | 验证内容 | 实际结果 |
 | --- | --- |
@@ -66,12 +66,14 @@ git diff --check
 
 ### 独立审查
 
-待固定候选后由未参与实现的审查子代理按 Ponytail Review 和 Sharp Edges 核查，原文及复核归 [review.md](review.md)。本段由独审收尾更新。
+未参与实现的 `/root/d006_review` 已按 Ponytail Review 和 Sharp Edges 审查候选 `cc824df1f9f0d049e3031bed20047c498f8a9957`，结论为需修复，首轮完整原文归 [review.md](review.md)。接受两项 P2 发现，分别为 CLI 前置路径校验/读取失败上下文，以及 Windows 无盘符根路径随 cwd 盘符改变目标。
+
+修复复用 application 的项目/源码路径校验，CLI 在 locate 前校验，并汇合读取上下文。Windows 完整路径需含盘符或 UNC 根。新增两项真实 CLI 回归，在原候选构建产物上先观察 2/2 失败，再对修复构建运行。两项发现第 1 轮修复均验证通过。修复后的 typecheck/build 通过，全套 14/14、零跳过，耗时 77.7 秒。随后在 Windows 专项测试补充完整绝对路径从 C 盘和 D 盘 cwd 的 pin/read 成功断言，再定向运行两项回归 2/2 通过，耗时 7.4 秒。产品源码在这两次通过间相同。修复提交后交原审查者复核。
 
 ### 未验证项与限制
 
 - Windows 为本次实际验证平台，其他操作系统未验证。
-- 30 秒超时和 64 MiB 输出上限未做实际耗时/体量注入，Windows 权限拒绝场景未单独构造。
+- 30 秒超时和 64 MiB 输出上限未做实际耗时/体量注入，Windows 权限拒绝场景未单独构造，UNC 共享上的实际 Git 仓库未测试。
 - 合法 UTF-8 且符合控制字符规则的字节流按文本处理。支持边界按 contracts 判断，编码探测不作猜测。
 - 真实用户项目、网页、教学效果和首版完整 A01 未验证。固定源码继续依赖原仓库对象可用。
 

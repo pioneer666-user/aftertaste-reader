@@ -46,7 +46,8 @@ export interface SourceRepository {
 }
 
 function isAbsoluteDirectory(value: unknown): value is string {
-  return typeof value === 'string' && value.isWellFormed() && path.isAbsolute(value) && !/[\x00-\x1f\x7f]/u.test(value);
+  return typeof value === 'string' && value.isWellFormed() && path.isAbsolute(value) &&
+    (process.platform !== 'win32' || path.parse(value).root.length > 1) && !/[\x00-\x1f\x7f]/u.test(value);
 }
 
 function isFilePath(value: unknown): value is string {
@@ -55,11 +56,24 @@ function isFilePath(value: unknown): value is string {
     value.split('/').every(part => part !== '' && part !== '.' && part !== '..' && part.toLowerCase() !== '.git');
 }
 
+export function validateProjectRoot(value: unknown): asserts value is string {
+  if (!isAbsoluteDirectory(value)) {
+    throw new SourceError('INVALID_ARGUMENT', '项目路径无效。', '提供完整绝对项目路径，Windows 需含盘符或 UNC 根。');
+  }
+}
+
+export function validateSourcePath(value: unknown, context: ErrorContext = {}): asserts value is string {
+  if (!isFilePath(value)) {
+    throw new SourceError('INVALID_PATH', '源码路径不符合项目相对路径约定。', '使用项目内以 / 分隔的规范相对路径。', context);
+  }
+}
+
 export class FixedSourceService {
   constructor(private readonly repository: SourceRepository) {}
 
   async pin(projectRoot: string, revision: string = 'HEAD'): Promise<FixedSource> {
-    if (!isAbsoluteDirectory(projectRoot) || typeof revision !== 'string' || !revision.isWellFormed() || revision.length === 0 ||
+    validateProjectRoot(projectRoot);
+    if (typeof revision !== 'string' || !revision.isWellFormed() || revision.length === 0 ||
         revision.startsWith('-') || /[\x00-\x1f\x7f]/u.test(revision)) {
       throw new SourceError('INVALID_ARGUMENT', '项目或版本参数无效。', '提供绝对项目路径及本地提交引用。');
     }
@@ -75,11 +89,7 @@ export class FixedSourceService {
         (source.projectPrefix !== '' && !isFilePath(source.projectPrefix))) {
       throw new SourceError('INVALID_ARGUMENT', '固定源码引用无效。', '复用 pin 返回的完整固定引用。');
     }
-    if (!isFilePath(filePath)) {
-      throw new SourceError('INVALID_PATH', '源码路径不符合项目相对路径约定。', '使用项目内以 / 分隔的规范相对路径。', {
-        projectRoot: source.projectRoot, commit: source.commit,
-      });
-    }
+    validateSourcePath(filePath, { projectRoot: source.projectRoot, commit: source.commit });
     const fixed = Object.freeze({ projectRoot: source.projectRoot, repositoryRoot: source.repositoryRoot,
       projectPrefix: source.projectPrefix, commit: source.commit });
     try {

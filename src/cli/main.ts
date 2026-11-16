@@ -1,6 +1,6 @@
-import { FixedSourceService, SourceError } from '../application/fixed-source.js';
+import { FixedSourceService, SourceError, validateProjectRoot, validateSourcePath } from '../application/fixed-source.js';
+import type { ErrorContext } from '../application/fixed-source.js';
 import { GitSourceRepository } from '../adapters/git-source.js';
-import path from 'node:path';
 
 function argumentsFor(argv: string[]): { command: string; options: Map<string, string> } {
   const command = argv[0];
@@ -24,31 +24,33 @@ function argumentsFor(argv: string[]): { command: string; options: Map<string, s
 }
 
 async function main(): Promise<void> {
+  let requestContext: ErrorContext = {};
   try {
     const { command, options } = argumentsFor(process.argv.slice(2));
     const repository = new GitSourceRepository();
     const service = new FixedSourceService(repository);
     const projectRoot = options.get('--project')!;
-    if (!projectRoot.isWellFormed() || !path.isAbsolute(projectRoot) || /[\x00-\x1f\x7f]/u.test(projectRoot)) {
-      throw new SourceError('INVALID_ARGUMENT', '项目路径无效。', '提供绝对项目路径。');
-    }
+    validateProjectRoot(projectRoot);
     if (command === 'pin') {
       const source = await service.pin(projectRoot, options.get('--revision'));
       process.stdout.write(`${JSON.stringify({ ok: true, source })}\n`);
     } else {
       const commit = options.get('--commit')!;
+      const filePath = options.get('--path')!;
+      requestContext = { projectRoot, commit, path: filePath };
       if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(commit)) {
         throw new SourceError('INVALID_ARGUMENT', 'read 需要完整固定提交标识。', '使用 pin 返回的完整 commit。');
       }
+      validateSourcePath(filePath, requestContext);
       const source = { ...await repository.locate(projectRoot), commit };
-      const file = await service.read(source, options.get('--path')!);
+      const file = await service.read(source, filePath);
       process.stdout.write(`${JSON.stringify({ ok: true, file })}\n`);
     }
   } catch (error) {
     const problem = error instanceof SourceError ? error :
       new SourceError('INTERNAL_ERROR', '取源发生未预期错误。', '将命令及问题标识交给维护者检查。');
     process.stderr.write(`${JSON.stringify({ ok: false, error: {
-      code: problem.code, message: problem.message, nextStep: problem.nextStep, context: problem.context,
+      code: problem.code, message: problem.message, nextStep: problem.nextStep, context: { ...requestContext, ...problem.context },
     } })}\n`);
     process.exitCode = problem.code === 'INVALID_ARGUMENT' || problem.code === 'INVALID_PATH' ? 2 : 1;
   }

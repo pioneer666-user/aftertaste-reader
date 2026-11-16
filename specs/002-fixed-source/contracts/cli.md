@@ -7,7 +7,7 @@
 - `pin(projectRoot, revision?)` 返回 `Promise<FixedSource>`。省略 revision 取当时 HEAD，显式版本接受本地 Git revision，空值和以 `-` 开头的值拒绝。
 - `read(fixed, path)` 返回 `Promise<SourceFile>`。完整 commit 必填，逐次复用同一 fixed。失败抛 `SourceError`。
 
-模型见 [data-model.md](../data-model.md)。绝对 projectRoot 必填，避免 cwd 改变含义。file path 用 `/`，支持中文、空格、方括号、`*` 和前导 `-` 等字面字符，在操作系统可建立这些名称的前提下可读。禁止空段、`.`、`..`、绝对路径、反斜杠、冒号、控制字符和 `.git` 段。暂不支持 bare、linked worktree、子模块目标和含链接/junction 的项目根。提交树中的普通文件即使工作区已删除或变为链接仍可读，树中的链接和 gitlink 拒绝。
+模型见 [data-model.md](../data-model.md)。完整绝对 projectRoot 必填，Windows 必须含盘符或 UNC 根，避免 cwd 改变含义。file path 用 `/`，支持中文、空格、方括号、`*` 和前导 `-` 等字面字符，在操作系统可建立这些名称的前提下可读。禁止空段、`.`、`..`、绝对路径、反斜杠、冒号、控制字符和 `.git` 段。CLI 和用例均在仓库定位前校验项目与源码路径。暂不支持 bare、linked worktree、子模块目标和含链接/junction 的项目根。提交树中的普通文件即使工作区已删除或变为链接仍可读，树中的链接和 gitlink 拒绝。
 
 ## CLI
 

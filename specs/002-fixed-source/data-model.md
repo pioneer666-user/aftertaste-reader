@@ -2,7 +2,7 @@
 
 ## ProjectMapping
 
-- projectRoot 为现存普通目录的绝对规范路径。
+- projectRoot 为现存普通目录的完整绝对规范路径，Windows 必须含盘符或 UNC 根。
 - repositoryRoot 为 Git 返回并经链接检查的绝对仓库根。
 - projectPrefix 为相对仓库根的 `/` 路径，根项目使用空串。
 
