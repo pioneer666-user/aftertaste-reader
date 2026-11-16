@@ -1,6 +1,6 @@
 # 开发任务入口
 
-规则见[任务流程](../development/workflow.md)，模板见 [task](_templates/task.md) 与 [handoff](_templates/handoff.md)。编号递增，索引只记录入口，状态看各任务 handoff。
+规则见[任务流程](../development/workflow.md)，模板见 [task](_templates/task.md)、[handoff](_templates/handoff.md) 与 [review](_templates/review.md)。编号递增，索引只记录入口，状态看各任务 handoff。
 
 待择机处理的小事项见[项目待办](backlog.md)。主脑接回或准备下一项时按其中的触发时机检查；正式设计与实施仍进入对应规格和任务。
 
