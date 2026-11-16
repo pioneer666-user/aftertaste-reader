@@ -1,6 +1,5 @@
-# 本地下载的上游工具源码和压缩包；版本与重建来源见.tools/README.md
-/.tools/*
-!/.tools/README.md
+# 已停用的下载副本，避免残留或误下载进入提交；固定来源见 docs/development/spec-kit.md。
+/.tools/
 
 # 可再生成的任务日志、截图与工具运行缓存；关键证据摘要入库。
 /.local/
