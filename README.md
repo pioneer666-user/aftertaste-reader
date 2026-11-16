@@ -95,9 +95,9 @@ U39 补齐生成更新说明及单文档即时校验要求，逐文件操作建�
 
 2026-11-14 通过 GitHub 官方仓库的 releases/latest 核实，最新稳定版为 [v1.4.0](https://github.com/github/spec-kit/releases/tag/v1.4.0)，发布于 2026-11-10。本轮固定引用该版本，不使用本机旧的 1.0.4 资料包。
 
-完整官方源码已下载到 [.tools/spec-kit/](.tools/spec-kit/)，来源、提交与压缩包校验值见[本地工具记录](.tools/README.md)。后续优先读取本地的[需求规格模板](.tools/spec-kit/templates/spec-template.md)、[需求澄清流程](.tools/spec-kit/templates/commands/clarify.md)和[技术设计模板](.tools/spec-kit/templates/plan-template.md)，无需反复联网查找。
+当时下载的完整源码用于固定来源参考；2026-11-16 D005 停止维护该下载副本，版本、提交、原始压缩包校验值和按需维护 CLI 的方法统一见 [Spec Kit 接入说明](docs/development/spec-kit.md#固定来源与重建)，其中如实记录物理清理状态。日常使用已安装的[需求规格模板](.specify/templates/spec-template.md)、[需求澄清技能](.agents/skills/speckit-clarify/SKILL.md)和[技术设计模板](.specify/templates/plan-template.md)，无需另行维护完整上游源码。
 
-当时以中文手工整理需求、讨论记录和质量检查，参考官方结构，尚未形成完整官方 spec／plan 套件；当轮未安装全局 CLI、未初始化自动化命令环境，也未运行实现工作流。完整工具源码是本地参考副本，不混入本产品实现，不把其内部 AGENTS.md 或示例当成本项目全局指令。
+当时以中文手工整理需求、讨论记录和质量检查，参考官方结构，尚未形成完整官方 spec／plan 套件；当轮未安装全局 CLI、未初始化自动化命令环境，也未运行实现工作流。下载副本仅作为当时参考，没有混入本产品实现；上游 AGENTS.md 或示例不成为本项目全局指令。
 
 作者 U1 要求优先于工具默认流程：
 

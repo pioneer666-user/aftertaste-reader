@@ -1,6 +1,6 @@
 # Spec Kit 官方接入与文档维护
 
-2026-11-16，按 [D003](../work/D003-speckit-check/task.md) 核实下载并接入官方 **v1.4.0**。本页规定正式产品文档的结构和使用时机；不是另一套产品规格。
+2026-11-16，按 [D003](../work/D003-speckit-check/task.md) 接入官方 **v1.4.0**；[D005](../work/D005-development-cleanup/task.md) 停止维护本地下载副本，固定来源与按需维护入口统一保存在本页，目录物理清理状态见其回执。本页规定正式产品文档的结构和使用时机；不是另一套产品规格。
 
 ## 必须遵守的文档规则
 
@@ -33,15 +33,34 @@
 
 ## 安装与核验
 
-- 原下载压缩包 SHA-256 与记录一致，解压目录 **1,055 文件**逐一比对一致；来源详见 [.tools/README](../../.tools/README.md)。本次未追最新版本。
-- 使用官方固定源码通过 `uv tool run --from './.tools/spec-kit' specify ...` 执行；开发辅助依赖在 uv 隔离缓存中，未替换用户级 v1.3.0 CLI。不要直接调用 PATH 上旧的 `specify` 来升级本项目。
-- 官方初始化先在 `.local/D003-speckit-check/bootstrap` 核副作用，再于项目根执行 `init --here --force --integration codex --integration-options '--skills --events false' --script ps --ignore-agent-tools --non-interactive`；当时没有既有 `.specify` 或 speckit 技能可被覆盖。
-- 已安装 9 个 `.agents/skills/speckit-*/SKILL.md`、原版 `.specify/templates/`、PowerShell 共享脚本、官方 manifests 与 bundled workflow。events=false，未安装额外扩展、presets 或启用 hooks，未运行整套自动开发 workflow。
-- `uv tool run --from './.tools/spec-kit' specify integration status --json` 检查官方受管文件，需无缺失、无修改及无效路径。官方 manifests 是此部分的来源基线；原 137 个其他技能仍由 `.agents/sources.json` 核验。
-- 原版模板、共享脚本、技能全文由官方安装器管理；项目适配在本页，constitution 单独填写。维护不直接改上游正文或伪造 manifest 哈希来掩盖修改。
-- 正常技能可通过本地路径显式读取，刷新后的会话可用 `$speckit-plan` 等名称；客户端是否实际发现以会话列表为准，不把文件存在等同于发现或完整运行成功。
-- 日常文件与共享脚本随 Git 交付，不依赖被忽略的下载目录。维护 CLI 若缺本地源码，先按 .tools 记录恢复固定版本；本项目 Python 仅作开发辅助，不进入产品运行链路。
-- 将来升级先按任务授权核版本、状态和差异，再使用固定版官方 integration upgrade；已接入项目不再次盲目 `init --force`，不让升级覆盖已有资料。
+日常使用已安装的 9 个 `.agents/skills/speckit-*/SKILL.md`、`.specify/templates/`、PowerShell 脚本及 bundled workflow，无需维护另一份完整上游源码。`.tools/` 已停止作为项目目录维护；Git 恢复其中旧 README 也不会恢复被忽略的源码和压缩包。
+
+### 固定来源与重建
+
+| 项目 | 固定记录 |
+| --- | --- |
+| 官方仓库／版本 | [github/spec-kit](https://github.com/github/spec-kit)，[v1.4.0](https://github.com/github/spec-kit/releases/tag/v1.4.0)；这是本项目固定版本，不代表当前最新版 |
+| 源码提交 | `0019fa14d12f45edabc2cc3176c9168a68bd0f97` |
+| 原始下载 | 2026-11-14 下载的 [v1.4.0 ZIP](https://codeload.github.com/github/spec-kit/zip/refs/tags/v1.4.0)，当时文件名 `spec-kit-v1.4.0.zip`；当时记录的发布时间为 2026-11-10 |
+| 原始 ZIP 的 SHA-256 | `E21F526177A3BC3F884B6C92A821713B6EDE9E0B056DEA84B3BB2D2B411DCC99`；本机副本校验值，非上游签名，不用于比较其他归档格式 |
+| 许可 | 上游 MIT；按需获取源码时保留其 LICENSE |
+
+D003 安装前及 D005 清理前均核对原始 ZIP 哈希与 **1,055 个解压文件**逐一一致。历史安装命令和结果见 D003 回执；来源记录从原 `.tools/README.md` 归入此处，今后不维护完整下载副本。D005 自动删除曾被工具审批拦截，随后作者手动删除，主脑已确认目录不存在；删除后安装资产与按需维护入口的核验见 D005 回执。
+
+需要官方 CLI 检查／维护时，由 uv 按固定提交在自己的可重建缓存中准备开发工具；缓存不存在时需要网络、Git 及相应 Python 环境，失败应报告，不替换成 PATH 上其他版本。以下从项目根运行，既不安装用户级 CLI，也不重新初始化项目：
+
+```powershell
+uv tool run --from 'git+https://github.com/github/spec-kit.git@0019fa14d12f45edabc2cc3176c9168a68bd0f97' specify integration status --json
+```
+
+该命令检查 Codex 与共享受管文件，期望无缺失、修改或无效路径；安装状态不证明产品规划完成。网络不可用时，已安装技能／脚本仍可使用；可运行 `.agents/verify-sources.ps1` 检查原 137 个来源文件及 9 个官方技能，但它不覆盖共享模板／脚本，也不替代官方完整状态检查。按需下载 ZIP 时在任务临时目录核版本与上述原始归档哈希，不恢复长期镜像目录。
+
+### 已装资产与升级边界
+
+- 官方 manifests 是受管文件的来源基线。原版模板、脚本和技能由官方安装器管理；项目适配在本页，constitution 单独填写，不手改受管正文或 manifest 哈希。
+- D003 官方初始化先在隔离目录核副作用，再执行 `init --here --force --integration codex --integration-options '--skills --events false' --script ps --ignore-agent-tools --non-interactive`。这是当时的安装记录，当前已接入项目不重跑；events=false，未安装额外扩展／presets／hooks，未运行整套自动开发 workflow。
+- 技能可通过已安装路径显式读取，客户端是否发现技能以会话列表为准，不把文件存在等同于完整工作流通过。
+- 将来升级需对应任务授权，先核版本、状态和差异，再按官方升级流程维护；日常检查不自动升级。Python、uv 和它们的缓存仅属开发辅助，不进入产品运行链路，不因本次目录清理删除全局工具或缓存。
 
 ## 功能路径与检查边界
 
