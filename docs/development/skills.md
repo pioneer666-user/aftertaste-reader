@@ -11,7 +11,7 @@
 | 独立代码审查 | [Ponytail Review](../../.agents/skills/ponytail-review/SKILL.md) | 读真实调用链，报告具体场景；由未参与实现的子代理执行 |
 | 规范、角色、产品 Skill 与 AI 参考资料写作 | [writing-for-agents](../../.agents/skills/writing-for-agents/SKILL.md) | 单一主定义、明确读取条件与完成条件；产品 Skill 再读其 SKILL-MECHANICS |
 | 创建／更新产品 Skill 包 | 当前宿主提供的 `skill-creator` | 通过本会话技能目录定位并读完整入口，组织描述、参考与脚本并验证；缺失时先报告，不凭名字冒称已调用 |
-| 产品需求、澄清、方案、任务、一致性 | 本地固定 [Spec Kit 工作流](../../.tools/README.md) | 按下节方法选择；当前是固定源码参考，不是已注册命令 |
+| 产品需求、澄清、方案、任务、一致性 | 官方 [Spec Kit 项目接入](spec-kit.md) | 正式设计与后续更新必须沿对应技能／模板；偏离须告知，见下节 |
 | 新阅读页面、布局或交互呈现；对应设计审查 | [Impeccable](../../.agents/skills/impeccable/SKILL.md) | 阅读内容用 Read，管理／编辑操作用 Operate；按实际页面选模式 |
 | 块解析、行范围、图关系、序列化等可表达性质的代码 | [property-based-testing](../../.agents/vendor/trailofbits-skills/plugins/property-based-testing/skills/property-based-testing/SKILL.md) | 生成／审查／解释失败按对应参考；具体例子测试仍保留 |
 | 易误用的命令参数、路径、写入和安全配置接口 | [sharp-edges](../../.agents/vendor/trailofbits-skills/plugins/sharp-edges/skills/sharp-edges/SKILL.md) | 从真实接口找误用路径并验证，不替代普通逻辑审查 |
@@ -26,11 +26,9 @@
 
 ## Spec Kit 的现状与使用
 
-- 本项目已有 v1.4.0 完整本地源码，来源与重建见 `.tools/README.md`；忽略目录不随克隆恢复，缺失时按该记录重建固定版本。
-- 当前可显式读取 `templates/commands/` 下 specify、clarify、plan、tasks、analyze、checklist 等流程和模板。新需求／歧义交主脑，方案负责人用 plan，执行按已定任务实施，复杂材料变化时用 analyze 检查一致性。
-- 这属于人工采用官方方法；尚未初始化 CLI、注册 speckit 技能或运行官方自动化，不宣称 `/speckit.*` 已可调用。
-- 以后若完整接入官方工作流，先核安装、受管文件及前置要求；不伪造 plan／tasks 或把历史清单勾完来绕过检查。局部维护无需重跑完整流程。
-- 已确认规格与作者裁决优先；模板不补造范围、性能承诺或产品取舍。官方上游文件不改，项目适配写在这里。
+- D003 已从原先的源码参考升级为官方 v1.4.0 项目接入；9 个技能和共享模板／脚本已落仓，具体角色、材料结构、更新规则、版本核验和运行边界统一见 [Spec Kit 接入](spec-kit.md)。
+- 正式架构设计读 speckit-plan 与实际 plan-template；后续更新保留官方结构。前置不满足或需要偏离时明确告知作者，不静默换成自创格式。
+- 已确认规格与作者裁决优先；模板不补造范围、性能承诺或产品取舍，不能伪造 plan／tasks 或把旧清单勾完来绕过检查。上游受管文件不改，项目适配在接入说明中维护。
 
 ## Impeccable
 

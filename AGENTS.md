@@ -9,6 +9,7 @@
 - 共同流程：主脑派单 → 作者转交新执行会话 → 执行实现、自测、调用独立审查子代理、处理问题 → 一份回执 → 作者交回主脑。
 - 主脑直接维护开发规范；产品实现交执行会话。角色名称和技能调用本身不扩大任务范围。
 - 接手产品先读 [08 现行规格](specs/001-first-release/08-current-spec-and-acceptance.md)，再读本批涉及的分册；历史提议服从后续确认，不重新打开已收束的产品决定。
+- 新建或更新正式需求／架构设计／实施清单，按 [Spec Kit](docs/development/spec-kit.md) 读取对应官方技能与模板、维护原结构；前置缺失或需偏离时在聊天说明，不能静默换格式。
 
 ## 共同边界
 
@@ -30,6 +31,7 @@
 | 修改产品代码、命令或产品 Skill | [工程约定](docs/development/engineering.md) |
 | 选择检查、独审、体验验收 | [验证](docs/development/verification.md) |
 | 使用开发技能 | [技能入口与项目适配](docs/development/skills.md) |
+| 编写或更新正式设计、核 Spec Kit 状态 | [Spec Kit 接入](docs/development/spec-kit.md) |
 | 分支、提交、合并 | [Git](docs/development/git.md) |
 | 修改规范、补充技能 | [规范维护](docs/development/maintenance.md) |
 
@@ -43,6 +45,7 @@
 - `docs/development/`、`docs/roles/`：本项目开发规则；不复制产品规格。
 - `docs/work/`：任务批准依据、调整、回执和审查原文；新任务在本仓库独立保存。
 - `.agents/`：开发用第三方技能及来源；不是回甘交付给用户的产品 Skill。外部材料仅在选用时按项目适配执行，不成为全局规则。
+- `.specify/`：官方 Spec Kit 模板、脚本、manifest、workflow 与项目原则；受管源文件不手改，具体使用见接入说明。
 - `.tools/`：本机固定工具参考，重建信息见其 README；忽略内容不随克隆恢复。
 - `experiments/D编号-主题/`：与派单同编号的实验材料，入口见 [experiments](experiments/README.md)；`.local/`：可再生成的日志、截图等，按任务隔离。唯一证据不能只放忽略目录。
 

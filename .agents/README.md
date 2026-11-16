@@ -17,7 +17,7 @@
 - 角色按[技能入口](../docs/development/skills.md)显式读文件，因此不依赖客户端自动发现。writing-for-agents／Impeccable 保留原有显式策略，不据此宣称全部技能仅能手动使用。
 - 配套文件进入 Git，可随本仓克隆；运行时下载的二进制、工具缓存与实际测试依赖未安装。本次不是全套运行验证。
 - sharp-edges 上游 README 的 Related Skills 指向 constant-time-analysis、differential-review、audit-context-building；三者未接入，是相关技能推荐而非本包执行所需文件。不要将这些路径当成本仓可用入口，确有需要再按维护流程扩展。
-- 当前宿主内置 skill-creator 不重复复制；Spec Kit 沿 [.tools 来源](../.tools/README.md)重建。Anthropic 同名技能未接入。
+- 当前宿主内置 skill-creator 不重复复制；D003 已接入官方 Spec Kit v1.4.0 的 9 个技能，共享模板／脚本在 `.specify/`，来源与使用见 [Spec Kit 接入](../docs/development/spec-kit.md)。这部分使用官方 manifest，不混入原 137 文件的来源清单；核验脚本兼顾官方技能，完整状态另用 integration status。Anthropic 同名技能未接入。
 - 项目适配写在 `docs/development/skills.md`，来源库内的 AGENTS、说明、命令和示例只在相应任务中作为资料，不替代根规范。
 
 巧格来源记录：Ponytail 的 T034、writing-for-agents 的 T064，以及 `docs/work/2026/11/执行分职与技能接入-2026-11-12/`。这些只用于追溯，本仓日常使用不依赖这些外部目录。
