@@ -11,5 +11,6 @@
 | D003 | [Spec Kit 核查与 dev 收束](D003-speckit-check/task.md) · [回执](D003-speckit-check/handoff.md) |
 | D004 | [图画布自由布局与持久恢复验证](D004-canvas-persistence/task.md) · [回执](D004-canvas-persistence/handoff.md) |
 | D005 | [开发准备收尾](D005-development-cleanup/task.md) · [回执](D005-development-cleanup/handoff.md) |
+| D006 | [固定提交取源](D006-fixed-source/task.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本目录不搬移或重写历史。

@@ -1,10 +1,14 @@
 # Aftertaste Reader · 回甘
 
-帮助项目作者对照源码与讲解，逐步读懂自己的项目。当前已整理首版需求与开发规范，正在完成开发准备，尚无可安装产品。
+帮助项目作者对照源码与讲解，逐步读懂自己的项目。当前已建立固定提交取源底层能力，首版规格与开发规范继续作为后续实现依据。
+
+## 固定提交取源开发入口
+
+使用 Node.js 24 LTS、npm 和本地 Git 2.45+，在仓库根运行 `npm ci`、`npm run typecheck`、`npm run build`、`npm test`。构建后的命令入口为 `node dist/cli/main.js pin/read`，具体调用见 [002 quickstart](specs/002-fixed-source/quickstart.md)，共用用例在 `src/application/fixed-source.ts`。本批结果见 [D006 handoff](docs/work/D006-fixed-source/handoff.md)。
 
 ## 开发协作入口（2026-11-16）
 
-新主脑从 [D002 交接](docs/work/D002-directory-layout/handoff.md)及 [D003 Spec Kit 接入与收束](docs/work/D003-speckit-check/handoff.md)接续；文件落点看[目录职责](docs/development/directories.md)。正式需求、架构设计及后续更新必须按[官方 Spec Kit 技能／模板](docs/development/spec-kit.md)，偏离需告知。产品 Skill 与讲解 AI 指南在 [skills/aftertaste-reader](skills/aftertaste-reader/README.md)，按任务实验从 [experiments](experiments/README.md)进入。当前没有产品 Skill、代码或实际产品实验。
+新主脑从 [D002 交接](docs/work/D002-directory-layout/handoff.md)及 [D003 Spec Kit 接入与收束](docs/work/D003-speckit-check/handoff.md)接续；文件落点看[目录职责](docs/development/directories.md)。正式需求、架构设计及后续更新必须按[官方 Spec Kit 技能／模板](docs/development/spec-kit.md)，偏离需告知。产品 Skill 与讲解 AI 指南在 [skills/aftertaste-reader](skills/aftertaste-reader/README.md)，按任务实验从 [experiments](experiments/README.md)进入。固定取源的实现与验证入口见上节。
 
 第一版开发规范见 [AGENTS.md](AGENTS.md)，按主脑／执行／审查三个角色协作；主脑持续维护规范，作者转交执行任务，执行调用独立审查子代理并交回回执。开发技能及项目适配见[技能入口](docs/development/skills.md)，本次范围与验证见 [D001 回执](docs/work/D001-development-standards/handoff.md)。
 
