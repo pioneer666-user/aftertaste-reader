@@ -1,6 +1,6 @@
 # 产品源码
 
-TypeScript、Vue 阅读器和本地服务的正式实现根。当前只有目录说明，没有产品代码或构建配置。
+TypeScript、Vue 阅读器和本地服务的正式实现根。当前已实现固定提交取源，入口为 `application/fixed-source.ts`，Git 适配在 `adapters/git-source.ts`，命令入口在 `cli/main.ts`。调用约定见 [002](../specs/002-fixed-source/contracts/cli.md)。
 
 内部按 `core/`、`application/`、`adapters/`、`cli/`、`server/`、`web/`、`export/` 分工；各子目录在对应任务实现时建立。职责和依赖方向统一见[目录规范](../docs/development/directories.md)，质量要求见[工程约定](../docs/development/engineering.md)。
 
