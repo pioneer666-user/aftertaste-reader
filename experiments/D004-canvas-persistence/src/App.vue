@@ -200,7 +200,7 @@ async function initialized() {
 
 <template>
   <header>
-    <h1>回甘 · 画布保存实验</h1>
+    <h1>回味 · 画布保存实验</h1>
     <p role="status" :class="statusKind" data-testid="save-status">{{ status }}</p>
   </header>
   <main>
