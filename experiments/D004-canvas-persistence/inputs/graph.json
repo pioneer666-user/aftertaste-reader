@@ -1,0 +1,12 @@
+{
+  "nodes": [
+    { "id": "a", "label": "读取固定提交" },
+    { "id": "b", "label": "提取源码引用" },
+    { "id": "c", "label": "框内非成员" },
+    { "id": "d", "label": "生成讲解" }
+  ],
+  "edges": [
+    { "id": "ab", "source": "a", "target": "b" },
+    { "id": "bd", "source": "b", "target": "d" }
+  ]
+}
