@@ -26,6 +26,7 @@
 | 动作 | 权威入口 |
 | --- | --- |
 | 派单、接单、回执、调整 | [任务流程](docs/development/workflow.md) |
+| 决定文件落点、建立实验、调整目录 | [目录职责](docs/development/directories.md) |
 | 修改产品代码、命令或产品 Skill | [工程约定](docs/development/engineering.md) |
 | 选择检查、独审、体验验收 | [验证](docs/development/verification.md) |
 | 使用开发技能 | [技能入口与项目适配](docs/development/skills.md) |
@@ -34,11 +35,15 @@
 
 ## 目录与事实归属
 
+完整文件落点以[目录职责](docs/development/directories.md)为准；执行新增文件先核本批落点。
+
+- `skills/aftertaste-reader/`：产品 Skill、讲解 AI 指南与产物模板；`src/`：正式程序；`tests/`：正式测试和固定样例；`scripts/`：构建与开发辅助。
+- `docs/usage/`：面向产品使用者的说明；`dist/`：可再生成的构建结果。
 - `specs/`：产品应该怎样工作及后续技术方案；当前入口是 08，旧记录不删除。
 - `docs/development/`、`docs/roles/`：本项目开发规则；不复制产品规格。
 - `docs/work/`：任务批准依据、调整、回执和审查原文；新任务在本仓库独立保存。
 - `.agents/`：开发用第三方技能及来源；不是回甘交付给用户的产品 Skill。外部材料仅在选用时按项目适配执行，不成为全局规则。
 - `.tools/`：本机固定工具参考，重建信息见其 README；忽略内容不随克隆恢复。
-- `experiments/`：获批实验的输入、配置与重建说明；`.local/`：可再生成的日志、截图等，按任务隔离。唯一证据不能只放忽略目录。
+- `experiments/D编号-主题/`：与派单同编号的实验材料，入口见 [experiments](experiments/README.md)；`.local/`：可再生成的日志、截图等，按任务隔离。唯一证据不能只放忽略目录。
 
 本规范独立于巧格及外层 Harness 的产品目录、验收设施和角色细分；它们仅作来源参考。当前目录的通用工作区纪律仍适用；作者本次明确的角色流程和持续维护授权替代其不相容的旧流程，见 D001。

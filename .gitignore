@@ -6,3 +6,8 @@
 /.local/
 /.agents/.local/
 **/experiments/**/.local/
+
+# 开发／实验依赖及可重建输出；用户目标项目资料不在此一概忽略。
+**/node_modules/
+/dist/
+/coverage/
