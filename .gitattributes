@@ -1,0 +1,4 @@
+# 固定来源按原字节入库，避免换行转换破坏来源哈希。
+/.agents/skills/** -text
+/.agents/vendor/** -text
+/.specify/** -text

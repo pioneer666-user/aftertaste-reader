@@ -1,6 +1,14 @@
 # Aftertaste Reader · 回甘
 
-帮助项目作者对照源码与讲解，逐步读懂自己的项目。当前处于首版需求讨论阶段，尚无可安装产品。
+帮助项目作者对照源码与讲解，逐步读懂自己的项目。当前已整理首版需求与开发规范，正在完成开发准备，尚无可安装产品。
+
+## 开发协作入口（2026-11-16）
+
+新主脑从 [D002 交接](docs/work/D002-directory-layout/handoff.md)及 [D003 Spec Kit 接入与收束](docs/work/D003-speckit-check/handoff.md)接续；文件落点看[目录职责](docs/development/directories.md)。正式需求、架构设计及后续更新必须按[官方 Spec Kit 技能／模板](docs/development/spec-kit.md)，偏离需告知。产品 Skill 与讲解 AI 指南在 [skills/aftertaste-reader](skills/aftertaste-reader/README.md)，按任务实验从 [experiments](experiments/README.md)进入。当前没有产品 Skill、代码或实际产品实验。
+
+第一版开发规范见 [AGENTS.md](AGENTS.md)，按主脑／执行／审查三个角色协作；主脑持续维护规范，作者转交执行任务，执行调用独立审查子代理并交回回执。开发技能及项目适配见[技能入口](docs/development/skills.md)，本次范围与验证见 [D001 回执](docs/work/D001-development-standards/handoff.md)。
+
+该规范建立开发方式，未实现产品或运行产品验收。下方设计交接与阶段记录保留追溯，当前产品要求继续从 08 进入。
 
 ## 设计交接（2026-11-16，U102—U103）
 
@@ -81,13 +89,15 @@ U39 补齐生成更新说明及单文档即时校验要求，逐文件操作建�
 
 2026-11-14 按作者 U4 初始化独立子 Git 仓库；初始提交 253c71a 保存此前的模式讨论文档。上层实验仓库忽略本目录，不使用 Git submodule。目前未配置远程或发布。首版仍在设计中，没有产品代码。
 
-## Spec Kit 使用依据
+## Spec Kit 使用依据（2026-11-14 历史记录）
+
+以下保留最初的下载与使用背景。2026-11-16 已完成官方项目接入，当前安装、模板入口与文档维护要求以 [Spec Kit 接入说明](docs/development/spec-kit.md)和 [D003 回执](docs/work/D003-speckit-check/handoff.md)为准；下文“未初始化”仅表示当时状态。
 
 2026-11-14 通过 GitHub 官方仓库的 releases/latest 核实，最新稳定版为 [v1.4.0](https://github.com/github/spec-kit/releases/tag/v1.4.0)，发布于 2026-11-10。本轮固定引用该版本，不使用本机旧的 1.0.4 资料包。
 
 完整官方源码已下载到 [.tools/spec-kit/](.tools/spec-kit/)，来源、提交与压缩包校验值见[本地工具记录](.tools/README.md)。后续优先读取本地的[需求规格模板](.tools/spec-kit/templates/spec-template.md)、[需求澄清流程](.tools/spec-kit/templates/commands/clarify.md)和[技术设计模板](.tools/spec-kit/templates/plan-template.md)，无需反复联网查找。
 
-当前采用官方结构，以中文手工维护需求、讨论记录和质量检查；未安装全局 CLI、未初始化自动化命令环境，也未运行实现工作流。完整工具源码是本地参考副本，不混入本产品实现，不把其内部 AGENTS.md 或示例当成本项目全局指令。
+当时以中文手工整理需求、讨论记录和质量检查，参考官方结构，尚未形成完整官方 spec／plan 套件；当轮未安装全局 CLI、未初始化自动化命令环境，也未运行实现工作流。完整工具源码是本地参考副本，不混入本产品实现，不把其内部 AGENTS.md 或示例当成本项目全局指令。
 
 作者 U1 要求优先于工具默认流程：
 
