@@ -10,6 +10,19 @@ import { prepareRun, readSaved } from '../store.ts'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 
+test('原型同名的合法新节点使用默认坐标，存续节点仍保持坐标', () => {
+  const state = initialState(graph)
+  const input = structuredClone(graph)
+  input.nodes.push({ id: 'constructor', label: '原型同名节点' })
+  const next = reconcileGraph(state, input)
+  validateState(next)
+  const addedPosition = next.positions[input.nodes.at(-1)!.id]
+  assert.equal(typeof addedPosition, 'object')
+  assert.ok(addedPosition.x > Math.max(...Object.values(state.positions).map(p => p.x + 170)))
+  for (const node of graph.nodes) assert.deepEqual(next.positions[node.id], state.positions[node.id])
+  assert.deepEqual(reconcileGraph(next, input), next)
+})
+
 test('图更新保持存续坐标，确定删除清组，失败输入不改原状态', () => {
   const original = initialState(graph)
   let seed = 4004

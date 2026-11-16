@@ -105,7 +105,7 @@ export function reconcileGraph(state: CanvasState, input: unknown): CanvasState 
   const right = Math.max(0, ...Object.values(state.positions).map(p => p.x + nodeSize.width)) + 100
   let added = 0
   for (const node of graph.nodes) {
-    positions[node.id] = state.positions[node.id] ?? { x: right, y: 100 + added++ * 110 }
+    positions[node.id] = Object.hasOwn(state.positions, node.id) ? state.positions[node.id] : { x: right, y: 100 + added++ * 110 }
   }
   const groups = state.groups.map(group => ({ ...group, members: group.members.filter(member => Object.hasOwn(positions, member)) }))
     .filter(group => group.members.length)
