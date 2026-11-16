@@ -1,5 +1,7 @@
 # D002 · 目录准备与新主脑交接
 
+2026-11-16 接续说明：D002 后又完成 Spec Kit 官方接入。最新验证与本次合 dev 的收束依据见 [D003 回执](../D003-speckit-check/handoff.md)；下方版本记录保留 D002 当时状态。
+
 ## 当前结果
 
 目录职责和必要入口已完成，见[目录规范](../../development/directories.md)。自检与独审通过；没有产品实现、依赖安装或实际实验。
@@ -14,7 +16,7 @@
 1. 读根 [AGENTS](../../../AGENTS.md) 和[主脑角色](../../roles/主脑.md)。
 2. 读本回执了解阶段与 Git 状态，再读 [08 现行规格](../../../specs/001-first-release/08-current-spec-and-acceptance.md)；03／07 按技术与 Skill 任务需要补读。
 3. 派单时读[目录职责](../../development/directories.md)、[任务流程](../../development/workflow.md)和 task 模板；技能按动作选，不全量加载。
-4. 核 Git：D001 与 D002 在当前候选分支，dev 未包含。先向作者说明并完成有对应授权的基线收束，再从最新认可基线组织下一任务；不要直接切旧 dev 开工或另复制一套规范。
+4. 核 Git：结合 D003 回执与实际合并记录确认 dev 包含 D001—D003，再从最新认可 dev 组织下一任务；正式规划先读 [Spec Kit 接入说明](../../development/spec-kit.md)，明确既有需求与官方结构的衔接。
 
 ## 推荐下一项，尚未派单
 
