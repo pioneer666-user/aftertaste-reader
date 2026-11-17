@@ -7,10 +7,13 @@ import { DocumentError } from '../core/document-blocks.js';
 import { GraphService } from '../application/dependency-graph.js';
 import { GraphFileStore, readGraphInput } from '../adapters/graph-store.js';
 import { GraphError } from '../core/dependency-graph.js';
+import { startReader } from '../server/reader.js';
+import { ReaderError } from '../application/file-reader.js';
 
 const fixedOptions = ['--project', '--repository', '--prefix', '--commit'];
 
 const commands: Record<string, { allowed: string[]; required: string[] }> = {
+  serve: { allowed: ['--project', '--port'], required: ['--project'] },
   pin: { allowed: ['--project', '--revision'], required: ['--project'] },
   read: { allowed: ['--project', '--commit', '--path', '--repository', '--prefix'], required: ['--project', '--commit', '--path'] },
   'create-document': {
@@ -59,7 +62,20 @@ async function main(): Promise<void> {
     const repository = new GitSourceRepository();
     const service = new FixedSourceService(repository);
     const projectRoot = options.get('--project')!;
-    if (command === 'pin') {
+    if (command === 'serve') {
+      const value = options.get('--port') ?? '4317';
+      if (!/^[1-9]\d*$/u.test(value) || Number(value) > 65535) {
+        throw new SourceError('INVALID_ARGUMENT', '阅读端口参数无效。', '使用 1 至 65535 的整数端口。');
+      }
+      const reader = await startReader(projectRoot, Number(value));
+      process.stdout.write(`${JSON.stringify({ ok: true, status: 'ready', url: reader.url, projectRoot: reader.projectRoot })}\n`);
+      const stop = async () => {
+        await reader.server.close();
+        process.stdout.write(`${JSON.stringify({ ok: true, status: 'stopped' })}\n`);
+      };
+      process.once('SIGINT', stop);
+      process.once('SIGTERM', stop);
+    } else if (command === 'pin') {
       const source = await service.pin(projectRoot, options.get('--revision'));
       process.stdout.write(`${JSON.stringify({ ok: true, source })}\n`);
     } else if (command === 'read') {
@@ -112,7 +128,7 @@ async function main(): Promise<void> {
       }
     }
   } catch (error) {
-    const problem = error instanceof SourceError || error instanceof DocumentError || error instanceof GraphError ? error :
+    const problem = error instanceof SourceError || error instanceof DocumentError || error instanceof GraphError || error instanceof ReaderError ? error :
       new SourceError('INTERNAL_ERROR', '命令发生未预期错误。', '将命令及问题标识交给维护者检查。');
     process.stderr.write(`${JSON.stringify({ ok: false, error: {
       code: problem.code, message: problem.message, nextStep: problem.nextStep, context: { ...requestContext, ...problem.context },

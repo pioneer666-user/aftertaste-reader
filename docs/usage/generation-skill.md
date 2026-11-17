@@ -14,9 +14,9 @@ AI 解析已读取入口的位置，按包内 tools.md 找到工具。它会读�
 
 ## 读产物
 
-讲解在目标项目 `docs/aftertaste/current/` 镜像源码路径，保留源码扩展名再加 `.md`。依赖在 `dependency-graph.json`，偏好在 `preferences.md`，方向在 `reading-direction.md`。目前用编辑器或 Markdown 预览阅读讲解，依据文档头提交及块范围向 AI 取固定源码作对照。源码由工具运行时读取。
+讲解在目标项目 `docs/aftertaste/current/` 镜像源码路径，保留源码扩展名再加 `.md`。依赖在 `dependency-graph.json`，偏好在 `preferences.md`，方向在 `reading-direction.md`。使用[本地阅读服务](file-reader.md)打开已有讲解，按块对照文档头提交的真实源码，支持简体中文和英文界面。源码由工具运行时读取。
 
-逐批阅读在交付后等待“继续”。可以复制文档路径与块 ID 提问，AI 在聊天回答，真实反馈按需帮助后续讲法。跨提交更新、讲解写回、闭环、网页和导出尚待接入。
+逐批阅读在交付后等待“继续”。可以复制文档路径与块 ID 提问，AI 在聊天回答，真实反馈按需帮助后续讲法。跨提交更新、讲解写回、闭环和导出尚待接入。
 
 ## 可直接试读
 

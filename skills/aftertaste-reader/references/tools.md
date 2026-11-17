@@ -46,6 +46,7 @@ Git 查询失败时保留真实状态，read 会核完整提交身份与项目�
 | apply-graph | `apply-graph` + sourceArgs + `--input 输入JSON绝对路径`。输入文件仅保存路径、状态和原因，不含源码 |
 | query-graph | `query-graph` + sourceArgs + `--path 项目相对路径`。查询已有局部与状态，缺图报 GRAPH_NOT_FOUND |
 | validate-graph | `validate-graph` + sourceArgs。缺图报错，校验读取无写入 |
+| serve | `serve --project projectRoot`，可加 `--port 端口`。提供已有 current 文件讲解的本地只读阅读页，stdout 的 ready.url 为入口，终端 Ctrl+C 关闭。页面支持中英文，刷新重读资料，源码使用各文档头提交 |
 
 图输入使用当前格式，以下路径仅为合成示意，实际必须核固定源码。
 

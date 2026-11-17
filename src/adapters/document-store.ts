@@ -16,10 +16,6 @@ function unsafe(projectRoot: string, documentPath: string): DocumentError {
 async function targetPath(projectRoot: string, documentPath: string, create: boolean): Promise<string> {
   validateProjectRoot(projectRoot);
   sourcePathForDocument(documentPath);
-  if (process.platform === 'win32' && documentPath.split('/').some(part =>
-    /[<>"|?*]/u.test(part) || /[. ]$/u.test(part) || /^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/iu.test(part))) {
-    throw new SourceError('INVALID_PATH', '文档路径含 Windows 不支持的名称。', '使用没有设备名、尾点、尾空格或保留符号的镜像路径。');
-  }
   const segments = documentPath.split('/');
   const current = await dataDirectory(projectRoot, segments.slice(0, -1), create, () => unsafe(projectRoot, documentPath));
   const target = path.join(current, segments.at(-1)!);

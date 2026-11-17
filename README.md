@@ -4,6 +4,8 @@
 
 中文名为“回味”；英文名、`aftertaste-reader` 标识及路径保持不变。历史原话、任务与证据中的旧称保留用于追溯。
 
+本地逐文件阅读入口见[启动、停止与排错说明](docs/usage/file-reader.md)，可按块对照固定源码并切换中英文界面。D011 作者待验候选与合成样例见[回执](docs/work/2026/11/D011-file-reader/handoff.md)。
+
 ## 固定提交取源开发入口
 
 使用 Node.js 24 LTS、npm 和本地 Git 2.45+，在仓库根运行 `npm ci`、`npm run typecheck`、`npm run build`、`npm test`。构建后的命令入口为 `node dist/cli/main.js pin/read`，具体调用及历史子项目读取见 [002 quickstart](specs/002-fixed-source/quickstart.md)，共用用例在 `src/application/fixed-source.ts`。当前加固结果见 [D007 handoff](docs/work/2026/11/D007-fixed-source-hardening/handoff.md)，原交付见 [D006 handoff](docs/work/2026/11/D006-fixed-source/handoff.md)。
@@ -105,7 +107,7 @@ U39 补齐生成更新说明及单文档即时校验要求，逐文件操作建�
 
 ## 仓库状态
 
-2026-11-14 按作者 U4 初始化独立子 Git 仓库；初始提交 253c71a 保存此前的模式讨论文档。上层实验仓库忽略本目录，不使用 Git submodule。目前未配置远程或发布。首版仍在设计中，没有产品代码。
+2026-11-14 按作者 U4 初始化独立子 Git 仓库；初始提交 253c71a 保存此前的模式讨论文档。上层实验仓库忽略本目录，不使用 Git submodule。目前未配置远程或发布。首版按批准任务分项实现，已有开发树入口见上文。
 
 ## Spec Kit 使用依据（2026-11-14 历史记录）
 
