@@ -66,6 +66,7 @@ skills/aftertaste-reader/
 tests/skills/
   generation.md
   generation-static.test.mjs
+  generation-sample.test.mjs
 tests/fixtures/generation-project.mjs
 docs/usage/generation-skill.md
 docs/work/2026/11/D010-generation-skill/

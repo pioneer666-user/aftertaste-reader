@@ -17,6 +17,10 @@ node --test tests/skills/generation-static.test.mjs
 ```
 
 ```powershell
+node --test tests/skills/generation-sample.test.mjs
+```
+
+```powershell
 node tests/fixtures/generation-project.mjs .local/D010/try-reading
 ```
 

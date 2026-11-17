@@ -1,0 +1,39 @@
+{
+  "format": "aftertaste-dependency-graph/v1",
+  "source_commit": "5394d8f86c961ce1b327674235525f57bf0b982c",
+  "nodes": [
+    {
+      "path": "src/api.mjs",
+      "analysis": "reviewed"
+    },
+    {
+      "path": "src/rules.mjs",
+      "analysis": "reviewed"
+    },
+    {
+      "path": "src/service.mjs",
+      "analysis": "reviewed"
+    },
+    {
+      "path": "support/audit.mjs",
+      "analysis": "unreviewed"
+    }
+  ],
+  "edges": [
+    {
+      "dependency": "src/service.mjs",
+      "dependent": "src/api.mjs",
+      "reason": "将请求体与订单集合交给创建服务，并将成功结果或异常转换为响应对象"
+    },
+    {
+      "dependency": "src/rules.mjs",
+      "dependent": "src/service.mjs",
+      "reason": "在创建订单前使用数量转换与范围校验约定"
+    },
+    {
+      "dependency": "support/audit.mjs",
+      "dependent": "src/service.mjs",
+      "reason": "集合追加后调用审计辅助函数，当前返回文本被忽略"
+    }
+  ]
+}

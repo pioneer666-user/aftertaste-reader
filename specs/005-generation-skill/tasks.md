@@ -33,7 +33,7 @@
 
 - [x] T005 [US1] 创建 skills/aftertaste-reader/SKILL.md 和 references/generation.md，范围／节奏缺失等待，串起固定来源与七步生成（FR-001、002、008）
 - [x] T006 [US1] 编写 skills/aftertaste-reader/references/authoring.md，骨架 ID 由工具生成，完整行覆盖、空正文与超大判读沿 003（FR-004）
-- [ ] T007 [US1] 真实使用代理按 tests/skills/generation.md 完成两种节奏，将输入、调用和结果归 docs/work/2026/11/D010-generation-skill/evidence.md（FR-009、SC-001、002、004）
+- [x] T007 [US1] 真实使用代理按 tests/skills/generation.md 完成两种节奏，将输入、调用和结果归 docs/work/2026/11/D010-generation-skill/evidence.md（FR-009、SC-001、002、004）
 
 ## Phase 4: User Story 2 - 资料保护与失败 (Priority: P1)
 
@@ -41,7 +41,7 @@
 **Independent Test**: 版本冲突、已有文档、取源／校验失败保留资料，范围外依赖无讲解。
 
 - [x] T008 [US2] 在 skills/aftertaste-reader/references/generation.md 落实实际 current／图检查、同版本次骨架续填边界和部分失败交付（FR-002、005、006）
-- [ ] T009 [US2] 用 tests/skills/generation.md 的保护与失败场景核实际字节、文档及图状态，证据写 docs/work/2026/11/D010-generation-skill/evidence.md（FR-005、006、SC-002、003）
+- [x] T009 [US2] 用 tests/skills/generation.md 的保护与失败场景核实际字节、文档及图状态，证据写 docs/work/2026/11/D010-generation-skill/evidence.md（FR-005、006、SC-002、003）
 
 ## Phase 5: User Story 3 - 教法与阅读方向 (Priority: P2)
 
@@ -50,12 +50,12 @@
 
 - [x] T010 [US3] 创建 skills/aftertaste-reader/references/teaching.md，依代码、需要与前后联系组织重点，给具体正反例及分组理由（FR-003）
 - [x] T011 [US3] 创建 skills/aftertaste-reader/assets/templates/preferences.md、reading-direction.md 及 references/feedback.md，落实两来源分区与项目路径，超过 8,000 非空白 Unicode 码点仅提醒整理（FR-007）
-- [ ] T012 [US3] 按 tests/skills/generation.md 实测已有偏好、无反馈、重复与冲突反馈及仅提问场景，记录 docs/work/2026/11/D010-generation-skill/evidence.md（FR-003、007）
+- [x] T012 [US3] 按 tests/skills/generation.md 实测已有偏好、无反馈、重复与冲突反馈及仅提问场景，记录 docs/work/2026/11/D010-generation-skill/evidence.md（FR-003、007）
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T013 同步 specs/001-first-release/04-reading-modes.md、07-skill-design-map.md、08-current-spec-and-acceptance.md 与 docs/development/directories.md 的模板／路径／能力状态，更新包 README 和根 README（FR-007、008）
-- [ ] T014 完成 docs/usage/generation-skill.md 和 specs/005-generation-skill/quickstart.md 的真实步骤，归档 sample/README.md、完整讲解、图／方向和校验摘要供作者试读（FR-008、009、SC-004）
+- [x] T014 完成 docs/usage/generation-skill.md 和 specs/005-generation-skill/quickstart.md 的真实步骤，归档 sample/README.md、完整讲解、图／方向和校验摘要，以 tests/skills/generation-sample.test.mjs 在重建来源上复核（FR-008、009、SC-004）
 - [ ] T015 固定候选并派独立审查，保存 docs/work/2026/11/D010-generation-skill/review.md 原文，处理问题复核并交 handoff.md（FR-009）
 
 ## Dependencies & Execution Order
