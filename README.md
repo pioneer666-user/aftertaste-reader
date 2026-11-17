@@ -1,12 +1,16 @@
 # Aftertaste Reader · 回味
 
-帮助项目作者对照源码与讲解，逐步读懂自己的项目。当前已建立固定提交取源底层能力，首版规格与开发规范继续作为后续实现依据。
+帮助项目作者对照源码与讲解，逐步读懂自己的项目。当前已建立固定提交取源和单篇讲解骨架／校验工具链，首版规格与开发规范继续作为后续实现依据。
 
 中文名为“回味”；英文名、`aftertaste-reader` 标识及路径保持不变。历史原话、任务与证据中的旧称保留用于追溯。
 
 ## 固定提交取源开发入口
 
 使用 Node.js 24 LTS、npm 和本地 Git 2.45+，在仓库根运行 `npm ci`、`npm run typecheck`、`npm run build`、`npm test`。构建后的命令入口为 `node dist/cli/main.js pin/read`，具体调用及历史子项目读取见 [002 quickstart](specs/002-fixed-source/quickstart.md)，共用用例在 `src/application/fixed-source.ts`。当前加固结果见 [D007 handoff](docs/work/2026/11/D007-fixed-source-hardening/handoff.md)，原交付见 [D006 handoff](docs/work/2026/11/D006-fixed-source/handoff.md)。
+
+## 单篇讲解文档开发入口
+
+构建后可调用 `node dist/cli/main.js create-document/validate-document`。AI 提供分块并填写正文，工具生成 ID 与结构、核固定提交的逐行覆盖及超大警告，结果单独报告填写状态和机械合法性。完整合成项目验证见 [003 quickstart](specs/003-document-blocks/quickstart.md)，参数与输出见 [CLI 契约](specs/003-document-blocks/contracts/cli.md)。
 
 ## 开发协作入口（2026-11-16）
 
