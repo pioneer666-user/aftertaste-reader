@@ -2,7 +2,7 @@
 
 ## 当前结论与入口
 
-- G01—G05 已实现，自测完成；等待固定候选的独立审查，不宣称交付通过。批准依据为 [task.md](task.md) @ `c4010db`，无 amendments；比较 dev 基线 `4d3186e`。成果为本次待提交 feat 候选，提交后派审消息固定 SHA，最终归档补充结果。
+- G01—G05 已实现。初候 `debaea9` 独审 R1 发现的一项 P2 数组边界问题已修复并通过受影响自测，待本次修复候选的独审复核，尚不交付通过。批准依据为 [task.md](task.md) @ `c4010db`，无 amendments；比较 dev 基线 `4d3186e`。
 - 工具入口为 `apply-graph`、`query-graph`、`validate-graph`，均传 pin 的完整固定参数。使用 [CLI 契约](../../../../../specs/004-dependency-graph/contracts/cli.md)和[可重跑 quickstart](../../../../../specs/004-dependency-graph/quickstart.md)；依赖由 AI 判断，程序不分析语义。
 - 作者体验验收不适用：本单没有页面、图布局或教学呈现；只覆盖 A08/A09 的工具部分，未记成页面验收通过。
 - 当前 `codex/feat-dependency-graph`，仅本范围改动；完成后保留候选交主脑，不自动合 dev、不推送/发布。无服务或浏览器；未改变已安装产品 Skill。
@@ -52,16 +52,18 @@ node tests/fixtures/dependency-graph.mjs --demo
 | 检查 | 实际结果与绑定范围 |
 | --- | --- |
 | typecheck / build | 全部通过；之后产品源码未变，本地 dist 对应该源码 |
-| 图纯规则 | 5/5，含 512 种三节点有向图的替换隔离、幂等、删除引用一致/状态、序列化及具体反例；0.215 秒 |
-| 图集成 | 完整文件 7/8；唯一失败为测试清理（下文），改为 rmdir 后该项独跑 1/1，2.332 秒。产品源码相同，复用其余 7 项证据；不称最终版全文件重跑 8/8 |
+| 图纯规则 | 初候 5/5；R1 修复后 6/6（0.245 秒），含原 512 种三节点有向图的性质及新增共用 API 数组边界回归 |
+| 图集成 | 初候完整文件 7/8；唯一失败为测试清理（下文），改为 rmdir 后该项独跑 1/1，2.332 秒。R1 修复后受影响坏图/非法输入 CLI 项另跑 1/1（16.584 秒）；普通 JSON 数组语义、存储/业务规则未改，其余证据复用；不称最终版全文件重跑 8/8 |
 | 受影响回归 | 固定取源 unit 6 + integration 17 + 文档 integration 10，共 33/33，166.520 秒；含新增 verify 快照/不读文件单测 |
 | 未变文档 core | 复用 D008 handoff @ 3126c54 的 12 项单测证据：相关 core 源码、测试、依赖/配置未变；没有为本单全套重跑 |
 | 静态文档 | git diff --check 与本批新增/修改 Markdown 本地文件链接检查通过 |
-| CLI demo | 9 步真实命令全部达到预期，详情如下；输出不含源码 |
+| CLI demo | 初候及 R1 修复后均独立新建合成仓库走 9 步真实命令，全部达到预期；输出不含源码 |
 
-本次新运行的有效不同测试为 46 项（图 13 + 受影响回归 33），另复用未变文档 core 12 项。没有把不同版本局部结果拼称 npm test 全套重跑。
+本次新运行的有效不同测试为 47 项（图 14 + 受影响回归 33），另复用未变文档 core 12 项。没有把不同版本局部结果拼称 npm test 全套重跑。
 
 可再生成日志：.local/D009/integration-1.log、integration-path-fix.log、regression.log、demo.log（忽略、不随克隆恢复）；正式 fixtures/tests 与本节摘要可复核与重建。所有源码/输入均为明确合成内容，未在本仓根创建真实 docs/aftertaste。
+
+R1 修复后的独立日志为 .local/D009/array-fix-unit.log、array-fix-cli.log、array-fix-demo.log，未覆盖初候证据。新示例为 run-kvl8lk，固定 ed65d78f5d530e720e75c2989452dcc1f7e094f3；九步退出状态与下面初候表述一致，失败目标仍为 published=0/EPERM，旧图保留。
 
 CLI 独立示例目录为 .local/D009/run-Ch0HkP/，项目 packages/小 项目，固定 A=58584a3a508f552345a39a17b0603d579e62ac3a。实际退出状态：首次登记 0、完整依赖 0、局部替换 0、重复提交 0、明确删除 0、非法输入 2/GRAPH_INPUT_INVALID、Windows 只读目标替换失败 1/GRAPH_WRITE_FAILED（published=0、reason=EPERM）、独立检查 0、查询影响 0。fixture 断言重复后原文相同、非法输入/替换失败旧图字节不变，最终 service 未核对且 router 边保留；已恢复样例只读属性。
 
@@ -74,7 +76,9 @@ CLI 独立示例目录为 .local/D009/run-Ch0HkP/，项目 packages/小 项目�
 
 ### 独审
 
-待固定候选后调用未参与实现的审查子代理；尚未创建 review.md，不自封通过。审查期间冻结产品、构建和既有输入，取得明确写入交还后保存原文及必要修复/复核。
+独立审查子代理 independent_review 未参与实现，按 Ponytail Review / Sharp Edges / 性质测试方法核完整调用链及正式材料。R1 绑定 debaea933957cbf447fadf3faa132f6f70d2a645，结论需修复一项 P2；[原文](review.md)已逐字保存。审查结束候选与输入未漂移，已明确交还写入；审查者实际跑图单测 5/5、tsc 和只读真实 query/validate，其他自测只核阅复用，不说成独立重跑。
+
+R1 问题：共用 GraphService.apply 的未知数组可能含空槽/继承槽或自定义 map，前两者被跳过或抛 TypeError，后者可绕过明确删除/核对列表；CLI JSON 不产生这些值。修复第 1 轮按原假设在 Fields.array 固定长度、逐索引核自有项并读取到普通数组快照。新增四类数组的稀疏/继承/自定义 map 回归，拒绝时断言取源/存储零调用，影子 map 不触发额外删除/核对，合法空列表保留。typecheck/build、图单测 6/6、真实坏图 CLI 项 1/1 与新仓库 demo 9 步均通过，累计第 1 轮成功；待固定修复提交再请独审复核。模型在 speckit-plan 既有结构内补运行时边界增量，JSON 格式、产品范围、其他方案与任务映射未改，不伪称重跑整套规划。
 
 ### 未验证边界与作者验收
 

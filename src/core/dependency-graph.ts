@@ -57,7 +57,13 @@ class Fields {
   }
   array(value: unknown, field: string): unknown[] {
     if (!Array.isArray(value)) this.fail('GRAPH_FIELDS', field);
-    return value;
+    const snapshot: unknown[] = [];
+    const length = value.length;
+    for (let index = 0; index < length; index++) {
+      if (!Object.hasOwn(value, index)) this.fail('GRAPH_FIELDS', `${field}[${index}]`);
+      snapshot.push(value[index]);
+    }
+    return snapshot;
   }
   path(value: unknown, field: string): string {
     if (!isSourcePath(value)) this.fail('GRAPH_PATH', field);

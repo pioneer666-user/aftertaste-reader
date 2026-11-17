@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as rules from '../../dist/core/dependency-graph.js';
+import { GraphService } from '../../dist/application/dependency-graph.js';
+import path from 'node:path';
 import { update, review, graphFormat } from '../fixtures/dependency-graph.mjs';
 
 const commit = 'a'.repeat(40);
@@ -112,4 +114,58 @@ test('有限小域性质：512 种有向图的替换隔离/幂等、删除引用
       assert.deepEqual(rules.parseGraph(JSON.stringify(result)), result);
     }
   }
+});
+
+test('共用 API 拒绝四类数组的空槽/继承槽，忽略自定义 map，保留明确空列表', async () => {
+  const projectRoot = path.resolve('synthetic-graph-project');
+  const fixed = { projectRoot, repositoryRoot: projectRoot, projectPrefix: '', commit };
+  const calls = [];
+  let stored = JSON.stringify(apply(empty(), { reviews: [review('service.ts', ['schema.ts'])] }).graph, null, 2) + '\n';
+  const service = new GraphService({
+    async verify() { calls.push('verify'); },
+    async read() { calls.push('source'); return {}; },
+  }, {
+    async read() { calls.push('read'); return stored; },
+    async save(root, raw) { calls.push('save'); stored = raw; },
+  });
+  const shapes = [
+    ['register', '$.register[0]', array => ({ register: array }), 'schema.ts'],
+    ['remove', '$.remove[0]', array => ({ remove: array }), 'schema.ts'],
+    ['reviews', '$.reviews[0]', array => ({ reviews: array }), review('service.ts')],
+    ['dependencies', '$.reviews[0].dependencies[0]', array => ({ reviews: [{ ...review('service.ts'), dependencies: array }] }), { path: 'schema.ts', reason: 'synthetic' }],
+  ];
+  for (const [name, field, actions, inherited] of shapes) {
+    for (const array of [new Array(1), Object.setPrototypeOf(new Array(1), [inherited])]) {
+      calls.length = 0;
+      const before = stored;
+      await assert.rejects(service.apply(fixed, update(actions(array))), error => {
+        assert.equal(error.code, 'GRAPH_INPUT_INVALID', name);
+        assert.equal(error.diagnostics[0].code, 'GRAPH_FIELDS');
+        assert.equal(error.diagnostics[0].field, field);
+        return true;
+      });
+      assert.deepEqual(calls, [], `${name}: invalid input must fail before source/storage`);
+      assert.equal(stored, before);
+    }
+    const custom = [];
+    custom.map = () => assert.fail(`${name}: caller map must not run`);
+    const parsed = rules.parseUpdate(update(actions(custom)));
+    if (name === 'dependencies') assert.deepEqual(parsed.reviews[0].dependencies, []);
+    else assert.deepEqual(parsed[name], []);
+  }
+  const remove = [];
+  remove.map = () => ['schema.ts'];
+  const reviews = [];
+  reviews.map = () => [review('service.ts')];
+  for (const actions of [{ remove }, { reviews }]) {
+    const before = stored;
+    calls.length = 0;
+    const result = await service.apply(fixed, update(actions));
+    assert.deepEqual(result.graph, JSON.parse(before));
+    assert.equal(stored, before);
+    assert.ok(!calls.includes('save'));
+  }
+  const cleared = await service.apply(fixed, update({ reviews: [review('service.ts')] }));
+  assert.equal(cleared.graph.edges.length, 0);
+  assert.equal(analysis(cleared.graph, 'service.ts'), 'reviewed');
 });

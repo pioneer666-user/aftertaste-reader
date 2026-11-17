@@ -16,6 +16,8 @@
 
 顶层仅 format、可选 register、reviews、remove；format 固定 aftertaste-dependency-update/v1，至少显式出现一个动作，数组可以为空以明确初始化。
 
+共用用例接收程序构造输入时同样要求数组每个索引为自有项，拒绝空槽和继承槽，并读取到普通数组快照后校验；不执行输入数组自定义的遍历方法。合法 JSON 数组及明确空列表行为保持。
+
 - register: 唯一路径数组，只补节点，不重设状态或边。
 - reviews: 唯一使用者数组，每项仅 path、analysis、dependencies；analysis 必须为 reviewed；dependencies 必须显式数组，每项仅 path、reason，代表这个使用者完整的直接依赖，路径唯一。
 - remove: 唯一路径数组；只明确移除此处节点。若同时在登记、核对、依赖引用中出现同一路径，拒绝冲突输入。删除未登记节点是幂等空操作。
