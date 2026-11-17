@@ -6,7 +6,7 @@
 
 源码路径从项目相对 `docs/aftertaste/current/<path>.md` 推导，完整保留源码扩展名，不存重复 path。调用方显式提供 repositoryRoot/projectRoot/projectPrefix，由 002 核一致性，提交来自文档头。
 
-Block 含 id、可选 lines {start,end}、body 原文、startLine/endLine。ID 必须匹配 `[a-z0-9]{8}`，同篇唯一。范围端点为安全正整数，规范十进制，无前导零，start ≤ end。清单元素只允许可选 lines 字段，纯讲解用 `{}`，顶层输入必须为数组。
+Block 含 id、可选 lines {start,end}、body 原文、startLine/endLine。ID 必须匹配 `[a-z0-9]{8}`，同篇唯一。范围端点为安全正整数，规范十进制，无前导零，start ≤ end。范围输入必须具有且仅具有 start/end 两个自有可枚举字段，各读取一次构造已校验数值快照。清单元素只允许可选 lines 字段，纯讲解用 `{}`，顶层输入必须为数组。
 
 物理行按 LF、CRLF、CR 计，末尾终止符不额外计行，空串 0，单独换行为一行。范围覆盖包含空白和注释。零源码可零块或纯讲解，不接受 `1-1`。
 

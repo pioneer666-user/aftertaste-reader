@@ -190,3 +190,25 @@ test('临时名排他创建冲突保留已存在的文件', async () => {
   await assert.rejects(service(store).create(f, 'a.ts', plan), { code: 'DOCUMENT_WRITE_FAILED' });
   assert.equal(await readFile(conflictingPath, 'utf8'), 'pre-existing temporary content');
 });
+
+test('共用创建拒绝继承端点的范围，合法 getter 只读取一次且不写非法骨架', async () => {
+  const f = await createDocumentFixture();
+  class Range {
+    from = 1;
+    to = 3;
+    get start() { return this.from; }
+    get end() { return this.to; }
+  }
+  await assert.rejects(service().create(f, 'a.ts', [{ lines: new Range() }]), { code: 'BLOCK_PLAN_INVALID' });
+  assert.deepEqual((await readdir(f.projectRoot)).sort(), ['a.py', 'a.ts', 'empty.ts', 'nested']);
+  let startReads = 0;
+  let endReads = 0;
+  const range = { get start() { startReads++; return startReads === 1 ? 1 : 99; },
+    get end() { endReads++; return endReads === 1 ? 3 : 99; } };
+  const result = await service().create(f, 'a.ts', [{ lines: range }]);
+  assert.equal(result.mechanicallyValid, true);
+  assert.deepEqual(result.blocks[0].lines, { start: 1, end: 3 });
+  assert.equal(startReads, 1);
+  assert.equal(endReads, 1);
+  assert.equal((await service().validate(f, documentPath)).mechanicallyValid, true);
+});

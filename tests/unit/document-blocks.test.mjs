@@ -145,7 +145,9 @@ test('生成只含引用，空正文待填写，碰撞重试且有界', () => {
   assert.equal(check(generateSkeleton(commit, [], 0), 0).mechanicallyValid, true);
   assert.throws(() => generateSkeleton(commit, [{}, {}], 0, () => 'aaaaaaaa'), { code: 'ID_GENERATION_FAILED' });
   for (const plan of [null, {}, [null], [{ lines: '1-1' }], [{ id: 'abcdefgh' }],
-    [{ lines: { start: 1, end: 1, extra: 2 } }], [{ lines: { start: 2, end: 1 } }], []]) {
+    [{ lines: { start: 1, end: 1, extra: 2 } }],
+    [{ lines: Object.defineProperty({ end: 1, extra: 2 }, 'start', { value: 1 }) }],
+    [{ lines: { start: 2, end: 1 } }], []]) {
     assert.throws(() => generateSkeleton(commit, plan, 1), { code: 'BLOCK_PLAN_INVALID' });
   }
 });

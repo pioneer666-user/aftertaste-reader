@@ -2,7 +2,7 @@
 
 ## 当前结论与入口
 
-M01—M06 实现及自测完成，待固定成果提交并独审。批准入口为 [task.md @ 39a7fdf](task.md)，基线 dev `fa6360f`，接单分支 `codex/feat-document-blocks`，接单 HEAD `39a7fdf`，接单工作区干净。作者明确要求完成后保留候选交回。
+M01—M06 已实现，初次候选 `105d1a3` 独审发现的 1 项 P2 共用 API 范围对象问题已修复，自测通过，等待新候选复核。批准入口为 [task.md @ 39a7fdf](task.md)，基线 dev `fa6360f`，接单分支 `codex/feat-document-blocks`，接单 HEAD `39a7fdf`，接单工作区干净。作者明确要求完成后保留候选交回。
 
 可重跑入口为 [003 quickstart](../../../../../specs/003-document-blocks/quickstart.md)，调用参数及输出见 [CLI 契约](../../../../../specs/003-document-blocks/contracts/cli.md)，格式及状态见 [数据模型](../../../../../specs/003-document-blocks/data-model.md)。作者页面及教学体验本单不适用，机械校验通过不判断解释正确性。
 
@@ -38,6 +38,7 @@ implement 前置 RequireTasks/IncludeTasks 实际成功，扫描唯一 requireme
 - 2026-11-17，新增单测先运行，因 dist/core/document-blocks.js 尚未实现而 ERR_MODULE_NOT_FOUND，符合初始红灯预期。
 - 初版实现 typecheck/build 通过，单测 10/11。CommonMark 容器样例断言失败，普通注释被内部示例的第一个 `-->` 关闭，后面的 `aftertaste:end` 是真正顶层，实际为 BLOCK_ORPHAN_END。目标解析实际触发，证据为失败测试原样例及代码。修正假设为删除该样例中已经处于注释外的结束标记，保留普通注释中的开始标记示例。仅修测试前提，计该测试问题第 1 轮，产品解析不改。随后 typecheck/build 通过，单测 11/11、集成 6/6 通过，测试前提问题已闭合。
 - 初版扩充边界后 typecheck/build 和全套串行测试 41/41 通过，155.6 秒。随后针对临时名碰撞注入 EEXIST，断言既有文件保留实际失败，readFile 为 ENOENT，说明 finally 删除了未拥有的临时名。样例为 `.local/D008/run-xPymzY/`，源码和输入均合成，实际触发了写入失败清理。第 1 轮修复假设为以 open(wx) 取得文件句柄，仅在成功取得后标记拥有临时文件，失败清理只处理自己创建的文件。修复 adapter 及受影响失败注入后，typecheck/build 和 D008 集成 8/8 通过，42.6 秒，该问题第 1 轮已闭合。
+- R1 @ 105d1a3 独审实际复现 API 接受原型 getter 范围并写盘，返回 mechanicallyValid=false，源码范围为 undefined。原文见 [review.md](review.md)，样例 `.local/D008/run-265sQb/`。回归先在原候选确认 Missing expected rejection。第 1 轮修复精确检查自有可枚举字段名为 start/end，各读取一次形成数值快照，再校验和生成。共用回归核原型 getter 被拒绝且资料未创建，自有 getter 各读取一次并保存合法骨架，同时单测补非枚举端点混入额外字段的反例。修复后 typecheck/build 与 D008 单测/集成 21/21 通过，40.1 秒，待独审复核。
 
 ### 最终行为自测证据
 
@@ -48,11 +49,12 @@ npm.cmd run typecheck
 npm.cmd run build
 npm.cmd test
 node --test --test-concurrency=1 tests/integration/document-blocks.test.mjs
+node --test --test-concurrency=1 tests/unit/document-blocks.test.mjs tests/integration/document-blocks.test.mjs
 node tests/fixtures/document-blocks.mjs --demo
 git diff --check
 ```
 
-前 3 项在上述全套版本通过，含 12 项 D008 单测、7 项 D008 集成和 22 项既有取源回归。最终仅文档 adapter 的临时文件拥有判定和对应测试变化，typecheck/build 及受影响 D008 集成 8/8 再通过，复用相同输入且未变化的 core/固定取源证据，共 42 项独立测试。所有测试文件串行执行。生成/解析性质枚举 1—8 行全部 255 种连续分界，插入纯讲解，独立占用数组核每行一次与正文保真。覆盖判定另用 111 种有序范围清单，直接展开行序列作独立预期。没有新增测试库。
+前 3 项在上述全套版本通过，含 12 项 D008 单测、7 项 D008 集成和 22 项既有取源回归。105d1a3 的 adapter 临时文件拥有判定修复后，typecheck/build 及受影响 D008 集成 8/8 再通过。R1 修复后再次 typecheck/build，并串行完成全部 D008 单测/集成 21/21，复用未变化的既有固定取源 22 项证据，当前共 43 项独立测试。所有测试文件串行执行。生成/解析性质枚举 1—8 行全部 255 种连续分界，插入纯讲解，独立占用数组核每行一次与正文保真。覆盖判定另用 111 种有序范围清单，直接展开行序列作独立预期。没有新增测试库。
 
 独立重跑 demo 成功，样例 `.local/D008/run-kDYX8l/`，A 为 `2bf8c94a8acb864b91c3d130fb1e0991529c7732`，generated=true、骨架 unfilled、填写 provided、HEAD/工作区变化后仍依据 A 且机械合法。源码正文只在合成 Git 和测试输入中，工具产物及诊断检查未含取源文本。开发仓库根 `docs/aftertaste/` 不存在。
 

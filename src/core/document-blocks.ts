@@ -72,11 +72,13 @@ export function explanationSize(text: string): number {
   return size;
 }
 
-function validRange(value: unknown): value is LineRange {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-  const range = value as LineRange;
-  return Object.keys(value).length === 2 && Number.isSafeInteger(range.start) && range.start > 0 &&
-    Number.isSafeInteger(range.end) && range.end >= range.start;
+function readRange(value: unknown): LineRange | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+  const fields = Object.keys(value);
+  if (fields.length !== 2 || !fields.includes('start') || !fields.includes('end')) return undefined;
+  const { start, end } = value as LineRange;
+  if (!Number.isSafeInteger(start) || start <= 0 || !Number.isSafeInteger(end) || end < start) return undefined;
+  return { start, end };
 }
 
 function problem(documentPath: string, code: string, message: string, nextStep: string,
@@ -155,8 +157,8 @@ export function parseDocument(raw: string, documentPath: string): ParsedDocument
     }
     if (fields.has('lines')) {
       const range = /^([1-9]\d*)-([1-9]\d*)$/u.exec(fields.get('lines')!);
-      const value = range ? { start: Number(range[1]), end: Number(range[2]) } : undefined;
-      if (!validRange(value)) {
+      const value = range ? readRange({ start: Number(range[1]), end: Number(range[2]) }) : undefined;
+      if (!value) {
         diagnostics.push(problem(documentPath, 'RANGE_INVALID', '源码范围无效。', '使用首尾包含的正整数连续范围，如 lines=1-1。', line, active.id));
         active.valid = false;
       } else active.lines = value;
@@ -218,9 +220,10 @@ export function generateSkeleton(commit: string, input: unknown, lineCount: numb
   for (const entry of input) {
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry) || Object.keys(entry).some(key => key !== 'lines')) throw invalid();
     if ('lines' in entry) {
-      if (!validRange(entry.lines) || entry.lines.start !== expected || entry.lines.end > lineCount) throw invalid();
-      expected = entry.lines.end + 1;
-      plan.push({ lines: { ...entry.lines } });
+      const range = readRange(entry.lines);
+      if (!range || range.start !== expected || range.end > lineCount) throw invalid();
+      expected = range.end + 1;
+      plan.push({ lines: range });
     } else plan.push({});
   }
   if (expected !== lineCount + 1) throw invalid();
