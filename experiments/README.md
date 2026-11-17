@@ -5,7 +5,7 @@
 - [D004 · 图画布自由布局与持久恢复](D004-canvas-persistence/README.md)
 
 ```text
-docs/work/D编号-主题/          # task、有效调整、handoff、review
+docs/work/YYYY/MM/D编号-主题/  # task、有效调整、handoff、review
 experiments/D编号-主题/
   README.md                   # 输入、环境、复现、判定与结果入口
   <本实验需要的脚本和配置>

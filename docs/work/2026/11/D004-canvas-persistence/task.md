@@ -20,9 +20,9 @@
 
 - 工作目录：`D:/project/SpecDev Harness/aftertaste-reader`。
 - 已认可 dev 基线：`79350b0`；任务分支：`codex/experiment-canvas-persistence`。执行复用该分支；派单消息提供任务批准提交，接单核包含关系和实际工作区。
-- 接单先读根 AGENTS、[执行角色](../../roles/执行.md)、本任务，再读 [08 现行规格](../../../specs/001-first-release/08-current-spec-and-acceptance.md)。本批具体依据为 R16、A17—A18，以及 [04 的 U91—U93](../../../specs/001-first-release/04-reading-modes.md#u91--图内独立图例按需读取与持久化画布)、[03 的 U102 技术选择](../../../specs/001-first-release/03-web-delivery.md#u102--首版技术选择2026-11-16作者授权-ai-决定)；以上以 dev 基线文件为版本依据，历史段落服从后续确认。
-- 写实验前按动作读[工程约定](../../development/engineering.md)、[目录职责](../../development/directories.md)、[验证](../../development/verification.md)、[技能入口](../../development/skills.md)及 [Git](../../development/git.md)。Ponytail full 用于实验实现，实际页面与审查按技能入口选用必要方法。
-- 本任务采用协作 task 模板与[实验 README 模板](../../../experiments/_template/README.md)，不编写正式 spec／plan／tasks，不运行 Spec Kit 产品规划流程。现有 spec 的官方结构衔接仍留给正式设计任务，不为实验伪造前置文件；实验数据形状只作为技术证据，不据此定稿产品存储协议。
+- 接单先读根 AGENTS、[执行角色](../../../../roles/执行.md)、本任务，再读 [08 现行规格](../../../../../specs/001-first-release/08-current-spec-and-acceptance.md)。本批具体依据为 R16、A17—A18，以及 [04 的 U91—U93](../../../../../specs/001-first-release/04-reading-modes.md#u91--图内独立图例按需读取与持久化画布)、[03 的 U102 技术选择](../../../../../specs/001-first-release/03-web-delivery.md#u102--首版技术选择2026-11-16作者授权-ai-决定)；以上以 dev 基线文件为版本依据，历史段落服从后续确认。
+- 写实验前按动作读[工程约定](../../../../development/engineering.md)、[目录职责](../../../../development/directories.md)、[验证](../../../../development/verification.md)、[技能入口](../../../../development/skills.md)及 [Git](../../../../development/git.md)。Ponytail full 用于实验实现，实际页面与审查按技能入口选用必要方法。
+- 本任务采用协作 task 模板与[实验 README 模板](../../../../../experiments/_template/README.md)，不编写正式 spec／plan／tasks，不运行 Spec Kit 产品规划流程。现有 spec 的官方结构衔接仍留给正式设计任务，不为实验伪造前置文件；实验数据形状只作为技术证据，不据此定稿产品存储协议。
 
 ### 最小实验与落点
 

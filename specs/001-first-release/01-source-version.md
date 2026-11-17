@@ -141,7 +141,7 @@ U39 指出此前未把操作串成完整流程。本轮串联建议如下；其�
 
 **lines 编辑建议，未确认：** 首版让 AI 直接修改 Markdown 中的 lines，并利用程序输出的带行号源码核对，不要求 AI 自己数行。语义范围由 AI 判断；若只提供“块 ID＋起止行”写入命令，它能减少格式书写错误，但不能证明输入范围讲对了内容。直接修改加即时校验复用现有结构，暂不增加专门字段编辑命令或逐块编辑器。新块 ID 仍由工具生成，资料提交字段仍由程序同步，不能把直接修改 lines 扩大成所有机械字段都由 AI 手写。
 
-本地依据：Spec Kit v1.4.0 的 [specify](../../.tools/spec-kit/templates/commands/specify.md) 读取解析后的模板作为起点并由 AI 填写；[tasks](../../.tools/spec-kit/templates/commands/tasks.md) 使用模板内容组织实际任务，[任务模板](../../.tools/spec-kit/templates/tasks-template.md) 提供勾选行和样例。这里只借鉴固定结构、程序提供基础信息、AI 填写实际内容的分工；不照搬其模板叠加机制、项目阶段或示例任务，不宣称已经生成本产品模板。
+本地依据：Spec Kit v1.4.0 的 [specify](../../.agents/skills/speckit-specify/SKILL.md) 读取解析后的模板作为起点并由 AI 填写；[tasks](../../.agents/skills/speckit-tasks/SKILL.md) 使用模板内容组织实际任务，[任务模板](../../.specify/templates/tasks-template.md) 提供勾选行和样例。这里只借鉴固定结构、程序提供基础信息、AI 填写实际内容的分工；不照搬其模板叠加机制、项目阶段或示例任务，不宣称已经生成本产品模板。2026-11-17 因旧下载目录已清理，将上述失效链接改指同固定版本的已安装技能／模板，历史讨论含义不变。
 
 ## 简化收尾方案（U36 提议，本轮具体方案尚未批准）
 
