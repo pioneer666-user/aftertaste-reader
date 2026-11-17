@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { isSourcePath } from '../core/source-path.js';
 
 export interface ProjectMapping {
   readonly projectRoot: string;
@@ -44,18 +45,13 @@ export class SourceError extends Error {
 export interface SourceRepository {
   locate(projectRoot: string): Promise<ProjectMapping>;
   resolveCommit(project: ProjectMapping, revision: string): Promise<string>;
+  verifyCommit(source: FixedSource): Promise<void>;
   readFile(source: FixedSource, path: string): Promise<SourceFile>;
 }
 
 function isAbsoluteDirectory(value: unknown): value is string {
   return typeof value === 'string' && value.isWellFormed() && path.isAbsolute(value) &&
     (process.platform !== 'win32' || path.parse(value).root.length > 1) && !/[\x00-\x1f\x7f]/u.test(value);
-}
-
-function isFilePath(value: unknown): value is string {
-  return typeof value === 'string' && value.isWellFormed() && value.length > 0 &&
-    !/[\\:\x00-\x1f\x7f]/u.test(value) &&
-    value.split('/').every(part => part !== '' && part !== '.' && part !== '..' && part.toLowerCase() !== '.git');
 }
 
 export function validateProjectRoot(value: unknown): asserts value is string {
@@ -65,13 +61,43 @@ export function validateProjectRoot(value: unknown): asserts value is string {
 }
 
 export function validateSourcePath(value: unknown, context: ErrorContext = {}): asserts value is string {
-  if (!isFilePath(value)) {
+  if (!isSourcePath(value)) {
     throw new SourceError('INVALID_PATH', '源码路径不符合项目相对路径约定。', '使用项目内以 / 分隔的规范相对路径。', context);
   }
 }
 
+export function checkedMapping(input: ProjectMapping): ProjectMapping {
+  if (typeof input !== 'object' || input === null) throw new SourceError('INVALID_ARGUMENT', '缺少项目映射。', '完整复用 pin 的项目和仓库映射。');
+  const { projectRoot, repositoryRoot, projectPrefix } = input;
+  validateProjectRoot(projectRoot);
+  validateProjectRoot(repositoryRoot);
+  if (projectPrefix !== '') validateSourcePath(projectPrefix);
+  if (projectRoot !== path.join(repositoryRoot, projectPrefix)) {
+    throw new SourceError('INVALID_ARGUMENT', '项目和仓库映射不一致。', '完整复用 pin 的项目与仓库映射。', { reason: 'MAPPING_MISMATCH' });
+  }
+  return Object.freeze({ projectRoot, repositoryRoot, projectPrefix });
+}
+
+export function checkedFixedSource(input: FixedSource): FixedSource {
+  const mapping = checkedMapping(input);
+  if (typeof input.commit !== 'string' || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(input.commit)) {
+    throw new SourceError('INVALID_ARGUMENT', '固定源码提交无效。', '完整复用 pin 的 commit。', { reason: 'INVALID_FIXED_SOURCE' });
+  }
+  return Object.freeze({ ...mapping, commit: input.commit });
+}
+
 export class FixedSourceService {
   constructor(private readonly repository: SourceRepository) {}
+
+  async verify(input: FixedSource): Promise<FixedSource> {
+    const fixed = checkedFixedSource(input);
+    const project = await this.repository.locate(fixed.repositoryRoot);
+    if (project.projectRoot !== fixed.repositoryRoot || project.repositoryRoot !== fixed.repositoryRoot || project.projectPrefix !== '') {
+      throw new SourceError('INVALID_ARGUMENT', '固定引用的仓库根已失配。', '核对目标仓库与原固定引用。', { ...fixed, reason: 'MAPPING_MISMATCH' });
+    }
+    await this.repository.verifyCommit(fixed);
+    return fixed;
+  }
 
   async pin(projectRoot: string, revision: string = 'HEAD'): Promise<FixedSource> {
     validateProjectRoot(projectRoot);
@@ -95,7 +121,7 @@ export class FixedSourceService {
       repositoryRoot: (source as FixedSource).repositoryRoot, projectPrefix: (source as FixedSource).projectPrefix });
     if (hasMapping) {
       if (!isAbsoluteDirectory(supplied.repositoryRoot) ||
-          (supplied.projectPrefix !== '' && !isFilePath(supplied.projectPrefix))) {
+          (supplied.projectPrefix !== '' && !isSourcePath(supplied.projectPrefix))) {
         throw new SourceError('INVALID_ARGUMENT', '固定源码映射字段无效。', '完整复用 pin 返回的仓库与项目前缀。', { reason: 'INVALID_FIXED_SOURCE' });
       }
       if (supplied.projectRoot !== path.join(supplied.repositoryRoot, supplied.projectPrefix)) {

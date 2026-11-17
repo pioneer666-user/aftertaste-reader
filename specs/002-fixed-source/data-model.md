@@ -10,6 +10,8 @@
 
 继承 ProjectMapping，增加 commit，必须为完整小写 40 或 64 位十六进制提交 ID，且 Git 实际解析的完整提交 ID 必须等于输入。固定后可序列化。read 校验字段、规范前缀以及 projectRoot 与 repositoryRoot/projectPrefix 的精确组合关系，再核仓库根身份。当前子项目不参与定位，源码只沿提交树读取。
 
+D009 增加无文件 verify：同样核完整映射、原仓库根及实际 commit 身份，空图也不能绕过；仍不要求当前子项目源码存在。read 的既有调用与失败语义保持。图维护的需求与方案归 [004](../004-dependency-graph/plan.md)。
+
 ## ProjectSource
 
 只有 projectRoot 与 commit 的便捷读取输入。完整提交和文件路径先校验，由同一 service.read 定位现存项目一次并构成 FixedSource。提供 repositoryRoot/projectPrefix 时必须成对出现，按完整固定引用校验，禁止缺一项时回落到重新定位。

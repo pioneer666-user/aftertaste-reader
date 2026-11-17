@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { lstat, realpath, mkdir, readFile, open, link, unlink } from 'node:fs/promises';
+import { lstat, readFile, open, link, unlink } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
@@ -7,24 +7,10 @@ import type { DocumentStore } from '../application/document-blocks.js';
 import { sourcePathForDocument } from '../application/document-blocks.js';
 import { validateProjectRoot, SourceError } from '../application/fixed-source.js';
 import { DocumentError } from '../core/document-blocks.js';
-
-function systemCode(error: unknown): string {
-  return error instanceof Error && 'code' in error && typeof error.code === 'string' ? error.code : 'UNKNOWN';
-}
+import { dataDirectory, systemCode } from './data-directory.js';
 
 function unsafe(projectRoot: string, documentPath: string): DocumentError {
   return new DocumentError('DOCUMENT_PATH_UNSAFE', '文档路径包含链接或非普通目录/文件。', '使用指定项目中无链接的真实资料目录。', { projectRoot, documentPath });
-}
-
-async function canonicalDirectory(directory: string, projectRoot: string, documentPath: string): Promise<string> {
-  const entry = await lstat(directory, { bigint: true });
-  if (!entry.isDirectory() || entry.isSymbolicLink()) throw unsafe(projectRoot, documentPath);
-  const canonical = await realpath(directory);
-  const resolved = await lstat(canonical, { bigint: true });
-  if (!resolved.isDirectory() || resolved.isSymbolicLink() || entry.dev !== resolved.dev || entry.ino !== resolved.ino) {
-    throw unsafe(projectRoot, documentPath);
-  }
-  return canonical;
 }
 
 async function targetPath(projectRoot: string, documentPath: string, create: boolean): Promise<string> {
@@ -34,26 +20,8 @@ async function targetPath(projectRoot: string, documentPath: string, create: boo
     /[<>"|?*]/u.test(part) || /[. ]$/u.test(part) || /^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/iu.test(part))) {
     throw new SourceError('INVALID_PATH', '文档路径含 Windows 不支持的名称。', '使用没有设备名、尾点、尾空格或保留符号的镜像路径。');
   }
-  let ancestor = path.resolve(projectRoot);
-  while (true) {
-    const entry = await lstat(ancestor);
-    if (!entry.isDirectory() || entry.isSymbolicLink()) throw unsafe(projectRoot, documentPath);
-    const parent = path.dirname(ancestor);
-    if (parent === ancestor) break;
-    ancestor = parent;
-  }
-  let current = await canonicalDirectory(projectRoot, projectRoot, documentPath);
   const segments = documentPath.split('/');
-  for (const segment of segments.slice(0, -1)) {
-    current = path.join(current, segment);
-    try { current = await canonicalDirectory(current, projectRoot, documentPath); }
-    catch (error) {
-      if (!create || systemCode(error) !== 'ENOENT') throw error;
-      try { await mkdir(current); }
-      catch (mkdirError) { if (systemCode(mkdirError) !== 'EEXIST') throw mkdirError; }
-      current = await canonicalDirectory(current, projectRoot, documentPath);
-    }
-  }
+  const current = await dataDirectory(projectRoot, segments.slice(0, -1), create, () => unsafe(projectRoot, documentPath));
   const target = path.join(current, segments.at(-1)!);
   try {
     const entry = await lstat(target);

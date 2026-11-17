@@ -18,5 +18,6 @@
 | D006 | [固定提交取源](2026/11/D006-fixed-source/task.md) · [回执](2026/11/D006-fixed-source/handoff.md) |
 | D007 | [固定取源加固](2026/11/D007-fixed-source-hardening/task.md) · [回执](2026/11/D007-fixed-source-hardening/handoff.md) |
 | D008 | [单篇讲解文档骨架与校验](2026/11/D008-document-blocks/task.md) · [回执](2026/11/D008-document-blocks/handoff.md) |
+| D009 | [文件依赖关系维护](2026/11/D009-dependency-graph/task.md) · [回执](2026/11/D009-dependency-graph/handoff.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。

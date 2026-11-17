@@ -1,5 +1,4 @@
-import path from 'node:path';
-import { FixedSourceService, SourceError, validateProjectRoot, validateSourcePath } from './fixed-source.js';
+import { checkedMapping, FixedSourceService, SourceError, validateSourcePath } from './fixed-source.js';
 import type { FixedSource, ProjectMapping } from './fixed-source.js';
 import { checkDocument, generateSkeleton, parseDocument, physicalLineCount } from '../core/document-blocks.js';
 import type { DocumentResult } from '../core/document-blocks.js';
@@ -19,18 +18,6 @@ export function sourcePathForDocument(documentPath: unknown): string {
   const sourcePath = documentPath.slice(mirrorRoot.length, -3);
   validateSourcePath(sourcePath);
   return sourcePath;
-}
-
-function checkedMapping(input: ProjectMapping): ProjectMapping {
-  if (typeof input !== 'object' || input === null) throw new SourceError('INVALID_ARGUMENT', '缺少项目映射。', '完整复用 pin 的项目和仓库映射。');
-  const { projectRoot, repositoryRoot, projectPrefix } = input;
-  validateProjectRoot(projectRoot);
-  validateProjectRoot(repositoryRoot);
-  if (projectPrefix !== '') validateSourcePath(projectPrefix);
-  if (projectRoot !== path.join(repositoryRoot, projectPrefix)) {
-    throw new SourceError('INVALID_ARGUMENT', '项目和仓库映射不一致。', '完整复用 pin 的项目与仓库映射。', { reason: 'MAPPING_MISMATCH' });
-  }
-  return Object.freeze({ projectRoot, repositoryRoot, projectPrefix });
 }
 
 export class DocumentService {

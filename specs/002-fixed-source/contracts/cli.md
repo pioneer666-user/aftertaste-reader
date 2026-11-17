@@ -5,6 +5,7 @@
 唯一业务入口为 `src/application/fixed-source.ts` 的 `FixedSourceService`。构造时传 `SourceRepository` 端口，真实实现为 `src/adapters/git-source.ts` 的 `GitSourceRepository`。
 
 - `pin(projectRoot, revision?)` 返回 `Promise<FixedSource>`。省略 revision 取当时 HEAD，显式版本接受本地 Git revision，空值和以 `-` 开头的值拒绝。
+- `verify(fixed)` 返回 `Promise<FixedSource>`，D009 为无文件/空图场景新增。必须完整映射，核字段、根/前缀关系、原仓库根与真实提交身份，缺对象仍为 OBJECT_UNAVAILABLE；不读取文件、不重新 pin，不新增 CLI 命令。SourceRepository.verifyCommit 与 readFile 共用同一提交身份检查。
 - `read(fixed | {projectRoot, commit}, path)` 返回 `Promise<SourceFile>`。完整 commit 必填，逐次复用同一 fixed 可读取当前已消失的子项目。便捷输入由用例定位现存项目一次。失败抛 `SourceError`。
 
 模型见 [data-model.md](../data-model.md)。完整绝对 projectRoot 必填，Windows 必须含盘符或 UNC 根，避免 cwd 改变含义。file path 用 `/`，支持中文、空格、方括号、`*` 和前导 `-` 等字面字符，在操作系统可建立这些名称的前提下可读。禁止空段、`.`、`..`、绝对路径、反斜杠、冒号、控制字符和 `.git` 段。CLI 和用例均在仓库定位前校验项目与源码路径。暂不支持 bare、linked worktree、子模块目标和含链接/junction 的项目根。提交树中的普通文件即使工作区已删除或变为链接仍可读，树中的链接和 gitlink 拒绝。
