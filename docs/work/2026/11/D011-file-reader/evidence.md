@@ -28,7 +28,7 @@
 | npm test | 初轮完整串行 69/69 通过，后续变更只影响下行三文件 |
 | node --test --test-concurrency=1 tests/unit/file-reader.test.mjs tests/integration/file-reader.test.mjs tests/integration/document-blocks.test.mjs | 最终受影响 24/24 通过，59.47 秒 |
 | node --test --test-concurrency=1 tests/skills/generation-static.test.mjs tests/skills/generation-sample.test.mjs | 3/3 通过，D010 两篇原件在重建提交上真实校验 |
-| node tests/browser/file-reader.mjs | 最终三浏览器通过，.local/D011/browser-nLbuss/report.json；Edge 157.0.4341.60、Chrome 157.0.8103.79、Playwright Firefox 159.0，串行无 pageerror 和外部请求 |
+| node tests/browser/file-reader.mjs | 修复后最终三浏览器通过，.local/D011/browser-8gpoay/report.json；Edge 157.0.4341.60、Chrome 157.0.8103.79、Playwright Firefox 159.0，行号对比度均为 5.512933884，串行无 pageerror 和外部请求 |
 | 真浏览器交互 | 异 cwd 真实 CLI、两篇、固定提交、刷新、快速切换、两类块、61 行/1201 字、长行、空源码/正文、结构/范围降级、Git 不可读、坏 UTF-8、空态、列表错误、键盘 Enter 与可见焦点、中英切换及位置、刷新恢复、非法语言、存储不可用、真实剪贴板成功及失败回退 |
 | HTTP 边界 | 非规范路径、编码穿越、保留名、尾点/空格、ADS、任意资源、额外/重复参数、POST、Host/Origin/Fetch Metadata、junction/硬链接均拒绝；合法目录/扩展名/Unicode/空格路径可读 |
 | 全项目只读核对 | 作者合成样例含源码、讲解及 .git 共 38 个文件，正常和失败 HTTP 请求前后 SHA256 映射一致；测试接口正常/坏 UTF-8 读取亦核字节未变 |
@@ -36,7 +36,7 @@
 | Skill 验证 | python -X utf8 原 quick_validate 通过，仅 tools.md 增补已实现命令 |
 | git diff --check | 通过 |
 
-最终截图在 `.local/D011/browser-nLbuss/`，包括 edge-desktop（1440×1000）、edge-mobile（390 宽）、fallback、git-unavailable、read-error，已逐张打开核对真实内容，无空白／错状态。1280 视口验证键盘交互。截图为合成资料且可重建，克隆不含 .local。
+最终截图在 `.local/D011/browser-8gpoay/`，包括 edge-desktop（1440×1000）、edge-mobile（390 宽）、fallback、git-unavailable、read-error，已逐张打开核对真实内容，无空白／错状态。1280 视口验证键盘交互。截图为合成资料且可重建，克隆不含 .local。R1 原图集保留在 browser-nLbuss。
 
 Impeccable context 实际运行一次；按项目正式页面适配将视觉决定记入 plan，craft-floor 与实际 Read 场景已核。detect 实际运行一次，唯一 warning 为 Inter 常见字体。沿本批阅读用途和允许字体保留 Inter，本地自托管，交独审结合可读性复核。
 
@@ -51,3 +51,9 @@ Impeccable context 实际运行一次；按项目正式页面适配将视觉决�
 ## 证据边界
 
 真实项目教学效果、作者阅读体验尚待验。Chrome/Firefox 覆盖正常读取、固定源码、中英、刷新恢复与存储仅语言的受影响兼容路径，完整失败矩阵由 Edge 主验。未验证 macOS、Linux、Safari、实体触屏及屏幕阅读器。大规模负载不在本批实际检查范围。
+
+## 独审修复记录
+
+R1 绑定 0b041b0，已确认行号对比度 4.186 低于 4.5，正常阅读已实际触发。取得“采集结束，可以恢复写入”后保存完整原文于 review.md。第 1 轮修复假设为将 #647b6d 加深至 #52685b，理论对比度 5.513；以真实浏览器计算样式复验并加入回归断言。该问题当前修复累计第 1 轮。
+
+第 1 轮结果为类型/构建通过，Edge/Chrome/Firefox 实测均 5.512933884，通过新增至少 4.5 的回归断言及原有浏览器矩阵。修复后 CSS SHA256 为 2460EC2C39B41B2D4E5B21FFF5F479205122BAF1BFA42117AA950A8323549740，JS 字节哈希与 R1 相同。新构建表 `.local/D011/build-hashes-r2.json`。作者服务已用新构建重启，PID 40520、执行终端 90416，样例保持原件。交原审查者绑定新候选复核。
