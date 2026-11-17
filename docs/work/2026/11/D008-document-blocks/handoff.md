@@ -2,7 +2,7 @@
 
 ## 当前结论与入口
 
-M01—M06 原成果候选 `4c3b14537c180cfe48e6ef9539d5b643f2571d39` 已自测及 R2 复核通过，归档 HEAD 为 `205e129`。作者随后交回另一 AI 的 Windows 大小写 P2，执行已用真实磁盘和 CLI 确认，第 1 轮修复及受影响验证通过，等待新候选独立复核。此前范围对象问题的关闭证据继续有效，原文见 [review.md](review.md)。
+M01—M06 完成，当前成果候选为 `3126c54a502a3d8d38b0e65a5e0abf4257efa0ab`。作者交回的 Windows 大小写 P2 已用真实磁盘和 CLI 复现，第 1 轮修复后 typecheck/build 与受影响文档集成 10/10 通过，独审 R4 复核通过并交还写入。此前范围对象问题已由 R2 关闭，全部原文见 [review.md](review.md)。后续归档仅维护审查与回执，复用同一成果审查。
 
 批准入口为 [task.md @ 39a7fdf](task.md)，比较基线 dev `fa6360f`，接单 HEAD `39a7fdf`。当前分支 `codex/feat-document-blocks` 按作者要求保留候选，dev 为 `fa6360f4557d38936813fc369bcc1bf71653f122`。交回完成后由作者将本入口交主脑接回审查，后续整合和分支收尾等待对应授权。本次 Git 操作限该候选分支的实现、修复和归档提交，master/main、远程推送及发布没有本次操作。
 
@@ -41,7 +41,7 @@ implement 前置 RequireTasks/IncludeTasks 实际成功，扫描唯一 requireme
 - 初版实现 typecheck/build 通过，单测 10/11。CommonMark 容器样例断言失败，普通注释被内部示例的第一个 `-->` 关闭，后面的 `aftertaste:end` 是真正顶层，实际为 BLOCK_ORPHAN_END。目标解析实际触发，证据为失败测试原样例及代码。修正假设为删除该样例中已经处于注释外的结束标记，保留普通注释中的开始标记示例。仅修测试前提，计该测试问题第 1 轮，产品解析不改。随后 typecheck/build 通过，单测 11/11、集成 6/6 通过，测试前提问题已闭合。
 - 初版扩充边界后 typecheck/build 和全套串行测试 41/41 通过，155.6 秒。随后针对临时名碰撞注入 EEXIST，断言既有文件保留实际失败，readFile 为 ENOENT，说明 finally 删除了未拥有的临时名。样例为 `.local/D008/run-xPymzY/`，源码和输入均合成，实际触发了写入失败清理。第 1 轮修复假设为以 open(wx) 取得文件句柄，仅在成功取得后标记拥有临时文件，失败清理只处理自己创建的文件。修复 adapter 及受影响失败注入后，typecheck/build 和 D008 集成 8/8 通过，42.6 秒，该问题第 1 轮已闭合。
 - R1 @ 105d1a3 独审实际复现 API 接受原型 getter 范围并写盘，返回 mechanicallyValid=false，源码范围为 undefined。原文见 [review.md](review.md)，样例 `.local/D008/run-265sQb/`。回归先在原候选确认 Missing expected rejection。第 1 轮修复精确检查自有可枚举字段名为 start/end，各读取一次形成数值快照，再校验和生成。共用回归核原型 getter 被拒绝且资料未创建，自有 getter 各读取一次并保存合法骨架，同时单测补非枚举端点混入额外字段的反例。修复后 typecheck/build 与 D008 单测/集成 21/21 通过，40.1 秒。R2 @ 4c3b145 独立重跑该用例 1/1 并做内存反例断言，通过且关闭该问题，累计第 1 轮成功。
-- 2026-11-17，作者交回外部 AI 对 `205e129` 的 P2 并指令“认可的就修”，原文保存为 review.md R3。执行核代码后，新增真实 Windows 回归，在 `.local/D008/run-xXzhYr/` 建普通 `Docs/AfterTaste/Current/NESTED`。原候选的 validate-document 与 create-document 都返回 DOCUMENT_PATH_UNSAFE/1，预期均为 0，实际触发两条正式 CLI 路径。第 1 轮修复保留逐层 lstat 链接/目录检查，以 bigint dev/ino 比较 realpath 前后的目录身份，并沿 realpath 实际路径继续遍历，修复根和资料子目录的大小写别名。typecheck/build 和受影响文档集成 10/10 通过，47.1 秒。新增回归核已有内容和 ID、重复创建、项目根大小写别名及混合大小写路径中的 junction 拒绝，等待独立复核。
+- 2026-11-17，作者交回外部 AI 对 `205e129` 的 P2 并指令“认可的就修”，原文保存为 review.md R3。执行核代码后，新增真实 Windows 回归，在 `.local/D008/run-xXzhYr/` 建普通 `Docs/AfterTaste/Current/NESTED`。原候选的 validate-document 与 create-document 都返回 DOCUMENT_PATH_UNSAFE/1，预期均为 0，实际触发两条正式 CLI 路径。第 1 轮修复保留逐层 lstat 链接/目录检查，以 bigint dev/ino 比较 realpath 前后的目录身份，并沿 realpath 实际路径继续遍历，修复根和资料子目录的大小写别名。typecheck/build 和受影响文档集成 10/10 通过，47.1 秒。新增回归核已有内容和 ID、重复创建、项目根大小写别名及混合大小写路径中的 junction 拒绝。R4 @ 3126c54 独立重跑真实回归 1/1 通过，6.6 秒，确认关闭该问题，累计第 1 轮成功。
 
 ### 最终行为自测证据
 
@@ -57,7 +57,7 @@ node tests/fixtures/document-blocks.mjs --demo
 git diff --check
 ```
 
-前 3 项在上述全套版本通过，含 12 项 D008 单测、7 项 D008 集成和 22 项既有取源回归。105d1a3 的 adapter 临时文件拥有判定修复后，typecheck/build 及受影响 D008 集成 8/8 再通过。R1 修复后再次 typecheck/build，并串行完成全部 D008 单测/集成 21/21，复用未变化的既有固定取源 22 项证据，当前共 43 项独立测试。所有测试文件串行执行。生成/解析性质枚举 1—8 行全部 255 种连续分界，插入纯讲解，独立占用数组核每行一次与正文保真。覆盖判定另用 111 种有序范围清单，直接展开行序列作独立预期。没有新增测试库。
+前 3 项在上述全套版本通过，含 12 项 D008 单测、7 项 D008 集成和 22 项既有取源回归。105d1a3 的 adapter 临时文件拥有判定修复后，typecheck/build 及受影响 D008 集成 8/8 再通过。R1 修复后再次 typecheck/build，并串行完成全部 D008 单测/集成 21/21，复用未变化的既有固定取源 22 项证据，当时共 43 项独立测试。所有测试文件串行执行。生成/解析性质枚举 1—8 行全部 255 种连续分界，插入纯讲解，独立占用数组核每行一次与正文保真。覆盖判定另用 111 种有序范围清单，直接展开行序列作独立预期。没有新增测试库。
 
 R3 后续仅修文档 adapter 并新增 1 项 Windows 集成回归，Node 24.11.1 下再次执行 typecheck/build 和文档集成 10/10。core、固定取源、CLI 及依赖输入保持原版，按影响复用上述 12 项 core 单测和 22 项固定取源回归证据，当前共 44 项独立测试。本次修复恢复既定普通目录的使用行为，正式规格和方案的用户结果保持既定定义。
 
@@ -70,6 +70,8 @@ R3 后续仅修文档 adapter 并新增 1 项 Windows 集成回归，Node 24.11.
 ### 独审与作者验收
 
 未参与实现的审查子代理按 Ponytail Review 和 Sharp Edges 对 `105d1a3` 完成 R1，读取完整调用链、规格和证据，确认 P2 后明确交还写入。执行保存原文、修复另提交，审查者对 `4c3b145` 完成 R2，独立验证关闭依据并明确交还写入。两轮均核候选和工作区一致、运行采集已结束，详见唯一原文 [review.md](review.md)。
+
+作者转交外审 R3 后，执行实际复现并另提交目录大小写修复。原审查者对 `205e129..3126c54` 全部差异完成 R4，独立重跑新增 Windows 回归并确认 P2 关闭，候选一致、工作区干净、采集进程结束后明确交还写入。修复提交仅涉及文档 adapter、集成回归和本单证据，原有 core 与固定取源判定继续复用。
 
 本单的作者页面及教学体验验收不适用，原因是交付为文档制作与机械检查工具。本单完成情况交作者／主脑接回审查，不记作完整首版页面或教学体验通过。
 
