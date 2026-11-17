@@ -23,7 +23,31 @@
 | 执行获批实现／核剩余工作 | [implement](../../.agents/skills/speckit-implement/SKILL.md)、[converge](../../.agents/skills/speckit-converge/SKILL.md) | 沿任务范围及官方前置；不得自动推进未批准后续批次 |
 | 主脑修订规划门禁原则 | [constitution](../../.agents/skills/speckit-constitution/SKILL.md) | [.specify/memory/constitution.md](../../.specify/memory/constitution.md)，只维护原则，不改上游模板 |
 
-官方技能有自己的前置和必要产物，按所选阶段完整读取执行。局部维护不为运行技能伪造材料；并行提示、自动后续建议及模板默认值服从作者范围、串行资源规则和三角色交接。任务单 `docs/work/YYYY/MM/D编号-主题/` 管批准与本批边界，官方 `tasks.md` 管产品实施清单，不复制一份同内容列表。
+官方技能有自己的前置和必要产物，阶段主体与完成条件完整读取，条件分支按下节定位；已读且仍有效的上下文直接复用。局部维护不为运行技能伪造材料；并行提示、自动后续建议及模板默认值服从作者范围、串行资源规则和三角色交接。任务单 `docs/work/YYYY/MM/D编号-主题/` 管批准与本批边界，官方 `tasks.md` 管产品实施清单，不复制一份同内容列表。
+
+<a id="stage-entry"></a>
+## 阶段执行入口
+
+适用于本项目固定 v1.4.0，依据 D007—D009 的 [F002 反馈](../work/development-feedback.md)。这是已安装技能的阅读路由，实际步骤和模板仍从原件读取；不维护第二套精简技能。
+
+1. 从批准任务确定当前动作和功能目录，沿[分批输入](#incremental-input)携带同一批范围及已有证据。只进入本次需要的阶段；新功能按任务完成正式流程，已有功能维护按受影响材料增量更新。
+2. 每阶段读取 `User Input`、下表主体及其引用的必要材料，再核 `Completion Report`／`Done When`（存在时）。按标题分段读取，标题定位不能代替正文；已有同版有效上下文可复用。
+
+| 阶段 | 本阶段必读主体（原件标题） |
+| --- | --- |
+| specify | `Outline`、`Quick Guidelines` |
+| plan | `Outline`、`Phases`、`Key rules` |
+| tasks | `Outline`、`Task Generation Rules` |
+| analyze | `Goal`、`Operating Constraints`、`Execution Steps`、`Specification Analysis Report`、`Operating Principles`；报告后的 Next Actions／Offer Remediation 也属于执行步骤 |
+| implement | `Outline`；项目设置中的条件示例按下条读取 |
+
+3. 先核条件，再展开对应原文：
+   - **扩展 hooks**：每阶段前后各检查 `.specify/extensions.yml` 是否存在；不存在时，该时点无需加载详细派发正文。存在则完整读取配置及当前阶段的前／后 hooks 说明，按原版处理解析失败、启用状态、条件、可选／必需调用并等待结果。analyze 的后置说明在 `Check for extension hooks`，其余四阶段在 `Mandatory Post-Execution Hooks`。不能用安装时“无扩展”代替当前检查，也不能缓存某阶段无 hooks 的结论到下一阶段。
+   - **implement 项目设置**：完整读取 `Detection & Creation Logic`，据当前文件与 plan 判断实际技术栈，再读命中的 `Common Patterns by Technology`／`Tool-Specific Patterns` 条目及通用项。条件不成立的 Docker、Terraform、Helm 等示例无需加载；已有文件检查及实际必要配置仍须完成，不能仅因技术栈沿用上批而跳过检测。
+   - 其余前置、模板解析、材料加载、分析及完成检查均按原版。其他技能沿原版读取；技能版本或章节结构变化时重新核对路由，不能套旧表漏读。
+4. 汇报随实际阶段给出结论、产物入口及缺口，字段与计数按原版保留；`analyze` 的发现、覆盖和指标报告、`implement` 的 checklist 状态与未勾项停点照常执行。`tasks.md` 逐项维护，聊天可合并汇报有意义的一组进展，失败或授权缺口及时说明。最终 handoff 汇总版本与证据并引用已有产物，无需重抄每阶段报告；后续建议不自动触发下一批。
+
+本适配只减少无条件加载与重复汇报。真实前置、正式材料结构、需求覆盖、checklist 责任、独审和作者验收继续有效；未执行的阶段仍须如实标明。减负效果由下一批实际反馈确认。
 
 <a id="incremental-input"></a>
 ## 分批输入与前置门槛
