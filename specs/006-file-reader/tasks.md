@@ -60,8 +60,8 @@
 
 - [x] T014 在 docs/usage/file-reader.md、generation-skill.md、README.md、skills/aftertaste-reader/references/tools.md 接通实际阅读入口，同步 08 与 B003 已实现语言范围（FR-001/005）。
 - [x] T015 在 docs/work/2026/11/D011-file-reader/evidence.md 记录类型、构建、串行测试、Edge/Chrome/Firefox、Impeccable 及安全/只读证据（SC-001—005）。
-- [ ] T016 固定候选提交，独立审查全链并保存 docs/work/2026/11/D011-file-reader/review.md，处理发现与复核（全部 FR）。
-- [ ] T017 在 docs/work/2026/11/D011-file-reader/handoff.md 给作者入口、候选、验收/资源/Git 状态及不超过三点关注（全部 W）。
+- [x] T016 固定候选提交，独立审查全链并保存 docs/work/2026/11/D011-file-reader/review.md，处理发现与复核（全部 FR）。
+- [x] T017 在 docs/work/2026/11/D011-file-reader/handoff.md 给作者入口、候选、验收/资源/Git 状态及不超过三点关注（全部 W）。
 
 ## Dependencies & Execution Order
 
