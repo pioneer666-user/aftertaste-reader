@@ -34,7 +34,7 @@
 
 ## 产品 Skill 与讲解 AI 指南
 
-先采用一个 `skills/aftertaste-reader/` 产品包位置，后续实际 Skill 任务编写入口；本次没有生成可调用的 `SKILL.md`。同一 Skill 按任务读取多份指导，目录拆分不等于增加用户功能。
+采用一个 `skills/aftertaste-reader/` 产品包位置。D010 已建立普通生成的 `SKILL.md` 入口及 authoring／teaching／generation／feedback／tools，当前显式读取开发树。其他分支随对应实现接入。同一 Skill 按任务读取多份指导。
 
 | 后续文件落点 | 唯一职责 |
 | --- | --- |
@@ -100,7 +100,7 @@
 └── dependency-graph.json          # 现行已确认依赖图位置
 ```
 
-笔记、书签、自评、偏好、阅读方向、每图图例／布局的具体文件名与布局，以及导出 HTML 的固定输出路径，在后续 `specs/001-first-release/` 资料与接口协议中定稿。它们分别属于目标项目资料或用户选择的导出产物，不放回味源码目录或 Skill 模板目录。`graph.json / legends.json / layout.json` 仍是候选，不据目录准备自动迁移 `dependency-graph.json`。
+D010 落实同层 `preferences.md` 与 `reading-direction.md`，模型及读写规则见 [005](../../specs/005-generation-skill/data-model.md)。笔记、书签、自评、每图图例／布局及导出 HTML 固定路径由相应任务定稿。这些属于目标项目资料或用户导出产物，通用模板归产品包。`graph.json / legends.json / layout.json` 仍是候选，既有图路径保持现行协议。
 
 ## 派单和新增文件
 
