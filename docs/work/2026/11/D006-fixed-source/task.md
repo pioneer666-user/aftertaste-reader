@@ -13,7 +13,7 @@
 
 - 工作目录：`D:/project/SpecDev Harness/aftertaste-reader`；dev 基线：`a5c1fb7465ec8479f46c6b46bbd0bbc845025e8e`。D004、D005 已合入，工作区派单前干净。
 - 任务分支：`codex/feat-fixed-source`，主脑从上述 dev 创建并提交本任务；执行接续该分支。批准提交由派单消息提供。
-- 先按根入口读执行角色、本任务和 [08 现行规格](../../../specs/001-first-release/08-current-spec-and-acceptance.md)。本批涉及 R01、R02、R06、U101 和 A01 的取源部分；细节读 [01](../../../specs/001-first-release/01-source-version.md) 的 U101、U94、FR-007／010／011／012／040、DC-001／003，以及 [02](../../../specs/001-first-release/02-document-layout.md) 的“源码定位”“Markdown 与源码的分工”。版本均以本单 dev 基线为准；旧讨论中的过时未定项服从 08。
+- 先按根入口读执行角色、本任务和 [08 现行规格](../../../../../specs/001-first-release/08-current-spec-and-acceptance.md)。本批涉及 R01、R02、R06、U101 和 A01 的取源部分；细节读 [01](../../../../../specs/001-first-release/01-source-version.md) 的 U101、U94、FR-007／010／011／012／040、DC-001／003，以及 [02](../../../../../specs/001-first-release/02-document-layout.md) 的“源码定位”“Markdown 与源码的分工”。版本均以本单 dev 基线为准；旧讨论中的过时未定项服从 08。
 - 本单已有依据全部在本仓，外层 AR1 原话只是历史来源，不是执行前置。D004 画布结论无需重测；本单不依赖其作者体验完成。
 
 ### 能力边界
@@ -28,8 +28,8 @@
 
 ### 本批技术材料与落点
 
-- 本次只建立取源能力的正式材料 `specs/002-fixed-source/`，引用 001 的现行要求及本任务，不复制另一套首版总设计；001 保留全局产品边界。此范围按作者本次“小单”要求调整了此前下一次统一迁移整份首版 spec 的安排，见 [接入说明](../../development/spec-kit.md#既有首版文档的衔接)。
-- 执行先按 [speckit-specify](../../../.agents/skills/speckit-specify/SKILL.md) 和实际 spec-template 建立本批规格，再按 [speckit-plan](../../../.agents/skills/speckit-plan/SKILL.md)／plan-template 补齐取源数据与命令约定，按 [speckit-tasks](../../../.agents/skills/speckit-tasks/SKILL.md)／tasks-template 生成实施清单；使用 analyze 检查真实材料，implement 只实施本批。相关模板由官方解析入口取得，技能按阶段完整读取。测试为本任务明确要求。
+- 本次只建立取源能力的正式材料 `specs/002-fixed-source/`，引用 001 的现行要求及本任务，不复制另一套首版总设计；001 保留全局产品边界。此范围按作者本次“小单”要求调整了此前下一次统一迁移整份首版 spec 的安排，见 [接入说明](../../../../development/spec-kit.md#既有首版文档的衔接)。
+- 执行先按 [speckit-specify](../../../../../.agents/skills/speckit-specify/SKILL.md) 和实际 spec-template 建立本批规格，再按 [speckit-plan](../../../../../.agents/skills/speckit-plan/SKILL.md)／plan-template 补齐取源数据与命令约定，按 [speckit-tasks](../../../../../.agents/skills/speckit-tasks/SKILL.md)／tasks-template 生成实施清单；使用 analyze 检查真实材料，implement 只实施本批。相关模板由官方解析入口取得，技能按阶段完整读取。测试为本任务明确要求。
 - 这些是取源能力的小范围正式流程，当前尚未运行；缺少的 spec／plan／tasks 由本单先建立，不假称已有。已有需求和技术选择直接复用；research 只记录本批必要选择与核对依据，不新开可行性实验或无关技术比较。材料保持精简，保留官方必需结构，未实现能力不填成完成。
 - 工具定位用进程级 `SPECIFY_FEATURE_DIRECTORY=specs/002-fixed-source`；仅只读检查时设 `SPECIFY_FEATURE_NO_PERSIST=1`。不按分支名误选 001，也不修改用户级环境或受管模板。
 - 工程采用已定 TypeScript／Node.js 方向，局部版本与依赖兼容性由执行核实；选择 npm 和单一根锁文件，建立严格类型检查、构建及串行测试命令。仅安装本批必要的项目依赖，不升级全局环境或预装页面栈。

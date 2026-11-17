@@ -6,7 +6,7 @@
 
 **Status** | 已按批准任务细化，实施状态见 tasks.md
 
-**Input** | [D006 批准任务](../../docs/work/D006-fixed-source/task.md) @8d51ad8。全局要求以 [08](../001-first-release/08-current-spec-and-acceptance.md) 的 R01、R02、R06、U101 和 A01 取源部分，以及 [01](../001-first-release/01-source-version.md) 的 FR-007/010/011/012/040、DC-001/003、[02](../001-first-release/02-document-layout.md) 源码定位为依据。
+**Input** | [D006 批准任务](../../docs/work/2026/11/D006-fixed-source/task.md) @8d51ad8。全局要求以 [08](../001-first-release/08-current-spec-and-acceptance.md) 的 R01、R02、R06、U101 和 A01 取源部分，以及 [01](../001-first-release/01-source-version.md) 的 FR-007/010/011/012/040、DC-001/003、[02](../001-first-release/02-document-layout.md) 源码定位为依据。
 
 ## User Scenarios & Testing *(mandatory)*
 

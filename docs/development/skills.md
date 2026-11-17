@@ -32,7 +32,7 @@
 
 ## Impeccable
 
-保留完整 4.8.2 原版包及来源。以下是依据 D004 反馈、由 [D005](../work/D005-development-cleanup/task.md) 明确的项目适配，适用于上游 SKILL、playbook 和工具输出；不改上游字节。阅读内容用 Read，管理／操作用 Operate，模式不决定必须采用完整设计流程。
+保留完整 4.8.2 原版包及来源。以下是依据 D004 反馈、由 [D005](../work/2026/11/D005-development-cleanup/task.md) 明确的项目适配，适用于上游 SKILL、playbook 和工具输出；不改上游字节。阅读内容用 Read，管理／操作用 Operate，模式不决定必须采用完整设计流程。
 
 | 本次目标 | 读取与执行 | 完成依据 |
 | --- | --- | --- |

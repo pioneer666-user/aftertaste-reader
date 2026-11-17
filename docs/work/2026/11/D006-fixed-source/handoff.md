@@ -3,8 +3,8 @@
 ## 结果与入口
 
 - 完成 D006 批准的固定提交取源用例、Git 适配器、正式 CLI、严格 TypeScript 工程配置、合成样例和测试。002 的需求、方案、数据模型、命令约定与实施清单已建立。
-- 下一批唯一业务入口为 [FixedSourceService](../../../src/application/fixed-source.ts)，使用 `new FixedSourceService(new GitSourceRepository())` 组装。先 `pin(absoluteProjectRoot, revision?)`，再复用返回的固定引用调用 `read(fixed, projectRelativePath)`。
-- 命令为 `node dist/cli/main.js pin/read`，完整输入、JSON 输出、稳定问题码及退出码见 [contracts](../../../specs/002-fixed-source/contracts/cli.md)，重建与调用见 [quickstart](../../../specs/002-fixed-source/quickstart.md)。
+- 下一批唯一业务入口为 [FixedSourceService](../../../../../src/application/fixed-source.ts)，使用 `new FixedSourceService(new GitSourceRepository())` 组装。先 `pin(absoluteProjectRoot, revision?)`，再复用返回的固定引用调用 `read(fixed, projectRelativePath)`。
+- 命令为 `node dist/cli/main.js pin/read`，完整输入、JSON 输出、稳定问题码及退出码见 [contracts](../../../../../specs/002-fixed-source/contracts/cli.md)，重建与调用见 [quickstart](../../../../../specs/002-fixed-source/quickstart.md)。
 - 覆盖 08 的 R01、R02、R06、U101 及 A01 的底层取源部分。后续文档结构、教学、阅读页面继续按派单安排。
 
 ## 版本与验证
@@ -23,7 +23,7 @@
 - npm 固定唯一根 package-lock。直接开发依赖为 TypeScript `5.9.3` 与 `@types/node` `24.10.1`，另有锁定的传递类型依赖 undici-types `7.16.0`。运行时仅 Node 标准库和本地 Git。
 - TS 用于 strict/NodeNext 编译与声明输出，Node 类型支持目标主版本。测试采用 Node 自带 test/assert，Git 使用 child_process 参数数组，编码使用 TextDecoder，当前能力均可由标准库满足。
 - 已授权的局部技术选择为必填绝对项目根、`/` 分隔规范文件路径、严格 UTF-8/BOM 保真、普通本地仓库及子项目。链接项目、linked worktree、子模块目标、bare 和 Git 元数据项目明确诊断。
-- Git 选定 2.45+，每次调用带 `--no-lazy-fetch`，旧版无法识别时直接失败，防止忽略环境变量后自动获取对象。每个进程最多 30 秒、stdout 最多 64 MiB，超出返回 GIT_READ_FAILED。选择依据见 [research](../../../specs/002-fixed-source/research.md)。
+- Git 选定 2.45+，每次调用带 `--no-lazy-fetch`，旧版无法识别时直接失败，防止忽略环境变量后自动获取对象。每个进程最多 30 秒、stdout 最多 64 MiB，超出返回 GIT_READ_FAILED。选择依据见 [research](../../../../../specs/002-fixed-source/research.md)。
 
 ### 实际命令和证据
 

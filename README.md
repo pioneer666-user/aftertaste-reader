@@ -6,13 +6,13 @@
 
 ## 固定提交取源开发入口
 
-使用 Node.js 24 LTS、npm 和本地 Git 2.45+，在仓库根运行 `npm ci`、`npm run typecheck`、`npm run build`、`npm test`。构建后的命令入口为 `node dist/cli/main.js pin/read`，具体调用见 [002 quickstart](specs/002-fixed-source/quickstart.md)，共用用例在 `src/application/fixed-source.ts`。本批结果见 [D006 handoff](docs/work/D006-fixed-source/handoff.md)。
+使用 Node.js 24 LTS、npm 和本地 Git 2.45+，在仓库根运行 `npm ci`、`npm run typecheck`、`npm run build`、`npm test`。构建后的命令入口为 `node dist/cli/main.js pin/read`，具体调用见 [002 quickstart](specs/002-fixed-source/quickstart.md)，共用用例在 `src/application/fixed-source.ts`。本批结果见 [D006 handoff](docs/work/2026/11/D006-fixed-source/handoff.md)。
 
 ## 开发协作入口（2026-11-16）
 
-新主脑从 [D002 交接](docs/work/D002-directory-layout/handoff.md)及 [D003 Spec Kit 接入与收束](docs/work/D003-speckit-check/handoff.md)接续；文件落点看[目录职责](docs/development/directories.md)。正式需求、架构设计及后续更新必须按[官方 Spec Kit 技能／模板](docs/development/spec-kit.md)，偏离需告知。产品 Skill 与讲解 AI 指南在 [skills/aftertaste-reader](skills/aftertaste-reader/README.md)，按任务实验从 [experiments](experiments/README.md)进入。固定取源的实现与验证入口见上节。
+新主脑从 [D002 交接](docs/work/2026/11/D002-directory-layout/handoff.md)及 [D003 Spec Kit 接入与收束](docs/work/2026/11/D003-speckit-check/handoff.md)接续；文件落点看[目录职责](docs/development/directories.md)。正式需求、架构设计及后续更新必须按[官方 Spec Kit 技能／模板](docs/development/spec-kit.md)，偏离需告知。产品 Skill 与讲解 AI 指南在 [skills/aftertaste-reader](skills/aftertaste-reader/README.md)，按任务实验从 [experiments](experiments/README.md)进入。固定取源的实现与验证入口见上节。
 
-第一版开发规范见 [AGENTS.md](AGENTS.md)，按主脑／执行／审查三个角色协作；主脑持续维护规范，作者转交执行任务，执行调用独立审查子代理并交回回执。开发技能及项目适配见[技能入口](docs/development/skills.md)，本次范围与验证见 [D001 回执](docs/work/D001-development-standards/handoff.md)。
+第一版开发规范见 [AGENTS.md](AGENTS.md)，按主脑／执行／审查三个角色协作；主脑持续维护规范，作者转交执行任务，执行调用独立审查子代理并交回回执。开发技能及项目适配见[技能入口](docs/development/skills.md)，本次范围与验证见 [D001 回执](docs/work/2026/11/D001-development-standards/handoff.md)。
 
 该规范建立开发方式，未实现产品或运行产品验收。下方设计交接与阶段记录保留追溯，当前产品要求继续从 08 进入。
 
@@ -97,7 +97,7 @@ U39 补齐生成更新说明及单文档即时校验要求，逐文件操作建�
 
 ## Spec Kit 使用依据（2026-11-14 历史记录）
 
-以下保留最初的下载与使用背景。2026-11-16 已完成官方项目接入，当前安装、模板入口与文档维护要求以 [Spec Kit 接入说明](docs/development/spec-kit.md)和 [D003 回执](docs/work/D003-speckit-check/handoff.md)为准；下文“未初始化”仅表示当时状态。
+以下保留最初的下载与使用背景。2026-11-16 已完成官方项目接入，当前安装、模板入口与文档维护要求以 [Spec Kit 接入说明](docs/development/spec-kit.md)和 [D003 回执](docs/work/2026/11/D003-speckit-check/handoff.md)为准；下文“未初始化”仅表示当时状态。
 
 2026-11-14 通过 GitHub 官方仓库的 releases/latest 核实，最新稳定版为 [v1.4.0](https://github.com/github/spec-kit/releases/tag/v1.4.0)，发布于 2026-11-10。本轮固定引用该版本，不使用本机旧的 1.0.4 资料包。
 

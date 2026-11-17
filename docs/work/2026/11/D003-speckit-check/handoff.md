@@ -6,7 +6,7 @@
 
 - 固定源码提交沿 .tools 记录 `0019fa14d12f45edabc2cc3176c9168a68bd0f97`；本次未升级版本或重新声称最新。
 - 官方 Codex integration 安装 9 个技能、5 份模板、6 个 PowerShell 脚本和 bundled workflow；受管文件由官方 manifests 记录。
-- 补齐[Spec Kit 文档规则](../../development/spec-kit.md)：正式设计使用官方技能／模板，局部更新保持结构，偏离必须在聊天说明并取得对应决定。
+- 补齐[Spec Kit 文档规则](../../../../development/spec-kit.md)：正式设计使用官方技能／模板，局部更新保持结构，偏离必须在聊天说明并取得对应决定。
 - 用已安装 speckit-constitution 完成模板解析与已批准原则填写，初始原则版本 1.0.0，不是产品版本；无遗留占位，未改模板源。
 - 更新原技能核验脚本以识别另一份官方 manifest 管理的技能，仍保护原 137 文件；官方共享模板和脚本另由 integration status 核验。
 

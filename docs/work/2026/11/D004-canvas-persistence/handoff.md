@@ -8,9 +8,9 @@
 
 本单技术验证完成，独审复核通过，作者体验待验。Vue Flow 配合少量应用代码及本地文件服务，已取得自由布局、显式分组移动、本地保存、关闭页面与服务后恢复的完整操作证据。简单重排可保留组名和成员，建议主脑在正式设计中采用该行为。
 
-- [实验 README](../../../experiments/D004-canvas-persistence/README.md) 包含固定输入、依赖、启动／关闭命令、逐项步骤、技术分工和限制。
+- [实验 README](../../../../../experiments/D004-canvas-persistence/README.md) 包含固定输入、依赖、启动／关闭命令、逐项步骤、技术分工和限制。
 - [独立审查原文与复核](review.md) 保留首次发现、修复建议及最终通过结论。
-- [Edge 原始证据](../../../experiments/D004-canvas-persistence/evidence/edge.json)、[Chrome 原始证据](../../../experiments/D004-canvas-persistence/evidence/chrome.json)、[保存失败证据](../../../experiments/D004-canvas-persistence/evidence/write-failure.json) 及关键截图已随 Git 保存。
+- [Edge 原始证据](../../../../../experiments/D004-canvas-persistence/evidence/edge.json)、[Chrome 原始证据](../../../../../experiments/D004-canvas-persistence/evidence/chrome.json)、[保存失败证据](../../../../../experiments/D004-canvas-persistence/evidence/write-failure.json) 及关键截图已随 Git 保存。
 - 批准依据为 [task.md](task.md) 的 `1fb8488` 版本。本次无范围调整，未创建 amendments。
 
 完成范围如下。

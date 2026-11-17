@@ -4,7 +4,7 @@
 
 ## 当前结果
 
-目录职责和必要入口已完成，见[目录规范](../../development/directories.md)。自检与独审通过；没有产品实现、依赖安装或实际实验。
+目录职责和必要入口已完成，见[目录规范](../../../../development/directories.md)。自检与独审通过；没有产品实现、依赖安装或实际实验。
 
 - 产品 Skill 原件：`skills/aftertaste-reader/`；教讲解 AI 的指南在 references，结构模板在 assets/templates。当前只有职责说明，尚无产品 SKILL.md。
 - 正式代码、测试、辅助脚本和人用说明分别归 src、tests、scripts、docs/usage；只建根说明，内部文件随任务创建。
@@ -13,10 +13,10 @@
 
 ## 新主脑最短入口
 
-1. 读根 [AGENTS](../../../AGENTS.md) 和[主脑角色](../../roles/主脑.md)。
-2. 读本回执了解阶段与 Git 状态，再读 [08 现行规格](../../../specs/001-first-release/08-current-spec-and-acceptance.md)；03／07 按技术与 Skill 任务需要补读。
-3. 派单时读[目录职责](../../development/directories.md)、[任务流程](../../development/workflow.md)和 task 模板；技能按动作选，不全量加载。
-4. 核 Git：结合 D003 回执与实际合并记录确认 dev 包含 D001—D003，再从最新认可 dev 组织下一任务；正式规划先读 [Spec Kit 接入说明](../../development/spec-kit.md)，明确既有需求与官方结构的衔接。
+1. 读根 [AGENTS](../../../../../AGENTS.md) 和[主脑角色](../../../../roles/主脑.md)。
+2. 读本回执了解阶段与 Git 状态，再读 [08 现行规格](../../../../../specs/001-first-release/08-current-spec-and-acceptance.md)；03／07 按技术与 Skill 任务需要补读。
+3. 派单时读[目录职责](../../../../development/directories.md)、[任务流程](../../../../development/workflow.md)和 task 模板；技能按动作选，不全量加载。
+4. 核 Git：结合 D003 回执与实际合并记录确认 dev 包含 D001—D003，再从最新认可 dev 组织下一任务；正式规划先读 [Spec Kit 接入说明](../../../../development/spec-kit.md)，明确既有需求与官方结构的衔接。
 
 ## 推荐下一项，尚未派单
 

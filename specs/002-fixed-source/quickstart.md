@@ -23,4 +23,4 @@ node dist/cli/main.js read --project '<projectRoot>' --commit '<commitA>' --path
 node dist/cli/main.js read --project '<projectRoot>' --commit '<commitA>' --path '../outside.ts'
 ```
 
-前两条分别成功返回固定引用及 A 的文件，第三条失败退出 2，问题码 INVALID_PATH。完整协议见 [contracts](contracts/cli.md)。integration 测试覆盖固定后 HEAD 移动、根/子项目、不同 cwd、只读快照、失败注入与真实 CLI，unit 覆盖用例输入及端口调用约束。技术验收摘要与实际环境见 [D006 handoff](../../docs/work/D006-fixed-source/handoff.md)。
+前两条分别成功返回固定引用及 A 的文件，第三条失败退出 2，问题码 INVALID_PATH。完整协议见 [contracts](contracts/cli.md)。integration 测试覆盖固定后 HEAD 移动、根/子项目、不同 cwd、只读快照、失败注入与真实 CLI，unit 覆盖用例输入及端口调用约束。技术验收摘要与实际环境见 [D006 handoff](../../docs/work/2026/11/D006-fixed-source/handoff.md)。

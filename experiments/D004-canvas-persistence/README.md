@@ -2,7 +2,7 @@
 
 ## 目标与依据
 
-- 批准任务为 [task.md](../../docs/work/D004-canvas-persistence/task.md)，批准提交 `1fb8488`，认可 dev 基线 `79350b0`。本次无范围调整。
+- 批准任务为 [task.md](../../docs/work/2026/11/D004-canvas-persistence/task.md)，批准提交 `1fb8488`，认可 dev 基线 `79350b0`。本次无范围调整。
 - 验证 08 的 R16、A17—A18，具体行为来自 04 的 U91—U93，技术路径来自 03 的 U102。通过条件沿用任务表格。
 - 本目录提供合成图和本机实验服务。数据只写 `.local/<run-id>/`，构建写 `.local/build/`。采用协作实验 README 模板，未建立正式 spec／plan／tasks。
 - 实现使用 Ponytail full。页面使用 Impeccable Operate 的常规控件、错误反馈及渲染检查。context 运行成功，detect 返回 `[]`。任务限定核心实验，因此省略完整视觉访谈、概念稿及额外 PRODUCT／DESIGN 文件。性质检查采用固定种子生成与 Node assert，未引入新的性质测试库。写入边界按 Sharp Edges 核查。
@@ -73,7 +73,7 @@ Remove-Item Env:BROWSER
 
 ### 证据和结果
 
-完整浏览器取证对应初始实现候选 `36b3450b509bda5f66491af22b3f6c08921db3a4`，`evidence/source-hashes.json` 绑定该轮实际取证源文件。独审后的修复候选为 `75441a894bc662a03c1cc1528faaff11cf3744e5`，定向复核通过，详见最终 [handoff](../../docs/work/D004-canvas-persistence/handoff.md)。必要原始证据已入库，普通运行产物位于下述忽略目录。
+完整浏览器取证对应初始实现候选 `36b3450b509bda5f66491af22b3f6c08921db3a4`，`evidence/source-hashes.json` 绑定该轮实际取证源文件。独审后的修复候选为 `75441a894bc662a03c1cc1528faaff11cf3744e5`，定向复核通过，详见最终 [handoff](../../docs/work/2026/11/D004-canvas-persistence/handoff.md)。必要原始证据已入库，普通运行产物位于下述忽略目录。
 
 | 检查 | 实际结果和证据 |
 | --- | --- |
@@ -95,7 +95,7 @@ Remove-Item Env:BROWSER
 
 初版浏览器断言把完整鼠标行程当作组件节点位移。实际 Vue Flow 拖动阈值会略去起始行程，核源码后改为检查成员相同的实际位移和非成员不动，符合原批准条件。起拖基准同步改为已保存的组边界。滚轮检查最初早于 move-end，已改成同时等待磁盘、页面状态和实际渲染一致。失败运行仍在对应 `.local/browser-msedge-*` 中。类型检查期间修正了错误类型标注。没有遗留连续两轮修复仍失败的问题。
 
-独审确认新增合法节点 `constructor` 会误读对象原型同名属性。修复将存续位置判断改为 `Object.hasOwn`，并补回归覆盖新坐标、旧坐标保持和重复更新。修复后类型、构建及四项行为检查通过。回归初稿使用 `.constructor` 时触发 TypeScript 内建属性类型，改为按节点 ID 索引后通过。浏览器固定 a—e 路径的自有属性语义一致，复用初始候选的完整操作证据，定向复核见 [review.md](../../docs/work/D004-canvas-persistence/review.md)。
+独审确认新增合法节点 `constructor` 会误读对象原型同名属性。修复将存续位置判断改为 `Object.hasOwn`，并补回归覆盖新坐标、旧坐标保持和重复更新。修复后类型、构建及四项行为检查通过。回归初稿使用 `.constructor` 时触发 TypeScript 内建属性类型，改为按节点 ID 索引后通过。浏览器固定 a—e 路径的自有属性语义一致，复用初始候选的完整操作证据，定向复核见 [review.md](../../docs/work/2026/11/D004-canvas-persistence/review.md)。
 
 ### 技术结论和限制
 
@@ -107,4 +107,4 @@ Remove-Item Env:BROWSER
 
 官方接口核查使用 [Vue Flow 状态](https://vueflow.dev/guide/vue-flow/state.html)、[配置](https://vueflow.dev/guide/vue-flow/config.html)、[节点](https://vueflow.dev/guide/node.html)、[Vite 兼容要求](https://vite.dev/guide/)、[Node 24 文件接口](https://nodejs.org/docs/latest-v24.x/api/fs.html)，并核对安装版本的类型声明和拖动源码。官方说明用于选接口，行为结论由上述实际操作与文件证据给出。
 
-独审原文与最终交回统一见 [任务 handoff](../../docs/work/D004-canvas-persistence/handoff.md)。
+独审原文与最终交回统一见 [任务 handoff](../../docs/work/2026/11/D004-canvas-persistence/handoff.md)。
