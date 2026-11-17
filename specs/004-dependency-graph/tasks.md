@@ -75,7 +75,7 @@ ID 为本能力实施记录，勾选仅代表实际完成；[P] 表示文件独�
 
 - [x] T016 在 tests/fixtures/dependency-graph.mjs 完成 --demo 真实 CLI 路径，串行执行 specs/004-dependency-graph/quickstart.md；记录准确状态和落盘事实。
 - [x] T017 在 docs/work/2026/11/D009-dependency-graph/handoff.md 记录 typecheck/build、本批测试与受影响固定取源/文档回归结果、失败轮次和未验证边界；核 README.md、tests/README.md 的工具入口。
-- [ ] T018 固定候选调用未参与实现审查子代理，将原文存 docs/work/2026/11/D009-dependency-graph/review.md，取得写入交还，处理并复核问题，完成 handoff，保留候选不合 dev。
+- [x] T018 固定候选调用未参与实现审查子代理，将原文存 docs/work/2026/11/D009-dependency-graph/review.md，取得写入交还，处理并复核问题，完成 handoff，保留候选不合 dev。
 
 ## Dependencies & Execution Order
 

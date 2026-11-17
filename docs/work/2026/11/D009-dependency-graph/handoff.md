@@ -2,10 +2,11 @@
 
 ## 当前结论与入口
 
-- G01—G05 已实现。初候 `debaea9` 独审 R1 发现的一项 P2 数组边界问题已修复并通过受影响自测，待本次修复候选的独审复核，尚不交付通过。批准依据为 [task.md](task.md) @ `c4010db`，无 amendments；比较 dev 基线 `4d3186e`。
+- G01—G05 已完成，行为候选 `aaa21ef5154eab9a75a682d5ba2affa7344f273d`，比较 dev 基线 `4d3186e`。自测通过；初候 `debaea9` 的独审 R1 发现一项 P2，修复第 1 轮成功，R2 复核通过、问题关闭，[原文与复核](review.md)已归档。批准依据为 [task.md](task.md) @ `c4010db`，无 amendments。
 - 工具入口为 `apply-graph`、`query-graph`、`validate-graph`，均传 pin 的完整固定参数。使用 [CLI 契约](../../../../../specs/004-dependency-graph/contracts/cli.md)和[可重跑 quickstart](../../../../../specs/004-dependency-graph/quickstart.md)；依赖由 AI 判断，程序不分析语义。
 - 作者体验验收不适用：本单没有页面、图布局或教学呈现；只覆盖 A08/A09 的工具部分，未记成页面验收通过。
-- 当前 `codex/feat-dependency-graph`，仅本范围改动；完成后保留候选交主脑，不自动合 dev、不推送/发布。无服务或浏览器；未改变已安装产品 Skill。
+- 当前 `codex/feat-dependency-graph` 保留用于主脑接回，归档后工作区干净。后续归档提交只含本回执、审查原文和 tasks 完成标记，产品/构建仍对应 `aaa21ef`。dev 未整合，不推送/发布；无服务或浏览器，未改变已安装产品 Skill。
+- 下一步由作者转交本入口给主脑核阅；本执行本单结束。分支保留到主脑接回并取得后续整合指令，届时再按任务规则收尾，不自动接续功能。
 
 ## 依据与验证
 
@@ -30,7 +31,7 @@
 - specify 使用 resolve-template spec-template，分支按作者接续，功能目录固定为 specs/004-dependency-graph；requirements 16 项逐项通过，无待澄清项。
 - plan 实际执行 setup-plan，Phase 0 由 storage_research 子代理只读研究既有代码与 D007/D008 证据，生成决策/备选；该代理未参与实现或独审。Phase 1 完成模型/契约/quickstart，constitution 五项门禁前后均无冲突。
 - tasks 实际执行 setup-tasks，沿真实模板生成 18 项与依赖。analyze 在真实 spec/plan/tasks 上运行 RequireSpec/RequireTasks/IncludeTasks：10 FR / 18 tasks，覆盖 100%；歧义 0、重复 0、关键问题 0，无未映射任务/原则冲突；只读报告见本执行聊天，不写入虚构分析产物。
-- implement 实际执行 RequireTasks/IncludeTasks，全部 checklist 扫描唯一 requirements.md 为 16/16，0 未勾，无自定义 checklist。沿既有 Node/TS、单锁与 ignore，无新依赖、发布或额外框架。不存在 extensions.yml，各阶段无 hooks 可执行。
+- implement 实际执行 RequireTasks/IncludeTasks，全部 checklist 扫描唯一 requirements.md 为 16/16，0 未勾，无自定义 checklist；实际完成 tasks 18/18。沿既有 Node/TS、单锁与 ignore，无新依赖、发布或额外框架。不存在 extensions.yml，各阶段无 hooks 可执行。
 - Ponytail full 用最少必要共用规则；property-based-testing 的 invariant/idempotence 方法以有限域枚举实现，不安装新库。未运行 converge 或自定义 checklist，不将这些名称计成已调用。
 
 ### 实际环境与自测
@@ -78,7 +79,9 @@ CLI 独立示例目录为 .local/D009/run-Ch0HkP/，项目 packages/小 项目�
 
 独立审查子代理 independent_review 未参与实现，按 Ponytail Review / Sharp Edges / 性质测试方法核完整调用链及正式材料。R1 绑定 debaea933957cbf447fadf3faa132f6f70d2a645，结论需修复一项 P2；[原文](review.md)已逐字保存。审查结束候选与输入未漂移，已明确交还写入；审查者实际跑图单测 5/5、tsc 和只读真实 query/validate，其他自测只核阅复用，不说成独立重跑。
 
-R1 问题：共用 GraphService.apply 的未知数组可能含空槽/继承槽或自定义 map，前两者被跳过或抛 TypeError，后者可绕过明确删除/核对列表；CLI JSON 不产生这些值。修复第 1 轮按原假设在 Fields.array 固定长度、逐索引核自有项并读取到普通数组快照。新增四类数组的稀疏/继承/自定义 map 回归，拒绝时断言取源/存储零调用，影子 map 不触发额外删除/核对，合法空列表保留。typecheck/build、图单测 6/6、真实坏图 CLI 项 1/1 与新仓库 demo 9 步均通过，累计第 1 轮成功；待固定修复提交再请独审复核。模型在 speckit-plan 既有结构内补运行时边界增量，JSON 格式、产品范围、其他方案与任务映射未改，不伪称重跑整套规划。
+R1 问题：共用 GraphService.apply 的未知数组可能含空槽/继承槽或自定义 map，前两者被跳过或抛 TypeError，后者可绕过明确删除/核对列表；CLI JSON 不产生这些值。修复第 1 轮按原假设在 Fields.array 固定长度、逐索引核自有项并读取到普通数组快照。新增四类数组的稀疏/继承/自定义 map 回归，拒绝时断言取源/存储零调用，影子 map 不触发额外删除/核对，合法空列表保留。typecheck/build、图单测 6/6、真实坏图 CLI 项 1/1 与新仓库 demo 9 步均通过，累计第 1 轮成功；修复另提交为 aaa21ef，R2 独立复核通过并关闭问题。模型在 speckit-plan 既有结构内补运行时边界增量，JSON 格式、产品范围、其他方案与任务映射未改，不伪称重跑整套规划。
+
+R2 实际独立跑图单测 6/6、8 个稀疏/继承槽端口反例、影子方法绕过与新样例只读 query/validate；候选/输入未漂移，已明确交还写入。其余 R1 审查与验证按未变调用链复用；通过只代表本单技术审查，不授权合并或发布。
 
 ### 未验证边界与作者验收
 
