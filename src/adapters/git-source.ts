@@ -72,6 +72,12 @@ async function checkDirectory(directory: string): Promise<string> {
 export class GitSourceRepository implements SourceRepository {
   async locate(projectRoot: string): Promise<ProjectMapping> {
     const canonicalProject = await checkDirectory(projectRoot);
+    const bare = await git(canonicalProject, ['rev-parse', '--is-bare-repository']);
+    if (bare.status === 0 && bare.stdout.toString('ascii').trim() === 'true') {
+      throw new SourceError('UNSUPPORTED_TARGET', 'bare 仓库没有受支持的项目工作区。', '指定普通本地仓库内的项目目录。', {
+        projectRoot, reason: 'BARE_REPOSITORY',
+      });
+    }
     let repositoryRoot = canonicalProject;
     while (true) {
       try {
@@ -91,10 +97,6 @@ export class GitSourceRepository implements SourceRepository {
         throw new SourceError('NOT_REPOSITORY', '项目不在受支持的 Git 仓库中。', '指定普通本地 Git 仓库内的项目目录。', { projectRoot });
       }
       repositoryRoot = parent;
-    }
-    const bare = await git(canonicalProject, ['rev-parse', '--is-bare-repository']);
-    if (bare.status === 0 && bare.stdout.toString('ascii').trim() === 'true') {
-      throw new SourceError('UNSUPPORTED_TARGET', 'bare 仓库没有受支持的项目工作区。', '指定普通本地仓库内的项目目录。', { projectRoot });
     }
     const projectPrefix = path.relative(repositoryRoot, canonicalProject).split(path.sep).join('/');
     if (projectPrefix.split('/').some(part => part.toLowerCase() === '.git')) {
@@ -129,11 +131,17 @@ export class GitSourceRepository implements SourceRepository {
   async readFile(source: FixedSource, filePath: string): Promise<SourceFile> {
     const repositoryPath = source.projectPrefix ? `${source.projectPrefix}/${filePath}` : filePath;
     const context = { ...source, path: filePath, repositoryPath };
-    const type = await git(source.repositoryRoot, ['cat-file', '-t', source.commit]);
-    if (type.status !== 0 || type.stdout.toString('ascii').trim() !== 'commit') {
-      throw new SourceError('OBJECT_UNAVAILABLE', '固定提交对象不可读取。', '核对原仓库中的本地提交对象。', { ...context, operation: 'commit', status: type.status });
+    const resolved = await git(source.repositoryRoot, ['rev-parse', '--verify', '--end-of-options', `${source.commit}^{commit}`]);
+    if (resolved.status !== 0) {
+      throw new SourceError('OBJECT_UNAVAILABLE', '固定提交对象不可读取。', '核对原仓库中的本地提交对象。', { ...context, operation: 'commit', status: resolved.status });
     }
-    let tree = `${source.commit}^{tree}`;
+    const commit = resolved.stdout.toString('ascii').trim();
+    if (commit !== source.commit) {
+      throw new SourceError('INVALID_ARGUMENT', '输入与实际完整提交身份不一致。', '使用 pin 返回的完整 commit。', {
+        ...context, reason: 'COMMIT_ID_MISMATCH',
+      });
+    }
+    let tree = commit;
     const parts = repositoryPath.split('/');
     let blob = '';
     for (const [index, part] of parts.entries()) {

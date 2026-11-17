@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { FixedSourceService, SourceError } from '../../dist/application/fixed-source.js';
 
-const mapping = { projectRoot: 'C:/project', repositoryRoot: 'C:/project', projectPrefix: '' };
+const projectRoot = path.resolve('synthetic-project');
+const mapping = { projectRoot, repositoryRoot: projectRoot, projectPrefix: '' };
 const commit = 'a'.repeat(40);
 
 test('pin 解析一次 HEAD，read 只复用完整引用', async () => {
@@ -37,11 +39,43 @@ test('不合法输入在调用 adapter 前拒绝', async () => {
   for (const value of ['', '.', '..', '../x', 'x/../a', 'x//a', '/etc/x', 'C:/x', 'x\\a', '.git/config', 'x/.GIT/a', 'x\0a', ':glob:*', '\uD800']) {
     await assert.rejects(service.read(fixed, value), { code: 'INVALID_PATH' });
   }
-  for (const value of [null, {}, { ...fixed, commit: 'HEAD' }, { ...fixed, projectPrefix: '../x' }, { ...fixed, repositoryRoot: null }]) {
+  for (const value of [null, {}, { ...fixed, commit: 'HEAD' }, { ...fixed, projectPrefix: '../x' }, { ...fixed, repositoryRoot: null },
+    { projectRoot, commit, projectPrefix: '' }, { projectRoot, commit, repositoryRoot: projectRoot }]) {
     await assert.rejects(service.read(value, 'a.ts'), { code: 'INVALID_ARGUMENT' });
   }
   assert.equal(called, false);
   assert.ok(new SourceError('INVALID_PATH', '路径错误', '检查路径') instanceof Error);
+});
+
+test('D007 H04 便捷输入只定位项目一次，固定输入只定位仓库根', async () => {
+  const project = { ...mapping, projectRoot: path.join(projectRoot, 'packages/demo'), projectPrefix: 'packages/demo' };
+  const calls = [];
+  const service = new FixedSourceService({
+    async locate(root) { calls.push(root); return root === projectRoot ? mapping : project; },
+    async readFile(source) { return source; },
+  });
+  const fixed = await service.read({ projectRoot: project.projectRoot, commit }, 'a.ts');
+  assert.deepEqual(calls, [project.projectRoot]);
+  assert.deepEqual(fixed, { ...project, commit });
+  calls.length = 0;
+  await service.read(fixed, 'a.ts');
+  assert.deepEqual(calls, [mapping.repositoryRoot]);
+});
+
+test('固定输入在异步仓库检查期间保持调用时的值', async () => {
+  for (const full of [false, true]) {
+    const source = full ? { ...mapping, commit } : { projectRoot, commit };
+    const service = new FixedSourceService({
+      async locate() {
+        source.commit = 'HEAD';
+        source.projectRoot = path.resolve('changed-project');
+        source.projectPrefix = '../outside';
+        return mapping;
+      },
+      async readFile(fixed) { return fixed; },
+    });
+    assert.deepEqual(await service.read(source, 'a.ts'), { ...mapping, commit });
+  }
 });
 
 test('伪造映射被拒绝，完整 SHA256 依据可复用', async () => {

@@ -10,6 +10,8 @@ export interface FixedSource extends ProjectMapping {
   readonly commit: string;
 }
 
+export type ProjectSource = Pick<FixedSource, 'projectRoot' | 'commit'>;
+
 export interface SourceFile extends FixedSource {
   readonly path: string;
   readonly repositoryPath: string;
@@ -82,28 +84,43 @@ export class FixedSourceService {
     return Object.freeze({ ...project, commit });
   }
 
-  async read(source: FixedSource, filePath: string): Promise<SourceFile> {
+  async read(source: FixedSource | ProjectSource, filePath: string): Promise<SourceFile> {
     if (typeof source !== 'object' || source === null || !isAbsoluteDirectory(source.projectRoot) ||
-        !isAbsoluteDirectory(source.repositoryRoot) || typeof source.commit !== 'string' ||
-        !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(source.commit) ||
-        (source.projectPrefix !== '' && !isFilePath(source.projectPrefix))) {
-      throw new SourceError('INVALID_ARGUMENT', '固定源码引用无效。', '复用 pin 返回的完整固定引用。');
+        typeof source.commit !== 'string' || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(source.commit)) {
+      throw new SourceError('INVALID_ARGUMENT', '固定源码引用无效。', '复用 pin 返回的完整固定引用。', { reason: 'INVALID_FIXED_SOURCE' });
     }
     validateSourcePath(filePath, { projectRoot: source.projectRoot, commit: source.commit });
-    const fixed = Object.freeze({ projectRoot: source.projectRoot, repositoryRoot: source.repositoryRoot,
-      projectPrefix: source.projectPrefix, commit: source.commit });
-    try {
-      const project = await this.repository.locate(fixed.projectRoot);
-      if (project.projectRoot !== fixed.projectRoot || project.repositoryRoot !== fixed.repositoryRoot ||
-          project.projectPrefix !== fixed.projectPrefix) {
-        throw new SourceError('INVALID_ARGUMENT', '固定引用的项目映射已失配。', '核对目标仓库与原固定引用。');
+    const hasMapping = 'repositoryRoot' in source || 'projectPrefix' in source;
+    const supplied = Object.freeze({ projectRoot: source.projectRoot, commit: source.commit,
+      repositoryRoot: (source as FixedSource).repositoryRoot, projectPrefix: (source as FixedSource).projectPrefix });
+    if (hasMapping) {
+      if (!isAbsoluteDirectory(supplied.repositoryRoot) ||
+          (supplied.projectPrefix !== '' && !isFilePath(supplied.projectPrefix))) {
+        throw new SourceError('INVALID_ARGUMENT', '固定源码映射字段无效。', '完整复用 pin 返回的仓库与项目前缀。', { reason: 'INVALID_FIXED_SOURCE' });
       }
+      if (supplied.projectRoot !== path.join(supplied.repositoryRoot, supplied.projectPrefix)) {
+        throw new SourceError('INVALID_ARGUMENT', '固定引用的根与前缀不一致。', '核对原固定引用的项目和仓库映射。', { reason: 'MAPPING_MISMATCH' });
+      }
+    }
+    const request = hasMapping ? { ...supplied,
+      repositoryPath: supplied.projectPrefix ? `${supplied.projectPrefix}/${filePath}` : filePath } :
+      { projectRoot: supplied.projectRoot, commit: supplied.commit };
+    try {
+      const project = await this.repository.locate(hasMapping ? supplied.repositoryRoot : supplied.projectRoot);
+      if (hasMapping && (project.projectRoot !== supplied.repositoryRoot || project.repositoryRoot !== supplied.repositoryRoot ||
+          project.projectPrefix !== '')) {
+        throw new SourceError('INVALID_ARGUMENT', '固定引用的仓库根已失配。', '核对目标仓库与原固定引用。', { reason: 'MAPPING_MISMATCH' });
+      }
+      const fixed = Object.freeze({ projectRoot: hasMapping ? supplied.projectRoot : project.projectRoot,
+        repositoryRoot: project.repositoryRoot, projectPrefix: hasMapping ? supplied.projectPrefix : project.projectPrefix,
+        commit: supplied.commit });
       return await this.repository.readFile(fixed, filePath);
     } catch (error) {
       if (error instanceof SourceError) {
         throw new SourceError(error.code, error.message, error.nextStep, {
-          ...fixed, path: filePath, repositoryPath: fixed.projectPrefix ? `${fixed.projectPrefix}/${filePath}` : filePath,
+          ...request, path: filePath,
           ...error.context,
+          projectRoot: request.projectRoot,
         });
       }
       throw error;
