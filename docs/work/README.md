@@ -14,5 +14,6 @@
 | D004 | [图画布自由布局与持久恢复验证](2026/11/D004-canvas-persistence/task.md) · [回执](2026/11/D004-canvas-persistence/handoff.md) |
 | D005 | [开发准备收尾](2026/11/D005-development-cleanup/task.md) · [回执](2026/11/D005-development-cleanup/handoff.md) |
 | D006 | [固定提交取源](2026/11/D006-fixed-source/task.md) · [回执](2026/11/D006-fixed-source/handoff.md) |
+| D007 | [固定取源加固](2026/11/D007-fixed-source-hardening/task.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。
