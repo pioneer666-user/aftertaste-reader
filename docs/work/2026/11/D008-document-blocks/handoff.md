@@ -2,7 +2,9 @@
 
 ## 当前结论与入口
 
-M01—M06 已实现，初次候选 `105d1a3` 独审发现的 1 项 P2 共用 API 范围对象问题已修复，自测通过，等待新候选复核。批准入口为 [task.md @ 39a7fdf](task.md)，基线 dev `fa6360f`，接单分支 `codex/feat-document-blocks`，接单 HEAD `39a7fdf`，接单工作区干净。作者明确要求完成后保留候选交回。
+M01—M06 完成。成果候选为 `4c3b14537c180cfe48e6ef9539d5b643f2571d39`，类型检查、构建及本单测试通过，既有固定取源回归证据按影响复用。独审 R1 的 1 项 P2 已修复，R2 在该候选复核通过并交还写入，原文见 [review.md](review.md)。本回执后续归档仅涉及任务状态、审查原文和索引，复用同一成果审查。
+
+批准入口为 [task.md @ 39a7fdf](task.md)，比较基线 dev `fa6360f`，接单 HEAD `39a7fdf`。当前分支 `codex/feat-document-blocks` 按作者要求保留候选，dev 为 `fa6360f4557d38936813fc369bcc1bf71653f122`。交回完成后由作者将本入口交主脑接回审查，后续整合和分支收尾等待对应授权。本次 Git 操作限该候选分支的实现、修复和归档提交，master/main、远程推送及发布没有本次操作。
 
 可重跑入口为 [003 quickstart](../../../../../specs/003-document-blocks/quickstart.md)，调用参数及输出见 [CLI 契约](../../../../../specs/003-document-blocks/contracts/cli.md)，格式及状态见 [数据模型](../../../../../specs/003-document-blocks/data-model.md)。作者页面及教学体验本单不适用，机械校验通过不判断解释正确性。
 
@@ -38,7 +40,7 @@ implement 前置 RequireTasks/IncludeTasks 实际成功，扫描唯一 requireme
 - 2026-11-17，新增单测先运行，因 dist/core/document-blocks.js 尚未实现而 ERR_MODULE_NOT_FOUND，符合初始红灯预期。
 - 初版实现 typecheck/build 通过，单测 10/11。CommonMark 容器样例断言失败，普通注释被内部示例的第一个 `-->` 关闭，后面的 `aftertaste:end` 是真正顶层，实际为 BLOCK_ORPHAN_END。目标解析实际触发，证据为失败测试原样例及代码。修正假设为删除该样例中已经处于注释外的结束标记，保留普通注释中的开始标记示例。仅修测试前提，计该测试问题第 1 轮，产品解析不改。随后 typecheck/build 通过，单测 11/11、集成 6/6 通过，测试前提问题已闭合。
 - 初版扩充边界后 typecheck/build 和全套串行测试 41/41 通过，155.6 秒。随后针对临时名碰撞注入 EEXIST，断言既有文件保留实际失败，readFile 为 ENOENT，说明 finally 删除了未拥有的临时名。样例为 `.local/D008/run-xPymzY/`，源码和输入均合成，实际触发了写入失败清理。第 1 轮修复假设为以 open(wx) 取得文件句柄，仅在成功取得后标记拥有临时文件，失败清理只处理自己创建的文件。修复 adapter 及受影响失败注入后，typecheck/build 和 D008 集成 8/8 通过，42.6 秒，该问题第 1 轮已闭合。
-- R1 @ 105d1a3 独审实际复现 API 接受原型 getter 范围并写盘，返回 mechanicallyValid=false，源码范围为 undefined。原文见 [review.md](review.md)，样例 `.local/D008/run-265sQb/`。回归先在原候选确认 Missing expected rejection。第 1 轮修复精确检查自有可枚举字段名为 start/end，各读取一次形成数值快照，再校验和生成。共用回归核原型 getter 被拒绝且资料未创建，自有 getter 各读取一次并保存合法骨架，同时单测补非枚举端点混入额外字段的反例。修复后 typecheck/build 与 D008 单测/集成 21/21 通过，40.1 秒，待独审复核。
+- R1 @ 105d1a3 独审实际复现 API 接受原型 getter 范围并写盘，返回 mechanicallyValid=false，源码范围为 undefined。原文见 [review.md](review.md)，样例 `.local/D008/run-265sQb/`。回归先在原候选确认 Missing expected rejection。第 1 轮修复精确检查自有可枚举字段名为 start/end，各读取一次形成数值快照，再校验和生成。共用回归核原型 getter 被拒绝且资料未创建，自有 getter 各读取一次并保存合法骨架，同时单测补非枚举端点混入额外字段的反例。修复后 typecheck/build 与 D008 单测/集成 21/21 通过，40.1 秒。R2 @ 4c3b145 独立重跑该用例 1/1 并做内存反例断言，通过且关闭该问题，累计第 1 轮成功。
 
 ### 最终行为自测证据
 
@@ -60,6 +62,12 @@ git diff --check
 
 未验证网页、教学效果、发布包安装、非 Windows 平台和恶意并发目录置换，本单页面与教学体验验收不适用。没有将 A01—A05 的整套页面验收记为完成。
 
+### 独审与作者验收
+
+未参与实现的审查子代理按 Ponytail Review 和 Sharp Edges 对 `105d1a3` 完成 R1，读取完整调用链、规格和证据，确认 P2 后明确交还写入。执行保存原文、修复另提交，审查者对 `4c3b145` 完成 R2，独立验证关闭依据并明确交还写入。两轮均核候选和工作区一致、运行采集已结束，详见唯一原文 [review.md](review.md)。
+
+本单的作者页面及教学体验验收不适用，原因是交付为文档制作与机械检查工具。本单完成情况交作者／主脑接回审查，不记作完整首版页面或教学体验通过。
+
 ## 资源与交回
 
-任务运行产物隔离于 `.local/D008/`，测试源码和讲解均为合成内容。未启动服务或浏览器。
+任务运行产物隔离于 `.local/D008/`，测试源码和讲解均为合成内容。任务级 Node、可重跑样例及失败复现保留供接回核查，均可由已提交 fixture 重建，关键证据已在本回执和独审原文。全批没有自建服务或浏览器，测试及审查子进程均已结束。dist 为当前成果候选的本地可重建输出，单文件工具入口和正式资料均已落仓。

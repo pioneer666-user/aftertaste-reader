@@ -81,7 +81,7 @@
 ## Phase 6 · Polish & Cross-Cutting Concerns
 
 - [x] T015 串行 typecheck、build、tests/unit 与 tests/integration 全部回归，核 README.md 和 tests/README.md 的实际入口。
-- [ ] T016 固定候选并独审，保存 docs/work/2026/11/D008-document-blocks/review.md 和 handoff.md，保留候选交回。
+- [x] T016 固定候选并独审，保存 docs/work/2026/11/D008-document-blocks/review.md 和 handoff.md，保留候选交回。
 
 ## Dependencies & Execution Order
 
