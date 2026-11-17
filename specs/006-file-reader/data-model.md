@@ -1,0 +1,19 @@
+# 读取模型
+
+## 项目与发现
+
+启动项目使用规范化的绝对目录，无链接祖先。资料发现读取 docs/aftertaste/current，缺失目录返回空集，存在但非法/不可读返回结构化问题。条目包含 documentPath 与 sourcePath，保留目录与扩展名。非法条目单独报告，合法条目仍可选择。
+
+## 单次阅读
+
+DocumentService.read 返回 DocumentResult 及可选 sourceLines。raw、blocks、commit、diagnostics 均派生自同一次 UTF-8 读取。取源沿 FixedSourceService，项目到仓库映射由适配器解析，各文档独立使用头部完整提交。sourceLines 保留全部物理行，终止换行不凭空增加一行。
+
+comparison 模式只在机械校验有效时使用，源码缺失或结构/覆盖错误为 markdown 模式。源码不可用带 sourceError，文档不可读是请求错误。空正文和超阈值沿既有 warning 语义。
+
+修复内容由 documentPath、sourcePath、实际 commit、diagnostics、sourceError 组成，包含块/行/params、问题与下一步，排除 raw、body 和 sourceLines。
+
+## 页面状态
+
+列表 loading/ready/empty/error。阅读 idle/loading/ready/error。切换和刷新使用单调请求序号及 AbortController，过期结果不提交。语言独立于阅读模型，切换仅更新文案并恢复滚动位置。
+
+界面语言枚举 zh-CN/en。读取有效本地存储值，否则中文。存储异常保留当前选择并显示本页有效提示。翻译按稳定 code/params，缺键回退中文。用户内容保持原文。

@@ -1,11 +1,15 @@
-import { checkedMapping, FixedSourceService, SourceError, validateSourcePath } from './fixed-source.js';
+import { checkedMapping, FixedSourceService, SourceError, validateProjectRoot, validateSourcePath } from './fixed-source.js';
 import type { FixedSource, ProjectMapping } from './fixed-source.js';
-import { checkDocument, generateSkeleton, parseDocument, physicalLineCount } from '../core/document-blocks.js';
+import { checkDocument, DocumentError, generateSkeleton, parseDocument, physicalLineCount } from '../core/document-blocks.js';
 import type { DocumentResult } from '../core/document-blocks.js';
 
 export interface DocumentStore {
   create(projectRoot: string, documentPath: string, raw: string): Promise<void>;
   read(projectRoot: string, documentPath: string): Promise<string>;
+}
+
+export interface ReadingDocument extends DocumentResult {
+  readonly sourceLines?: readonly string[];
 }
 
 const mirrorRoot = 'docs/aftertaste/current/';
@@ -17,6 +21,10 @@ export function sourcePathForDocument(documentPath: unknown): string {
   }
   const sourcePath = documentPath.slice(mirrorRoot.length, -3);
   validateSourcePath(sourcePath);
+  if (process.platform === 'win32' && documentPath.split('/').some(part =>
+    /[<>"|?*]/u.test(part) || /[. ]$/u.test(part) || /^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/iu.test(part))) {
+    throw new SourceError('INVALID_PATH', '文档路径含 Windows 不支持的名称。', '使用没有设备名、尾点、尾空格或保留符号的镜像路径。');
+  }
   return sourcePath;
 }
 
@@ -38,13 +46,28 @@ export class DocumentService {
 
   async validate(input: ProjectMapping, documentPath: string): Promise<DocumentResult> {
     const mapping = checkedMapping(input);
+    const { sourceLines: _, ...result } = await this.read(mapping, documentPath);
+    return result;
+  }
+
+  async read(input: ProjectMapping | Pick<ProjectMapping, 'projectRoot'>, documentPath: string): Promise<ReadingDocument> {
+    const mapping = 'repositoryRoot' in input || 'projectPrefix' in input ? checkedMapping(input as ProjectMapping) :
+      Object.freeze({ projectRoot: input.projectRoot });
+    validateProjectRoot(mapping.projectRoot);
     const sourcePath = sourcePathForDocument(documentPath);
-    const raw = await this.documents.read(mapping.projectRoot, documentPath);
+    let raw: string;
+    try { raw = await this.documents.read(mapping.projectRoot, documentPath); }
+    catch (error) {
+      if (error instanceof DocumentError) throw new DocumentError(error.code, error.message, error.nextStep, { ...error.context, sourcePath });
+      throw error;
+    }
     const parsed = parseDocument(raw, documentPath);
     if (!parsed.commit) return { ...checkDocument(parsed), sourcePath };
     try {
       const file = await this.sources.read({ ...mapping, commit: parsed.commit }, sourcePath);
-      return { ...checkDocument(parsed, physicalLineCount(file.content)), sourcePath };
+      const lineCount = physicalLineCount(file.content);
+      const sourceLines = file.content.split(/\r\n|\r|\n/u).slice(0, lineCount);
+      return { ...checkDocument(parsed, lineCount), sourcePath, sourceLines };
     } catch (error) {
       if (!(error instanceof SourceError)) throw error;
       const result = checkDocument(parsed);

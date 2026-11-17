@@ -1,0 +1,93 @@
+import Fastify from 'fastify';
+import { readFile, readdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import { DocumentService } from '../application/document-blocks.js';
+import { FixedSourceService, SourceError } from '../application/fixed-source.js';
+import { DocumentError } from '../core/document-blocks.js';
+import { FileReaderService, ReaderError } from '../application/file-reader.js';
+import type { ReaderProblem } from '../application/file-reader.js';
+import { DocumentFileStore } from '../adapters/document-store.js';
+import { GitSourceRepository } from '../adapters/git-source.js';
+import { ReaderFileDirectory, readerProject } from '../adapters/reader-directory.js';
+import { systemCode } from '../adapters/data-directory.js';
+
+export function readerProblem(error: unknown): ReaderProblem {
+  if (error instanceof SourceError || error instanceof DocumentError || error instanceof ReaderError) {
+    return { code: error.code, message: error.message, nextStep: error.nextStep, context: error.context };
+  }
+  return { code: 'INTERNAL_ERROR', message: '阅读服务发生未预期错误。', nextStep: '将问题标识和操作交给维护者检查。', context: {} };
+}
+
+export async function startReader(projectRoot: string, port: number = 4317) {
+  const project = await readerProject(projectRoot);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new SourceError('INVALID_ARGUMENT', '端口参数无效。', '使用 1 至 65535 的整数端口。');
+  }
+  const assets = new Map<string, { content: Buffer; type: string }>();
+  const webRoot = fileURLToPath(new URL('../web/', import.meta.url));
+  try {
+    assets.set('/', { content: await readFile(path.join(webRoot, 'index.html')), type: 'text/html; charset=utf-8' });
+    for (const name of await readdir(path.join(webRoot, 'assets'))) {
+      const types: Record<string, string> = { '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.woff': 'font/woff' };
+      const type = types[path.extname(name)];
+      if (type && /^[\w.-]+$/u.test(name)) assets.set(`/assets/${name}`, { content: await readFile(path.join(webRoot, 'assets', name)), type });
+    }
+  } catch {
+    throw new ReaderError('WEB_BUILD_UNAVAILABLE', '预构建阅读页面不可用。', '在产品根完成构建后重新启动。');
+  }
+  const documents = new DocumentService(new FixedSourceService(new GitSourceRepository()), new DocumentFileStore());
+  const reader = new FileReaderService(project, new ReaderFileDirectory(), documents);
+  const server = Fastify({ logger: false, trustProxy: false, exposeHeadRoutes: false });
+  server.addHook('onRequest', async (request, reply) => {
+    reply.headers({
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'no-referrer',
+      'Cross-Origin-Resource-Policy': 'same-origin',
+      'X-Frame-Options': 'DENY',
+      'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; font-src 'self'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    });
+    const address = server.server.address();
+    const actualPort = typeof address === 'object' && address ? address.port : port;
+    const host = request.headers.host;
+    const origin = request.headers.origin;
+    const site = request.headers['sec-fetch-site'];
+    if (![`127.0.0.1:${actualPort}`, `localhost:${actualPort}`].includes(host ?? '') ||
+        (origin !== undefined && origin !== `http://${host}`) ||
+        (site !== undefined && site !== 'same-origin' && site !== 'none')) {
+      return reply.code(403).send({ ok: false, error: readerProblem(new ReaderError('ACCESS_DENIED',
+        '请求来源不允许访问本地阅读资料。', '直接打开启动命令输出的本机阅读地址。')) });
+    }
+    if (request.method !== 'GET') return reply.code(405).send({ ok: false,
+      error: readerProblem(new ReaderError('METHOD_NOT_ALLOWED', '阅读接口仅支持读取。', '使用页面中的文件选择或刷新。')) });
+  });
+  server.setErrorHandler((error, _request, reply) => {
+    const problem = readerProblem(error);
+    const status = ['INVALID_ARGUMENT', 'INVALID_PATH'].includes(problem.code) ? 400 :
+      problem.code === 'DOCUMENT_PATH_UNSAFE' ? 403 : problem.code === 'INTERNAL_ERROR' ? 500 : 422;
+    reply.code(status).send({ ok: false, error: problem });
+  });
+  server.setNotFoundHandler((_request, reply) => reply.code(404).send({ ok: false,
+    error: readerProblem(new ReaderError('NOT_FOUND', '该阅读资源不存在。', '从阅读页面选择已有讲解。')) }));
+  for (const [url, asset] of assets) server.get(url, async (_request, reply) => reply.type(asset.type).send(asset.content));
+  server.get('/api/documents', async request => {
+    if (Object.keys(request.query as object).length > 0) throw new SourceError('INVALID_ARGUMENT', '列表参数无效。', '直接读取当前项目的资料列表。');
+    return { ok: true, ...await reader.list() };
+  });
+  server.get('/api/document', async request => {
+    const query = request.query as Record<string, unknown>;
+    if (Object.keys(query).length !== 1 || typeof query.path !== 'string') {
+      throw new SourceError('INVALID_ARGUMENT', '文档参数无效。', '仅提供一个 current 镜像文档 path。');
+    }
+    return { ok: true, result: await reader.read(query.path) };
+  });
+  try {
+    const url = await server.listen({ host: '127.0.0.1', port });
+    return { server, url, projectRoot: project };
+  } catch (error) {
+    await server.close();
+    if (systemCode(error) === 'EADDRINUSE') throw new ReaderError('PORT_IN_USE', '阅读端口已被占用。', '指定其他端口，或在原终端关闭属于自己的阅读服务。', { port });
+    throw new ReaderError('SERVER_START_FAILED', '阅读服务启动失败。', '检查本机监听权限后重试。', { reason: systemCode(error) });
+  }
+}

@@ -1,5 +1,7 @@
 # 正式测试与固定样例
 
+本地文件阅读测试见 `unit/file-reader.test.mjs`、`integration/file-reader.test.mjs` 和 `browser/file-reader.mjs`。浏览器由构建后的真实 CLI 服务提供页面，依次验证 Edge、Chrome、Firefox，运行 `npm run test:browser`。`fixtures/reader-project.mjs` 重建 D010 合成讲解项目，运行资料在 `.local/D011/`。接口和场景见 [006 quickstart](../specs/006-file-reader/quickstart.md)。
+
 文件依赖图测试为 `unit/dependency-graph.test.mjs` 和 `integration/dependency-graph.test.mjs`，覆盖局部替换、分析状态、512 种三节点有向图的性质、真实 Git/CLI、固定版本与存储失败。`fixtures/dependency-graph.mjs --demo` 输出每步实际退出状态，样例归 `.local/D009/run-*`；入口见 [004 quickstart](../specs/004-dependency-graph/quickstart.md)。
 
 单篇文档测试为 `unit/document-blocks.test.mjs` 和 `integration/document-blocks.test.mjs`，覆盖 CommonMark 上下文、格式/范围/Unicode 边界、性质、路径、只读校验及写失败。`fixtures/document-blocks.mjs --demo` 调用真实 CLI 走通固定 A、生成、填写、校验、修改 HEAD/工作区后再校验，运行样例位于 `.local/D008/run-*`。入口见 [003 quickstart](../specs/003-document-blocks/quickstart.md)。

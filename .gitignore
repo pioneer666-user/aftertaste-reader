@@ -10,3 +10,9 @@
 **/node_modules/
 /dist/
 /coverage/
+*.log
+.env*
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
