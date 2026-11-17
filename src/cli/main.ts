@@ -4,6 +4,11 @@ import { GitSourceRepository } from '../adapters/git-source.js';
 import { DocumentService } from '../application/document-blocks.js';
 import { DocumentFileStore } from '../adapters/document-store.js';
 import { DocumentError } from '../core/document-blocks.js';
+import { GraphService } from '../application/dependency-graph.js';
+import { GraphFileStore, readGraphInput } from '../adapters/graph-store.js';
+import { GraphError } from '../core/dependency-graph.js';
+
+const fixedOptions = ['--project', '--repository', '--prefix', '--commit'];
 
 const commands: Record<string, { allowed: string[]; required: string[] }> = {
   pin: { allowed: ['--project', '--revision'], required: ['--project'] },
@@ -16,13 +21,16 @@ const commands: Record<string, { allowed: string[]; required: string[] }> = {
     allowed: ['--project', '--repository', '--prefix', '--document'],
     required: ['--project', '--repository', '--prefix', '--document'],
   },
+  'apply-graph': { allowed: [...fixedOptions, '--input'], required: [...fixedOptions, '--input'] },
+  'query-graph': { allowed: [...fixedOptions, '--path'], required: [...fixedOptions, '--path'] },
+  'validate-graph': { allowed: fixedOptions, required: fixedOptions },
 };
 
 function argumentsFor(argv: string[]): { command: string; options: Map<string, string> } {
   const command = argv[0];
   const definition = command === undefined ? undefined : Object.hasOwn(commands, command) ? commands[command] : undefined;
   if (!command || !definition) {
-    throw new SourceError('INVALID_ARGUMENT', '缺少有效命令。', '使用 pin、read、create-document 或 validate-document，调用约定见 specs/002 与 003。');
+    throw new SourceError('INVALID_ARGUMENT', '缺少有效命令。', '使用取源、文档或图命令，调用约定见 specs/002、003 与 004 的 contracts/cli.md。');
   }
   const options = new Map<string, string>();
   for (let index = 1; index < argv.length; index += 2) {
@@ -64,6 +72,27 @@ async function main(): Promise<void> {
       process.stdout.write(`${JSON.stringify({ ok: true, file })}\n`);
     } else {
       const mapping = { projectRoot, repositoryRoot: options.get('--repository')!, projectPrefix: options.get('--prefix')! };
+      if (['apply-graph', 'query-graph', 'validate-graph'].includes(command)) {
+        const graphs = new GraphService(service, new GraphFileStore());
+        const source = { ...mapping, commit: options.get('--commit')! };
+        requestContext = { ...source };
+        if (command === 'apply-graph') {
+          const inputPath = options.get('--input')!;
+          requestContext = { ...source, inputPath };
+          const result = await graphs.apply(source, await readGraphInput(inputPath));
+          process.stdout.write(`${JSON.stringify({ ok: true, result })}\n`);
+        } else if (command === 'query-graph') {
+          const filePath = options.get('--path')!;
+          requestContext = { ...source, path: filePath };
+          const result = await graphs.query(source, filePath);
+          process.stdout.write(`${JSON.stringify({ ok: true, result })}\n`);
+        } else {
+          const result = await graphs.validate(source);
+          process.stdout.write(`${JSON.stringify({ ok: result.mechanicallyValid, result })}\n`);
+          process.exitCode = result.mechanicallyValid ? 0 : 1;
+        }
+        return;
+      }
       const documents = new DocumentService(service, new DocumentFileStore());
       if (command === 'create-document') {
         let blocks: unknown;
@@ -83,12 +112,13 @@ async function main(): Promise<void> {
       }
     }
   } catch (error) {
-    const problem = error instanceof SourceError || error instanceof DocumentError ? error :
+    const problem = error instanceof SourceError || error instanceof DocumentError || error instanceof GraphError ? error :
       new SourceError('INTERNAL_ERROR', '命令发生未预期错误。', '将命令及问题标识交给维护者检查。');
     process.stderr.write(`${JSON.stringify({ ok: false, error: {
       code: problem.code, message: problem.message, nextStep: problem.nextStep, context: { ...requestContext, ...problem.context },
+      ...(problem instanceof GraphError && problem.diagnostics.length ? { diagnostics: problem.diagnostics } : {}),
     } })}\n`);
-    process.exitCode = ['INVALID_ARGUMENT', 'INVALID_PATH', 'BLOCK_PLAN_INVALID'].includes(problem.code) ? 2 : 1;
+    process.exitCode = ['INVALID_ARGUMENT', 'INVALID_PATH', 'BLOCK_PLAN_INVALID', 'GRAPH_INPUT_INVALID'].includes(problem.code) ? 2 : 1;
   }
 }
 

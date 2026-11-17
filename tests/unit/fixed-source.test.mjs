@@ -87,3 +87,17 @@ test('伪造映射被拒绝，完整 SHA256 依据可复用', async () => {
   await assert.rejects(service.read({ ...mapping, projectPrefix: 'other', commit }, 'a.ts'), { code: 'INVALID_ARGUMENT' });
   assert.equal((await service.read({ ...mapping, commit: 'b'.repeat(64) }, 'a.ts')).commit.length, 64);
 });
+
+test('无文件 verify 核完整固定依据，异步期间保持输入快照，不读文件或重新 pin', async () => {
+  const input = { ...mapping, commit };
+  const calls = [];
+  const service = new FixedSourceService({
+    async locate(root) { calls.push(['locate', root]); input.commit = 'HEAD'; return mapping; },
+    async verifyCommit(fixed) { calls.push(['verify', fixed.commit]); },
+    async resolveCommit() { assert.fail('verify must not pin'); },
+    async readFile() { assert.fail('verify must not read a file'); },
+  });
+  assert.deepEqual(await service.verify(input), { ...mapping, commit });
+  assert.deepEqual(calls, [['locate', mapping.repositoryRoot], ['verify', commit]]);
+  await assert.rejects(service.verify({ projectRoot, commit }), { code: 'INVALID_ARGUMENT' });
+});

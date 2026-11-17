@@ -1,6 +1,6 @@
 # Aftertaste Reader · 回味
 
-帮助项目作者对照源码与讲解，逐步读懂自己的项目。当前已建立固定提交取源和单篇讲解骨架／校验工具链，首版规格与开发规范继续作为后续实现依据。
+帮助项目作者对照源码与讲解，逐步读懂自己的项目。当前已建立固定提交取源、单篇讲解骨架／校验和文件依赖图维护工具链，首版规格与开发规范继续作为后续实现依据。
 
 中文名为“回味”；英文名、`aftertaste-reader` 标识及路径保持不变。历史原话、任务与证据中的旧称保留用于追溯。
 
@@ -11,6 +11,10 @@
 ## 单篇讲解文档开发入口
 
 构建后可调用 `node dist/cli/main.js create-document/validate-document`。AI 提供分块并填写正文，工具生成 ID 与结构、核固定提交的逐行覆盖及超大警告，结果单独报告填写状态和机械合法性。完整合成项目验证见 [003 quickstart](specs/003-document-blocks/quickstart.md)，参数与输出见 [CLI 契约](specs/003-document-blocks/contracts/cli.md)。
+
+## 文件依赖图开发入口
+
+构建后可调用 `node dist/cli/main.js apply-graph/query-graph/validate-graph`。以 JSON 输入登记批次、按明确核对的使用者替换完整依赖列表、明确删除节点；查询区分未登记、未核对和已核对无依赖。工具只维护同一固定提交中的引用与关系，不自动分析依赖或生成讲解。完整参数见 [004 CLI 契约](specs/004-dependency-graph/contracts/cli.md)，可重跑合成示例见 [004 quickstart](specs/004-dependency-graph/quickstart.md)。
 
 ## 开发协作入口（2026-11-16）
 

@@ -128,9 +128,8 @@ export class GitSourceRepository implements SourceRepository {
     return commit;
   }
 
-  async readFile(source: FixedSource, filePath: string): Promise<SourceFile> {
-    const repositoryPath = source.projectPrefix ? `${source.projectPrefix}/${filePath}` : filePath;
-    const context = { ...source, path: filePath, repositoryPath };
+  async verifyCommit(source: FixedSource): Promise<void> {
+    const context = { ...source };
     const resolved = await git(source.repositoryRoot, ['rev-parse', '--verify', '--end-of-options', `${source.commit}^{commit}`]);
     if (resolved.status !== 0) {
       throw new SourceError('OBJECT_UNAVAILABLE', '固定提交对象不可读取。', '核对原仓库中的本地提交对象。', { ...context, operation: 'commit', status: resolved.status });
@@ -141,7 +140,13 @@ export class GitSourceRepository implements SourceRepository {
         ...context, reason: 'COMMIT_ID_MISMATCH',
       });
     }
-    let tree = commit;
+  }
+
+  async readFile(source: FixedSource, filePath: string): Promise<SourceFile> {
+    const repositoryPath = source.projectPrefix ? `${source.projectPrefix}/${filePath}` : filePath;
+    const context = { ...source, path: filePath, repositoryPath };
+    await this.verifyCommit(source);
+    let tree = source.commit;
     const parts = repositoryPath.split('/');
     let blob = '';
     for (const [index, part] of parts.entries()) {
