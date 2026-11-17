@@ -56,7 +56,7 @@
 
 - [x] T013 同步 specs/001-first-release/04-reading-modes.md、07-skill-design-map.md、08-current-spec-and-acceptance.md 与 docs/development/directories.md 的模板／路径／能力状态，更新包 README 和根 README（FR-007、008）
 - [x] T014 完成 docs/usage/generation-skill.md 和 specs/005-generation-skill/quickstart.md 的真实步骤，归档 sample/README.md、完整讲解、图／方向和校验摘要，以 tests/skills/generation-sample.test.mjs 在重建来源上复核（FR-008、009、SC-004）
-- [ ] T015 固定候选并派独立审查，保存 docs/work/2026/11/D010-generation-skill/review.md 原文，处理问题复核并交 handoff.md（FR-009）
+- [x] T015 固定候选并派独立审查，保存 docs/work/2026/11/D010-generation-skill/review.md 原文，处理问题复核并交 handoff.md（FR-009）
 
 ## Dependencies & Execution Order
 
