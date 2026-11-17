@@ -135,7 +135,7 @@ A01 仅本批取源部分。独审和作者体验分别报告。成果与修复�
 ## Phase 9: D007 Polish & Cross-Cutting Concerns
 
 - [x] T021 更新 README.md、tests/README.md 和 specs/002-fixed-source/quickstart.md 的兼容/历史读取示例与诊断，串行执行 typecheck/build/全套测试并在 docs/work/2026/11/D007-fixed-source-hardening/handoff.md 记录真实环境与轮次
-- [ ] T022 固定候选后调用 Ponytail Review 独立审查，取得写入交还并逐字保存 docs/work/2026/11/D007-fixed-source-hardening/review.md，处理/复核发现、完成 handoff.md 并保留分支待主脑接回
+- [x] T022 固定候选后调用 Ponytail Review 独立审查，取得写入交还并逐字保存 docs/work/2026/11/D007-fixed-source-hardening/review.md，处理/复核发现、完成 handoff.md 并保留分支待主脑接回
 
 ### D007 Dependencies & Execution Order
 

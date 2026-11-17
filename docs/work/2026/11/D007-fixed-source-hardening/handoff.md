@@ -2,11 +2,11 @@
 
 ## 当前结论与入口
 
-- 执行中，批准为 [task.md](task.md)@05daca6，接续分支 `codex/fix-fixed-source-hardening`，初始 HEAD 为 `05daca6f463a8cd0ab8a2e04c7e8640b8c6d0ad3`，比较 dev 基线 `4ecb7ca36a68ae1909fec0ad52937b38b006107c`。接单时工作区干净，无有效调整文件。
-- 已完成 H01—H05 修复、002 正式材料增量及自测。typecheck/build 成功，完整串行测试 22/22、零跳过。正在固定成果候选供独立审查，独审结论待回。
+- 已完成 D007，批准为 [task.md](task.md)@05daca6，接续分支 `codex/fix-fixed-source-hardening`，初始 HEAD 为 `05daca6f463a8cd0ab8a2e04c7e8640b8c6d0ad3`，比较 dev 基线 `4ecb7ca36a68ae1909fec0ad52937b38b006107c`。接单时工作区干净，无有效调整文件。
+- H01—H05 修复、002 正式材料增量、自测和独审均完成。成果候选为 `0bec4741cc137436f128aa5fc4d82de1ca65bed2`。该候选 typecheck/build 成功，完整串行测试 22/22、零跳过，独审通过。审查原文见 [review.md](review.md)，其后的回执、独审归档、任务勾选与索引提交仅记录变更，复用该成果候选证据。
 - 本次技术选择为 CLI 增加成对 `--repository`/`--prefix`，传回 pin 已有字段以读取当前消失的子项目。原 `--project --commit --path` 仍用于现存项目，目标解析集中于同一 service.read。完整协议见 [CLI 契约](../../../../../specs/002-fixed-source/contracts/cli.md)，示例见 [quickstart](../../../../../specs/002-fixed-source/quickstart.md)。
 - 作者体验验收不适用，本单没有页面或教学呈现变更。其他平台、实际 UNC 仓库与资源限制注入未测，具体范围见下文。
-- 当前唯一 Git 写负责人为本执行。分支保留，dev 仍为上述基线，无推送或发布。下一步完成独审与归档后交回主脑，保留条件解除于后续获准合 dev。
+- 当前唯一 Git 写负责人为本执行。交回分支保留，工作区干净，dev 仍为上述基线，无合并、推送或发布，master/main 无改动。下一步由作者将此 handoff 交主脑接回，分支保留条件解除于后续获准合 dev。
 
 ## 依据与验证
 
@@ -71,6 +71,14 @@ git diff --check
 - 实际运行平台仅 Windows。Linux/macOS 及真实 UNC 共享仓库未测。
 - 30 秒超时、64 MiB 输出限制和 Windows 权限拒绝未做专门注入，沿用 D006 限制。
 - 真实用户项目、网页和教学效果、首版完整 A01 不在本次证据范围。历史源码仍依赖原 Git 仓库和对象可用。
+
+### 独立审查与归档检查
+
+2026-11-17，未参与实现的 `/root/d007_review` 对固定候选 `0bec4741cc137436f128aa5fc4d82de1ca65bed2` 按 Ponytail Review 与 Sharp Edges 独立审查，通过，无需修复项。独立运行 unit 5/5、定向 integration 8/8，另核完整 ID 同名引用的对象读取边界。逐字原文保存在 [review.md](review.md)，具体输入、检查和限制以原文为准。
+
+送审期间被审文件、构建与输入保持不变。审查结束确认同一 HEAD、干净工作区，额外探查和外部临时样例已清理，并明确“采集结束，可以恢复写入”。取得交还后仅保存原文、更新回执/T022 和任务索引。无需产品修复或复核轮次。
+
+成果候选中的 11 份变更 Markdown 共 57 个本地链接检查通过，零断链。文档归档再次核链接、空白、tasks 全勾和相对成果候选仅有记录差异。批准 task 原文与 05daca6 一致，dev 引用与接单基线一致，无新的产品取舍待作者决定。
 
 ## 资源与交回
 
