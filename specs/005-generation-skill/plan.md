@@ -1,0 +1,84 @@
+# Implementation Plan: 普通文件讲解的分批生成
+
+**Branch**: `codex/feat-generation-skill` | **Date**: 2026-11-17 | **Spec**: [spec.md](spec.md)
+
+**Input**: D010 @ `2a6f27d`、S01—S06 及本目录 spec。基线 dev `e331634`，复用 D007—D009 已核工具能力。本次完整执行 specify → plan → tasks → analyze → implement。
+
+## Summary
+
+以一个产品 Skill 入口连接现有 CLI。共用约束、教法、偏好、工具分别维护，generation 组织分批流程。AI 决定文件和块的语义，工具保留固定来源、ID、覆盖和图写入规则。通过隔离合成项目的实际代理调用与机械复核提供试读证据。
+
+## Technical Context
+
+**Language/Version**: 中文 Markdown 指南与模板，Node.js 24 的 `.mjs` 开发样例和检查。复用 TypeScript 5.9.3 CLI。
+
+**Primary Dependencies**: 既有 Git 2.45+、Node、编译后 CLI，不新增依赖。
+
+**Storage**: 目标项目 `docs/aftertaste/` 的 current、dependency-graph.json、preferences.md、reading-direction.md。产品包只保留通用原件。
+
+**Testing**: Node assert 静态／样例核验、真实模拟使用代理串行场景、独立只读审查。
+
+**Target Platform**: 当前 Windows／PowerShell／Codex 显式加载开发树，其他宿主与安装留待交付任务。
+
+**Project Type**: AI Skill 配已有 CLI。
+
+**Performance Goals**: 本单以小批次可读与真实完成度验收，无新增性能承诺。
+
+**Constraints**: 源码只在内存消费，资料冲突不覆盖，读取失败不换来源。当前 cwd 与工具／项目位置独立，保留完整 pin 映射。
+
+**Scale/Scope**: 普通文件新生成，逐批与连续两个节奏。无服务、页面、解析器或通用代理框架。
+
+## Constitution Check
+
+| 原则 | Phase 0 前检查 | Phase 1 后检查 |
+| --- | --- | --- |
+| I 已确认需求与授权 | S01—S06 与 spec FR 映射，无新增产品决策 | 路径和提示词细化在授权内，后置分支明确 |
+| II 固定源码与资料归属 | 完整 pin 映射，冲突先停依赖写入 | data-model 明确目标资料、写入方和失败保留，示例合成 |
+| III 共用规则与最少机制 | CLI 已有能力覆盖主流程 | 不写第二套解析／ID／图程序，无新增依赖 |
+| IV 分层验证与独审 | 真实代理调用和作者试读分开 | quickstart、行为用例及独审固定候选，教学效果待作者 |
+| V 官方结构 | 已读固定版技能，实际 resolve spec / setup-plan | 保留官方栏目，继续实际 setup-tasks / analyze / implement 前置 |
+
+两次门禁均无冲突。官方路径脚本的 BRANCH 是功能目录名，真实 Git 分支以 `git branch --show-current` 核验。每阶段前后检查 hooks，当前不存在 extensions.yml。
+
+## Project Structure
+
+### Documentation (this feature)
+
+```text
+specs/005-generation-skill/
+  spec.md
+  plan.md
+  research.md
+  data-model.md
+  contracts/skill.md
+  quickstart.md
+  checklists/requirements.md
+  tasks.md
+```
+
+### Source Code (repository root)
+
+```text
+skills/aftertaste-reader/
+  SKILL.md
+  references/{authoring,teaching,generation,feedback,tools}.md
+  assets/templates/{preferences,reading-direction}.md
+tests/skills/
+  generation.md
+  generation-static.test.mjs
+  generation-sample.test.mjs
+tests/fixtures/generation-project.mjs
+docs/usage/generation-skill.md
+docs/work/2026/11/D010-generation-skill/
+  task.md
+  evidence.md
+  sample/
+  review.md
+  handoff.md
+```
+
+**Structure Decision**: 沿目录规范分离产品原件、合成 fixture、可再生成沙盒和正式证据。源码工具未暴露必要缺口时保持原实现。
+
+## Complexity Tracking
+
+没有需要例外说明的原则违反。

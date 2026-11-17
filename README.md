@@ -16,6 +16,10 @@
 
 构建后可调用 `node dist/cli/main.js apply-graph/query-graph/validate-graph`。以 JSON 输入登记批次、按明确核对的使用者替换完整依赖列表、明确删除节点；查询区分未登记、未核对和已核对无依赖。工具只维护同一固定提交中的引用与关系，不自动分析依赖或生成讲解。完整参数见 [004 CLI 契约](specs/004-dependency-graph/contracts/cli.md)，可重跑合成示例见 [004 quickstart](specs/004-dependency-graph/quickstart.md)。
 
+## 普通文件讲解 Skill
+
+显式读取 [aftertaste-reader](skills/aftertaste-reader/SKILL.md)，确认目标项目、阅读范围及逐批／连续节奏后，AI 连接现有工具生成讲解、补齐依赖并维护阅读方向。[使用说明](docs/usage/generation-skill.md) 提供开发树步骤，[D010 回执](docs/work/2026/11/D010-generation-skill/handoff.md) 提供实测和作者试读入口。安装／发布、网页与其他生成分支待后续任务。
+
 ## 开发协作入口（2026-11-16）
 
 新主脑从 [D002 交接](docs/work/2026/11/D002-directory-layout/handoff.md)及 [D003 Spec Kit 接入与收束](docs/work/2026/11/D003-speckit-check/handoff.md)接续；文件落点看[目录职责](docs/development/directories.md)。正式需求、架构设计及后续更新必须按[官方 Spec Kit 技能／模板](docs/development/spec-kit.md)，偏离需告知。产品 Skill 与讲解 AI 指南在 [skills/aftertaste-reader](skills/aftertaste-reader/README.md)，按任务实验从 [experiments](experiments/README.md)进入。固定取源的实现与验证入口见上节。

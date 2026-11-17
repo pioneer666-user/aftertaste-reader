@@ -1,0 +1,39 @@
+{
+  "format": "aftertaste-dependency-graph/v1",
+  "source_commit": "5394d8f86c961ce1b327674235525f57bf0b982c",
+  "nodes": [
+    {
+      "path": "src/api.mjs",
+      "analysis": "reviewed"
+    },
+    {
+      "path": "src/rules.mjs",
+      "analysis": "reviewed"
+    },
+    {
+      "path": "src/service.mjs",
+      "analysis": "reviewed"
+    },
+    {
+      "path": "support/audit.mjs",
+      "analysis": "unreviewed"
+    }
+  ],
+  "edges": [
+    {
+      "dependency": "src/service.mjs",
+      "dependent": "src/api.mjs",
+      "reason": "转交正文与订单数组给创建函数，再将返回订单或同步异常包装为响应对象。"
+    },
+    {
+      "dependency": "src/rules.mjs",
+      "dependent": "src/service.mjs",
+      "reason": "创建订单前转换并校验数量，使用解析后的数字构造订单。"
+    },
+    {
+      "dependency": "support/audit.mjs",
+      "dependent": "src/service.mjs",
+      "reason": "追加订单后调用辅助记录，当前调用丢弃其字符串返回值。"
+    }
+  ]
+}

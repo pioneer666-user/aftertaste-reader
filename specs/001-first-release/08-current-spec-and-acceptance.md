@@ -2,6 +2,8 @@
 
 整理日期：2026-11-16。依据截至作者 U103；**已确认需求与授权技术选择的整理稿，不是实现完成报告或整套规格已获验收**。
 
+D010 于 2026-11-17 落实普通分批生成的 [Skill 入口](../../skills/aftertaste-reader/SKILL.md)、[005 规格](../005-generation-skill/spec.md) 和教学资料路径 `docs/aftertaste/preferences.md`、`reading-direction.md`。U74／U75 的唯一产品模板在 Skill 的 assets/templates，读写规则见 [005 模型](../005-generation-skill/data-model.md)。能力、实测与作者试读状态见 [D010 回执](../../docs/work/2026/11/D010-generation-skill/handoff.md)。其他分支按后续任务接入。
+
 本页是当前阅读入口，按基础、流程、界面和交付组织。01—07 保留讨论、详细格式和演进依据；其中旧的“未定”“建议”须结合后续确认阅读。若本页遗漏或转述与作者确认冲突，应报告并修正，不以本页悄悄改变裁决。作者原话唯一保存于外层任务 [task.md](../../../tasks/AR1-回甘首版需求设计/task.md) 和 [amendments.md](../../../tasks/AR1-回甘首版需求设计/amendments.md)。
 
 采用本地 Spec Kit v1.4.0 的用户场景、功能要求、成功条件和歧义分类方法；未运行 CLI 工作流。本页不新增作者未批准的正式暂缓项，缺口是本次盘点结果，不代表已决定延期或增加功能。

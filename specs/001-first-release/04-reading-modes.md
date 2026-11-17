@@ -232,7 +232,7 @@ AI 建议在同一阅读方向资料中保留简短的“已讲内容摘要”�
 
 ## U75 · 阅读方向资料最小模板（作者授权 AI 定稿）
 
-依据：[作者 U75](../../../tasks/AR1-回甘首版需求设计/amendments.md)。本节落实 U58、U70，唯一模板保存在这里，后续 Skill 引用。本轮不创建实际用户阅读方向文件，也不改变已确认的范围、节奏与两种阅读模式。
+依据：[作者 U75](../../../tasks/AR1-回甘首版需求设计/amendments.md)。本节落实 U58、U70。D010 将唯一产品原件落为 [reading-direction.md](../../skills/aftertaste-reader/assets/templates/reading-direction.md)，项目路径与维护规则见 [005 模型](../005-generation-skill/data-model.md)。下方保留原设计快照与讨论，后续只维护包内模板。U75 当轮没有创建实际资料，范围、节奏和两种阅读模式继续有效。
 
 ### 模板正文
 

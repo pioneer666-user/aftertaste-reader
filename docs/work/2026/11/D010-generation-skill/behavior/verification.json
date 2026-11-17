@@ -1,0 +1,320 @@
+{
+  "protection": {
+    "failures": {
+      "before": {
+        "dependency-graph.json": "35ec9bc68fbd4220de711075b8db84df3d8fd3d6b39f68c56bb50bab51372b21",
+        "preferences.md": "cd4e6b815bdd6803ca237701ae0858ca0f23211a5ed6d39280f1caeea1462063",
+        "reading-direction.md": "04348337cbf674b7274917c561a33e757ddeac8cbab8a9657afb9bea70f6dda0",
+        "current/src/rules.mjs.md": "16ed90ca87157d01fc025897d024f96221ea75bdd5e9ebb44d5cd5fb150eb9d1",
+        "current/src/service.mjs.md": "6b72a524cc525d2df30971bc62c5bb99f0ca006012c6300fd4acefd2e059b0dd"
+      },
+      "after": {
+        "dependency-graph.json": "35ec9bc68fbd4220de711075b8db84df3d8fd3d6b39f68c56bb50bab51372b21",
+        "preferences.md": "cd4e6b815bdd6803ca237701ae0858ca0f23211a5ed6d39280f1caeea1462063",
+        "reading-direction.md": "04348337cbf674b7274917c561a33e757ddeac8cbab8a9657afb9bea70f6dda0",
+        "current/src/rules.mjs.md": "16ed90ca87157d01fc025897d024f96221ea75bdd5e9ebb44d5cd5fb150eb9d1",
+        "current/src/service.mjs.md": "6b72a524cc525d2df30971bc62c5bb99f0ca006012c6300fd4acefd2e059b0dd"
+      },
+      "protectedOriginalsUnchanged": true
+    },
+    "invalid": {
+      "before": {
+        "dependency-graph.json": "35ec9bc68fbd4220de711075b8db84df3d8fd3d6b39f68c56bb50bab51372b21",
+        "preferences.md": "cd4e6b815bdd6803ca237701ae0858ca0f23211a5ed6d39280f1caeea1462063",
+        "reading-direction.md": "04348337cbf674b7274917c561a33e757ddeac8cbab8a9657afb9bea70f6dda0",
+        "current/src/rules.mjs.md": "802525f7f426287e436dc79404c4cc7dbf4187dfc061b7e9135ad5c6838b6e8a",
+        "current/src/service.mjs.md": "6b72a524cc525d2df30971bc62c5bb99f0ca006012c6300fd4acefd2e059b0dd"
+      },
+      "after": {
+        "dependency-graph.json": "55dfb077d1bf5af3b82a30525c844c482ebfc06a46f6ec5119150c758e9c0dfe",
+        "preferences.md": "cd4e6b815bdd6803ca237701ae0858ca0f23211a5ed6d39280f1caeea1462063",
+        "reading-direction.md": "4edb38d8fbc889b11eab5a68f4ccb61ac67d8be159dddf7c71dbfd9f11ede29c",
+        "current/src/api.mjs.md": "cbd9fcb7ea6b08c883b89751349c94dcadfbd71279b341a7d0803f0e2b216ef9",
+        "current/src/rules.mjs.md": "802525f7f426287e436dc79404c4cc7dbf4187dfc061b7e9135ad5c6838b6e8a",
+        "current/src/service.mjs.md": "6b72a524cc525d2df30971bc62c5bb99f0ca006012c6300fd4acefd2e059b0dd"
+      },
+      "protectedOriginalsUnchanged": true
+    },
+    "skeleton": {
+      "before": {
+        "dependency-graph.json": "35ec9bc68fbd4220de711075b8db84df3d8fd3d6b39f68c56bb50bab51372b21",
+        "preferences.md": "cd4e6b815bdd6803ca237701ae0858ca0f23211a5ed6d39280f1caeea1462063",
+        "reading-direction.md": "04348337cbf674b7274917c561a33e757ddeac8cbab8a9657afb9bea70f6dda0",
+        "current/src/rules.mjs.md": "6daf0b8b5d0560182ae0bfb353079b10bb9e9ca2d754003fa9aefbf0d51dacaa",
+        "current/src/service.mjs.md": "6b72a524cc525d2df30971bc62c5bb99f0ca006012c6300fd4acefd2e059b0dd"
+      },
+      "after": {
+        "dependency-graph.json": "35ec9bc68fbd4220de711075b8db84df3d8fd3d6b39f68c56bb50bab51372b21",
+        "preferences.md": "cd4e6b815bdd6803ca237701ae0858ca0f23211a5ed6d39280f1caeea1462063",
+        "reading-direction.md": "04348337cbf674b7274917c561a33e757ddeac8cbab8a9657afb9bea70f6dda0",
+        "current/src/rules.mjs.md": "6daf0b8b5d0560182ae0bfb353079b10bb9e9ca2d754003fa9aefbf0d51dacaa",
+        "current/src/service.mjs.md": "6b72a524cc525d2df30971bc62c5bb99f0ca006012c6300fd4acefd2e059b0dd"
+      },
+      "protectedOriginalsUnchanged": true
+    }
+  },
+  "unavailableHasNoData": true,
+  "conflictHasNoWrite": true,
+  "firstBatchOriginalsUnchanged": true,
+  "continuousPreferencesUnchanged": true,
+  "documents": [
+    {
+      "project": "batch",
+      "file": "rules",
+      "exit": 0,
+      "mechanicallyValid": true,
+      "sourceCheck": "completed",
+      "contentStatus": "provided",
+      "sourceLineCount": 7,
+      "diagnostics": []
+    },
+    {
+      "project": "batch",
+      "file": "service",
+      "exit": 0,
+      "mechanicallyValid": true,
+      "sourceCheck": "completed",
+      "contentStatus": "provided",
+      "sourceLineCount": 10,
+      "diagnostics": []
+    },
+    {
+      "project": "batch",
+      "file": "api",
+      "exit": 0,
+      "mechanicallyValid": true,
+      "sourceCheck": "completed",
+      "contentStatus": "provided",
+      "sourceLineCount": 9,
+      "diagnostics": []
+    },
+    {
+      "project": "continuous",
+      "file": "rules",
+      "exit": 0,
+      "mechanicallyValid": true,
+      "sourceCheck": "completed",
+      "contentStatus": "provided",
+      "sourceLineCount": 7,
+      "diagnostics": []
+    },
+    {
+      "project": "continuous",
+      "file": "service",
+      "exit": 0,
+      "mechanicallyValid": true,
+      "sourceCheck": "completed",
+      "contentStatus": "provided",
+      "sourceLineCount": 10,
+      "diagnostics": []
+    },
+    {
+      "project": "continuous",
+      "file": "api",
+      "exit": 0,
+      "mechanicallyValid": true,
+      "sourceCheck": "completed",
+      "contentStatus": "provided",
+      "sourceLineCount": 9,
+      "diagnostics": []
+    },
+    {
+      "project": "invalid",
+      "file": "rules",
+      "exit": 1,
+      "mechanicallyValid": false,
+      "sourceCheck": "completed",
+      "contentStatus": "unfilled",
+      "sourceLineCount": 7,
+      "diagnostics": [
+        "BLOCK_UNCLOSED",
+        "SOURCE_GAP"
+      ]
+    },
+    {
+      "project": "invalid",
+      "file": "service",
+      "exit": 0,
+      "mechanicallyValid": true,
+      "sourceCheck": "completed",
+      "contentStatus": "provided",
+      "sourceLineCount": 10,
+      "diagnostics": []
+    },
+    {
+      "project": "invalid",
+      "file": "api",
+      "exit": 0,
+      "mechanicallyValid": true,
+      "sourceCheck": "completed",
+      "contentStatus": "provided",
+      "sourceLineCount": 9,
+      "diagnostics": []
+    },
+    {
+      "project": "skeleton",
+      "file": "rules",
+      "exit": 0,
+      "mechanicallyValid": true,
+      "sourceCheck": "completed",
+      "contentStatus": "unfilled",
+      "sourceLineCount": 7,
+      "diagnostics": [
+        "EXPLANATION_EMPTY"
+      ]
+    }
+  ],
+  "graphs": [
+    {
+      "project": "batch",
+      "valid": true,
+      "sourceCheck": "completed",
+      "nodes": [
+        {
+          "path": "src/api.mjs",
+          "analysis": "reviewed"
+        },
+        {
+          "path": "src/rules.mjs",
+          "analysis": "reviewed"
+        },
+        {
+          "path": "src/service.mjs",
+          "analysis": "reviewed"
+        },
+        {
+          "path": "support/audit.mjs",
+          "analysis": "unreviewed"
+        }
+      ],
+      "edges": [
+        {
+          "dependency": "src/service.mjs",
+          "dependent": "src/api.mjs",
+          "reason": "将请求体与订单集合交给创建服务，并将成功结果或异常转换为响应对象"
+        },
+        {
+          "dependency": "src/rules.mjs",
+          "dependent": "src/service.mjs",
+          "reason": "在创建订单前使用数量转换与范围校验约定"
+        },
+        {
+          "dependency": "support/audit.mjs",
+          "dependent": "src/service.mjs",
+          "reason": "集合追加后调用审计辅助函数，当前返回文本被忽略"
+        }
+      ]
+    },
+    {
+      "project": "continuous",
+      "valid": true,
+      "sourceCheck": "completed",
+      "nodes": [
+        {
+          "path": "src/api.mjs",
+          "analysis": "reviewed"
+        },
+        {
+          "path": "src/rules.mjs",
+          "analysis": "reviewed"
+        },
+        {
+          "path": "src/service.mjs",
+          "analysis": "reviewed"
+        },
+        {
+          "path": "support/audit.mjs",
+          "analysis": "unreviewed"
+        }
+      ],
+      "edges": [
+        {
+          "dependency": "src/service.mjs",
+          "dependent": "src/api.mjs",
+          "reason": "转交正文与订单数组给创建函数，再将返回订单或同步异常包装为响应对象。"
+        },
+        {
+          "dependency": "src/rules.mjs",
+          "dependent": "src/service.mjs",
+          "reason": "创建订单前转换并校验数量，使用解析后的数字构造订单。"
+        },
+        {
+          "dependency": "support/audit.mjs",
+          "dependent": "src/service.mjs",
+          "reason": "追加订单后调用辅助记录，当前调用丢弃其字符串返回值。"
+        }
+      ]
+    },
+    {
+      "project": "invalid",
+      "valid": true,
+      "sourceCheck": "completed",
+      "nodes": [
+        {
+          "path": "src/api.mjs",
+          "analysis": "reviewed"
+        },
+        {
+          "path": "src/rules.mjs",
+          "analysis": "reviewed"
+        },
+        {
+          "path": "src/service.mjs",
+          "analysis": "reviewed"
+        },
+        {
+          "path": "support/audit.mjs",
+          "analysis": "unreviewed"
+        }
+      ],
+      "edges": [
+        {
+          "dependency": "src/service.mjs",
+          "dependent": "src/api.mjs",
+          "reason": "调用业务创建服务并将成功结果与异常转换为接口响应资料"
+        },
+        {
+          "dependency": "src/rules.mjs",
+          "dependent": "src/service.mjs",
+          "reason": "在创建订单前使用数量转换与范围校验约定"
+        },
+        {
+          "dependency": "support/audit.mjs",
+          "dependent": "src/service.mjs",
+          "reason": "集合追加后调用审计辅助函数，当前返回文本被忽略"
+        }
+      ]
+    },
+    {
+      "project": "skeleton",
+      "valid": true,
+      "sourceCheck": "completed",
+      "nodes": [
+        {
+          "path": "src/rules.mjs",
+          "analysis": "reviewed"
+        },
+        {
+          "path": "src/service.mjs",
+          "analysis": "reviewed"
+        },
+        {
+          "path": "support/audit.mjs",
+          "analysis": "unreviewed"
+        }
+      ],
+      "edges": [
+        {
+          "dependency": "src/rules.mjs",
+          "dependent": "src/service.mjs",
+          "reason": "在创建订单前使用数量转换与范围校验约定"
+        },
+        {
+          "dependency": "support/audit.mjs",
+          "dependent": "src/service.mjs",
+          "reason": "集合追加后调用审计辅助函数，当前返回文本被忽略"
+        }
+      ]
+    }
+  ]
+}
