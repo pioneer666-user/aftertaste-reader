@@ -6,6 +6,8 @@
 
 待择机处理的小事项见[项目待办](backlog.md)。主脑接回或准备下一项时按其中的触发时机检查；正式设计与实施仍进入对应规格和任务。
 
+开发规则与技能的实际使用意见集中在[反馈观察](development-feedback.md)；一般摩擦先积累独立场景，再判断是否需要通用调整。
+
 | 编号 | 任务 |
 | --- | --- |
 | D001 | [首版开发规范与技能接入](2026/11/D001-development-standards/task.md) · [回执](2026/11/D001-development-standards/handoff.md) |
@@ -15,5 +17,6 @@
 | D005 | [开发准备收尾](2026/11/D005-development-cleanup/task.md) · [回执](2026/11/D005-development-cleanup/handoff.md) |
 | D006 | [固定提交取源](2026/11/D006-fixed-source/task.md) · [回执](2026/11/D006-fixed-source/handoff.md) |
 | D007 | [固定取源加固](2026/11/D007-fixed-source-hardening/task.md) · [回执](2026/11/D007-fixed-source-hardening/handoff.md) |
+| D008 | [单篇讲解文档骨架与校验](2026/11/D008-document-blocks/task.md) · [回执](2026/11/D008-document-blocks/handoff.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。
