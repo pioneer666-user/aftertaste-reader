@@ -6,7 +6,7 @@
 
 ## 固定提交取源开发入口
 
-使用 Node.js 24 LTS、npm 和本地 Git 2.45+，在仓库根运行 `npm ci`、`npm run typecheck`、`npm run build`、`npm test`。构建后的命令入口为 `node dist/cli/main.js pin/read`，具体调用见 [002 quickstart](specs/002-fixed-source/quickstart.md)，共用用例在 `src/application/fixed-source.ts`。本批结果见 [D006 handoff](docs/work/2026/11/D006-fixed-source/handoff.md)。
+使用 Node.js 24 LTS、npm 和本地 Git 2.45+，在仓库根运行 `npm ci`、`npm run typecheck`、`npm run build`、`npm test`。构建后的命令入口为 `node dist/cli/main.js pin/read`，具体调用及历史子项目读取见 [002 quickstart](specs/002-fixed-source/quickstart.md)，共用用例在 `src/application/fixed-source.ts`。当前加固结果见 [D007 handoff](docs/work/2026/11/D007-fixed-source-hardening/handoff.md)，原交付见 [D006 handoff](docs/work/2026/11/D006-fixed-source/handoff.md)。
 
 ## 开发协作入口（2026-11-16）
 

@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { lstat, mkdir, readdir, readFile, readlink, symlink, unlink, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readdir, readFile, readlink, rename, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { FixedSourceService } from '../../dist/application/fixed-source.js';
 import { GitSourceRepository } from '../../dist/adapters/git-source.js';
-import { createFixture, git, initRepository, newSandbox, workspace } from '../fixtures/fixed-source.mjs';
+import { createFixture, git, initRepository, newExternalSandbox, newSandbox, workspace } from '../fixtures/fixed-source.mjs';
 
 const service = new FixedSourceService(new GitSourceRepository());
 
@@ -205,6 +205,15 @@ test('SHA256 仓库与提交树字面特殊路径', async () => {
   const fixed = await service.pin(root);
   assert.equal(fixed.commit.length, 64);
   assert.equal((await service.read(fixed, '[literal].ts')).content, 'sha256');
+  const result = cli(['read', '--project', root, '--commit', fixed.commit, '--path', '[literal].ts']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).file.commit, fixed.commit);
+  const alias = 'a'.repeat(40);
+  git(root, ['update-ref', `refs/heads/${alias}`, fixed.commit]);
+  assert.equal((await service.pin(root, alias)).commit, fixed.commit);
+  await assert.rejects(service.read({ ...fixed, commit: alias }, '[literal].ts'), {
+    code: 'INVALID_ARGUMENT',
+  });
 });
 
 test('CLI 在定位前拒绝越界，定位失败保留读取依据', async () => {
@@ -225,7 +234,7 @@ test('CLI 在定位前拒绝越界，定位失败保留读取依据', async () =
 test('Windows 无盘符根路径从不同 cwd 均在定位前拒绝', { skip: process.platform !== 'win32' }, async () => {
   const f = await createFixture();
   const driveLess = f.projectRoot.slice(2);
-  for (const cwd of [f.runRoot, path.parse(process.execPath).root]) {
+  for (const cwd of [f.runRoot, path.parse(process.env.SystemRoot ?? process.execPath).root]) {
     const pinned = cli(['pin', '--project', driveLess], cwd, { PATH: '' });
     assert.equal(pinned.status, 2);
     assert.equal(JSON.parse(pinned.stderr).error.code, 'INVALID_ARGUMENT');
@@ -239,4 +248,165 @@ test('Windows 无盘符根路径从不同 cwd 均在定位前拒绝', { skip: pr
     assert.equal(absoluteRead.status, 0, absoluteRead.stderr);
     assert.equal(JSON.parse(absoluteRead.stdout).file.content, 'A\n');
   }
+});
+
+test('D007 H01 形似完整提交的移动分支不能冒充固定身份', async t => {
+  const f = await createFixture();
+  const fixed = await service.pin(f.projectRoot, f.commitA);
+  const alias = 'a'.repeat(64);
+  const outcomes = [];
+  for (const commit of [f.commitA, f.commitB]) {
+    git(f.repositoryRoot, ['update-ref', `refs/heads/${alias}`, commit]);
+    assert.equal((await service.pin(f.projectRoot, alias)).commit, commit);
+    let serviceResult;
+    try {
+      serviceResult = { content: (await service.read({ ...fixed, commit: alias }, 'other.ts')).content };
+    } catch (error) {
+      serviceResult = { code: error.code, reason: error.context?.reason };
+    }
+    const result = cli(['read', '--project', f.projectRoot, '--commit', alias, '--path', 'other.ts']);
+    const cliResult = JSON.parse(result.status === 0 ? result.stdout : result.stderr);
+    outcomes.push({ serviceResult, status: result.status, cliCode: cliResult.error?.code,
+      cliReason: cliResult.error?.context.reason, cliContent: cliResult.file?.content });
+  }
+  t.diagnostic(JSON.stringify(outcomes));
+  for (const outcome of outcomes) {
+    assert.deepEqual(outcome.serviceResult, { code: 'INVALID_ARGUMENT', reason: 'COMMIT_ID_MISMATCH' });
+    assert.equal(outcome.status, 2);
+    assert.equal(outcome.cliCode, 'INVALID_ARGUMENT');
+    assert.equal(outcome.cliReason, 'COMMIT_ID_MISMATCH');
+  }
+  assert.equal((await service.read(fixed, 'other.ts')).content, 'A\n');
+});
+
+test('D007 H02 整个当前子项目消失后原固定引用和 CLI 仍可读', async t => {
+  const f = await createFixture();
+  const pinned = cli(['pin', '--project', f.projectRoot, '--revision', f.commitA]);
+  assert.equal(pinned.status, 0, pinned.stderr);
+  const fixed = JSON.parse(pinned.stdout).source;
+  await rename(f.projectRoot, path.join(f.runRoot, 'removed-project'));
+  assert.equal(git(f.repositoryRoot, ['cat-file', '-t', f.commitA]), 'commit');
+  const before = await snapshot(f.repositoryRoot);
+  const outcomes = [];
+  try {
+    outcomes.push({ content: (await service.read(fixed, 'other.ts')).content });
+  } catch (error) {
+    outcomes.push({ code: error.code });
+  }
+  for (const cwd of [workspace, f.runRoot]) {
+    const result = cli(['read', '--project', fixed.projectRoot, '--repository', fixed.repositoryRoot,
+      '--prefix', fixed.projectPrefix, '--commit', fixed.commit, '--path', 'other.ts'], cwd);
+    const body = JSON.parse(result.status === 0 ? result.stdout : result.stderr);
+    outcomes.push({ status: result.status, content: body.file?.content, code: body.error?.code });
+  }
+  t.diagnostic(JSON.stringify(outcomes));
+  assert.deepEqual(outcomes, [{ content: 'A\n' }, { status: 0, content: 'A\n', code: undefined },
+    { status: 0, content: 'A\n', code: undefined }]);
+  assert.deepEqual(await snapshot(f.repositoryRoot), before);
+});
+
+test('D007 H03 独立 bare 与普通非仓库诊断不同', async t => {
+  const root = await newExternalSandbox(t);
+  await assert.rejects(service.pin(root), { code: 'NOT_REPOSITORY' });
+  const ordinary = cli(['pin', '--project', root]);
+  assert.equal(JSON.parse(ordinary.stderr).error.code, 'NOT_REPOSITORY');
+  git(root, ['init', '--bare']);
+  assert.equal(git(root, ['rev-parse', '--is-bare-repository']), 'true');
+  const result = cli(['pin', '--project', root]);
+  t.diagnostic(result.stderr.trim());
+  assert.equal(JSON.parse(result.stderr).error.code, 'UNSUPPORTED_TARGET');
+  assert.equal(JSON.parse(result.stderr).error.context.reason, 'BARE_REPOSITORY');
+  await assert.rejects(service.pin(root), { code: 'UNSUPPORTED_TARGET', context: {
+    projectRoot: root, reason: 'BARE_REPOSITORY',
+  } });
+});
+
+test('D007 历史固定映射拒绝篡改、元数据及提交树链接/gitlink', async () => {
+  const f = await createFixture();
+  const fixed = await service.pin(f.projectRoot, f.commitB);
+  await rename(f.projectRoot, path.join(f.runRoot, 'removed-project'));
+  const before = await snapshot(f.repositoryRoot);
+  for (const changed of [
+    { projectPrefix: 'packages/other' }, { projectRoot: f.repositoryRoot },
+    { projectPrefix: '../outside' }, { projectPrefix: 'packages//小 项目' },
+    { projectPrefix: '.git' }, { projectPrefix: 'packages/.GIT' },
+    { projectPrefix: '/absolute' }, { projectPrefix: 'C:/outside' },
+    { repositoryRoot: path.join(f.repositoryRoot, 'packages'), projectPrefix: '小 项目' },
+  ]) {
+    const forged = { ...fixed, ...changed };
+    await assert.rejects(service.read(forged, 'other.ts'), { code: 'INVALID_ARGUMENT' });
+    const result = cli(['read', '--project', forged.projectRoot, '--repository', forged.repositoryRoot,
+      '--prefix', forged.projectPrefix, '--commit', forged.commit, '--path', 'other.ts']);
+    assert.equal(result.status, 2, result.stderr);
+    assert.equal(result.stdout, '');
+    assert.equal(JSON.parse(result.stderr).error.code, 'INVALID_ARGUMENT');
+  }
+  for (const prefix of [`${fixed.projectPrefix}/link`, `${fixed.projectPrefix}/module`]) {
+    const forged = { ...fixed, projectRoot: path.join(f.repositoryRoot, prefix), projectPrefix: prefix };
+    await assert.rejects(service.read(forged, 'a.ts'), { code: 'UNSUPPORTED_FILE_TYPE' });
+    const result = cli(['read', '--project', forged.projectRoot, '--repository', forged.repositoryRoot,
+      '--prefix', prefix, '--commit', fixed.commit, '--path', 'a.ts']);
+    assert.equal(JSON.parse(result.stderr).error.code, 'UNSUPPORTED_FILE_TYPE');
+  }
+  for (const [filePath, code] of [['../outside.ts', 'INVALID_PATH'], ['.git/config', 'INVALID_PATH'],
+    ['module/a.ts', 'UNSUPPORTED_FILE_TYPE'], ['link/a.ts', 'UNSUPPORTED_FILE_TYPE']]) {
+    await assert.rejects(service.read(fixed, filePath), { code });
+  }
+  assert.deepEqual(await snapshot(f.repositoryRoot), before);
+  await symlink(path.join(f.runRoot, 'removed-project'), f.projectRoot, process.platform === 'win32' ? 'junction' : 'dir');
+  const linkedBefore = await snapshot(f.repositoryRoot);
+  assert.equal((await service.read(fixed, 'other.ts')).content, 'B\n');
+  const linkedRead = cli(['read', '--project', fixed.projectRoot, '--repository', fixed.repositoryRoot,
+    '--prefix', fixed.projectPrefix, '--commit', fixed.commit, '--path', 'other.ts']);
+  assert.equal(linkedRead.status, 0, linkedRead.stderr);
+  assert.equal(JSON.parse(linkedRead.stdout).file.content, 'B\n');
+  await assert.rejects(service.pin(f.projectRoot), { code: 'UNSUPPORTED_TARGET' });
+  assert.deepEqual(await snapshot(f.repositoryRoot), linkedBefore);
+});
+
+test('D007 完整映射参数成对校验、根项目前缀为空且前置拒绝路径', async () => {
+  const f = await createFixture();
+  const pinned = await service.pin(f.repositoryRoot, f.commitA);
+  const rootRead = cli(['read', '--project', pinned.projectRoot, '--repository', pinned.repositoryRoot,
+    '--prefix', '', '--commit', pinned.commit, '--path', 'outside.ts']);
+  assert.equal(rootRead.status, 0, rootRead.stderr);
+  assert.equal(JSON.parse(rootRead.stdout).file.content, 'outside project');
+  const base = ['read', '--project', f.projectRoot, '--commit', f.commitA, '--path', 'other.ts'];
+  for (const args of [[...base, '--repository', f.repositoryRoot], [...base, '--prefix', 'packages/小 项目']]) {
+    const result = cli(args, workspace, { PATH: '' });
+    assert.equal(result.status, 2);
+    assert.equal(JSON.parse(result.stderr).error.context.reason, 'INCOMPLETE_MAPPING');
+  }
+  const invalid = cli(['read', '--project', f.projectRoot, '--repository', f.repositoryRoot,
+    '--prefix', 'packages/other', '--commit', f.commitA, '--path', 'other.ts'], workspace, { PATH: '' });
+  assert.equal(invalid.status, 2);
+  assert.equal(JSON.parse(invalid.stderr).error.context.reason, 'MAPPING_MISMATCH');
+  const outside = cli(['read', '--project', f.projectRoot, '--repository', f.repositoryRoot,
+    '--prefix', 'packages/小 项目', '--commit', f.commitA, '--path', '../outside.ts'], workspace, { PATH: '' });
+  assert.equal(outside.status, 2);
+  assert.equal(JSON.parse(outside.stderr).error.code, 'INVALID_PATH');
+});
+
+test('D007 历史映射的原仓库或提交确实不可用时准确失败', async () => {
+  const f = await createFixture();
+  const fixed = await service.pin(f.projectRoot, f.commitA);
+  await rename(f.projectRoot, path.join(f.runRoot, 'removed-project'));
+  await unlink(path.join(f.repositoryRoot, '.git/objects', f.commitA.slice(0, 2), f.commitA.slice(2)));
+  await assert.rejects(service.read(fixed, 'other.ts'), { code: 'OBJECT_UNAVAILABLE' });
+  const unavailable = cli(['read', '--project', fixed.projectRoot, '--repository', fixed.repositoryRoot,
+    '--prefix', fixed.projectPrefix, '--commit', fixed.commit, '--path', 'other.ts']);
+  assert.equal(unavailable.status, 1);
+  assert.equal(JSON.parse(unavailable.stderr).error.code, 'OBJECT_UNAVAILABLE');
+  await rename(f.repositoryRoot, path.join(f.runRoot, 'removed-repository'));
+  await assert.rejects(service.read(fixed, 'other.ts'), { code: 'PROJECT_UNAVAILABLE' });
+  const missing = cli(['read', '--project', fixed.projectRoot, '--repository', fixed.repositoryRoot,
+    '--prefix', fixed.projectPrefix, '--commit', fixed.commit, '--path', 'other.ts']);
+  assert.equal(missing.status, 1);
+  const problem = JSON.parse(missing.stderr).error;
+  assert.equal(problem.code, 'PROJECT_UNAVAILABLE');
+  assert.equal(problem.context.repositoryRoot, fixed.repositoryRoot);
+  assert.equal(problem.context.projectRoot, fixed.projectRoot);
+  assert.equal(problem.context.repositoryPath, `${fixed.projectPrefix}/other.ts`);
+  assert.equal(problem.context.commit, fixed.commit);
+  assert.equal(problem.context.path, 'other.ts');
 });

@@ -34,3 +34,5 @@
 ## Notes
 
 由执行按 speckit-specify 校验需求质量，共 16 项。勾选表示需求可实施，产品验证结果在 D006 handoff。
+
+2026-11-17 按 speckit-specify 对 D007@05daca6 增量逐项复核，16 项仍满足。新增身份、历史读取、映射边界与独立 bare 场景分别有明确要求及可观察成功条件，具体接口留给 plan/contracts。此复核为需求质量，实施结果见 D007 handoff。

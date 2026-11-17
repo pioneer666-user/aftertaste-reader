@@ -4,6 +4,8 @@
 
 **Prerequisites** | 官方 specify 和 plan 材料已完成，按 analyze 核一致性后实施。
 
+**D007 User Input** | 批准为 docs/work/2026/11/D007-fixed-source-hardening/task.md@05daca6，范围 H01—H05。既有实现为 dev@4ecb7ca，D006 的 14 项测试与独审只覆盖当时场景，H01—H03 已由主脑补查复现。此次仅增量维护本目录材料和任务指定源码、测试、现有说明及 D007 回执/独审。后置文档解析、指南、HTTP、页面、画布、更新与导出继续留待后续派单。本段同时作为 tasks、analyze、implement 的输入。
+
 **Tests** | D006 明确要求。先编写测试并观察未实现失败，再实现。测试文件与样例串行执行。
 
 **Organization** | 按场景安排，同一目标完整交付。
@@ -14,7 +16,7 @@
 
 ## Path Conventions
 
-根单工程使用 `src/`、`tests/`，可重建输出使用 `.local/D006-fixed-source/` 和 `dist/`。
+根单工程使用 `src/`、`tests/`，D006 的可重建输出使用 `.local/D006-fixed-source/`，D007 使用 `.local/D007/<run-id>/`，构建输出为 `dist/`。
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -104,3 +106,37 @@ US2 复用 US1 的取源用例，两个场景各自有独立判据。FR-001 由 
 ## Notes
 
 A01 仅本批取源部分。独审和作者体验分别报告。成果与修复分别提交，保留候选分支。
+
+## Phase 6: D007 Setup & Foundational
+
+- [x] T013 按实际 spec/plan/tasks 模板增量维护 specs/002-fixed-source/，执行 analyze，检查 implement 前置与全部 checklist，保留 T001—T012 的 D006 记录
+- [x] T014 在 tests/fixtures/fixed-source.mjs 将本批输出隔离到 .local/D007/<run-id>/，建立独立系统临时样例并核无外层工作仓库
+
+## Phase 7: D007 User Story 1 - 不可变身份与历史读取 (Priority: P1)
+
+**Goal** | H01/H02，固定身份与历史子项目读取成立。
+
+**Independent Test** | 移动同形别名两次均拒绝，有效 SHA-1/SHA-256 可读，移走整个子项目后原引用在用例与两个 cwd 的 CLI 仍读 A。
+
+- [x] T015 [US1] 在 tests/integration/fixed-source.test.mjs 先以旧实现运行 H01/H02 回归，记录实际失败及输入到 docs/work/2026/11/D007-fixed-source-hardening/handoff.md
+- [x] T016 [US1] 在 src/application/fixed-source.ts 校验完整固定字段、规范前缀与根组合，历史读取只核原仓库，保留旧 fixed 字段；在 src/adapters/git-source.ts 核实实际完整 commit 身份并沿不可变 ID 读取
+- [x] T017 [US1] 在 tests/integration/fixed-source.test.mjs 验证有效完整对象、原仓库/对象不可用、映射篡改、越界、元数据和提交树链接/gitlink，核历史读取只读与诊断
+
+## Phase 8: D007 User Story 2 - 诊断与共用入口 (Priority: P1)
+
+**Goal** | H03/H04/H05，目标诊断真实、入口共用、平台路径有效。
+
+**Independent Test** | 外层仓库之外的 bare 为 UNSUPPORTED_TARGET，普通目录为 NOT_REPOSITORY，共用用例同次 read 项目定位一次，平台路径样例及 Windows 专项保留。
+
+- [x] T018 [US2] 在 tests/integration/fixed-source.test.mjs 先记录独立 bare 的旧实现失败，在 src/adapters/git-source.ts 将 bare 判定置于祖先搜索前，累计第 2 轮修复后串行验证，失败停写
+- [x] T019 [US2] 在 src/application/fixed-source.ts 接收 projectRoot/commit 便捷输入并定位一次，src/cli/main.ts 仅传输参数，新增成对 --repository/--prefix 复用完整固定引用
+- [x] T020 [US2] 在 tests/unit/fixed-source.test.mjs 使用当前平台绝对路径、核单次项目定位和固定映射校验，在 tests/integration/fixed-source.test.mjs 保留 Windows 无盘符/跨盘及新增参数前置拒绝
+
+## Phase 9: D007 Polish & Cross-Cutting Concerns
+
+- [x] T021 更新 README.md、tests/README.md 和 specs/002-fixed-source/quickstart.md 的兼容/历史读取示例与诊断，串行执行 typecheck/build/全套测试并在 docs/work/2026/11/D007-fixed-source-hardening/handoff.md 记录真实环境与轮次
+- [x] T022 固定候选后调用 Ponytail Review 独立审查，取得写入交还并逐字保存 docs/work/2026/11/D007-fixed-source-hardening/review.md，处理/复核发现、完成 handoff.md 并保留分支待主脑接回
+
+### D007 Dependencies & Execution Order
+
+T013 → T014 → T015/T018 的失败采集 → T016/T019/T020 → T017/T018 的修复验证 → T021 → T022。实施和测试均串行，两个场景按各自独立判据验收，完整 D007 交回须 H01—H05 闭合。US1 相关任务覆盖 FR-003/008 与 SC-005/006，US2 覆盖 FR-001/005/007/009 与 SC-002/006，T017/T021 回归 FR-002/004/006 和 SC-001/003/004。没有同文件无依赖的并行写入机会。

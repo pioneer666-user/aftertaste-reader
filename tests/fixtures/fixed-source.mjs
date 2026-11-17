@@ -1,10 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, writeFile, unlink } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, realpath, rm, writeFile, unlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const workspace = fileURLToPath(new URL('../../', import.meta.url));
-export const sandbox = path.join(workspace, '.local/D006-fixed-source');
+export const sandbox = path.join(workspace, '.local/D007');
 
 export function git(cwd, args, input) {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')));
@@ -17,6 +19,19 @@ export function git(cwd, args, input) {
 export async function newSandbox() {
   await mkdir(sandbox, { recursive: true });
   return mkdtemp(path.join(sandbox, 'run-'));
+}
+
+export async function newExternalSandbox(t) {
+  const temporaryRoot = await realpath(tmpdir());
+  const root = await mkdtemp(path.join(temporaryRoot, 'aftertaste-D007-'));
+  assert.equal(path.dirname(root), temporaryRoot);
+  assert.throws(() => git(root, ['rev-parse', '--show-toplevel']));
+  t.diagnostic(`独立临时样例 ${root}`);
+  t.after(async () => {
+    assert.equal(path.dirname(await realpath(root)), temporaryRoot);
+    await rm(root, { recursive: true, force: true });
+  });
+  return root;
 }
 
 export async function initRepository(root) {
