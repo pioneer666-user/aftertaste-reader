@@ -16,6 +16,17 @@ function unsafe(projectRoot: string, documentPath: string): DocumentError {
   return new DocumentError('DOCUMENT_PATH_UNSAFE', '文档路径包含链接或非普通目录/文件。', '使用指定项目中无链接的真实资料目录。', { projectRoot, documentPath });
 }
 
+async function canonicalDirectory(directory: string, projectRoot: string, documentPath: string): Promise<string> {
+  const entry = await lstat(directory, { bigint: true });
+  if (!entry.isDirectory() || entry.isSymbolicLink()) throw unsafe(projectRoot, documentPath);
+  const canonical = await realpath(directory);
+  const resolved = await lstat(canonical, { bigint: true });
+  if (!resolved.isDirectory() || resolved.isSymbolicLink() || entry.dev !== resolved.dev || entry.ino !== resolved.ino) {
+    throw unsafe(projectRoot, documentPath);
+  }
+  return canonical;
+}
+
 async function targetPath(projectRoot: string, documentPath: string, create: boolean): Promise<string> {
   validateProjectRoot(projectRoot);
   sourcePathForDocument(documentPath);
@@ -31,20 +42,17 @@ async function targetPath(projectRoot: string, documentPath: string, create: boo
     if (parent === ancestor) break;
     ancestor = parent;
   }
-  if (await realpath(projectRoot) !== projectRoot) throw unsafe(projectRoot, documentPath);
-  let current = projectRoot;
+  let current = await canonicalDirectory(projectRoot, projectRoot, documentPath);
   const segments = documentPath.split('/');
   for (const segment of segments.slice(0, -1)) {
     current = path.join(current, segment);
-    let entry;
-    try { entry = await lstat(current); }
+    try { current = await canonicalDirectory(current, projectRoot, documentPath); }
     catch (error) {
       if (!create || systemCode(error) !== 'ENOENT') throw error;
       try { await mkdir(current); }
       catch (mkdirError) { if (systemCode(mkdirError) !== 'EEXIST') throw mkdirError; }
-      entry = await lstat(current);
+      current = await canonicalDirectory(current, projectRoot, documentPath);
     }
-    if (!entry.isDirectory() || entry.isSymbolicLink() || await realpath(current) !== current) throw unsafe(projectRoot, documentPath);
   }
   const target = path.join(current, segments.at(-1)!);
   try {

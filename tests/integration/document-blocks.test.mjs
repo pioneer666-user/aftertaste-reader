@@ -45,6 +45,37 @@ test('CLI 从异 cwd 创建镜像、填写、固定 A 校验且只读，旧入�
   assert.equal(rawRead.json.file.content, sourceText);
 });
 
+test('Windows 已有混合大小写普通目录支持创建和校验，大小写别名中的 junction 仍被拒绝',
+  { skip: process.platform !== 'win32' }, async () => {
+    const f = await createDocumentFixture();
+    const actualCurrent = path.join(f.projectRoot, 'Docs/AfterTaste/Current');
+    await mkdir(path.join(actualCurrent, 'NESTED'), { recursive: true });
+    const existing = `<!-- aftertaste:document commit=${f.commit} -->\n\n` +
+      '<!-- aftertaste:block id=abcdefgh lines=1-3 -->\n合成讲解。\n<!-- aftertaste:end -->\n';
+    const existingTarget = path.join(actualCurrent, 'a.ts.md');
+    await writeFile(existingTarget, existing);
+    const validated = cli(f, 'validate-document', { document: documentPath }, f.runRoot);
+    const created = cli(f, 'create-document', { commit: f.commit, path: 'nested/a.ts', blocks: JSON.stringify(plan) }, f.runRoot);
+    assert.deepEqual([validated.status, created.status], [0, 0], JSON.stringify({ validated, created }));
+    assert.equal(created.json.result.mechanicallyValid, true);
+    assert.equal(created.json.result.documentPath, 'docs/aftertaste/current/nested/a.ts.md');
+    assert.equal(await readFile(existingTarget, 'utf8'), existing);
+    const nestedDocument = 'docs/aftertaste/current/nested/a.ts.md';
+    assert.equal(cli(f, 'validate-document', { document: nestedDocument }).status, 0);
+    const duplicate = cli(f, 'create-document', { commit: f.commit, path: 'nested/a.ts', blocks: JSON.stringify(plan) });
+    assert.equal(duplicate.json.error.code, 'DOCUMENT_EXISTS');
+    const store = new DocumentFileStore();
+    const rootAlias = f.projectRoot.replace(`${path.sep}packages${path.sep}`, `${path.sep}PACKAGES${path.sep}`);
+    assert.equal(await store.read(rootAlias, documentPath), existing);
+    const outside = path.join(f.runRoot, 'outside-case');
+    await mkdir(outside);
+    await symlink(outside, path.join(actualCurrent, 'Linked'), 'junction');
+    const linkedDocument = 'docs/aftertaste/current/linked/a.ts.md';
+    await assert.rejects(store.create(f.projectRoot, linkedDocument, existing), { code: 'DOCUMENT_PATH_UNSAFE' });
+    await assert.rejects(store.read(f.projectRoot, linkedDocument), { code: 'DOCUMENT_PATH_UNSAFE' });
+    assert.deepEqual(await readdir(outside), []);
+  });
+
 test('共用用例保护并发新建，空文件没有虚构源码行', async () => {
   const f = await createDocumentFixture();
   const outcomes = await Promise.allSettled([service().create(f, 'a.ts', plan), service().create(f, 'a.ts', plan)]);
