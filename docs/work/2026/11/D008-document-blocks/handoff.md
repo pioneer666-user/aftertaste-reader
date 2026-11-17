@@ -2,9 +2,9 @@
 
 ## 当前结论与入口
 
-M01—M06 完成，当前成果候选为 `3126c54a502a3d8d38b0e65a5e0abf4257efa0ab`。作者交回的 Windows 大小写 P2 已用真实磁盘和 CLI 复现，第 1 轮修复后 typecheck/build 与受影响文档集成 10/10 通过，独审 R4 复核通过并交还写入。此前范围对象问题已由 R2 关闭，全部原文见 [review.md](review.md)。后续归档仅维护审查与回执，复用同一成果审查。
+M01—M06 完成，并于 2026-11-17 按作者本会话“合并到dev”的明确授权合入 dev，合并提交 `d32f6629be1e08077bb68037cd57634a0ef01d0c`。合并来源为分支候选 `eac5be7`，成果与独审候选为 `3126c54a502a3d8d38b0e65a5e0abf4257efa0ab`。作者交回的 Windows 大小写 P2 已修复，typecheck/build 与受影响文档集成 10/10 通过，独审 R4 通过。范围对象问题已由 R2 关闭，全部原文见 [review.md](review.md)。
 
-批准入口为 [task.md @ 39a7fdf](task.md)，比较基线 dev `fa6360f`，接单 HEAD `39a7fdf`。当前分支 `codex/feat-document-blocks` 按作者要求保留候选，dev 为 `fa6360f4557d38936813fc369bcc1bf71653f122`。交回完成后由作者将本入口交主脑接回审查，后续整合和分支收尾等待对应授权。本次 Git 操作限该候选分支的实现、修复和归档提交，master/main、远程推送及发布没有本次操作。
+批准入口为 [task.md @ 39a7fdf](task.md)，比较基线 dev `fa6360f`，接单 HEAD `39a7fdf`。当前停在 dev，`codex/feat-document-blocks` 已确认全部提交包含于 dev，并按 Git 收尾规则安全删除。此前保留目的为接回审查，本次合并授权到来后已完成对应整合。作者页面及教学体验仍按本单不适用处理，合并授权记录为 Git 整合许可。master/main、远程推送及发布没有本次操作。
 
 可重跑入口为 [003 quickstart](../../../../../specs/003-document-blocks/quickstart.md)，调用参数及输出见 [CLI 契约](../../../../../specs/003-document-blocks/contracts/cli.md)，格式及状态见 [数据模型](../../../../../specs/003-document-blocks/data-model.md)。作者页面及教学体验本单不适用，机械校验通过不判断解释正确性。
 
@@ -74,6 +74,12 @@ R3 后续仅修文档 adapter 并新增 1 项 Windows 集成回归，Node 24.11.
 作者转交外审 R3 后，执行实际复现并另提交目录大小写修复。原审查者对 `205e129..3126c54` 全部差异完成 R4，独立重跑新增 Windows 回归并确认 P2 关闭，候选一致、工作区干净、采集进程结束后明确交还写入。修复提交仅涉及文档 adapter、集成回归和本单证据，原有 core 与固定取源判定继续复用。
 
 本单的作者页面及教学体验验收不适用，原因是交付为文档制作与机械检查工具。本单完成情况交作者／主脑接回审查，不记作完整首版页面或教学体验通过。
+
+### dev 整合核验
+
+2026-11-17，作者在本执行会话明确指令“合并到dev”。合并前工作区干净，dev 为原基线 `fa6360f`，候选 `eac5be7` 相对 R4 成果候选仅有审查和回执归档。现有运行进程、worktree 和忽略目录已核，依赖、dist、任务级 Node 和合成样例保持可用。
+
+执行 `git merge --no-ff codex/feat-document-blocks`，生成 `d32f662`，父提交依次为 `fa6360f` 和 `eac5be7`。合并树与分支候选逐文件相同，源码、测试、依赖和构建输入与 R4 候选相同，复用已有自测及独审证据。核候选包含关系、无分支独有提交、仅当前 dev worktree 后，执行 `git branch -d codex/feat-document-blocks` 成功。收尾只更新本回执，不再重复运行相同版本测试。
 
 ## 资源与交回
 
