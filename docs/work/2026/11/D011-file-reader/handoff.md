@@ -39,7 +39,7 @@ Git 停在 dev，已核合并双亲为 bf15ac7 与 028fa57，合并树与 028fa5
 2. 长内容阅读与文件切换是否顺手。
 3. 中英文界面及错误提示是否清楚。
 
-自建待验服务在合并后的开发树运行，端口 4317，PID 40824，执行工具终端会话 66834。合并前已停止原自建服务，合并后核构建与样例再恢复原地址。服务与 dist 构建、合成样例对应上述行为候选。普通浏览器直接打开上述地址。
+2026-11-18 主脑接回时，原执行服务（PID 40824）所在的 4317 端口已无监听。核对 35 个构建文件与独审 R2 清单一致后，使用原合成样例在原地址恢复待验服务，本次 PID 41004。首页返回 HTTP 200，文档列表返回 rules、service 两篇讲解。普通浏览器直接打开上述地址。
 
 如进程已经关闭，在 Windows PowerShell 运行以下一条命令即可重启。它使用本机已有 Node 24，只读取合成样例，看到 ready 和 URL 表示完成。
 
@@ -47,6 +47,6 @@ Git 停在 dev，已核合并双亲为 bf15ac7 与 028fa57，合并树与 028fa5
 & 'D:/project/SpecDev Harness/aftertaste-reader/.local/D009/runtime/node.exe' 'D:/project/SpecDev Harness/aftertaste-reader/dist/cli/main.js' serve --project 'D:/project/SpecDev Harness/aftertaste-reader/.local/D011/author-sample'
 ```
 
-自行重启的服务在该终端 Ctrl+C 停止。当前执行创建的服务可交执行按归属关闭，或先核端口进程为上述 PID 后停止该进程。验收完成且确认不再复核时可清理 D011 自建样例与截图。D010 原件、沙盒及其他任务资源保留。
+自行重启的服务在该终端 Ctrl+C 停止。主脑恢复的后台服务可在核对端口进程与上述 PID、样例路径一致后停止。验收完成且确认不再复核时可清理 D011 自建样例与截图。D010 原件、沙盒及其他任务资源保留。
 
 可移植使用说明见 [本地阅读](../../../../usage/file-reader.md)。正式运行需要 Node24/Git，当前开发树与本机 Node 路径并非安装发布入口。
