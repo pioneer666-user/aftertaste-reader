@@ -8,7 +8,7 @@ export const loopInputFormat = 'aftertaste-loop-input/v1';
 export const loopFormat = 'aftertaste-loop/v1';
 
 type LoopErrorCode = 'LOOP_INPUT_INVALID' | 'LOOP_INPUT_READ_FAILED' | 'LOOP_BLOCK_INVALID' | 'LOOP_LEGEND_INVALID' |
-  'LOOP_EXISTS' | 'LOOP_INVALID' | 'LOOP_NOT_FOUND' | 'LOOP_PATH_UNSAFE' | 'LOOP_READ_FAILED' | 'LOOP_WRITE_FAILED';
+  'LOOP_EXISTS' | 'LOOP_INVALID' | 'LOOP_NOT_FOUND' | 'LOOP_PATH_UNSAFE' | 'LOOP_READ_FAILED' | 'LOOP_WRITE_FAILED' | 'LOOP_LIST_FAILED';
 
 export class LoopError extends Error {
   constructor(public readonly code: LoopErrorCode, message: string, public readonly nextStep: string,
@@ -59,7 +59,7 @@ export interface SavedLoop extends Route<SavedNode> {
   legends: LibraryLegend[];
 }
 
-function isNodeId(value: unknown): value is string {
+export function isNodeId(value: unknown): value is string {
   return typeof value === 'string' && value.length <= 64 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value);
 }
 

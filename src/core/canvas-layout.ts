@@ -45,7 +45,7 @@ function coordinate(value: unknown, field: string): number {
   return value;
 }
 
-export function parseLayout(value: unknown, source: 'file' | 'request' = 'file'): CanvasLayout {
+export function parseLayout(value: unknown, source: 'file' | 'request' = 'file', acceptsId: (id: string) => boolean = isCanvasId): CanvasLayout {
   const { positions, groups, viewport } = layoutObject(value, ['positions', 'groups', 'viewport'], '$.layout');
   const positionsField = '$.layout.positions';
   if (!positions || typeof positions !== 'object' || Array.isArray(positions) !== (source === 'request')) invalid(positionsField);
@@ -58,7 +58,7 @@ export function parseLayout(value: unknown, source: 'file' | 'request' = 'file')
   } else entries = Object.entries(positions);
   const coordinates = Object.fromEntries(entries.map(([id, value]) => {
     const field = `$.layout.positions[${JSON.stringify(id)}]`;
-    if (!isCanvasId(id)) invalid(field);
+    if (!acceptsId(id)) invalid(field);
     const { x, y } = layoutObject(value, ['x', 'y'], field);
     return [id, { x: coordinate(x, field + '.x'), y: coordinate(y, field + '.y') }] as const;
   }));

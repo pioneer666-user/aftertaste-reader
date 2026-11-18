@@ -18,7 +18,7 @@ type NodeSource =
   | { node_id: string; status: 'available'; lines: string[] }
   | { node_id: string; status: 'unavailable'; error: SourceIssue };
 
-interface ReadingLoop {
+export interface ReadingLoop {
   loop: SavedLoop;
   sources: NodeSource[];
   sourceCheck: 'completed' | 'unavailable';
@@ -26,7 +26,7 @@ interface ReadingLoop {
   teachingQuality: 'unchecked';
 }
 
-function checkId(id: string): void {
+export function checkLoopId(id: string): void {
   if (!isLoopId(id)) throw new SourceError('INVALID_ARGUMENT', '闭环 ID 无效。', '使用支持的小写名称，避开设备名。', { loopId: id });
 }
 
@@ -41,7 +41,7 @@ export class LoopService {
     private readonly graphs: Pick<GraphService, 'queryLegends'>, private readonly store: LoopStore) {}
 
   async create(source: FixedSource, id: string, value: unknown) {
-    checkId(id);
+    checkLoopId(id);
     const fixed = checkedFixedSource(source);
     const { nodes, legends, ...route } = parseLoopInput(value);
     await this.sources.verify(fixed);
@@ -94,12 +94,15 @@ export class LoopService {
 
   async read(projectRoot: string, id: string): Promise<ReadingLoop> {
     validateProjectRoot(projectRoot);
-    checkId(id);
+    checkLoopId(id);
     const saved = await this.store.read(projectRoot, id);
-    const loop = parseSavedLoop(saved.raw, id);
+    return this.readSources(saved.projectRoot, parseSavedLoop(saved.raw, id));
+  }
+
+  async readSources(projectRoot: string, loop: SavedLoop): Promise<ReadingLoop> {
     const projectPrefix = loop.project_prefix;
-    const repositoryRoot = path.resolve(saved.projectRoot, ...projectPrefix.split('/').filter(Boolean).map(() => '..'));
-    const fixed = { projectRoot: saved.projectRoot, repositoryRoot, projectPrefix, commit: loop.source_commit };
+    const repositoryRoot = path.resolve(projectRoot, ...projectPrefix.split('/').filter(Boolean).map(() => '..'));
+    const fixed = { projectRoot, repositoryRoot, projectPrefix, commit: loop.source_commit };
     const files = new Map<string, string[] | SourceError>();
     const sources: NodeSource[] = [];
     for (const node of loop.nodes) {

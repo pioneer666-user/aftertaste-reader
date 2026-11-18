@@ -6,21 +6,30 @@ import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
 import './canvas.css';
 import DependencyEdge from './DependencyEdge.vue';
+import LoopReading from './LoopReading.vue';
 import { groupBounds, maxZoom, minZoom, moveMembers, nodeSize, rearrange, reconcileLayout, renewedPaths, updateGroup } from '../core/canvas-layout.js';
 import type { CanvasGroup, CanvasLayout, Point } from '../core/canvas-layout.js';
 import { canvasIds, isLegendKey, legendKey } from '../core/dependency-graph.js';
 import type { LibraryLegend } from '../core/dependency-graph.js';
-import type { CanvasReading, LayoutWrite } from '../application/dependency-canvas.js';
+import type { CanvasReading } from '../application/dependency-canvas.js';
+import type { LayoutWrite } from '../application/canvas-layout.js';
+import type { LoopCanvasReading } from '../application/loop-reader.js';
 import type { ReaderProblem } from '../application/file-reader.js';
 import { failed, request } from './reader-api.js';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 
-const props = defineProps<{ language: Language }>();
+const props = defineProps<{ language: Language; active: boolean; loopId?: string }>();
 const emit = defineEmits<{ read: [documentPath: string] }>();
 const t = (key: string) => translate(props.language, key);
-const { setNodes, setEdges, findNode, updateNode, setViewport, viewport } = useVueFlow();
-const reading = shallowRef<CanvasReading>();
+// The parent keys each retained canvas by graph, including its in-flight requests and draft.
+const loopRoute = props.loopId ? '/api/loops/' + encodeURIComponent(props.loopId) : '';
+const readRoute = loopRoute || '/api/dependency-canvas';
+const writeRoute = loopRoute ? loopRoute + '/layout' : '/api/dependency-layout';
+const flowId = props.loopId ? 'loop-canvas-' + props.loopId : 'dependency-canvas';
+const groupControl = props.loopId ? flowId + '-group' : 'canvas-group';
+const { setNodes, setEdges, findNode, updateNode, setViewport, viewport } = useVueFlow({ id: flowId });
+const reading = shallowRef<CanvasReading | LoopCanvasReading>();
 const layout = shallowRef<CanvasLayout>();
 const selected = ref('');
 const groupId = ref('');
@@ -42,22 +51,29 @@ const nodeId = (id: string) => isLegendKey(id) ? id : 'file:' + encodeURICompone
 const groupNodeId = (id: string) => 'group:' + id;
 const legendKind = (kind: LibraryLegend['kind']) => t(kind === 'standard' ? 'canvasStandardLibrary' : 'canvasThirdPartyLibrary');
 const canSave = computed(() => !!reading.value && !loading.value && !readProblem.value && !reading.value.layoutProblem);
-const editable = computed(() => ready.value && canSave.value);
+const editable = computed(() => props.active && ready.value && canSave.value);
 const idle = computed(() => !dragging.value && !moving.value);
-const selectedNode = computed(() => reading.value?.graph.nodes.find(node => node.path === selected.value));
-const legends = computed(() => reading.value?.graph.legends ?? []);
+const dependency = computed(() => reading.value && 'graph' in reading.value ? reading.value : undefined);
+const loop = computed(() => reading.value && 'result' in reading.value ? reading.value.result : undefined);
+const nodes = computed(() => loop.value ?
+  loop.value.loop.nodes.map(node => ({ key: node.id, label: node.title, entry: node.id === loop.value?.loop.entry })) :
+  (dependency.value?.graph.nodes ?? []).map(node => ({ key: node.path, label: node.path, analysis: node.analysis })));
+const ids = computed(() => reading.value ? readingIds(reading.value) : []);
+const selectedNode = computed(() => dependency.value?.graph.nodes.find(node => node.path === selected.value));
+const legends = computed(() => loop.value?.loop.legends ?? dependency.value?.graph.legends ?? []);
 const selectedLegend = computed(() => legends.value.find(legend => legendKey(legend.id) === selected.value));
 const usedLibraries = computed(() => legends.value.flatMap(legend => {
   const use = legend.uses.find(use => use.path === selected.value);
   return use ? [{ legend, reason: use.reason }] : [];
 }));
-const hasNodes = computed(() => !!reading.value && (reading.value.graph.nodes.length > 0 || legends.value.length > 0));
-const documentPath = computed(() => reading.value?.documents.find(entry => entry.sourcePath === selected.value)?.documentPath);
-const dependencies = computed(() => reading.value?.graph.edges.filter(edge => edge.dependent === selected.value) ?? []);
-const dependents = computed(() => reading.value?.graph.edges.filter(edge => edge.dependency === selected.value) ?? []);
+const hasNodes = computed(() => ids.value.length > 0);
+const documentPath = computed(() => dependency.value?.documents.find(entry => entry.sourcePath === selected.value)?.documentPath);
+const dependencies = computed(() => dependency.value?.graph.edges.filter(edge => edge.dependent === selected.value) ?? []);
+const dependents = computed(() => dependency.value?.graph.edges.filter(edge => edge.dependency === selected.value) ?? []);
 const replaceDraft = computed(() => saveProblem.value?.code === 'LAYOUT_CONFLICT');
 const refreshDraft = computed(() => dirty.value && (readProblem.value || ['LAYOUT_GRAPH_CHANGED', 'LAYOUT_GRAPH_UNCONFIRMED', 'GRAPH_NOT_FOUND',
-  'GRAPH_INVALID', 'GRAPH_READ_FAILED', 'GRAPH_PATH_UNSAFE'].includes(saveProblem.value?.code ?? '')));
+  'GRAPH_INVALID', 'GRAPH_READ_FAILED', 'GRAPH_PATH_UNSAFE', 'LOOP_NOT_FOUND', 'LOOP_INVALID', 'LOOP_READ_FAILED',
+  'LOOP_PATH_UNSAFE'].includes(saveProblem.value?.code ?? '')));
 const problems = computed(() => [readProblem.value, reading.value?.layoutProblem, saveProblem.value]
   .filter((problem): problem is ReaderProblem => !!problem));
 const statusKey = computed(() => {
@@ -73,9 +89,14 @@ function dimensions(id: string) {
   return measured?.width && measured.height ? measured : nodeSize;
 }
 
+function readingIds(value: CanvasReading | LoopCanvasReading): string[] {
+  if ('graph' in value) return canvasIds(value.graph);
+  const { reading_order, legends } = value.result.loop;
+  return [...reading_order, ...legends.map(legend => legendKey(legend.id))];
+}
+
 function render() {
   if (!reading.value || !layout.value) return;
-  const { graph } = reading.value;
   const current = layout.value;
   setNodes([
     ...current.groups.map((group): Node => {
@@ -83,8 +104,8 @@ function render() {
       return { id: groupNodeId(group.id), type: 'canvasGroup', position: { x, y }, dragHandle: '.group-handle',
         zIndex: -1, data: { name: group.name }, style: { width: width + 'px', height: height + 'px' } };
     }),
-    ...graph.nodes.map((node): Node => ({
-      id: nodeId(node.path), type: 'canvasFile', position: { ...current.positions[node.path]! }, data: { ...node, key: node.path },
+    ...nodes.value.map((node): Node => ({
+      id: nodeId(node.key), type: 'canvasFile', position: { ...current.positions[node.key]! }, data: node,
       style: { width: nodeSize.width + 'px', height: nodeSize.height + 'px' },
     })),
     ...legends.value.map((legend): Node => ({
@@ -95,14 +116,15 @@ function render() {
   ]);
   const edge = (from: string, to: string, reason: string, library = false): Edge => ({
     id: nodeId(from) + '→' + nodeId(to), source: nodeId(from), target: nodeId(to), sourceHandle: 'out',
-    targetHandle: from === to ? 'self' : 'in', type: 'dependency', data: { reason },
+    targetHandle: from === to ? 'self' : 'in', type: 'dependency', data: { reason, loop: !!loopRoute },
     ...(library ? { class: 'library-use-edge' } : {}),
     markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: library ? '#555493' : '#486357' },
   });
-  setEdges([
+  const graph = dependency.value?.graph;
+  setEdges(graph ? [
     ...graph.edges.map(({ dependency, dependent, reason }) => edge(dependency, dependent, reason)),
     ...legends.value.flatMap(legend => legend.uses.map(use => edge(legendKey(legend.id), use.path, use.reason, true))),
-  ]);
+  ] : (loop.value?.loop.edges ?? []).map(({ from, to, reason }) => edge(from, to, reason)));
 }
 
 async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
@@ -111,7 +133,7 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
   const beforeRevision = revision;
   loading.value = true;
   try {
-    const next = await request<CanvasReading>('/api/dependency-canvas');
+    const next = await request<CanvasReading | LoopCanvasReading>(readRoute);
     readProblem.value = undefined;
     if (dirty.value && next.layoutProblem) {
       readProblem.value = next.layoutProblem;
@@ -121,22 +143,23 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
       saveProblem.value = { code: 'LAYOUT_CONFLICT', message: '', nextStep: '', context: {} };
       return;
     }
-    const ids = canvasIds(next.graph);
+    const ids = readingIds(next);
     if (carry) {
-      const accountedFor = new Set([...ids, ...next.confirmedRemovals]);
+      const accountedFor = new Set([...ids, ...('graph' in next ? next.confirmedRemovals : [])]);
       const unconfirmed = Object.keys(carry.positions).find(path => !accountedFor.has(path));
       if (unconfirmed !== undefined) {
         readProblem.value = { code: 'LAYOUT_GRAPH_UNCONFIRMED', message: '', nextStep: '', context: { field: unconfirmed } };
         return;
       }
     }
-    layout.value = carry ? reconcileLayout(carry, ids, renewedPaths(ids, reading.value?.nodeRemovals ?? {}, next.nodeRemovals)) : next.layout;
+    const renewed = 'graph' in next ? renewedPaths(ids, dependency.value?.nodeRemovals ?? {}, next.nodeRemovals) : undefined;
+    layout.value = carry ? reconcileLayout(carry, ids, renewed) : next.layout;
     reading.value = next;
     revision = next.revision;
     pending = undefined;
     dirty.value = !next.layoutProblem && (!!carry || next.reconciled);
     saveProblem.value = undefined;
-    if (!ids.includes(selected.value)) selected.value = '';
+    if (!ids.includes(selected.value)) selected.value = loop.value?.loop.entry ?? '';
     editGroup('');
     render();
     if (ready.value) await setViewport(layout.value.viewport);
@@ -161,7 +184,7 @@ async function save() {
         graphVersion: reading.value.graphVersion, expectedRevision: revision, revision: crypto.randomUUID(), layout: layout.value,
       };
       try {
-        const result: { revision: string } = await request('/api/dependency-layout', {
+        const result: { revision: string } = await request(writeRoute, {
           method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1' },
           body: JSON.stringify({ ...attempt, layout: { ...attempt.layout, positions: Object.entries(attempt.layout.positions) } }),
         });
@@ -253,13 +276,13 @@ function moved({ flowTransform }: { flowTransform: ViewportTransform }) {
 async function zoom(factor: number) {
   if (!editable.value || !idle.value) return;
   const desired = { ...viewport.value, zoom: Math.min(maxZoom, Math.max(minZoom, viewport.value.zoom * factor)) };
+  storeViewport(desired);
   await setViewport(desired);
-  storeViewport(viewport.value);
 }
 
 async function relayout() {
   if (!editable.value || !idle.value || !layout.value || !reading.value) return;
-  changed(rearrange(layout.value, canvasIds(reading.value.graph)));
+  changed(rearrange(layout.value, ids.value));
   render();
   await setViewport(layout.value.viewport);
 }
@@ -272,9 +295,9 @@ onMounted(() => void load());
 </script>
 
 <template>
-  <main id="canvas-reading" class="canvas-page" tabindex="-1">
+  <main :id="loopId ? flowId + '-reading' : 'canvas-reading'" class="canvas-page" :class="{ 'loop-canvas': loopId }" tabindex="-1">
     <header class="canvas-header">
-      <h1>{{ t('dependencyCanvas') }}</h1>
+      <h1>{{ loopId ? loop?.loop.title ?? t('loops') : t('dependencyCanvas') }}</h1>
       <div class="canvas-actions">
         <button type="button" :disabled="loading || saving || dirty || !idle" @click="load()">{{ t('canvasRefresh') }}</button>
         <button v-if="hasNodes" type="button" :disabled="!editable || !idle" @click="relayout">{{ t('canvasRearrange') }}</button>
@@ -294,8 +317,8 @@ onMounted(() => void load());
     <p v-if="reading && !hasNodes" class="canvas-empty">{{ t('canvasEmpty') }}</p>
 
     <div v-if="reading" v-show="hasNodes" class="canvas-workspace">
-      <section class="graph-area" :aria-label="t('dependencyCanvas')">
-        <VueFlow :min-zoom="minZoom" :max-zoom="maxZoom" :nodes-connectable="false" :nodes-draggable="editable"
+      <section class="graph-area" :aria-label="t(loopId ? 'loopGraph' : 'dependencyCanvas')">
+        <VueFlow :id="flowId" :min-zoom="minZoom" :max-zoom="maxZoom" :nodes-connectable="false" :nodes-draggable="editable"
           :elements-selectable="false" :delete-key-code="null" :selection-key-code="null" :multi-selection-key-code="null"
           :disable-keyboard-a11y="true" :pan-on-drag="editable" :zoom-on-scroll="editable" :zoom-on-pinch="editable"
           :zoom-on-double-click="false" :prevent-scrolling="editable"
@@ -304,10 +327,10 @@ onMounted(() => void load());
           <template #node-canvasFile="{ data }">
             <Handle id="in" type="target" :position="Position.Left" />
             <Handle id="self" class="self-handle" type="target" :position="Position.Top" />
-            <button type="button" class="file-node" :data-file="data.path"
-              :aria-pressed="selected === data.path" :title="data.path" @click="selected = data.path">
-              <span>{{ data.path }}</span>
-              <small>{{ t(data.analysis === 'unreviewed' ? 'canvasUnreviewed' : 'canvasReviewed') }}</small>
+            <button type="button" class="file-node" :data-file="loopId ? undefined : data.key" :data-step="loopId ? data.key : undefined"
+              :aria-pressed="selected === data.key" :title="data.label" @click="selected = data.key">
+              <span>{{ data.label }}</span>
+              <small v-if="!loopId || data.entry">{{ t(loopId ? 'loopEntry' : data.analysis === 'unreviewed' ? 'canvasUnreviewed' : 'canvasReviewed') }}</small>
             </button>
             <Handle id="out" type="source" :position="Position.Right" />
           </template>
@@ -333,12 +356,13 @@ onMounted(() => void load());
         </div>
       </section>
       <aside class="canvas-inspector">
-        <p class="canvas-hint">{{ t(legends.length ? 'canvasLibraryDirection' : 'canvasDirection') }}</p>
+        <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" @select="selected = $event" />
+        <p v-else class="canvas-hint">{{ t(legends.length ? 'canvasLibraryDirection' : 'canvasDirection') }}</p>
         <section v-if="selectedNode" class="canvas-selection" :aria-label="t('canvasSelected')">
           <h2>{{ selectedNode.path }}</h2>
           <p>{{ t(selectedNode.analysis === 'unreviewed' ? 'canvasUnreviewed' : dependencies.length || usedLibraries.length ? 'canvasReviewed' : 'canvasNoDependencies') }}</p>
           <button v-if="documentPath" type="button" @click="emit('read', documentPath)">{{ t('canvasRead') }}</button>
-          <p v-else>{{ t(reading.documentsUnavailable ? 'canvasDocumentsUnavailable' : 'canvasNoDocument') }}</p>
+          <p v-else>{{ t(dependency?.documentsUnavailable ? 'canvasDocumentsUnavailable' : 'canvasNoDocument') }}</p>
           <template v-for="[label, edges] in [['canvasDependencies', dependencies], ['canvasDependents', dependents]] as const" :key="label">
             <h3>{{ t(label) }}</h3>
             <ul v-if="edges.length" class="canvas-relations">
@@ -365,31 +389,32 @@ onMounted(() => void load());
           <h2>{{ selectedLegend.name }}</h2>
           <p class="canvas-hint">{{ legendKind(selectedLegend.kind) }}</p>
           <p class="library-description">{{ selectedLegend.description }}</p>
-          <h3>{{ t('canvasDependents') }}</h3>
+          <h3>{{ t(loopId ? 'loopLibraryFiles' : 'canvasDependents') }}</h3>
           <ul v-if="selectedLegend.uses.length" class="canvas-relations">
             <li v-for="use in selectedLegend.uses" :key="use.path">
-              <button type="button" @click="selected = use.path">{{ use.path }}</button>
+              <code v-if="loopId">{{ use.path }}</code>
+              <button v-else type="button" @click="selected = use.path">{{ use.path }}</button>
               <p>{{ use.reason }}</p>
             </li>
           </ul>
           <p v-else>{{ t('canvasNoEdges') }}</p>
         </section>
-        <p v-else class="canvas-hint">{{ t(legends.length ? 'canvasChooseLibrary' : 'canvasChoose') }}</p>
+        <p v-else-if="!loopId" class="canvas-hint">{{ t(legends.length ? 'canvasChooseLibrary' : 'canvasChoose') }}</p>
 
         <form class="canvas-groups" @submit.prevent="applyGroup">
           <h2>{{ t('canvasGroups') }}</h2>
-          <label for="canvas-group-picker">{{ t('canvasEditGroup') }}</label>
-          <select id="canvas-group-picker" :value="groupId" :disabled="!editable || !idle"
+          <label :for="groupControl + '-picker'">{{ t('canvasEditGroup') }}</label>
+          <select :id="groupControl + '-picker'" :value="groupId" :disabled="!editable || !idle"
             @change="editGroup(($event.target as HTMLSelectElement).value)">
             <option value="">{{ t('canvasNewGroup') }}</option>
             <option v-for="group in layout?.groups" :key="group.id" :value="group.id">{{ group.name }}</option>
           </select>
-          <label for="canvas-group-name">{{ t('canvasGroupName') }}</label>
-          <input id="canvas-group-name" v-model="groupName" maxlength="160" :disabled="!editable || !idle" />
+          <label :for="groupControl + '-name'">{{ t('canvasGroupName') }}</label>
+          <input :id="groupControl + '-name'" v-model="groupName" maxlength="160" :disabled="!editable || !idle" />
           <fieldset :disabled="!editable || !idle">
             <legend>{{ t('canvasMembers') }}</legend>
-            <label v-for="node in reading.graph.nodes" :key="node.path" class="canvas-member">
-              <input v-model="members" type="checkbox" :value="node.path" />{{ node.path }}
+            <label v-for="node in nodes" :key="node.key" class="canvas-member">
+              <input v-model="members" type="checkbox" :value="node.key" />{{ node.label }}
             </label>
             <label v-for="legend in legends" :key="legendKey(legend.id)" class="canvas-member">
               <input v-model="members" type="checkbox" :value="legendKey(legend.id)" />{{ legend.name }} · {{ legendKind(legend.kind) }}

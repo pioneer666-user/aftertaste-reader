@@ -13,7 +13,12 @@ import { ReaderFileDirectory, readerProject } from '../adapters/reader-directory
 import { systemCode } from '../adapters/data-directory.js';
 import { DependencyCanvasService } from '../application/dependency-canvas.js';
 import { LayoutFileStore } from '../adapters/layout-store.js';
+import { LoopFileStore } from '../adapters/loop-store.js';
 import { GraphFileStore } from '../adapters/graph-store.js';
+import { GraphService } from '../application/dependency-graph.js';
+import { LoopService } from '../application/loops.js';
+import { LoopReaderService } from '../application/loop-reader.js';
+import { LoopError } from '../core/loops.js';
 import { GraphError } from '../core/dependency-graph.js';
 import { CanvasError } from '../core/canvas-layout.js';
 
@@ -23,7 +28,8 @@ export function readerProblem(error: unknown): ReaderProblem {
     return { code: error.code, message: error.message, nextStep: error.nextStep,
       context: { ...error.context, ...(first ? { field: first.field, diagnostic: first.code } : {}) } };
   }
-  if (error instanceof SourceError || error instanceof DocumentError || error instanceof ReaderError || error instanceof CanvasError) {
+  if (error instanceof SourceError || error instanceof DocumentError || error instanceof ReaderError ||
+      error instanceof CanvasError || error instanceof LoopError) {
     return { code: error.code, message: error.message, nextStep: error.nextStep, context: error.context };
   }
   return { code: 'INTERNAL_ERROR', message: '阅读服务发生未预期错误。', nextStep: '将问题标识和操作交给维护者检查。', context: {} };
@@ -46,9 +52,14 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   } catch {
     throw new ReaderError('WEB_BUILD_UNAVAILABLE', '预构建阅读页面不可用。', '在产品根完成构建后重新启动。');
   }
-  const documents = new DocumentService(new FixedSourceService(new GitSourceRepository()), new DocumentFileStore());
+  const source = new FixedSourceService(new GitSourceRepository());
+  const documents = new DocumentService(source, new DocumentFileStore());
   const reader = new FileReaderService(project, new ReaderFileDirectory(), documents);
-  const canvas = new DependencyCanvasService(reader, new GraphFileStore(), new LayoutFileStore(project));
+  const graphStore = new GraphFileStore();
+  const canvas = new DependencyCanvasService(reader, graphStore, new LayoutFileStore(project));
+  const loopStore = new LoopFileStore();
+  const loops = new LoopReaderService(project, new LoopService(source, documents, new GraphService(source, graphStore), loopStore),
+    loopStore, relativePath => new LayoutFileStore(project, relativePath));
   const server = Fastify({ logger: false, trustProxy: false, exposeHeadRoutes: false });
   server.addHook('onRequest', async (request, reply) => {
     reply.headers({
@@ -70,7 +81,8 @@ export async function startReader(projectRoot: string, port: number = 4317) {
       return reply.code(403).send({ ok: false, error: readerProblem(new ReaderError('ACCESS_DENIED',
         '请求来源不允许访问本地阅读资料。', '直接打开启动命令输出的本机阅读地址。')) });
     }
-    if (request.method === 'PUT' && request.url.split('?')[0] === '/api/dependency-layout') {
+    const requestPath = request.url.split('?')[0] ?? '';
+    if (request.method === 'PUT' && (requestPath === '/api/dependency-layout' || /^\/api\/loops\/[^/]+\/layout$/u.test(requestPath))) {
       if (request.headers['x-aftertaste-layout'] !== '1') return reply.code(403).send({ ok: false,
         error: readerProblem(new ReaderError('ACCESS_DENIED', '布局写入请求缺少本机页面标识。', '从本机阅读页面保存布局。')) });
       return;
@@ -87,7 +99,7 @@ export async function startReader(projectRoot: string, port: number = 4317) {
     const problem = readerProblem(error);
     const status = ['INVALID_ARGUMENT', 'INVALID_PATH', 'LAYOUT_INVALID'].includes(problem.code) ? 400 :
       problem.code.endsWith('_PATH_UNSAFE') ? 403 : ['LAYOUT_CONFLICT', 'LAYOUT_GRAPH_CHANGED', 'LAYOUT_GRAPH_UNCONFIRMED'].includes(problem.code) ? 409 :
-      problem.code === 'INTERNAL_ERROR' ? 500 : 422;
+      problem.code === 'LOOP_NOT_FOUND' ? 404 : problem.code === 'INTERNAL_ERROR' ? 500 : 422;
     reply.code(status).send({ ok: false, error: problem });
   });
   server.setNotFoundHandler((_request, reply) => reply.code(404).send({ ok: false,
@@ -113,6 +125,20 @@ export async function startReader(projectRoot: string, port: number = 4317) {
       throw new ReaderError('INVALID_ARGUMENT', '保存参数无效。', '使用本机页面提交当前依赖图布局。');
     }
     return { ok: true, ...await canvas.save(request.body) };
+  });
+  server.get('/api/loops', async request => {
+    if (Object.keys(request.query as object).length) throw new ReaderError('INVALID_ARGUMENT', '闭环列表参数无效。', '从本机阅读器打开闭环。');
+    return { ok: true, ...await loops.list() };
+  });
+  server.get<{ Params: { id: string } }>('/api/loops/:id', async request => {
+    if (Object.keys(request.query as object).length) throw new ReaderError('INVALID_ARGUMENT', '闭环读取参数无效。', '从本机阅读器打开闭环。');
+    return { ok: true, ...await loops.read(request.params.id) };
+  });
+  server.put<{ Params: { id: string } }>('/api/loops/:id/layout', async request => {
+    if (Object.keys(request.query as object).length || request.headers['content-type']?.split(';')[0]?.trim().toLowerCase() !== 'application/json') {
+      throw new ReaderError('INVALID_ARGUMENT', '闭环保存参数无效。', '使用本机页面提交当前闭环布局。');
+    }
+    return { ok: true, ...await loops.save(request.params.id, request.body) };
   });
   try {
     const url = await server.listen({ host: '127.0.0.1', port });

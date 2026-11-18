@@ -45,9 +45,31 @@
 .canvas-groups fieldset { margin: 12px 0; padding: 4px 8px; border: 1px solid var(--line); }
 .canvas-member { display: flex; align-items: baseline; gap: 5px; padding: 5px 0; }
 .canvas-groups .canvas-hint { margin-top: 8px; }
+.loop-navigation { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 16px 28px 0; }
+.loop-navigation select { max-width: min(100%, 420px); }
+.loop-navigation p, .loop-navigation .canvas-problem { margin-block: 0; }
+.loop-navigation .canvas-problem { flex-basis: 100%; }
+.loop-canvas .canvas-header h1 { max-width: 100%; overflow-wrap: anywhere; }
+.loop-canvas .canvas-workspace { grid-template-columns: minmax(0, 1fr) minmax(300px, 36%); }
+.loop-canvas .graph-area { height: calc(100dvh - 250px); }
+.loop-canvas .canvas-inspector { max-height: calc(100dvh - 250px); }
+.loop-overview, .loop-step { line-height: 1.55; }
+.loop-goal > :first-child { margin-top: 0; }
+.loop-step { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.loop-overview details, .loop-step details { margin: 8px 0; }
+.loop-overview summary, .loop-step summary { cursor: pointer; padding: 6px 0; }
+.loop-entry { text-align: left; }
+.loop-order { list-style: decimal; padding-inline-start: 26px; }
+.loop-order [aria-current="step"] { background: #d8ecdf; border-color: var(--accent); }
+.loop-step-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.loop-step .source-pane { border: 1px solid var(--line); }
 @media (max-width: 760px) {
   .canvas-page { padding: 16px; }
   .canvas-workspace { grid-template-columns: minmax(0, 1fr); }
   .graph-area { height: 55dvh; min-height: 280px; }
   .canvas-inspector { min-height: 0; max-height: none; border-left: 0; border-top: 1px solid var(--line); }
+  .loop-navigation { padding-inline: 16px; }
+  .loop-canvas .canvas-workspace { grid-template-columns: minmax(0, 1fr); }
+  .loop-canvas .graph-area { height: 45dvh; }
+  .loop-canvas .canvas-inspector { max-height: none; }
 }
