@@ -81,7 +81,7 @@ description: "文件依赖图与布局保存实施清单"
 ## Phase 8: D014 Polish & Cross-Cutting Concerns
 
 - [x] T026 更新 skills/aftertaste-reader/references/generation.md、skills/aftertaste-reader/references/tools.md、docs/usage/file-reader.md 与 specs/001-first-release/08-current-spec-and-acceptance.md 的实际操作入口与交付范围（L01、L02）。
-- [ ] T027 在 docs/work/2026/11/D014-dependency-legends/ 固定候选、归档独审及回执并提供试读（L01—L04）。
+- [x] T027 在 docs/work/2026/11/D014-dependency-legends/ 固定候选、归档独审及回执并提供试读（L01—L04）。
 
 ## Dependencies & Execution Order
 

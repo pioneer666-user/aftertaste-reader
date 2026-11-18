@@ -27,7 +27,7 @@ apply 的 JSON 文件绝对路径可在项目外，只是 AI 明确指定输入�
 
 ## 库图例
 
-`apply-graph` 可接收 `legendUpserts` 和 `legendRemove`，可单独提交或与文件更新同批。图的可选 `legends` 数组只保存本图的实例及其关联。示例：
+`apply-graph` 可接收 `legendUpserts` 和 `legendRemove`，可单独提交或与文件更新同批。图的可选 `legends` 数组只保存本图的实例及其关联。下面提交一个标准库图例。
 
 ```json
 {
