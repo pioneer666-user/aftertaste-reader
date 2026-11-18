@@ -2,11 +2,10 @@
 
 ## 当前结论与入口
 
-- **执行侧交回最终行为候选 `58aac2af751f323092d61e308f972783e795d665`。** F2 两条反例已通过真实 Edge、正式 CLI 和布局服务验证。点击“刷新图并保留本页布局”后，新位置和新组在重开时仍可见。无关说明改动又撤销后，跨过正式删除的旧页始终收到 409。最终候选全量测试 82/82，Edge 的 F1—F4 全部通过。
+- **主脑最终复核通过，建议作者授权执行将 D013 合入本地 `dev`。** 上轮发现草稿丢失的独审者在 `58aac2af751f323092d61e308f972783e795d665` 上按原步骤复验。点击“刷新图并保留本页布局”后，实际落盘的 `(668,155)` 与 `Second latest` 组在重启服务、新开浏览器上下文后均恢复。主脑另行复验了删除前旧标签页的保存拒绝。两条 F2 阻断均已关闭。执行在最终候选上通过全量 82/82 和 Edge F1—F4。[R5 独审原文](review.md#mainbrain-final)
 - [R3 执行侧独审](review.md#execution-review-f2)关闭两条 F2 反例，同时发现首次建图失败后重试无法保存。另提交修复后，[R4 最终复核](review.md#execution-review-final)通过并明确交还写入。
 - 批准依据为 [D013 任务单](task.md) `347954c` 以及作者按 [R2](review.md#mainbrain-review) 和[主脑补查](#mainbrain-checks)回派的两条 F2 验收。比较基线为 `dev@91d6c799141526809529df3851f38c696c3233bb`。第一候选 `7fe6791` 修复 F1—F4，`457d84c` 补修 F2 的登记身份、保留草稿和旧页保护，`58aac2a` 收束发布失败回退。归档提交仅更新回执、独审原文及任务完成状态。
 - 分支 `codex/fix-canvas-layout-navigation` 保留待验，`dev` 仍在比较基线，无合并、推送或发布。作者体验待验。作者可打开文件依赖图查看 `Second latest`，拖动组中节点、等“布局已保存”后重开体验。[最终候选试读](http://127.0.0.1:4333/)
-- 作者将本回执交回主脑后，由主脑另派未参与实现及执行侧独审的子代理，定向复核最终候选布局，再决定是否合并。
 
 ## 最终候选的自测与复核
 
@@ -18,6 +17,7 @@
 | R3 新发现的首次发布失败 | 注入首次建图的 `link` 失败，断言 `published=0`。原有凭据按字节恢复，原本没有凭据时图和凭据均不存在。随后正常 CLI 登记同一路径，GET 无布局故障，PUT 200，实际保存坐标 `(668,155)`。已有图替换失败和已发布后收尾失败也经过定向注入。 |
 
 - Windows `10.0.26200`、Node `24.11.1`、Edge `157.0.4341.60`。最终候选用仓内 Node 24 执行 `tsc --noEmit`、`vue-tsc --noEmit -p tsconfig.web.json`、`tsc`、`vite build`、`node tests/browser/canvas-fixes.mjs` 和串行全量 `node --test --test-concurrency=1 'tests/unit/*.test.mjs' 'tests/integration/*.test.mjs'`。全量 **82/82**。最终构建清单及日志在 `.local/D013/f2-final/`，Edge 页面证据在 `.local/D013/browser-edge-kgVeeC/result.json`。
+- 主脑核对最终候选、锁文件、41 个构建文件及全量日志后，在独立样例串行重跑[旧标签页真实 HTTP 回归](../../../../../tests/integration/dependency-canvas.test.mjs)。正式删除重加、仅改无关边的说明、撤销改动、重启服务，四次旧保存均为 `409 LAYOUT_GRAPH_CHANGED`，每次都核对磁盘字节。当前图版本保存返回 200；未经确认暂缺的节点仍能保住布局。定向用例 1/1 通过，记录为 `.local/D013/mainbrain-final-17d88171/identity.log`。试读样例仅作只读检查，与独审操作使用的项目分开。
 - 在 `457d84c`，串行全量 81/81，Chrome `157.0.8103.79` 和 Firefox `159.0` 通过 F2 两条链，既有 Edge 画布和阅读回归也通过。报告依次为 `.local/D013/browser-chrome-nLsy2o/result.json`、`browser-firefox-N5xMd5/result.json`、`browser-edge-QHj6UD/evidence.json`、`browser-yu6QFw/report.json`（均在 `.local/D013/`）。最终构建只更换了 `adapters/graph-store.js` 及其声明文件；浏览器页面资源哈希逐项一致。兼容浏览器沿用这次检查，最终候选的图存储、异常恢复和页面联动另由上述全量与 Edge 实测覆盖。
 - 规格按 Spec Kit 的 007 增量工作流沿用原模板与 16 项需求检查，补入 T020—T022。实施前完成覆盖分析和前置检查，实施后同步 004 凭据模型、007 布局模型及 HTTP 契约。第一候选的流程及此前失败均保留在下文。
 - 未验范围包括作者体验、旧构建降级、多服务同写及外部文件系统竞争。D012 原布局与匹配的旧移除凭据可读。若试用过第一候选，且它留下的旧标记已失去对应快照，服务提供只读预览并保全布局，恢复路径见[图数据模型](../../../../../specs/004-dependency-graph/data-model.md#画布移除凭据)。同批另增节点的自动摆放差异仍按[主脑补查](#mainbrain-checks)记录。
