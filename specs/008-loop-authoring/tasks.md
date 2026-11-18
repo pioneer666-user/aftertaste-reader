@@ -50,7 +50,7 @@
 ## Phase 6 · Polish & Cross-Cutting Concerns
 
 - [x] T011 在 `docs/usage/generation-skill.md` 交付入口，按 `specs/008-loop-authoring/quickstart.md` 用真实 Skill 与 CLI 走通试讲。样例和重建入口归 `docs/work/2026/11/D015-loop-authoring/sample/`（SC-001）。
-- [ ] T012 从 `package.json` 使用类型、构建及串行回归检查，固定候选后取得独审，把真实证据和作者试读入口归 `docs/work/2026/11/D015-loop-authoring/handoff.md`、`review.md`。
+- [x] T012 从 `package.json` 使用类型、构建及串行回归检查，固定候选后取得独审，把真实证据和作者试读入口归 `docs/work/2026/11/D015-loop-authoring/handoff.md`、`review.md`。
 
 ## Dependencies & Execution Order
 
