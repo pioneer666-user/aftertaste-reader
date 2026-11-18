@@ -186,6 +186,13 @@ async function samePath() {
         await applyGraphUpdate(project, { remove: [audit] });
         await applyGraphUpdate(project, { register: [audit] });
         assert.deepEqual(await readFile(project.graph), originalGraph);
+        const edited = JSON.parse(originalGraph);
+        edited.edges[0].reason += '（文字修订）';
+        await write(project.graph, edited);
+        const preview = await fetch(url + '/api/dependency-canvas').then(response => response.json());
+        assert.deepEqual(preview.layout.positions[audit], expected.positions[audit]);
+        assert.deepEqual(preview.layout.groups, []);
+        await writeFile(project.graph, originalGraph);
         const reply = layoutResponse(page);
         await button(page, '放大画布').click();
         const rejected = await reply;
@@ -218,7 +225,80 @@ async function samePath() {
     }
   }
   assert.deepEqual(results.closed.reset, results.between.reset);
+  results.latestDraft = await retainReaddedDraft();
   return results;
+}
+
+async function retainReaddedDraft() {
+  const project = await fixture('latest-draft');
+  const group = async (page, name) => {
+    await page.getByLabel('组名').fill(name);
+    await page.getByRole('checkbox', { name: audit, exact: true }).check();
+    await button(page, '应用分组').click();
+  };
+  await seedLayout(project, { [rules]: { x: 30, y: 64 }, [service]: { x: 300, y: 64 }, [audit]: { x: 722, y: 55 } },
+    [{ id: randomUUID(), name: 'Original', members: [audit] }]);
+  await applyGraphUpdate(project, { remove: [audit] });
+  await applyGraphUpdate(project, { register: [audit] });
+  const final = await withService(project, async (url, context) => {
+    const page = await openCanvas(context, url);
+    await saved(page);
+    await savedAction(page, () => group(page, 'First accepted'));
+    const first = await disk(project);
+    await applyGraphUpdate(project, { remove: [audit] });
+    const marks = async () => JSON.parse(await readFile(path.join(project.data, 'dependency-graph-removals.json'))).at(-1).removals;
+    const removed = await marks();
+    await applyGraphUpdate(project, { remove: [audit] });
+    assert.deepEqual(await marks(), removed);
+    await applyGraphUpdate(project, { register: [audit] });
+    const full = await readFile(project.graph);
+    const current = await fetch(url + '/api/dependency-canvas').then(response => response.json());
+    assert.notEqual(first.nodeRemovals[audit], current.nodeRemovals[audit]);
+    assert.equal(current.nodeRemovals[audit], removed[audit]);
+    assert.deepEqual(current.layout.positions[audit], { x: 570, y: 64 });
+    const release = Promise.withResolvers();
+    await page.route('**/api/dependency-layout', async route => {
+      await release.promise;
+      await route.continue();
+    }, { times: 1 });
+    try {
+      await Promise.all([page.waitForRequest(request => request.url().endsWith('/api/dependency-layout')),
+        button(page, '刷新图和布局').click()]);
+      await drag(page, node(page, audit), 98, 91);
+      await group(page, 'Second latest');
+      await button(page, 'Second latest').waitFor();
+      const point = { x: current.layout.positions[audit].x + 98, y: current.layout.positions[audit].y + 91 };
+      await expectPoint(page, audit, point);
+      const graph = JSON.parse(full);
+      await write(project.graph, { ...graph, nodes: graph.nodes.filter(item => item.path !== service),
+        edges: graph.edges.filter(edge => edge.dependent !== service && edge.dependency !== service) });
+      const rejected = layoutResponse(page);
+      release.resolve();
+      const conflict = await rejected;
+      assert.equal(conflict.status(), 409);
+      assert.equal((await conflict.json()).error.code, 'LAYOUT_GRAPH_CHANGED');
+      await button(page, '刷新图并保留本页布局').click();
+      await page.getByText(/LAYOUT_GRAPH_UNCONFIRMED/u).waitFor();
+      await expectPoint(page, audit, point);
+      await button(page, 'Second latest').waitFor();
+      assert.deepEqual(await disk(project), first);
+      await writeFile(project.graph, full);
+      await savedAction(page, () => button(page, '刷新图并保留本页布局').click());
+      const placed = await disk(project);
+      assert.deepEqual(placed.layout.positions[audit], point);
+      assert.deepEqual(placed.layout.groups.map(({ name, members }) => [name, members]), [['Second latest', [audit]]]);
+      assert.equal(placed.nodeRemovals[audit], current.nodeRemovals[audit]);
+      return placed;
+    } finally { release.resolve(); }
+  });
+  await withService(project, async (url, context) => {
+    const page = await openCanvas(context, url);
+    await saved(page);
+    await expectPoint(page, audit, final.layout.positions[audit]);
+    await button(page, 'Second latest').waitFor();
+    assert.deepEqual(await disk(project), final);
+  });
+  return final;
 }
 
 async function specialName() {

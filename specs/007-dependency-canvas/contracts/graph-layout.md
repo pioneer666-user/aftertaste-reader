@@ -3,7 +3,7 @@
 继承 [D011 本机边界](../../006-file-reader/contracts/cli-http.md)。启用专用 PUT，其他页面和资料接口仍只读。
 
 - GET `/api/dependency-canvas`，无参数。成功返回 `{ok:true, graph, graphVersion, confirmedRemovals, nodeRemovals, documents, layout, revision, reconciled, layoutProblem, documentsUnavailable}`。graph 原样为 D009 内容。confirmedRemovals 为匹配当前快照的已确认缺席路径，nodeRemovals 为在图节点已知的移除标记，两者均用于保护未保存草稿。documents 是实际讲解条目，revision 未保存时为 null。reconciled 表示已有布局需协调，包括名单变化与同路径重加。layoutProblem 无故障时为 null，布局读取失败时提供默认预览，移除未确认时提供当前图预览。两种预览均暂停布局保存。documentsUnavailable 表示讲解目录无法完整确认。
-- graphVersion 绑定图原文和当前移除凭据，保存前及发布前均重读核对。
+- graphVersion 绑定图原文、持久的正式移除标记、重加状态及当前有效的缺席授权，保存前及发布前均重读核对。文字改回原样后，跨越正式移除的旧版本仍会得到 409。nodeRemovals 仅含目前在图内且已由工具重新登记的路径及其标记。同一标记的草稿保有刚拖的位置和新组。旧凭据无法判定时通过 layoutProblem 提供诊断并暂停写入。
 - PUT `/api/dependency-layout`，无参数。JSON 请求必须包含 `{graphVersion, expectedRevision, revision, layout}`，另带 `X-Aftertaste-Layout: 1`。每次尝试使用新的 UUID。同一尝试丢失响应可按同一内容重放，当前磁盘上已是该修订和布局时直接确认。成功返回 `{ok:true,revision}`。
 - PUT 的 `layout.positions` 必须使用 `[[路径, {x, y}], ...]`。路径必须唯一并与当前节点完整匹配。服务升级后仍打开旧页面的读者需重新加载页面，取得识别同路径重加的客户端逻辑。GET 和磁盘继续使用坐标对象。
 - 格式错误返回 400，越界或写来源不符 403，已变更修订、图摘要冲突或无法确认节点移除返回 409，其他可诊断读取／写入失败 422。错误沿 `{ok:false,error:{code,message,nextStep,context}}`。

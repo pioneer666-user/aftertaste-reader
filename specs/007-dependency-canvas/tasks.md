@@ -58,18 +58,21 @@ description: "文件依赖图与布局保存实施清单"
 - [x] T010 [US3] 在 src/application/dependency-canvas.ts、src/adapters/layout-store.ts、src/server/reader.ts 与 src/web/DependencyCanvas.vue 接通协调、失败及冲突保护（FR-005、006）。
 - [x] T017 [US3] 在 tests/browser/canvas-fixes.mjs 验正式删空、恢复、同路径重加对照及旧页，在 tests/integration/dependency-canvas.test.mjs 核凭据保护，在 tests/unit/canvas-layout.test.mjs 比较重加时仍有其他删除的摆放结果（FR-005、006、SC-005、F1、F2）。
 - [x] T018 [US3] 在 src/application/dependency-graph.ts、src/adapters/graph-store.ts、src/core/canvas-layout.ts、src/application/dependency-canvas.ts 与 src/web/DependencyCanvas.vue 实施移除标记、协调写回和旧页保护（FR-005、006、F1、F2）。
+- [x] T020 [US3] 在 tests/browser/canvas-fixes.mjs 与 tests/integration/dependency-canvas.test.mjs 复核重加后草稿跨临时缺席保存、无关文字编辑和撤销后的旧页拒写（F2、FR-005、006）。
+- [x] T021 [US3] 在 src/adapters/graph-store.ts 与 src/application/dependency-{canvas,graph}.ts 分别传递正式登记身份和当前缺席凭据，保护草稿、磁盘布局和过期拒绝（F2）。
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T011 更新 docs/usage/file-reader.md 及 specs/001-first-release/08-current-spec-and-acceptance.md 的交付范围。
 - [x] T012 运行 quickstart.md 检查，核 G01—G05，与证据一起固定候选并交执行侧独审，形成 D012 handoff。
 - [x] T019 运行 quickstart.md 中受影响检查，固定 D013 候选、提交独审并在 docs/work/2026/11/D013-canvas-fixes/ 归档回执和原文（F1—F4）。
+- [ ] T022 在 docs/work/2026/11/D013-canvas-fixes/ 记录 T020、T021 的真实服务与页面结果，固定补修候选并归档执行侧复核。
 
 ## Dependencies & Execution Order
 
 T001 → T002 → US1 → US2 → US3 → T011—T012。每个故事先定义行为检查，再接通核心、服务和页面。US2 使用 US1 的项目图及页面，US3 使用 US2 的真实保存入口。测试与浏览器串行，无并行资源运行。
 
-D013 使用已完成的 T001—T012。T013 → T014、T015 → T016、T017 → T018，各序列依托既有样例。三个故事完成后执行 T019。
+D013 使用已完成的 T001—T012。T013 → T014、T015 → T016、T017 → T018，各序列依托既有样例。三个故事完成后执行 T019。F2 复核所见两条失败链沿 T020 → T021 → T022 补测、修复及再次审查。
 
 ## Implementation Strategy
 
