@@ -2,6 +2,7 @@
 import { nextTick, onMounted, ref } from 'vue';
 import type { DocumentEntry, ReaderProblem } from '../application/file-reader.js';
 import type { ReadingDocument } from '../application/document-blocks.js';
+import type { LoopEntry } from '../application/loop-reader.js';
 import ReaderDocument from './ReaderDocument.vue';
 import DependencyCanvas from './DependencyCanvas.vue';
 import { failed, request } from './reader-api.js';
@@ -22,8 +23,16 @@ const listLoading = ref(true);
 const readingLoading = ref(false);
 const readingPane = ref<HTMLElement>();
 const canvasOpened = ref(false);
-const view = ref<'reader' | 'canvas'>('reader');
+const view = ref<'reader' | 'canvas' | 'loops'>('reader');
 const fromCanvas = ref(false);
+const loopEntries = ref<LoopEntry[]>([]);
+const loopsLoaded = ref(false);
+const loopsLoading = ref(false);
+const loopProblems = ref<ReaderProblem[]>([]);
+const loopListError = ref<ReaderProblem>();
+const loopNavigation = ref<HTMLElement>();
+const selectedLoop = ref('');
+const openedLoops = ref<string[]>([]);
 let listSequence = 0;
 let readSequence = 0;
 let controller: AbortController | undefined;
@@ -31,6 +40,33 @@ let controller: AbortController | undefined;
 function openCanvas() {
   canvasOpened.value = true;
   view.value = 'canvas';
+}
+
+async function openLoops() {
+  view.value = 'loops';
+  await nextTick();
+  loopNavigation.value?.focus();
+  if (!loopsLoaded.value) void refreshLoops();
+}
+
+async function refreshLoops() {
+  if (loopsLoading.value) return;
+  loopsLoading.value = true;
+  loopListError.value = undefined;
+  try {
+    const data = await request<{ loops: LoopEntry[]; problems: ReaderProblem[] }>('/api/loops');
+    loopEntries.value = data.loops;
+    loopProblems.value = data.problems;
+    loopsLoaded.value = true;
+    if (!data.loops.some(loop => loop.id === selectedLoop.value)) selectedLoop.value = '';
+  } catch (error) { loopListError.value = failed(error); }
+  finally { loopsLoading.value = false; }
+}
+
+function selectLoop(event: Event) {
+  const id = (event.target as HTMLSelectElement).value;
+  if (id && !openedLoops.value.includes(id)) openedLoops.value.push(id);
+  selectedLoop.value = id;
 }
 
 function readFromCanvas(documentPath: string) {
@@ -106,12 +142,13 @@ onMounted(() => {
 </script>
 
 <template>
-  <a :href="view === 'canvas' ? '#canvas-reading' : '#reading'" class="skip-link">{{ t('skip') }}</a>
+  <a :href="view === 'canvas' ? '#canvas-reading' : view === 'loops' ? '#loop-navigation' : '#reading'" class="skip-link">{{ t('skip') }}</a>
   <header class="app-header">
     <div class="brand"><strong>{{ t('brand') }}</strong><span>{{ t('title') }}</span></div>
     <div class="toolbar">
-      <button v-if="view === 'reader'" type="button" @click="openCanvas">{{ t(fromCanvas ? 'canvasBack' : 'dependencyCanvas') }}</button>
-      <button v-else type="button" @click="view = 'reader'; fromCanvas = false">{{ t('files') }}</button>
+      <button v-if="view !== 'canvas'" type="button" @click="openCanvas">{{ t(view === 'reader' && fromCanvas ? 'canvasBack' : 'dependencyCanvas') }}</button>
+      <button v-if="view !== 'reader'" type="button" @click="view = 'reader'; fromCanvas = false">{{ t('files') }}</button>
+      <button type="button" :aria-pressed="view === 'loops'" @click="openLoops">{{ t('loops') }}</button>
       <button v-if="view === 'reader'" type="button" :disabled="listLoading" @click="refresh">{{ t('refresh') }}</button>
       <label class="language-control"><span>{{ t('language') }}</span>
         <select :value="language" :aria-label="t('language')" @change="changeLanguage"><option value="zh-CN">简体中文</option><option value="en">English</option></select>
@@ -119,7 +156,28 @@ onMounted(() => {
     </div>
   </header>
   <p v-if="languageStatus" class="language-status" role="status">{{ t(languageStatus) }}</p>
-  <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" :language="language" @read="readFromCanvas" />
+  <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" :active="view === 'canvas'" :language="language" @read="readFromCanvas" />
+  <div v-show="view === 'loops'">
+    <section id="loop-navigation" ref="loopNavigation" class="loop-navigation" :aria-label="t('loops')" tabindex="-1">
+      <template v-if="loopEntries.length">
+        <label for="saved-loop">{{ t('loopChoose') }}</label>
+        <select id="saved-loop" :value="selectedLoop" @change="selectLoop">
+          <option value="">{{ t('loopSelect') }}</option>
+          <option v-for="loop in loopEntries" :key="loop.id" :value="loop.id">{{ loop.title }}</option>
+        </select>
+      </template>
+      <button type="button" :disabled="loopsLoading" @click="refreshLoops">{{ t('loopRefresh') }}</button>
+      <p v-if="loopsLoading" role="status">{{ t('loading') }}</p>
+      <p v-else-if="loopsLoaded && !loopEntries.length && !loopListError">{{ t('loopEmpty') }}</p>
+      <section v-for="problem in (loopListError ? [loopListError, ...loopProblems] : loopProblems)" :key="problem.context.loopId ?? problem.code"
+        class="canvas-problem" role="alert">
+        <p>{{ problemText(language, problem).message }} {{ problemText(language, problem).nextStep }}</p>
+        <code>{{ problem.code }} {{ problem.context.loopId }} {{ problem.context.field }} {{ problem.context.reason }}</code>
+      </section>
+    </section>
+    <DependencyCanvas v-for="id in openedLoops" v-show="selectedLoop === id" :key="id" :loop-id="id"
+      :active="view === 'loops' && selectedLoop === id" :language="language" />
+  </div>
   <div v-show="view === 'reader'" class="workspace">
     <aside class="sidebar">
       <h2>{{ t('files') }}</h2>

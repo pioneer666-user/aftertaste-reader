@@ -1,4 +1,4 @@
-import { lstat, mkdir, mkdtemp, open, readFile, realpath, rename, rmdir, unlink } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, open, readFile, readdir, realpath, rename, rmdir, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
 import { validateProjectRoot, SourceError } from '../application/fixed-source.js';
@@ -47,6 +47,20 @@ async function requireUnused(target: string, projectRoot: string, loopPath: stri
 
 export class LoopFileStore implements LoopStore {
   constructor(private readonly publish: typeof rename = rename) {}
+
+  async listIds(projectRoot: string): Promise<string[]> {
+    validateProjectRoot(projectRoot);
+    const loopPath = directory.join('/');
+    try {
+      const parent = await dataDirectory(projectRoot, directory, false, () => unsafe(projectRoot, loopPath));
+      return (await readdir(parent)).filter(isLoopId).sort();
+    } catch (error) {
+      if (error instanceof LoopError) throw error;
+      const reason = systemCode(error);
+      if (reason === 'ENOENT') return [];
+      throw new LoopError('LOOP_LIST_FAILED', '闭环目录无法读取。', '检查项目的闭环目录和权限。', { projectRoot, loopPath, reason });
+    }
+  }
 
   async create(projectRoot: string, id: string, raw: string): Promise<void> {
     const loopPath = checkedPath(projectRoot, id);

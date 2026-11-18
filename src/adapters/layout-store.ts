@@ -5,13 +5,15 @@ import { CanvasError, layoutPath } from '../core/canvas-layout.js';
 import { dataDirectory, systemCode } from './data-directory.js';
 
 export class LayoutFileStore {
-  constructor(private readonly projectRoot: string) {}
+  constructor(private readonly projectRoot: string, private readonly relativePath = layoutPath) {}
 
   private async target(): Promise<string> {
     const unsafe = () => new CanvasError('LAYOUT_PATH_UNSAFE', '布局路径包含链接或非普通条目。',
-      '检查项目资料目录和布局文件的类型。', { layoutPath });
-    const dir = await dataDirectory(this.projectRoot, ['docs', 'aftertaste'], false, unsafe);
-    const target = path.join(dir, path.posix.basename(layoutPath));
+      '检查项目资料目录和布局文件的类型。', { layoutPath: this.relativePath });
+    const segments = this.relativePath.split('/');
+    const filename = segments.pop()!;
+    const dir = await dataDirectory(this.projectRoot, segments, false, unsafe);
+    const target = path.join(dir, filename);
     try {
       const item = await lstat(target);
       if (!item.isFile() || item.isSymbolicLink() || item.nlink !== 1) throw unsafe();
@@ -29,12 +31,13 @@ export class LayoutFileStore {
       const reason = systemCode(error);
       if (reason === 'ENOENT') return undefined;
       throw new CanvasError('LAYOUT_READ_FAILED', '布局文件无法读取为 UTF-8。', '核对布局文件编码和权限，保留原件。',
-        { layoutPath, reason });
+        { layoutPath: this.relativePath, reason });
     }
   }
 
   async save(raw: string, previous: string | undefined, checkGraph: () => Promise<void>): Promise<void> {
     let temporary: string | undefined;
+    const layoutPath = this.relativePath;
     try {
       const target = await this.target();
       const candidate = path.join(path.dirname(target), `.aftertaste-layout-${randomUUID()}.tmp`);

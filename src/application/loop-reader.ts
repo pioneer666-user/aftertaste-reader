@@ -1,0 +1,71 @@
+import { createHash } from 'node:crypto';
+import { isLegendKey, legendKey } from '../core/dependency-graph.js';
+import { isNodeId, LoopError, parseSavedLoop } from '../core/loops.js';
+import { CanvasLayoutService } from './canvas-layout.js';
+import type { LayoutReading, LayoutStore, LayoutTarget } from './canvas-layout.js';
+import { checkLoopId } from './loops.js';
+import type { LoopService, LoopStore, ReadingLoop } from './loops.js';
+import type { ReaderProblem } from './file-reader.js';
+
+export interface LoopEntry { id: string; title: string }
+
+export interface LoopCanvasReading extends LayoutReading {
+  result: ReadingLoop;
+}
+
+export class LoopReaderService {
+  private readonly layouts = new CanvasLayoutService();
+
+  constructor(private readonly projectRoot: string, private readonly loops: LoopService,
+    private readonly store: Pick<LoopStore, 'read'> & { listIds(projectRoot: string): Promise<string[]> },
+    private readonly layoutStore: (relativePath: string) => LayoutStore) {}
+
+  async list(): Promise<{ loops: LoopEntry[]; problems: ReaderProblem[] }> {
+    const loops: LoopEntry[] = [];
+    const problems: ReaderProblem[] = [];
+    for (const id of await this.store.listIds(this.projectRoot)) {
+      try {
+        const { raw } = await this.store.read(this.projectRoot, id);
+        const loop = parseSavedLoop(raw, id);
+        loops.push({ id, title: loop.title });
+      } catch (error) {
+        // A directory without current/loop.json isn't a published result.
+        if (!(error instanceof LoopError)) throw error;
+        if (error.code !== 'LOOP_NOT_FOUND') {
+          problems.push({ code: error.code, message: error.message, nextStep: error.nextStep,
+            context: { ...error.context, loopId: id } });
+        }
+      }
+    }
+    return { loops, problems };
+  }
+
+  private async graph(id: string) {
+    const { raw, projectRoot } = await this.store.read(this.projectRoot, id);
+    const loop = parseSavedLoop(raw, id);
+    const ids = new Set([...loop.reading_order, ...loop.legends.map(legend => legendKey(legend.id))]);
+    const graphVersion = createHash('sha256').update(JSON.stringify([projectRoot, id, raw])).digest('hex');
+    return { loop, projectRoot, ids, graphVersion, nodeRemovals: {}, confirmed: new Set<string>() };
+  }
+
+  private target(id: string): LayoutTarget {
+    checkLoopId(id);
+    const directory = `docs/aftertaste/loops/${id}`;
+    const layoutPath = `${directory}/layout.json`;
+    return {
+      graph: `loop:${id}`, graphPath: `${directory}/current/loop.json`, layoutPath,
+      store: this.layoutStore(layoutPath), acceptsId: id => isNodeId(id) || isLegendKey(id),
+      readGraph: () => this.graph(id),
+    };
+  }
+
+  async read(id: string): Promise<LoopCanvasReading> {
+    const target = this.target(id);
+    const graph = await this.graph(id);
+    return { ...await this.layouts.read(target, graph), result: await this.loops.readSources(graph.projectRoot, graph.loop) };
+  }
+
+  save(id: string, input: unknown) {
+    return this.layouts.save(this.target(id), input);
+  }
+}

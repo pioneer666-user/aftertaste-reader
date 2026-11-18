@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { createGenerationProject } from './generation-project.mjs';
 
 export const repository = fileURLToPath(new URL('../../', import.meta.url));
-export const cli = path.join(repository, 'dist/cli/main.js');
+export const build = path.resolve(repository, process.env.AFTERTASTE_BUILD ?? 'dist');
+export const cli = path.join(build, 'cli/main.js');
 
 export async function createCanvasProject(target) {
   const fixed = await createGenerationProject(target);
