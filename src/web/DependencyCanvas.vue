@@ -141,21 +141,31 @@ async function save() {
       const attempt = pending ??= {
         graphVersion: reading.value.graphVersion, expectedRevision: revision, revision: crypto.randomUUID(), layout: layout.value,
       };
-      const result: { revision: string } = await request('/api/dependency-layout', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1' },
-        body: JSON.stringify(attempt),
-      });
-      revision = result.revision;
-      pending = undefined;
-      dirty.value = layout.value !== attempt.layout;
+      try {
+        const result: { revision: string } = await request('/api/dependency-layout', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1' },
+          body: JSON.stringify(attempt),
+        });
+        revision = result.revision;
+        pending = undefined;
+        dirty.value = layout.value !== attempt.layout;
+      } catch (error) {
+        const problem = failed(error);
+        if (problem.code === 'LAYOUT_INVALID') {
+          pending = undefined;
+          if (layout.value !== attempt.layout) continue;
+        }
+        saveProblem.value = problem;
+        break;
+      }
     }
-  } catch (error) { saveProblem.value = failed(error); }
-  finally { saving.value = false; }
+  } finally { saving.value = false; }
 }
 
 function changed(next: CanvasLayout) {
   layout.value = next;
   dirty.value = true;
+  if (saveProblem.value?.code === 'LAYOUT_INVALID') saveProblem.value = undefined;
   if (!saveProblem.value) void save();
 }
 

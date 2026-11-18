@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, writeFile, rename, link, unlink } from 'node:fs/promises';
+import { mkdir, mkdtemp, open, readFile, writeFile, rename, link, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { createCanvasProject, applyGraphUpdate, repository } from '../fixtures/dependency-canvas.mjs';
 import { startReader } from '../../dist/server/reader.js';
+import { GraphFileStore } from '../../dist/adapters/graph-store.js';
 
 const base = path.join(repository, '.local/D012');
 await mkdir(base, { recursive: true });
@@ -132,7 +133,27 @@ test('真实图工具发布完整快照才协调，读写失败与布局坏文�
     assert.deepEqual(changed.layout.groups, []);
     assert.equal(Object.hasOwn(changed.layout.positions, audit), false);
     assert.deepEqual(await readFile(fixture.layout), oldLayout);
-    assert.equal((await turn(reader.url, changed)).status, 200);
+
+    const beforeFailure = await readFile(fixture.graph, 'utf8');
+    const interrupted = JSON.parse(beforeFailure);
+    interrupted.edges[0].reason = '图发布期间失败';
+    const attempted = JSON.stringify(interrupted, null, 2) + '\n';
+    const failingStore = new GraphFileStore({ open, link, unlink, rename: async () => {
+      throw Object.assign(new Error('graph replacement denied'), { code: 'EPERM' });
+    } });
+    await assert.rejects(failingStore.save(fixture.projectRoot, attempted, beforeFailure,
+      { requested: [], active: interrupted.nodes.map(node => node.path) }), { code: 'GRAPH_WRITE_FAILED' });
+    assert.equal(await readFile(fixture.graph, 'utf8'), beforeFailure);
+    assert.deepEqual((await get(reader.url)).confirmedRemovals, [audit]);
+    const beforeRetry = interrupted.edges[0];
+    await applyGraphUpdate(fixture, { reviews: [{ path: beforeRetry.dependent, analysis: 'reviewed',
+      dependencies: interrupted.edges.filter(edge => edge.dependent === beforeRetry.dependent)
+        .map(edge => ({ path: edge.dependency, reason: edge.reason })) }] });
+    const retried = await get(reader.url);
+    assert.deepEqual(retried.confirmedRemovals, [audit]);
+    assert.equal(retried.layoutProblem, null);
+    assert.deepEqual(retried.layout, changed.layout);
+    assert.equal((await turn(reader.url, retried)).status, 200);
 
     const validLayout = await readFile(fixture.layout);
     await applyGraphUpdate(fixture, { remove: [api, service, rules] });

@@ -184,6 +184,17 @@ try {
   await saved();
   await addGroup('读服务', [rules, service]);
   await addGroup('看审计', [audit]);
+  await page.getByLabel('编辑分组').selectOption({ label: '读服务' });
+  const beforeInvalid = await readFile(fixture.layout);
+  await page.getByLabel('组名').fill('Bad\tName');
+  await page.getByRole('button', { name: '应用分组', exact: true }).click();
+  await page.getByText(/LAYOUT_INVALID/u).waitFor();
+  assert.deepEqual(await readFile(fixture.layout), beforeInvalid);
+  await page.getByLabel('组名').fill('读服务');
+  await page.getByRole('button', { name: '应用分组', exact: true }).click();
+  assert.ok((await saved()).groups.some(group => group.name === '读服务'));
+  assert.notDeepEqual(await readFile(fixture.layout), beforeInvalid);
+  report.checks.rejectedDraftCorrected = true;
   const beforeGroup = (await disk()).layout;
   const bounds = (await visibleLayout()).groups['读服务'];
   assert.ok(beforeGroup.positions[audit].x > bounds.x && beforeGroup.positions[audit].y > bounds.y &&

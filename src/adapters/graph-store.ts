@@ -10,6 +10,7 @@ import { dataDirectory, systemCode } from './data-directory.js';
 import { isSourcePath } from '../core/source-path.js';
 
 const removalFile = 'dependency-graph-removals.json';
+interface RemovalProof { publication: string; paths: string[] }
 
 async function publicationKey(file: string, raw: string) {
   const stamp = await lstat(file, { bigint: true });
@@ -61,22 +62,34 @@ export class GraphFileStore implements GraphStore {
   }
 
   async confirmedRemovals(projectRoot: string, raw: string): Promise<string[]> {
+    return (await this.findRemovalProof(projectRoot, raw))?.paths ?? [];
+  }
+
+  private async findRemovalProof(projectRoot: string, raw: string): Promise<RemovalProof | undefined> {
     try {
       const target = await targetPath(projectRoot, false);
       const receipt = await targetPath(projectRoot, false, removalFile);
-      const proof = JSON.parse(await readFile(receipt, 'utf8')) as { publication?: unknown; paths?: unknown };
-      if (proof.publication === await publicationKey(target, raw) &&
-          Array.isArray(proof.paths) && proof.paths.every(isSourcePath)) return proof.paths;
+      const value: unknown = JSON.parse(await readFile(receipt, 'utf8'));
+      const publication = await publicationKey(target, raw);
+      const records: unknown[] = Array.isArray(value) ? value : [value];
+      for (const record of records) {
+        if (!record || typeof record !== 'object' || !('publication' in record) || !('paths' in record)) continue;
+        if (record.publication === publication && Array.isArray(record.paths) && record.paths.every(isSourcePath)) {
+          return { publication, paths: record.paths };
+        }
+      }
     } catch {
       // Missing or invalid evidence cannot authorize pruning user layout.
     }
-    return [];
+    return undefined;
   }
 
-  private async recordRemovals(projectRoot: string, graph: string, raw: string, paths: string[]): Promise<void> {
+  private async recordRemovals(projectRoot: string, graph: string, raw: string, paths: string[], previous?: RemovalProof): Promise<void> {
     if (!paths.length) return;
     const target = await targetPath(projectRoot, false, removalFile);
-    const content = JSON.stringify({ publication: await publicationKey(graph, raw), paths: paths.sort() }) + '\n';
+    const candidateProof = { publication: await publicationKey(graph, raw), paths: paths.sort() };
+    const records = previous && previous.publication !== candidateProof.publication ? [previous, candidateProof] : [candidateProof];
+    const content = JSON.stringify(records) + '\n';
     const candidate = path.join(path.dirname(target), `.aftertaste-removals-${randomUUID()}.tmp`);
     const handle = await open(candidate, 'wx');
     let published = false;
@@ -101,13 +114,14 @@ export class GraphFileStore implements GraphStore {
     let published = false;
     try {
       const target = await targetPath(projectRoot, true);
-      const removed = new Set(removal && previous !== undefined ? await this.confirmedRemovals(projectRoot, previous) : []);
+      const previousProof = removal && previous !== undefined ? await this.findRemovalProof(projectRoot, previous) : undefined;
+      const removed = new Set(previousProof?.paths);
       for (const file of removal?.requested ?? []) removed.add(file);
       for (const file of removal?.active ?? []) removed.delete(file);
       if (raw === previous) {
         if (await this.read(projectRoot) !== previous) throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。',
           '重新查询后决定局部提交。', { projectRoot, graphPath, published: 0 });
-        await this.recordRemovals(projectRoot, target, raw, [...removed]);
+        await this.recordRemovals(projectRoot, target, raw, [...removed], previousProof);
         return;
       }
       const candidate = path.join(path.dirname(target), `.aftertaste-graph-${randomUUID()}.tmp`);
@@ -120,7 +134,7 @@ export class GraphFileStore implements GraphStore {
         throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。', '重新查询后决定局部提交，不自动重试覆盖。', { projectRoot, graphPath, published: 0 });
       }
       await targetPath(projectRoot, false);
-      await this.recordRemovals(projectRoot, temporary, raw, [...removed]);
+      await this.recordRemovals(projectRoot, temporary, raw, [...removed], previousProof);
       if (removed.size && (await this.read(projectRoot) !== previous || await targetPath(projectRoot, false) !== target)) {
         throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。', '重新查询后决定局部提交，不自动重试覆盖。',
           { projectRoot, graphPath, published: 0 });
