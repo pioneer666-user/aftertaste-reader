@@ -159,6 +159,18 @@ function checkUses(uses: readonly LibraryUse[], paths: { has(path: string): bool
   });
 }
 
+export function parseLibraryLegends(value: unknown, paths: ReadonlySet<string>): LibraryLegend[] {
+  const v = new Fields('GRAPH_INVALID');
+  const ids = new Set<string>();
+  return v.array(value, '$.legends').map((entry, index) => {
+    const field = `$.legends[${index}]`;
+    const legend = completeLegend(readLegend(entry, v, field, false), v, field);
+    v.unique(ids, legend.id, field + '.id');
+    checkUses(legend.uses, paths, v, field);
+    return legend;
+  });
+}
+
 export function parseGraph(raw: string): DependencyGraph {
   const v: Fields = new Fields('GRAPH_INVALID');
   let value: unknown;
@@ -188,14 +200,7 @@ export function parseGraph(raw: string): DependencyGraph {
     v.unique(pairs, JSON.stringify([dependency, dependent]), field);
     return { dependency, dependent, reason: v.reason(edge.reason, `${field}.reason`) };
   });
-  const ids = new Set<string>();
-  const legends = Object.hasOwn(data, 'legends') ? v.array(data.legends, '$.legends').map((value, index) => {
-    const field = `$.legends[${index}]`;
-    const legend = completeLegend(readLegend(value, v, field, false), v, field);
-    v.unique(ids, legend.id, field + '.id');
-    checkUses(legend.uses, paths, v, field);
-    return legend;
-  }) : undefined;
+  const legends = Object.hasOwn(data, 'legends') ? parseLibraryLegends(data.legends, paths) : undefined;
   return { format: graphFormat, source_commit: data.source_commit, nodes, edges, ...(legends ? { legends } : {}) };
 }
 

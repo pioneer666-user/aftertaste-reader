@@ -72,7 +72,7 @@ export function explanationSize(text: string): number {
   return size;
 }
 
-function readRange(value: unknown): LineRange | undefined {
+export function readRange(value: unknown): LineRange | undefined {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
   const fields = Object.keys(value);
   if (fields.length !== 2 || !fields.includes('start') || !fields.includes('end')) return undefined;

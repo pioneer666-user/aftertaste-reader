@@ -9,7 +9,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const skill = path.join(root, 'skills/aftertaste-reader');
 
 test('入口、参考、模板均存在，包内相对链接可解析', async () => {
-  const files = ['SKILL.md', ...['authoring', 'teaching', 'generation', 'feedback', 'tools'].map(name => `references/${name}.md`),
+  const files = ['SKILL.md', ...['authoring', 'teaching', 'generation', 'feedback', 'tools', 'loops'].map(name => `references/${name}.md`),
     'assets/templates/preferences.md', 'assets/templates/reading-direction.md'];
   for (const name of files) {
     const source = await readFile(path.join(skill, name), 'utf8');

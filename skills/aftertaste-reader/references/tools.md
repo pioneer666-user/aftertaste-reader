@@ -82,9 +82,35 @@ Git 查询失败时保留真实状态，read 会核完整提交身份与项目�
 
 首次登记给出稳定 ID、类别、名称与介绍。ID 由 1—80 个小写字母、数字、点、下划线或连字符组成，首字符为字母或数字。类别为 standard 或 third-party。后续更新只提交 ID 和有变化的字段。uses 一旦提供就替换该图例所有使用关系，空数组可清空。路径必须已在合并后的图中登记，每个文件最多一条使用关系。用 `legendRemove: ["node-path"]` 正式移除图例，由画布协调清理它的布局。query-legends 查看实例，validate-graph 校验结构与端点。读者在网页可查看和摆放，内容变更由工具提交。
 
+## 闭环
+
+用户选定路线后，使用 `create-loop` + sourceArgs + `--id 闭环ID --input UTF-8输入文件绝对路径`。成品路径在 result.path。布置节点及讲解时可参考以下最小合成输入。
+
+```json
+{
+  "format": "aftertaste-loop-input/v1",
+  "title": "服务如何校验数量",
+  "goal": "理解创建服务怎样把数量交给规则",
+  "explanation": "服务收到输入后先调用数量规则。规则正常返回整数后，服务才继续。",
+  "entry": "receive",
+  "nodes": [
+    {"id": "receive", "path": "src/service.mjs", "block_id": "m3vuiqzi", "title": "服务收到输入", "explanation": "服务取出数量作为规则的输入。"},
+    {"id": "check", "path": "src/rules.mjs", "block_id": "x4y6az2y", "title": "规则检查数量", "explanation": "规则返回有效整数或抛出异常。"}
+  ],
+  "edges": [{"from": "receive", "to": "check", "reason": "调用把原始数量传给校验函数。"}],
+  "reading_order": ["receive", "check"]
+}
+```
+
+闭环和节点 ID 最多 64 字符，使用小写字母、数字和分隔用的单连字符，闭环 ID 避开 Windows 设备名。路线至少涉及两个源码文件，所有节点可从入口沿边到达，推荐顺序覆盖每个节点一次。填写实际已讲解的文件与块 ID，节点可附 `hint`。有实际使用的库图例时加 `"legends": [{"id": "node-path", "paths": ["src/reader.mjs"]}]`，列出路线中选用该图例的文件。块讲解、行范围和图例正文由工具取得。
+
+用 `read-loop --project projectRoot --id 闭环ID` 读回 JSON。result.loop 是独立成品，result.sources 含本次取出的源码行，只在内存查看。给读者一份文本可用 `--format markdown` 输出讲解、关系、图例及源码引用。源码部分缺失时，工具仍会交回讲解，result.sourceCheck 为 unavailable，result.mechanicallyValid 为 false，并给出各失败引用。
+
+`LOOP_BLOCK_INVALID` 定位需核对的现有块，`LOOP_LEGEND_INVALID` 定位所选图例及用法，`LOOP_INPUT_INVALID` 定位输入字段。已占用的 ID 返回 `LOOP_EXISTS`，可以重读原成果。保存失败后先核对诊断和成品是否可读，确认尚未发布再重试。
+
 ## 结果和诊断
 
-成功 stdout 为一行 JSON，stderr 空，退出 0。操作／输入失败通常 stdout 空、stderr 为 `{ok:false,error}`，参数错误退出 2，其余退出 1。文档或图校验可完成但不合法时 stdout 返回 `{ok:false,result}` 并退出 1，因此同时检查两个流和退出码。
+默认成功 stdout 为一行 JSON，stderr 空，退出 0。闭环的 Markdown 模式输出多行讲解。操作／输入失败通常 stdout 空、stderr 为 `{ok:false,error}`，参数错误退出 2，其余退出 1。文档或图校验可完成但不合法时 stdout 返回 `{ok:false,result}` 并退出 1，因此同时检查两个流和退出码。
 
 文档成功要读 mechanicallyValid、sourceCheck、contentStatus 及 diagnostics，教学质量仍为 unchecked。图要读 mechanicallyValid、sourceCheck 和节点 analysis。保留 SOURCE_TOO_LARGE、EXPLANATION_TOO_LARGE 告知，EXPLANATION_EMPTY 继续填。
 
