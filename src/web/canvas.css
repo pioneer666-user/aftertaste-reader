@@ -1,0 +1,48 @@
+/* Use the reader's typography and controls around the canvas. */
+.app-header .toolbar { flex-wrap: wrap; }
+.canvas-page { padding: 22px 28px; }
+.canvas-header, .canvas-actions, .canvas-zoom { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.canvas-header { justify-content: space-between; }
+.canvas-header h1 { margin: 0; }
+.canvas-status { margin: 10px 0 12px; color: var(--accent); font-size: 14px; }
+.canvas-empty { padding: 28px; background: #fff; border: 1px solid var(--line); }
+.canvas-problem { margin: 0 0 12px; padding: 10px 14px; background: #fff8e9; border: 1px solid #dfc895; color: #6d4a14; overflow-wrap: anywhere; }
+.canvas-problem p { margin: 0 0 4px; }
+.canvas-recovery { margin: 0 0 12px; }
+.canvas-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.graph-area { position: relative; min-height: 400px; height: calc(100dvh - 220px); background: #f2f6f2; }
+.graph-area .vue-flow { position: absolute; inset: 0; }
+.graph-area .vue-flow__edge-path { stroke: #486357; stroke-width: 2; }
+.graph-area .vue-flow__node-canvasGroup { pointer-events: none !important; }
+.group-frame { width: 100%; height: 100%; border: 1px dashed #628572; border-radius: 8px; background: #dcece449; }
+.group-handle { pointer-events: auto; display: block; max-width: calc(100% - 14px); min-height: 28px; margin: 6px; padding: 3px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: grab; background: #e9f4ec; }
+.graph-area .vue-flow__handle { background: #486357; border-color: #fff; }
+.graph-area .self-handle { opacity: 0; }
+.file-node { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; width: 100%; height: 100%; border-color: #789385; padding: 5px 10px; gap: 4px; text-align: left; cursor: grab; font-size: 14px; }
+.file-node span { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-node small { color: var(--muted); font-size: 12px; }
+.file-node[aria-pressed="true"] { background: #d8ecdf; border: 2px solid var(--accent); padding-inline: 9px; }
+.canvas-zoom { position: absolute; left: 12px; bottom: 12px; color: var(--muted); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 3px; }
+.canvas-zoom button { min-height: 32px; padding: 3px 9px; }
+.canvas-zoom output { min-width: 3.4em; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+.canvas-inspector { background: #fff; border-left: 1px solid var(--line); max-height: calc(100dvh - 220px); min-height: 400px; overflow: auto; padding: 16px; overflow-wrap: anywhere; font-size: 14px; }
+.canvas-inspector h2 { margin: 0 0 10px; font-size: 16px; }
+.canvas-inspector h3 { margin: 18px 0 5px; font-size: 14px; }
+.canvas-hint { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.canvas-relations { list-style: none; padding: 0; margin: 0; }
+.canvas-relations li { margin: 8px 0; }
+.canvas-relations button { min-height: 32px; padding: 4px 8px; text-align: left; overflow-wrap: anywhere; max-width: 100%; }
+.canvas-relations p { margin: 5px 0 0; line-height: 1.5; white-space: pre-wrap; }
+.canvas-groups { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.canvas-groups > label { display: block; margin: 8px 0 4px; }
+.canvas-groups > select, .canvas-groups > input { width: 100%; }
+.canvas-groups > input { font: inherit; border: 1px solid #a6b8ac; border-radius: 6px; min-height: 36px; padding: 6px 8px; }
+.canvas-groups fieldset { margin: 12px 0; padding: 4px 8px; border: 1px solid var(--line); }
+.canvas-member { display: flex; align-items: baseline; gap: 5px; padding: 5px 0; }
+.canvas-groups .canvas-hint { margin-top: 8px; }
+@media (max-width: 760px) {
+  .canvas-page { padding: 16px; }
+  .canvas-workspace { grid-template-columns: minmax(0, 1fr); }
+  .graph-area { height: 55dvh; min-height: 280px; }
+  .canvas-inspector { min-height: 0; max-height: none; border-left: 0; border-top: 1px solid var(--line); }
+}

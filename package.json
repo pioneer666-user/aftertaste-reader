@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit && vue-tsc --noEmit -p tsconfig.web.json",
     "build": "tsc && vite build",
     "test:browser": "node tests/browser/file-reader.mjs",
+    "test:browser:canvas": "node tests/browser/dependency-canvas.mjs",
     "test": "node --test --test-concurrency=1 tests/unit/*.test.mjs tests/integration/*.test.mjs"
   },
   "devDependencies": {
@@ -25,6 +26,7 @@
     "fastify": "5.12.8",
     "vue": "3.5.45",
     "markdown-it": "15.0.3",
-    "@fontsource/inter": "5.2.8"
+    "@fontsource/inter": "5.2.8",
+    "@vue-flow/core": "1.48.2"
   }
 }

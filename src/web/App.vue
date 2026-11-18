@@ -3,6 +3,8 @@ import { nextTick, onMounted, ref } from 'vue';
 import type { DocumentEntry, ReaderProblem } from '../application/file-reader.js';
 import type { ReadingDocument } from '../application/document-blocks.js';
 import ReaderDocument from './ReaderDocument.vue';
+import DependencyCanvas from './DependencyCanvas.vue';
+import { failed, request } from './reader-api.js';
 import { problemText, readLanguage, saveLanguage, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 
@@ -19,25 +21,22 @@ const selected = ref('');
 const listLoading = ref(true);
 const readingLoading = ref(false);
 const readingPane = ref<HTMLElement>();
+const canvasOpened = ref(false);
+const view = ref<'reader' | 'canvas'>('reader');
+const fromCanvas = ref(false);
 let listSequence = 0;
 let readSequence = 0;
 let controller: AbortController | undefined;
 
-class RequestFailure extends Error {
-  constructor(readonly problem: ReaderProblem) { super(problem.code); }
+function openCanvas() {
+  canvasOpened.value = true;
+  view.value = 'canvas';
 }
 
-async function request<T>(route: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(route, { cache: 'no-store', ...(signal ? { signal } : {}) });
-  const data = await response.json();
-  if (!response.ok || !data.ok) throw new RequestFailure(data.error);
-  return data as T;
-}
-
-function failed(error: unknown): ReaderProblem {
-  return error instanceof RequestFailure ? error.problem : {
-    code: 'NETWORK_ERROR', message: '', nextStep: '', context: {},
-  };
+function readFromCanvas(documentPath: string) {
+  view.value = 'reader';
+  fromCanvas.value = true;
+  void selectDocument(documentPath);
 }
 
 async function selectDocument(documentPath: string) {
@@ -49,7 +48,7 @@ async function selectDocument(documentPath: string) {
   result.value = undefined;
   readingError.value = undefined;
   try {
-    const data = await request<{ result: ReadingDocument }>(`/api/document?path=${encodeURIComponent(documentPath)}`, controller.signal);
+    const data = await request<{ result: ReadingDocument }>(`/api/document?path=${encodeURIComponent(documentPath)}`, { signal: controller.signal });
     if (sequence === readSequence) result.value = data.result;
   } catch (error) {
     if (sequence === readSequence) readingError.value = { ...failed(error), context: { ...failed(error).context, documentPath } };
@@ -105,18 +104,21 @@ onMounted(() => {
 </script>
 
 <template>
-  <a href="#reading" class="skip-link">{{ t('skip') }}</a>
+  <a :href="view === 'canvas' ? '#canvas-reading' : '#reading'" class="skip-link">{{ t('skip') }}</a>
   <header class="app-header">
     <div class="brand"><strong>{{ t('brand') }}</strong><span>{{ t('title') }}</span></div>
     <div class="toolbar">
-      <button type="button" :disabled="listLoading" @click="refresh">{{ t('refresh') }}</button>
+      <button v-if="view === 'reader'" type="button" @click="openCanvas">{{ t(fromCanvas ? 'canvasBack' : 'dependencyCanvas') }}</button>
+      <button v-else type="button" @click="view = 'reader'; fromCanvas = false">{{ t('files') }}</button>
+      <button v-if="view === 'reader'" type="button" :disabled="listLoading" @click="refresh">{{ t('refresh') }}</button>
       <label class="language-control"><span>{{ t('language') }}</span>
         <select :value="language" :aria-label="t('language')" @change="changeLanguage"><option value="zh-CN">简体中文</option><option value="en">English</option></select>
       </label>
     </div>
   </header>
   <p v-if="languageStatus" class="language-status" role="status">{{ t(languageStatus) }}</p>
-  <div class="workspace">
+  <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" :language="language" @read="readFromCanvas" />
+  <div v-show="view === 'reader'" class="workspace">
     <aside class="sidebar">
       <h2>{{ t('files') }}</h2>
       <p class="project-root" :title="projectRoot">{{ projectRoot }}</p>
