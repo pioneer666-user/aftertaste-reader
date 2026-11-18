@@ -4,20 +4,52 @@ export const graphFormat = 'aftertaste-dependency-graph/v1';
 export const updateFormat = 'aftertaste-dependency-update/v1';
 export const graphPath = 'docs/aftertaste/dependency-graph.json';
 export type RemovalMarks = Readonly<Record<string, string>>;
+const legendPrefix = 'legend:';
+
+export function isLegendId(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-z0-9][a-z0-9._-]{0,79}$/u.test(value);
+}
+
+export function legendKey(id: string): string {
+  return legendPrefix + id;
+}
+
+export function isLegendKey(value: string): boolean {
+  return value.startsWith(legendPrefix) && isLegendId(value.slice(legendPrefix.length));
+}
+
+export function isCanvasId(value: unknown): value is string {
+  return isSourcePath(value) || (typeof value === 'string' && isLegendKey(value));
+}
 
 export function readRemovalMarks(value: unknown): RemovalMarks | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  return Object.entries(value).every(([path, mark]) => isSourcePath(path) &&
+  return Object.entries(value).every(([id, mark]) => isCanvasId(id) &&
     typeof mark === 'string' && /^[a-f0-9]{64}$/u.test(mark)) ? value as RemovalMarks : undefined;
 }
 
 export interface GraphNode { readonly path: string; readonly analysis: 'unreviewed' | 'reviewed' }
 export interface GraphEdge { readonly dependency: string; readonly dependent: string; readonly reason: string }
+export interface LibraryUse { readonly path: string; readonly reason: string }
+export interface LibraryLegend {
+  readonly id: string;
+  readonly kind: 'standard' | 'third-party';
+  readonly name: string;
+  readonly description: string;
+  readonly uses: readonly LibraryUse[];
+}
+type LegendPatch = Pick<LibraryLegend, 'id'> & Partial<Omit<LibraryLegend, 'id'>>;
+
 export interface DependencyGraph {
   readonly format: typeof graphFormat;
   readonly source_commit: string;
   readonly nodes: readonly GraphNode[];
   readonly edges: readonly GraphEdge[];
+  readonly legends?: readonly LibraryLegend[];
+}
+
+export function canvasIds(graph: DependencyGraph): string[] {
+  return [...graph.nodes.map(node => node.path), ...(graph.legends ?? []).map(legend => legendKey(legend.id))];
 }
 export interface GraphReview {
   readonly path: string;
@@ -29,6 +61,8 @@ export interface GraphUpdate {
   readonly register: readonly string[];
   readonly reviews: readonly GraphReview[];
   readonly remove: readonly string[];
+  readonly legendUpserts: readonly LegendPatch[];
+  readonly legendRemove: readonly string[];
 }
 export interface GraphDiagnostic {
   readonly code: string;
@@ -77,6 +111,10 @@ class Fields {
     if (!isSourcePath(value)) this.fail('GRAPH_PATH', field);
     return value;
   }
+  legendId(value: unknown, field: string): string {
+    if (!isLegendId(value)) this.fail('GRAPH_LEGEND_ID', field);
+    return value;
+  }
   reason(value: unknown, field: string): string {
     if (typeof value !== 'string' || !value.isWellFormed() || value.trim() === '') this.fail('GRAPH_REASON', field);
     return value;
@@ -87,12 +125,46 @@ class Fields {
   }
 }
 
+function readLegend(value: unknown, v: Fields, field: string, partial: boolean): LegendPatch {
+  const keys = ['kind', 'name', 'description', 'uses'];
+  const data = v.object(value, partial ? ['id'] : ['id', ...keys], partial ? keys : [], field);
+  const id = v.legendId(data.id, field + '.id');
+  const { kind } = data;
+  if (Object.hasOwn(data, 'kind') && kind !== 'standard' && kind !== 'third-party') v.fail('GRAPH_LEGEND_KIND', field + '.kind');
+  const seen = new Set<string>();
+  const uses = Object.hasOwn(data, 'uses') ? v.array(data.uses, field + '.uses').map((entry, index): LibraryUse => {
+    const location = `${field}.uses[${index}]`;
+    const use = v.object(entry, ['path', 'reason'], [], location);
+    const path = v.path(use.path, location + '.path');
+    v.unique(seen, path, location + '.path');
+    return { path, reason: v.reason(use.reason, location + '.reason') };
+  }) : undefined;
+  return { id, ...(kind === 'standard' || kind === 'third-party' ? { kind } : {}),
+    ...(Object.hasOwn(data, 'name') ? { name: v.reason(data.name, field + '.name') } : {}),
+    ...(Object.hasOwn(data, 'description') ? { description: v.reason(data.description, field + '.description') } : {}),
+    ...(uses ? { uses } : {}) };
+}
+
+function completeLegend(patch: LegendPatch, v: Fields, field: string): LibraryLegend {
+  const { id, kind, name, description, uses = [] } = patch;
+  if (kind === undefined) v.fail('GRAPH_FIELDS', field + '.kind');
+  if (name === undefined) v.fail('GRAPH_FIELDS', field + '.name');
+  if (description === undefined) v.fail('GRAPH_FIELDS', field + '.description');
+  return { id, kind, name, description, uses };
+}
+
+function checkUses(uses: readonly LibraryUse[], paths: { has(path: string): boolean }, v: Fields, field: string) {
+  uses.forEach(({ path }, index) => {
+    if (!paths.has(path)) v.fail('GRAPH_REFERENCE', `${field}.uses[${index}].path`, { path });
+  });
+}
+
 export function parseGraph(raw: string): DependencyGraph {
   const v: Fields = new Fields('GRAPH_INVALID');
   let value: unknown;
   try { value = JSON.parse(raw.replace(/^\uFEFF/u, '')); }
   catch { v.fail('GRAPH_JSON', '$'); }
-  const data = v.object(value, ['format', 'source_commit', 'nodes', 'edges'], [], '$');
+  const data = v.object(value, ['format', 'source_commit', 'nodes', 'edges'], ['legends'], '$');
   if (data.format !== graphFormat) v.fail('GRAPH_FORMAT', '$.format');
   if (typeof data.source_commit !== 'string' || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(data.source_commit)) v.fail('GRAPH_COMMIT', '$.source_commit');
   const paths = new Set<string>();
@@ -116,14 +188,23 @@ export function parseGraph(raw: string): DependencyGraph {
     v.unique(pairs, JSON.stringify([dependency, dependent]), field);
     return { dependency, dependent, reason: v.reason(edge.reason, `${field}.reason`) };
   });
-  return { format: graphFormat, source_commit: data.source_commit, nodes, edges };
+  const ids = new Set<string>();
+  const legends = Object.hasOwn(data, 'legends') ? v.array(data.legends, '$.legends').map((value, index) => {
+    const field = `$.legends[${index}]`;
+    const legend = completeLegend(readLegend(value, v, field, false), v, field);
+    v.unique(ids, legend.id, field + '.id');
+    checkUses(legend.uses, paths, v, field);
+    return legend;
+  }) : undefined;
+  return { format: graphFormat, source_commit: data.source_commit, nodes, edges, ...(legends ? { legends } : {}) };
 }
 
 export function parseUpdate(value: unknown): GraphUpdate {
   const v: Fields = new Fields('GRAPH_INPUT_INVALID');
-  const data = v.object(value, ['format'], ['register', 'reviews', 'remove'], '$');
+  const actions = ['register', 'reviews', 'remove', 'legendUpserts', 'legendRemove'];
+  const data = v.object(value, ['format'], actions, '$');
   if (data.format !== updateFormat) v.fail('GRAPH_FORMAT', '$.format');
-  if (!['register', 'reviews', 'remove'].some(key => Object.hasOwn(data, key))) v.fail('GRAPH_FIELDS', '$');
+  if (!actions.some(key => Object.hasOwn(data, key))) v.fail('GRAPH_FIELDS', '$');
   const pathList = (key: string): string[] => {
     const seen = new Set<string>();
     return (Object.hasOwn(data, key) ? v.array(data[key], `$.${key}`) : []).map((value, index) => {
@@ -158,7 +239,21 @@ export function parseUpdate(value: unknown): GraphUpdate {
   remove.forEach((filePath, index) => {
     if (referenced.has(filePath)) v.fail('GRAPH_CONFLICT', `$.remove[${index}]`, { path: filePath });
   });
-  return { format: updateFormat, register, reviews, remove };
+  const ids = new Set<string>();
+  const legendUpserts = (Object.hasOwn(data, 'legendUpserts') ? v.array(data.legendUpserts, '$.legendUpserts') : []).map((entry, index) => {
+    const field = `$.legendUpserts[${index}]`;
+    const patch = readLegend(entry, v, field, true);
+    v.unique(ids, patch.id, field + '.id');
+    return patch;
+  });
+  const legendRemove = (Object.hasOwn(data, 'legendRemove') ? v.array(data.legendRemove, '$.legendRemove') : []).map((entry, index) => {
+    const field = `$.legendRemove[${index}]`;
+    const id = v.legendId(entry, field);
+    if (ids.has(id)) v.fail('GRAPH_CONFLICT', field, { id });
+    ids.add(id);
+    return id;
+  });
+  return { format: updateFormat, register, reviews, remove, legendUpserts, legendRemove };
 }
 
 function compare(a: string, b: string): number { return a < b ? -1 : a > b ? 1 : 0; }
@@ -189,8 +284,19 @@ export function applyGraph(original: DependencyGraph, update: GraphUpdate): {
   update.remove.forEach(filePath => nodes.delete(filePath));
   affected.forEach(filePath => nodes.set(filePath, { path: filePath, analysis: 'unreviewed' }));
   edges = edges.filter(edge => !removed.has(edge.dependency) && !removed.has(edge.dependent));
+  const legends = new Map<string, LibraryLegend>((original.legends ?? []).map(legend => [legend.id, {
+    ...legend, uses: legend.uses.filter(use => !removed.has(use.path)),
+  }]));
+  update.legendRemove.forEach(id => legends.delete(id));
+  const fields = new Fields('GRAPH_INPUT_INVALID');
+  update.legendUpserts.forEach((patch, index) => {
+    const field = `$.legendUpserts[${index}]`;
+    if (patch.uses) checkUses(patch.uses, nodes, fields, field);
+    legends.set(patch.id, completeLegend({ ...legends.get(patch.id), ...patch }, fields, field));
+  });
   return { graph: { format: graphFormat, source_commit: original.source_commit,
-    nodes: [...nodes.values()].sort((a, b) => compare(a.path, b.path)), edges: edges.sort(edgeOrder) },
+    nodes: [...nodes.values()].sort((a, b) => compare(a.path, b.path)), edges: edges.sort(edgeOrder),
+    ...(legends.size ? { legends: [...legends.values()].sort((a, b) => compare(a.id, b.id)) } : {}) },
   removedEdges: removedEdges.sort(edgeOrder), affectedDependents: [...affected].sort(compare) };
 }
 

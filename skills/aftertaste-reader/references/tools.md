@@ -43,10 +43,11 @@ Git 查询失败时保留真实状态，read 会核完整提交身份与项目�
 | read | `read` + sourceArgs + `--path 项目相对路径`。file.content 是运行时源码，返回值没有行数字段。分块在内存中按物理行核对，LF／CRLF／CR 均为行终止符，末尾终止符不额外计行，空串为零行 |
 | create-document | `create-document` + sourceArgs + `--path 路径 --blocks JSON.stringify(有序清单)`。返回 generated 和 result，初始为空正文 |
 | validate-document | `validate-document` + mapping + `--document docs/aftertaste/current/源码路径.md`。提交由文档头读取，本命令没有 --commit |
-| apply-graph | `apply-graph` + sourceArgs + `--input 输入JSON绝对路径`。输入文件仅保存路径、状态和原因，不含源码 |
+| apply-graph | `apply-graph` + sourceArgs + `--input 输入JSON绝对路径`。可维护文件依赖及本图的库图例，输入按源码引用规则准备 |
 | query-graph | `query-graph` + sourceArgs + `--path 项目相对路径`。查询已有局部与状态，缺图报 GRAPH_NOT_FOUND |
+| query-legends | `query-legends` + sourceArgs，可加 `--id 图例ID`。只读查询本图图例和使用文件，缺图报 GRAPH_NOT_FOUND |
 | validate-graph | `validate-graph` + sourceArgs。缺图报错，校验读取无写入 |
-| serve | `serve --project projectRoot`，可加 `--port 端口`。提供已有 current 文件讲解的本地只读阅读页，stdout 的 ready.url 为入口，终端 Ctrl+C 关闭。页面支持中英文，刷新重读资料，源码使用各文档头提交 |
+| serve | `serve --project projectRoot`，可加 `--port 端口`。提供本地阅读页，允许摆放图中对象并保存布局，stdout 的 ready.url 为入口，终端 Ctrl+C 关闭。源码使用各文档头提交 |
 
 图输入使用当前格式，以下路径仅为合成示意，实际必须核固定源码。
 
@@ -63,6 +64,23 @@ Git 查询失败时保留真实状态，read 会核完整提交身份与项目�
 ```
 
 先登记阶段只传 format/register。依赖提交阶段明确每个使用者的完整结果。新引用的项目文件由工具登记，边方向是 dependency → dependent。输入文件放本次可重建工具输入位置，用完可清理自己创建的文件。
+
+## 库图例
+
+```json
+{
+  "format": "aftertaste-dependency-update/v1",
+  "legendUpserts": [{
+    "id": "node-path",
+    "kind": "standard",
+    "name": "node:path",
+    "description": "提供与平台相适配的路径拼接和解析。",
+    "uses": [{"path": "src/reader.mjs", "reason": "构造讲解资料的镜像路径。"}]
+  }]
+}
+```
+
+首次登记给出稳定 ID、类别、名称与介绍。ID 由 1—80 个小写字母、数字、点、下划线或连字符组成，首字符为字母或数字。类别为 standard 或 third-party。后续更新只提交 ID 和有变化的字段。uses 一旦提供就替换该图例所有使用关系，空数组可清空。路径必须已在合并后的图中登记，每个文件最多一条使用关系。用 `legendRemove: ["node-path"]` 正式移除图例，由画布协调清理它的布局。query-legends 查看实例，validate-graph 校验结构与端点。读者在网页可查看和摆放，内容变更由工具提交。
 
 ## 结果和诊断
 
