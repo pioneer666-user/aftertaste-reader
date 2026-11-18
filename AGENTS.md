@@ -43,7 +43,8 @@
 - `docs/usage/`：面向产品使用者的说明；`dist/`：可再生成的构建结果。
 - `specs/`：产品应该怎样工作及后续技术方案；当前入口是 08，旧记录不删除。
 - `docs/development/`、`docs/roles/`：本项目开发规则；不复制产品规格。
-- `docs/work/YYYY/MM/`：按创建年月保存任务批准依据、调整、回执和审查原文；根层保留索引、待办与模板。
+- 项目待办、优先级和剩余工作统一维护在[项目待办](docs/product/backlog.md)。各职责 AI 使用开发规范的反馈统一维护在[规范反馈](docs/standards/feedback.md)。每类只维护一份。
+- `docs/work/YYYY/MM/`：按创建年月保存任务批准依据、调整、回执和审查原文。任务索引和模板放在 `docs/work/` 根层。
 - `.agents/`：开发用第三方技能及来源；不是回味交付给用户的产品 Skill。外部材料仅在选用时按项目适配执行，不成为全局规则。
 - `.specify/`：官方 Spec Kit 模板、脚本、manifest、workflow 与项目原则；受管源文件不手改，具体使用见接入说明。
 - `experiments/D编号-主题/`：与派单同编号的实验材料，入口见 [experiments](experiments/README.md)；`.local/`：可再生成的日志、截图等，按任务隔离。唯一证据不能只放忽略目录。

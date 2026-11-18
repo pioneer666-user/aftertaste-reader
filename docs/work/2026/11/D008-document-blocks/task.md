@@ -40,10 +40,10 @@
 
 - 按 Ponytail full 沿现有工程实现。纯解析、ID／范围与计数规则归 `src/core/`，用例归 `src/application/`，文件系统能力归 `src/adapters/`，命令归 `src/cli/`。后续服务和页面复用同一结果，不将解析绑到网页框架。
 - 在 `specs/003-document-blocks/` 建立本能力的正式材料，引用 001 已确认设计及 002 取源契约；不改写整份首版设计。按[接入说明](../../../../development/spec-kit.md)使用 speckit-specify／spec-template、speckit-plan／plan-template、speckit-tasks／tasks-template，形成真实需求映射、方案、数据模型、CLI 契约、quickstart 与必要 checklist。先用 speckit-analyze 核三份材料，再按 speckit-implement 的实际前置实施；只研究本批尚需落实的技术选择。
-- User Input 始终含本单批准版本、M01—M06、001 的约束、002 已有能力、下述后置范围与允许材料。现有规范允许的精确章节读取、有效上下文和阶段证据可以复用；[D007 反馈](../../../development-feedback.md)目前是观察记录，不授予绕过技能前置的权限。
+- User Input 始终含本单批准版本、M01—M06、001 的约束、002 已有能力、下述后置范围与允许材料。现有规范允许的精确章节读取、有效上下文和阶段证据可以复用；[D007 反馈](../../../../standards/feedback.md)目前是观察记录，不授予绕过技能前置的权限。
 - 测试归 `tests/unit/`、`tests/integration/`、`tests/fixtures/`，运行输出归 `.local/D008/<run-id>/`；使用合成源码与讲解，不在回味开发仓库根生成真实 `docs/aftertaste/`。必要模板如实际需要随产品交付，归 `skills/aftertaste-reader/assets/templates/`，不为占位创建可调用 Skill。
 - Node 24／TypeScript 及现有测试方式继续使用。解析器选型应依据真实 Markdown 上下文行为；若标准库／现有依赖不足，可采用必要的成熟依赖并交代用途、许可、版本和维护成本，不为少依赖留下已知误解析，也不引入网页渲染器或通用插件框架。
-- 新诊断维持稳定标识与参数，未来界面通过语言资源呈现；首批正式页面仍须按 [B003](../../../backlog.md#b003--网页界面支持中文与英文)接入中英文。本单不做全量文案翻译。
+- 新诊断维持稳定标识与参数，未来界面通过语言资源呈现；首批正式页面仍须按 [B003](../../../../product/backlog.md#b003--网页界面支持中文与英文)接入中英文。本单不做全量文案翻译。
 - 后置范围：自动讲解与教学指南／产品 Skill、批次调度和整套版本同步、依赖图、HTTP 与阅读页、用户记录、闭环、更新／备份／恢复、导出。普通 Markdown 的网页降级在阅读页任务验收；本单交付必要数据与诊断，不报告页面体验已通过。
 
 ## 验证与停点

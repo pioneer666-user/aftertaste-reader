@@ -12,7 +12,7 @@
 
 - 工作目录：`D:/project/SpecDev Harness/aftertaste-reader`。任务资料：`docs/work/2026/11/D011-file-reader/`。dev 基线：`bf15ac71b3f9bac97b37524598e73d9ec060234b`；接续 `codex/feat-file-reader` 及本单派单提交，不另建 worktree。派单前工作区干净，仅有 dev。
 - 产品依据：[08](../../../../../specs/001-first-release/08-current-spec-and-acceptance.md) 的 R01—R06、U101、A01—A05 及 G5／8.2 中页面和诊断职责；[02](../../../../../specs/001-first-release/02-document-layout.md) 的 FR-015／FR-016／FR-031／FR-034；[06](../../../../../specs/001-first-release/06-document-blocks.md) 的两类块、完整顺序覆盖及警告口径；[03 U102](../../../../../specs/001-first-release/03-web-delivery.md) 的已定技术与本地服务交付。历史“未定”服从 08 及后续确认。
-- 双语依据为 [B003](../../../backlog.md#b003--网页界面支持中文与英文)，本批在第一份正式页面中落实，不留到产品完成后抽取文案。只做简体中文和英文界面，讲解正文、源码及用户内容保持原文。
+- 双语依据为 [B003](../../../../product/backlog.md#b003--网页界面支持中文与英文)，本批在第一份正式页面中落实，不留到产品完成后抽取文案。只做简体中文和英文界面，讲解正文、源码及用户内容保持原文。
 - 现有能力与接口见 [002](../../../../../specs/002-fixed-source/contracts/cli.md)、[003](../../../../../specs/003-document-blocks/contracts/cli.md)；有效证据见 [D007](../D007-fixed-source-hardening/handoff.md)、[D008](../D008-document-blocks/handoff.md)、[D010](../D010-generation-skill/handoff.md)。复用固定源、解析、覆盖校验、结构化诊断和磁盘路径保护；服务直接调用共用用例，不调用 CLI 子进程或重新实现一套解析器。
 - [D010 试读入口](../D010-generation-skill/sample/README.md)及[可重建合成项目](../../../../../tests/fixtures/generation-project.mjs)可作为本批主要端到端输入；在 `.local/D011/<run-id>/` 重建并准备资料，保留 D010 原件和沙盒。合成样例不冒称真实项目教学已验。
 

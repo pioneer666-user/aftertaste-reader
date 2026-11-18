@@ -36,10 +36,10 @@
 
 - 使用 Ponytail full，沿现有 core／application／adapters／CLI 分工。图类型、校验和局部合入规则归 `src/core/`；用例与存储端口归 `src/application/`；磁盘读写归 `src/adapters/`；命令归 `src/cli/`。只在确有共用调用时提取必要的路径或文件处理，不搭通用图框架／存储框架，不改变既有文档创建语义。
 - 正式材料放 `specs/004-dependency-graph/`，引用现有首版设计及取源契约。按 [Spec Kit 接入](../../../../development/spec-kit.md)使用 speckit-specify／spec-template、speckit-plan／plan-template、speckit-tasks／tasks-template；形成实际需求映射、方案、模型、CLI 契约、quickstart 及适用 checklist，先以 speckit-analyze 核一致性，再按 speckit-implement 的真实前置实施。只研究本批尚需落实的事项，不重做整套首版设计。
-- 各阶段 User Input 携带本单批准版本、G01—G05、既有能力与有效证据、后置范围、允许修改材料。旧规格／代码变更限本单必要调用链，保留有效任务记录；[反馈观察](../../../development-feedback.md)不是跳过技能前置或改上游文件的授权。
+- 各阶段 User Input 携带本单批准版本、G01—G05、既有能力与有效证据、后置范围、允许修改材料。旧规格／代码变更限本单必要调用链，保留有效任务记录；[反馈观察](../../../../standards/feedback.md)不是跳过技能前置或改上游文件的授权。
 - 命令采用可供 AI 调用的查询、局部应用、检查入口；具体命令数量不作指标。应用输入使用 JSON 文件而非要求拼接整图长命令。稳定诊断码及字段参数与可读文案分开，新增错误不靠匹配中文句子识别。命令与共用用例使用同一验证及合入规则。
 - 测试与合成样例归 `tests/unit/`、`tests/integration/`、`tests/fixtures/`；运行输出归 `.local/D009/<run-id>/`。不在回味开发仓库根创建真实 `docs/aftertaste/`，不记录真实用户源码。沿现有 Node 24／TypeScript、单锁文件和 node:test；目前无已知需求需要新运行时依赖。
-- 后置范围：自动依赖解析器、教学／生成 Skill、批次调度、HTTP 与网页、图例／布局／画布、闭环、跨版本更新／备份恢复及导出。现有双语界面要求仍在 [B003](../../../backlog.md#b003--网页界面支持中文与英文)，本单无页面且不扩为全量诊断翻译。
+- 后置范围：自动依赖解析器、教学／生成 Skill、批次调度、HTTP 与网页、图例／布局／画布、闭环、跨版本更新／备份恢复及导出。现有双语界面要求仍在 [B003](../../../../product/backlog.md#b003--网页界面支持中文与英文)，本单无页面且不扩为全量诊断翻译。
 
 ## 验证与停点
 
