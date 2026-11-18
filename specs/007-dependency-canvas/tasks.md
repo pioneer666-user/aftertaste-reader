@@ -56,7 +56,7 @@ description: "文件依赖图与布局保存实施清单"
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T011 更新 docs/usage/file-reader.md 及 specs/001-first-release/08-current-spec-and-acceptance.md 的交付范围。
-- [ ] T012 运行 quickstart.md 检查，核 G01—G05，与证据一起固定候选并交执行侧独审，形成 D012 handoff。
+- [x] T012 运行 quickstart.md 检查，核 G01—G05，与证据一起固定候选并交执行侧独审，形成 D012 handoff。
 
 ## Dependencies & Execution Order
 
