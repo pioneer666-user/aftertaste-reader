@@ -6,7 +6,7 @@
 - [打开本机试读](http://127.0.0.1:4336)。顶部进入「闭环阅读」，可选「订单数量校验怎样决定集合会不会改变」和「路径工具怎样处理文件名」。同一试读项目的「文件依赖图」也有 `node:path` 图例。
 - 行为候选 `3866952edfa0063ac8c08286603fdd8734459b4f`。Windows 三浏览器自测和关联的 26 项回归通过。[独立审查原文](review.md)记录了切图落盘的独立实测。列表诊断发现已修复，R2 复核通过。
 - 作者体验待验。优先看数量校验两条连线是否好跟读，分别摆放两个服务步骤，再将 `node:path` 在两图设成不同位置和组，重启后查看恢复。
-- 分支 `codex/feat-loop-reader` 保留供验收，`dev` 停在比较基线 `0cacc2653205dc1a82861608ed4c38cee9a044cd`。本次提交仅在任务分支，待作者确认整合。
+- 2026-11-18，作者指令「合并到dev」授权本地整合。D016 已通过 `947c386604e46ec25a76ab1025dc8881297c21aa` 合入 `dev`。合并树与来源分支顶端 `29f2808` 一致，复用自测与 R2 独审证据。当前工作区停在 `dev`，按任务单保留受审分支 `codex/feat-loop-reader` 供作者体验验收。
 
 ## 依据与验证
 
@@ -37,4 +37,4 @@ $readerNode = (Get-Command node -All | Where-Object { $_.Version.Major -eq 24 } 
 & $readerNode '.local/D016/candidate/build-r2/cli/main.js' serve --project (Join-Path $PWD '.local/D016/trial-3866952/project') --port 4336
 ```
 
-- 试读 [重建和自动验证入口](../../../../../specs/009-loop-reader/quickstart.md)。作者验收完成后再决定分支整合及试读资源是否清理。
+- 试读 [重建和自动验证入口](../../../../../specs/009-loop-reader/quickstart.md)。作者体验验收后再确认试读资源和受审分支的清理。
