@@ -308,6 +308,21 @@ try {
     assert.ok(await reopened.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
     await reopened.screenshot({ path: path.join(run, 'mobile.png'), fullPage: true });
   }
+  const orderArtifact = artifact(project, orderId);
+  const savedOrder = await readFile(orderArtifact);
+  const invalidOrder = JSON.parse(savedOrder);
+  invalidOrder.nodes[0].title = '';
+  await writeFile(orderArtifact, JSON.stringify(invalidOrder));
+  try {
+    await button(reopened, '刷新闭环列表').click();
+    const problem = reopened.locator('#loop-navigation').getByRole('alert').filter({ hasText: 'LOOP_INVALID' });
+    await problem.getByText('LOOP_INVALID order-quantity $.nodes[0].title TEXT', { exact: true }).waitFor();
+    await reopened.getByLabel('界面语言').selectOption('en');
+    await problem.getByText(/Check the indicated field/u).waitFor();
+    await problem.getByText('LOOP_INVALID order-quantity $.nodes[0].title TEXT', { exact: true }).waitFor();
+    await lesson(afterPaths, 'audit').waitFor();
+  } finally { await writeFile(orderArtifact, savedOrder); }
+  report.checks.push('invalid loop list shows field and reason in both languages while the valid loop stays readable');
   assert.deepEqual(errors, []);
 } catch (error) {
   report.error = error.stack;

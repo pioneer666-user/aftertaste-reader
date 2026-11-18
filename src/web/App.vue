@@ -172,7 +172,7 @@ onMounted(() => {
       <section v-for="problem in (loopListError ? [loopListError, ...loopProblems] : loopProblems)" :key="problem.context.loopId ?? problem.code"
         class="canvas-problem" role="alert">
         <p>{{ problemText(language, problem).message }} {{ problemText(language, problem).nextStep }}</p>
-        <code>{{ problem.code }} {{ problem.context.loopId }}</code>
+        <code>{{ problem.code }} {{ problem.context.loopId }} {{ problem.context.field }} {{ problem.context.reason }}</code>
       </section>
     </section>
     <DependencyCanvas v-for="id in openedLoops" v-show="selectedLoop === id" :key="id" :loop-id="id"
