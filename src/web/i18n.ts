@@ -140,6 +140,7 @@ const problems: Record<string, { zh: readonly [string, string]; en: readonly [st
   LAYOUT_WRITE_FAILED: { zh: ["布局写入失败，本页排布仍在。","检查文件占用与目录权限后重试。"], en: ["The write failed. This tab still has your changes.","Check whether the file is in use and whether the folder is writable, then retry."] },
   LAYOUT_CONFLICT: { zh: ["另一个页面已保存更新的布局。","可放弃本页草稿，再读取磁盘布局。"], en: ["Another tab saved a newer layout.","You can discard this tab’s draft and load the saved layout."] },
   LAYOUT_GRAPH_CHANGED: { zh: ["保存前依赖图已变化。","刷新图后可继续保存本页排布。"], en: ["The dependency graph changed before saving.","Refresh the graph to continue saving this tab’s layout."] },
+  LAYOUT_GRAPH_UNCONFIRMED: { zh: ['图暂缺原布局中的文件，已保留布局。', '完成图更新或用依赖图工具明确确认移除，再刷新。'], en: ['The graph is missing a previously placed file. Its layout is preserved.', 'Finish updating the graph or confirm removal with the graph tool, then refresh.'] },
   DOCUMENT_HEADER: { zh: ['固定提交头缺失、重复或位置无效。', '仅在首行保留一个含完整提交的 document 标记。'], en: ['The fixed-commit header is missing, duplicated or misplaced.', 'Keep one document marker with the full commit on the first line.'] },
   OUTSIDE_CONTENT: { zh: ['块外含有正文。', '将正文放进成对块标记内。'], en: ['Content appears outside a block.', 'Move content inside paired block markers.'] },
   MARKER_INVALID: { zh: ['块标记格式无效。', '按块契约将完整标记独占一行。'], en: ['A block marker is malformed.', 'Place a complete marker on its own top-level line.'] },

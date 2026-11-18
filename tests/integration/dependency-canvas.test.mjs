@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, writeFile, rename, link, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
@@ -12,7 +13,7 @@ const group = '10000000-0000-4000-8000-000000000000';
 const get = async url => fetch(url + '/api/dependency-canvas').then(response => response.json());
 const turn = (url, { revision, graphVersion, layout }, options = {}) => fetch(url + '/api/dependency-layout', {
   method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1', ...options.headers },
-  body: JSON.stringify({ expectedRevision: revision, graphVersion, layout }),
+  body: JSON.stringify({ expectedRevision: revision, revision: options.revision ?? randomUUID(), graphVersion, layout }),
 });
 
 test('真实项目的图和讲解读取，保存隔离、过期写入、校验与磁盘保护', async () => {
@@ -37,7 +38,7 @@ test('真实项目的图和讲解读取，保存隔离、过期写入、校验�
     assert.equal((await fetch(reader.url + '/api/documents', { method: 'PUT' })).status, 405);
     assert.equal((await fetch(reader.url + '/api/dependency-layout?project=elsewhere', {
       method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1' },
-      body: JSON.stringify({ expectedRevision: first.revision, graphVersion: first.graphVersion, layout: first.layout }),
+      body: JSON.stringify({ expectedRevision: first.revision, revision: randomUUID(), graphVersion: first.graphVersion, layout: first.layout }),
     })).status, 400);
     const invalid = structuredClone(first);
     invalid.layout.positions['extra.mjs'] = { x: 0, y: 0 };
@@ -47,11 +48,19 @@ test('真实项目的图和讲解读取，保存隔离、过期写入、校验�
     first.layout.viewport = { x: 99.25, y: -77.125, zoom: 0.625 };
     const competing = structuredClone(first);
     competing.layout.positions[rules].x = 454;
-    const responses = await Promise.all([turn(reader.url, first), turn(reader.url, competing)]);
+    const revisions = [randomUUID(), randomUUID()];
+    const responses = await Promise.all([turn(reader.url, first, { revision: revisions[0] }),
+      turn(reader.url, competing, { revision: revisions[1] })]);
     assert.deepEqual(responses.map(response => response.status).sort(), [200, 409]);
     const winner = responses[0].ok ? first : competing;
+    const winningRevision = revisions[responses[0].ok ? 0 : 1];
     disk = await readFile(fixture.layout);
     assert.deepEqual(JSON.parse(disk).layout, winner.layout);
+    const replay = await turn(reader.url, winner, { revision: winningRevision });
+    assert.deepEqual(await replay.json(), { ok: true, revision: winningRevision });
+    const different = structuredClone(winner);
+    different.layout.viewport.x += 1;
+    assert.equal((await turn(reader.url, different, { revision: winningRevision })).status, 409);
     assert.deepEqual(await Promise.all(protectedPaths.map(file => readFile(file))), before);
     assert.equal((await turn(reader.url, first)).status, 409);
     assert.deepEqual(await readFile(fixture.layout), disk);
@@ -86,6 +95,23 @@ test('真实图工具发布完整快照才协调，读写失败与布局坏文�
     await writeFile(fixture.graph, '{"nodes":[]}');
     assert.equal((await get(reader.url)).error.code, 'GRAPH_INVALID');
     assert.deepEqual(await readFile(fixture.layout), oldLayout);
+    await writeFile(fixture.graph, graph);
+
+    const partial = JSON.parse(graph);
+    partial.nodes = partial.nodes.filter(node => node.path !== audit);
+    partial.edges = partial.edges.filter(edge => edge.dependency !== audit);
+    await writeFile(fixture.graph, JSON.stringify(partial, null, 2) + '\n');
+    const unconfirmed = await get(reader.url);
+    assert.equal(unconfirmed.layoutProblem.code, 'LAYOUT_GRAPH_UNCONFIRMED');
+    assert.equal((await turn(reader.url, unconfirmed)).status, 409);
+    assert.deepEqual(await readFile(fixture.layout), oldLayout);
+    await applyGraphUpdate(fixture, { remove: [audit] });
+    assert.equal((await get(reader.url)).layoutProblem, null);
+    const confirmedPartial = await readFile(fixture.graph);
+    await writeFile(fixture.graph, graph);
+    assert.deepEqual((await get(reader.url)).layout, saved.layout);
+    await writeFile(fixture.graph, confirmedPartial);
+    assert.equal((await get(reader.url)).layoutProblem.code, 'LAYOUT_GRAPH_UNCONFIRMED');
     await writeFile(fixture.graph, graph);
 
     await applyGraphUpdate(fixture, { reviews: [{ path: service, analysis: 'reviewed', dependencies: [
@@ -131,5 +157,22 @@ test('真实图工具发布完整快照才协调，读写失败与布局坏文�
     } finally { await unlink(alias); }
     assert.equal((await turn(reader.url, empty)).status, 200);
     assert.deepEqual(JSON.parse(await readFile(fixture.layout)).layout.positions, {});
+  } finally { await reader.server.close(); }
+});
+
+test('原坐标在边界时向可用外侧放置并真实落盘', async () => {
+  const run = await mkdtemp(path.join(base, 'coordinate-boundary-'));
+  const fixture = await createCanvasProject(path.join(run, 'project'));
+  const reader = await startReader(fixture.projectRoot, 0);
+  try {
+    const first = await get(reader.url);
+    first.layout.positions[rules].x = 1e9;
+    assert.equal((await turn(reader.url, first)).status, 200);
+    await applyGraphUpdate(fixture, { register: [api] });
+    const expanded = await get(reader.url);
+    assert.equal(expanded.layout.positions[rules].x, 1e9);
+    assert.ok(expanded.layout.positions[api].x + 212 < first.layout.positions[service].x);
+    assert.equal((await turn(reader.url, expanded)).status, 200);
+    assert.deepEqual(JSON.parse(await readFile(fixture.layout)).layout, expanded.layout);
   } finally { await reader.server.close(); }
 });

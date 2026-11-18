@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { lstat, readFile, open, link, rename, unlink } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 import path from 'node:path';
@@ -7,6 +7,14 @@ import type { GraphStore } from '../application/dependency-graph.js';
 import { SourceError, validateProjectRoot } from '../application/fixed-source.js';
 import { GraphError, graphPath } from '../core/dependency-graph.js';
 import { dataDirectory, systemCode } from './data-directory.js';
+import { isSourcePath } from '../core/source-path.js';
+
+const removalFile = 'dependency-graph-removals.json';
+
+async function publicationKey(file: string, raw: string) {
+  const stamp = await lstat(file, { bigint: true });
+  return createHash('sha256').update(raw).update(`\0${stamp.dev}:${stamp.ino}:${stamp.mtimeNs}`).digest('hex');
+}
 
 export async function readGraphInput(filePath: string): Promise<unknown> {
   if (!path.isAbsolute(filePath) || !filePath.isWellFormed() || /[\x00-\x1f\x7f]/u.test(filePath) ||
@@ -26,11 +34,11 @@ export async function readGraphInput(filePath: string): Promise<unknown> {
   }
 }
 
-async function targetPath(projectRoot: string, create: boolean): Promise<string> {
+async function targetPath(projectRoot: string, create: boolean, name = 'dependency-graph.json'): Promise<string> {
   validateProjectRoot(projectRoot);
   const unsafe = () => new GraphError('GRAPH_PATH_UNSAFE', '图路径包含链接或非普通目录/文件。', '使用项目内无链接的真实资料目录。', { projectRoot, graphPath });
   const directory = await dataDirectory(projectRoot, ['docs', 'aftertaste'], create, unsafe);
-  const target = path.join(directory, 'dependency-graph.json');
+  const target = path.join(directory, name);
   try {
     const entry = await lstat(target);
     if (!entry.isFile() || entry.isSymbolicLink() || entry.nlink > 1) throw unsafe();
@@ -52,12 +60,56 @@ export class GraphFileStore implements GraphStore {
     }
   }
 
-  async save(projectRoot: string, raw: string, previous: string | undefined): Promise<void> {
+  async confirmedRemovals(projectRoot: string, raw: string): Promise<string[]> {
+    try {
+      const target = await targetPath(projectRoot, false);
+      const receipt = await targetPath(projectRoot, false, removalFile);
+      const proof = JSON.parse(await readFile(receipt, 'utf8')) as { publication?: unknown; paths?: unknown };
+      if (proof.publication === await publicationKey(target, raw) &&
+          Array.isArray(proof.paths) && proof.paths.every(isSourcePath)) return proof.paths;
+    } catch {
+      // Missing or invalid evidence cannot authorize pruning user layout.
+    }
+    return [];
+  }
+
+  private async recordRemovals(projectRoot: string, graph: string, raw: string, paths: string[]): Promise<void> {
+    if (!paths.length) return;
+    const target = await targetPath(projectRoot, false, removalFile);
+    const content = JSON.stringify({ publication: await publicationKey(graph, raw), paths: paths.sort() }) + '\n';
+    const candidate = path.join(path.dirname(target), `.aftertaste-removals-${randomUUID()}.tmp`);
+    const handle = await open(candidate, 'wx');
+    let published = false;
+    try {
+      try {
+        await handle.writeFile(content, 'utf8');
+        await handle.sync();
+      } finally { await handle.close(); }
+      await targetPath(projectRoot, false, removalFile);
+      await rename(candidate, target);
+      published = true;
+    } finally {
+      if (!published) await unlink(candidate).catch(() => {});
+    }
+  }
+
+  async save(projectRoot: string, raw: string, previous: string | undefined, removal?: {
+    requested: readonly string[]; active: readonly string[];
+  }): Promise<void> {
     let temporary: string | undefined;
     let handle: FileHandle | undefined;
     let published = false;
     try {
       const target = await targetPath(projectRoot, true);
+      const removed = new Set(removal && previous !== undefined ? await this.confirmedRemovals(projectRoot, previous) : []);
+      for (const file of removal?.requested ?? []) removed.add(file);
+      for (const file of removal?.active ?? []) removed.delete(file);
+      if (raw === previous) {
+        if (await this.read(projectRoot) !== previous) throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。',
+          '重新查询后决定局部提交。', { projectRoot, graphPath, published: 0 });
+        await this.recordRemovals(projectRoot, target, raw, [...removed]);
+        return;
+      }
       const candidate = path.join(path.dirname(target), `.aftertaste-graph-${randomUUID()}.tmp`);
       handle = await this.io.open(candidate, 'wx');
       temporary = candidate;
@@ -68,6 +120,11 @@ export class GraphFileStore implements GraphStore {
         throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。', '重新查询后决定局部提交，不自动重试覆盖。', { projectRoot, graphPath, published: 0 });
       }
       await targetPath(projectRoot, false);
+      await this.recordRemovals(projectRoot, temporary, raw, [...removed]);
+      if (removed.size && (await this.read(projectRoot) !== previous || await targetPath(projectRoot, false) !== target)) {
+        throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。', '重新查询后决定局部提交，不自动重试覆盖。',
+          { projectRoot, graphPath, published: 0 });
+      }
       if (previous === undefined) await this.io.link(temporary, target);
       else await this.io.rename(temporary, target);
       published = true;

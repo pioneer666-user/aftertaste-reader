@@ -52,3 +52,17 @@ test('增删按身份协调，显式转组和保组重排', () => {
   assert.throws(() => parseLayout({ ...next, groups: [...next.groups, { id: first, name: '重复', members: [c] }] }),
     { code: 'LAYOUT_INVALID' });
 });
+
+test('已有排布逼近坐标边界时，新增位置仍有效且不重叠', () => {
+  const layout = defaultLayout([a, b, c, d, 'middle']);
+  layout.positions[a] = { x: 1e9, y: 0 };
+  layout.positions[b] = { x: -1e9, y: 0 };
+  layout.positions[c] = { x: 0, y: 1e9 };
+  layout.positions[d] = { x: 0, y: -1e9 };
+  layout.positions.middle = { x: 30, y: 64 };
+  const ids = [...Object.keys(layout.positions), 'new'];
+  const next = reconcileLayout(layout, ids);
+  for (const [id, point] of Object.entries(layout.positions)) assert.deepEqual(next.positions[id], point);
+  assert.deepEqual(next.positions.new, { x: 30, y: 176 });
+  assert.deepEqual(parseLayout(next), next);
+});

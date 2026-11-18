@@ -8,7 +8,7 @@ import './canvas.css';
 import DependencyEdge from './DependencyEdge.vue';
 import { groupBounds, maxZoom, minZoom, moveMembers, nodeSize, rearrange, reconcileLayout, updateGroup } from '../core/canvas-layout.js';
 import type { CanvasGroup, CanvasLayout, Point } from '../core/canvas-layout.js';
-import type { CanvasReading } from '../application/dependency-canvas.js';
+import type { CanvasReading, LayoutWrite } from '../application/dependency-canvas.js';
 import type { ReaderProblem } from '../application/file-reader.js';
 import { failed, request } from './reader-api.js';
 import { problemText, translate } from './i18n.js';
@@ -33,6 +33,7 @@ const dragging = ref(false);
 const readProblem = ref<ReaderProblem>();
 const saveProblem = ref<ReaderProblem>();
 let revision: string | null = null;
+let pending: LayoutWrite | undefined;
 let dragGroup: { group: CanvasGroup; origin: Point; layout: CanvasLayout } | undefined;
 
 const fileId = (path: string) => 'file:' + encodeURIComponent(path);
@@ -44,7 +45,7 @@ const documentPath = computed(() => reading.value?.documents.find(entry => entry
 const dependencies = computed(() => reading.value?.graph.edges.filter(edge => edge.dependent === selected.value) ?? []);
 const dependents = computed(() => reading.value?.graph.edges.filter(edge => edge.dependency === selected.value) ?? []);
 const replaceDraft = computed(() => saveProblem.value?.code === 'LAYOUT_CONFLICT');
-const refreshDraft = computed(() => dirty.value && (readProblem.value || ['LAYOUT_GRAPH_CHANGED', 'GRAPH_NOT_FOUND',
+const refreshDraft = computed(() => dirty.value && (readProblem.value || ['LAYOUT_GRAPH_CHANGED', 'LAYOUT_GRAPH_UNCONFIRMED', 'GRAPH_NOT_FOUND',
   'GRAPH_INVALID', 'GRAPH_READ_FAILED', 'GRAPH_PATH_UNSAFE'].includes(saveProblem.value?.code ?? '')));
 const problems = computed(() => [readProblem.value, reading.value?.layoutProblem, saveProblem.value]
   .filter((problem): problem is ReaderProblem => !!problem));
@@ -96,13 +97,23 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
       readProblem.value = next.layoutProblem;
       return;
     }
-    if (carry && beforeRevision !== next.revision) {
+    if (carry && beforeRevision !== next.revision && pending?.revision !== next.revision) {
       saveProblem.value = { code: 'LAYOUT_CONFLICT', message: '', nextStep: '', context: {} };
       return;
     }
+    const ids = next.graph.nodes.map(node => node.path);
+    if (carry) {
+      const accountedFor = new Set([...ids, ...next.confirmedRemovals]);
+      const unconfirmed = Object.keys(carry.positions).find(path => !accountedFor.has(path));
+      if (unconfirmed !== undefined) {
+        readProblem.value = { code: 'LAYOUT_GRAPH_UNCONFIRMED', message: '', nextStep: '', context: { field: unconfirmed } };
+        return;
+      }
+    }
     reading.value = next;
     revision = next.revision;
-    layout.value = carry ? reconcileLayout(carry, next.graph.nodes.map(node => node.path)) : next.layout;
+    pending = undefined;
+    layout.value = carry ? reconcileLayout(carry, ids) : next.layout;
     dirty.value = !next.layoutProblem && (!!carry || next.reconciled);
     saveProblem.value = undefined;
     if (!next.graph.nodes.some(node => node.path === selected.value)) selected.value = '';
@@ -127,13 +138,16 @@ async function save() {
   saveProblem.value = undefined;
   try {
     while (dirty.value && layout.value && reading.value) {
-      const snapshot = layout.value;
+      const attempt = pending ??= {
+        graphVersion: reading.value.graphVersion, expectedRevision: revision, revision: crypto.randomUUID(), layout: layout.value,
+      };
       const result: { revision: string } = await request('/api/dependency-layout', {
         method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1' },
-        body: JSON.stringify({ graphVersion: reading.value.graphVersion, expectedRevision: revision, layout: snapshot }),
+        body: JSON.stringify(attempt),
       });
       revision = result.revision;
-      dirty.value = layout.value !== snapshot;
+      pending = undefined;
+      dirty.value = layout.value !== attempt.layout;
     }
   } catch (error) { saveProblem.value = failed(error); }
   finally { saving.value = false; }

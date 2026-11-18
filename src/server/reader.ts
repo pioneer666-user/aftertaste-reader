@@ -86,7 +86,7 @@ export async function startReader(projectRoot: string, port: number = 4317) {
     }
     const problem = readerProblem(error);
     const status = ['INVALID_ARGUMENT', 'INVALID_PATH', 'LAYOUT_INVALID'].includes(problem.code) ? 400 :
-      problem.code.endsWith('_PATH_UNSAFE') ? 403 : ['LAYOUT_CONFLICT', 'LAYOUT_GRAPH_CHANGED'].includes(problem.code) ? 409 :
+      problem.code.endsWith('_PATH_UNSAFE') ? 403 : ['LAYOUT_CONFLICT', 'LAYOUT_GRAPH_CHANGED', 'LAYOUT_GRAPH_UNCONFIRMED'].includes(problem.code) ? 409 :
       problem.code === 'INTERNAL_ERROR' ? 500 : 422;
     reply.code(status).send({ ok: false, error: problem });
   });

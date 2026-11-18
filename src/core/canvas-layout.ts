@@ -13,6 +13,7 @@ export interface CanvasLayout {
 export const nodeSize = { width: 212, height: 56 };
 export const minZoom = 0.25;
 export const maxZoom = 2;
+const coordinateLimit = 1e9;
 export const layoutFormat = 'aftertaste-canvas-layout/v1';
 export const layoutPath = 'docs/aftertaste/dependency-layout.json';
 export const layoutGraph = 'dependency';
@@ -39,7 +40,7 @@ export function isRevision(value: unknown): value is string {
 }
 
 function coordinate(value: unknown, field: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > 1e9) invalid(field);
+  if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > coordinateLimit) invalid(field);
   return value;
 }
 
@@ -97,13 +98,43 @@ export function rearrange(layout: CanvasLayout, ids: readonly string[]): CanvasL
 
 export function reconcileLayout(layout: CanvasLayout, ids: readonly string[]): CanvasLayout {
   const current = new Set(ids);
-  const right = Object.values(layout.positions).reduce((max, point) => Math.max(max, point.x + nodeSize.width), 0);
-  let added = 0;
+  const missing = ids.filter(id => !Object.hasOwn(layout.positions, id));
+  const placements = placeNewNodes(Object.values(layout.positions), missing);
   const positions = Object.fromEntries(ids.map(id => [id, Object.hasOwn(layout.positions, id) ? layout.positions[id]! :
-    { x: right + 58, y: 64 + added++ * 112 }]));
+    placements.get(id)!]));
   const groups = layout.groups.map(group => ({ ...group, members: group.members.filter(id => current.has(id)) }))
     .filter(group => group.members.length);
   return { ...layout, positions, groups };
+}
+
+function placeNewNodes(existing: Point[], ids: string[]): Map<string, Point> {
+  if (!ids.length) return new Map();
+  let left = 0, right = 0, top = 0, bottom = 0;
+  for (const point of existing) {
+    left = Math.min(left, point.x);
+    right = Math.max(right, point.x + nodeSize.width);
+    top = Math.min(top, point.y);
+    bottom = Math.max(bottom, point.y + nodeSize.height);
+  }
+  const column = (x: number, y: number) => new Map(ids.map((id, i) => [id, { x, y: y + i * 112 }]));
+  if (right + 58 <= coordinateLimit) return column(right + 58, 64);
+  if (left - 270 >= -coordinateLimit) return column(left - 270, 64);
+  if (bottom + 58 + ids.length * 112 <= coordinateLimit) return column(30, bottom + 58);
+  if (top - 58 - ids.length * 112 >= -coordinateLimit) return column(30, top - 58 - ids.length * 112);
+
+  // All four outer sides reach the coordinate limit. Use unoccupied slots in a central column.
+  const blocked = new Set<number>();
+  for (const point of existing) {
+    if (point.x + nodeSize.width <= 30 || point.x >= 30 + nodeSize.width) continue;
+    const first = Math.floor((point.y - nodeSize.height - 64) / 112) + 1;
+    const last = Math.ceil((point.y + nodeSize.height - 64) / 112) - 1;
+    for (let slot = first; slot <= last; slot++) blocked.add(slot);
+  }
+  let slot = 0;
+  return new Map(ids.map(id => {
+    while (blocked.has(slot)) slot++;
+    return [id, { x: 30, y: 64 + slot++ * 112 }];
+  }));
 }
 
 export function updateGroup(groups: CanvasGroup[], next: CanvasGroup): CanvasGroup[] {

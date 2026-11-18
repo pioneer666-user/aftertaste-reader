@@ -136,6 +136,22 @@ try {
   const protectedFiles = [fixture.graph, path.join(fixture.projectRoot, service), path.join(fixture.data, 'current/src/service.mjs.md')];
   const protectedBefore = await Promise.all(protectedFiles.map(file => readFile(file)));
   const rawGraph = JSON.parse(protectedBefore[0]);
+  const partialGraph = { ...rawGraph, nodes: rawGraph.nodes.filter(node => node.path !== audit),
+    edges: rawGraph.edges.filter(edge => edge.dependency !== audit) };
+  await writeFile(fixture.graph, JSON.stringify(partialGraph, null, 2) + '\n');
+  await page.getByRole('button', { name: '缩小画布' }).click();
+  await page.getByText(/LAYOUT_GRAPH_CHANGED/u).waitFor();
+  const draft = await visibleLayout();
+  await page.getByRole('button', { name: '刷新图并保留本页布局' }).click();
+  await page.getByText(/LAYOUT_GRAPH_UNCONFIRMED/u).waitFor();
+  assert.deepEqual(await visibleLayout(), draft);
+  await assert.rejects(readFile(fixture.layout), { code: 'ENOENT' });
+  await writeFile(fixture.graph, protectedBefore[0]);
+  await page.getByRole('button', { name: '刷新图并保留本页布局' }).click();
+  compareVisible(draft, await saved());
+  await page.getByRole('button', { name: '放大画布' }).click();
+  await saved();
+  report.checks.unsavedDraftSurvivedPartialGraph = true;
   const drawnEdges = page.locator('.vue-flow__edge');
   assert.equal(await drawnEdges.count(), 2);
   assert.equal(await page.locator('.vue-flow__edge-path[marker-end]').count(), 2);
@@ -206,8 +222,10 @@ try {
     await ack;
     await route.fulfill({ response });
   }, { times: 1 });
+  const delayedRequest = page.waitForRequest(request => request.url().endsWith('/api/dependency-layout'));
   await page.getByRole('button', { name: '放大画布' }).click();
   try {
+    await delayedRequest;
     await onDisk;
     const midpoint = (await disk()).layout;
     await page.getByRole('button', { name: '放大画布' }).click();
@@ -215,8 +233,23 @@ try {
     assert.equal((await disk()).layout.viewport.zoom, midpoint.viewport.zoom);
     report.checks.delayedAcknowledgement = midpoint.viewport;
   } finally { releaseAck(); }
+  const delayed = await saved();
+  assert.ok(delayed.viewport.zoom > report.checks.delayedAcknowledgement.zoom);
+  await page.route('**/api/dependency-layout', async route => {
+    const response = await route.fetch();
+    assert.equal(response.status(), 200);
+    await route.abort('failed');
+  }, { times: 1 });
+  await page.getByRole('button', { name: '缩小画布' }).click();
+  await page.getByText(/NETWORK_ERROR/u).waitFor();
+  const lost = await disk();
+  assert.ok(lost.layout.viewport.zoom < delayed.viewport.zoom);
+  await page.getByRole('button', { name: '放大画布' }).click();
+  assert.deepEqual(await disk(), lost);
+  await page.getByRole('button', { name: '重试保存' }).click();
   const beforeRestart = await saved();
-  assert.ok(beforeRestart.viewport.zoom > report.checks.delayedAcknowledgement.zoom);
+  assert.deepEqual(beforeRestart.viewport, delayed.viewport);
+  report.checks.lostAcknowledgement = { published: lost.layout.viewport, draftSaved: beforeRestart.viewport };
   const beforeRestartView = await visibleLayout();
   compareVisible(beforeRestartView, beforeRestart);
   const originalLayout = await readFile(fixture.layout);
@@ -279,7 +312,15 @@ try {
   await page.getByText(/GRAPH_INVALID/u).waitFor();
   assert.equal(await page.locator('[data-file]').count(), 3);
   assert.deepEqual(await readFile(fixture.layout), authoritative);
+  await writeFile(fixture.graph, JSON.stringify(partialGraph, null, 2) + '\n');
+  await page.getByRole('button', { name: '刷新图和布局' }).click();
+  await page.getByText(/LAYOUT_GRAPH_UNCONFIRMED/u).waitFor();
+  assert.deepEqual(await readFile(fixture.layout), authoritative);
   await writeFile(fixture.graph, validGraph);
+  await page.getByRole('button', { name: '刷新图和布局' }).click();
+  await node(audit).waitFor();
+  assert.deepEqual(await saved(), lastSaved);
+  compareVisible(await visibleLayout(), lastSaved);
   await applyGraphUpdate(fixture, { register: [api], remove: [audit], reviews: [
     { path: service, analysis: 'reviewed', dependencies: [{ path: rules, reason: 'updated' }, { path: service, reason: 'self' }] },
     { path: rules, analysis: 'reviewed', dependencies: [{ path: service, reason: 'cycle' }] },
@@ -297,7 +338,7 @@ try {
   const selfLoop = page.locator('.vue-flow__edge').filter({ has: page.locator('title').getByText('self', { exact: true }) });
   assert.match(await selfLoop.locator('.vue-flow__edge-path').getAttribute('d'), / C .* Q /u);
   compareVisible(await visibleLayout(), updated);
-  report.checks.graphUpdate = { incompletePreserved: true, after: updated, selfAndCycle: true };
+  report.checks.graphUpdate = { incompletePreserved: true, validPartialPreserved: true, after: updated, selfAndCycle: true };
 
   const validLayout = await readFile(fixture.layout);
   await writeFile(fixture.layout, '{"format":');

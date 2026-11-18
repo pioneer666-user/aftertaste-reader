@@ -5,7 +5,10 @@ import type { DependencyGraph, GraphDiagnostic } from '../core/dependency-graph.
 
 export interface GraphStore {
   read(projectRoot: string): Promise<string | undefined>;
-  save(projectRoot: string, raw: string, previous: string | undefined): Promise<void>;
+  confirmedRemovals(projectRoot: string, raw: string): Promise<string[]>;
+  save(projectRoot: string, raw: string, previous: string | undefined, removal?: {
+    requested: readonly string[]; active: readonly string[];
+  }): Promise<void>;
 }
 
 export interface GraphCheck {
@@ -66,7 +69,8 @@ export class GraphService {
     const candidate = parseGraph(raw);
     const diagnostics = await this.checkFiles(fixed, candidate);
     if (diagnostics.length) throw new GraphError('GRAPH_INVALID', '合并候选的固定源码校验未完成。', '核对诊断中的真实固定文件；保留输入和原图。', { projectRoot: fixed.projectRoot, graphPath }, diagnostics);
-    if (raw !== previous) await this.store.save(fixed.projectRoot, raw, previous);
+    if (raw !== previous || update.remove.length) await this.store.save(fixed.projectRoot, raw, previous,
+      { requested: update.remove, active: candidate.nodes.map(node => node.path) });
     return result;
   }
 

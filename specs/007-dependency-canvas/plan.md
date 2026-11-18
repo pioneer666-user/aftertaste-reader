@@ -6,7 +6,7 @@
 
 ## Summary
 
-沿 D004 用 Vue Flow 提供节点拖动及视野事件。共用布局规则由纯函数维护，读取 D009 图和 D011 的真实镜像入口。服务核对图快照和布局修订，串行发布当前项目的布局文件。
+沿 D004 用 Vue Flow 提供节点拖动及视野事件。共用布局规则由纯函数维护，读取 D009 图和 D011 的真实镜像入口。服务核对图快照、移除凭据和布局修订，串行发布当前项目的布局文件。响应丢失可安全重放同一次保存。
 
 ## Technical Context
 
@@ -54,6 +54,7 @@ src/
 ├── core/canvas-layout.ts
 ├── application/dependency-canvas.ts
 ├── adapters/layout-store.ts
+├── adapters/graph-store.ts
 ├── server/reader.ts
 └── web/
     ├── App.vue
