@@ -3,6 +3,14 @@ import { isSourcePath } from './source-path.js';
 export const graphFormat = 'aftertaste-dependency-graph/v1';
 export const updateFormat = 'aftertaste-dependency-update/v1';
 export const graphPath = 'docs/aftertaste/dependency-graph.json';
+export type RemovalMarks = Readonly<Record<string, string>>;
+
+export function readRemovalMarks(value: unknown): RemovalMarks | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Object.entries(value).every(([path, mark]) => isSourcePath(path) &&
+    typeof mark === 'string' && /^[a-f0-9]{64}$/u.test(mark)) ? value as RemovalMarks : undefined;
+}
+
 export interface GraphNode { readonly path: string; readonly analysis: 'unreviewed' | 'reviewed' }
 export interface GraphEdge { readonly dependency: string; readonly dependent: string; readonly reason: string }
 export interface DependencyGraph {

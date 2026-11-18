@@ -1,16 +1,17 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { lstat, readFile, open, link, rename, unlink } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
 import type { GraphStore } from '../application/dependency-graph.js';
 import { SourceError, validateProjectRoot } from '../application/fixed-source.js';
-import { GraphError, graphPath } from '../core/dependency-graph.js';
+import { GraphError, graphPath, readRemovalMarks } from '../core/dependency-graph.js';
+import type { RemovalMarks } from '../core/dependency-graph.js';
 import { dataDirectory, systemCode } from './data-directory.js';
 import { isSourcePath } from '../core/source-path.js';
 
 const removalFile = 'dependency-graph-removals.json';
-interface RemovalProof { publication: string; paths: string[] }
+interface RemovalProof { publication: string; removals: RemovalMarks }
 
 async function publicationKey(file: string, raw: string) {
   const stamp = await lstat(file, { bigint: true });
@@ -61,8 +62,8 @@ export class GraphFileStore implements GraphStore {
     }
   }
 
-  async confirmedRemovals(projectRoot: string, raw: string): Promise<string[]> {
-    return (await this.findRemovalProof(projectRoot, raw))?.paths ?? [];
+  async removalMarks(projectRoot: string, raw: string): Promise<RemovalMarks> {
+    return (await this.findRemovalProof(projectRoot, raw))?.removals ?? {};
   }
 
   private async findRemovalProof(projectRoot: string, raw: string): Promise<RemovalProof | undefined> {
@@ -73,9 +74,11 @@ export class GraphFileStore implements GraphStore {
       const publication = await publicationKey(target, raw);
       const records: unknown[] = Array.isArray(value) ? value : [value];
       for (const record of records) {
-        if (!record || typeof record !== 'object' || !('publication' in record) || !('paths' in record)) continue;
-        if (record.publication === publication && Array.isArray(record.paths) && record.paths.every(isSourcePath)) {
-          return { publication, paths: record.paths };
+        if (!record || typeof record !== 'object' || !('publication' in record) || record.publication !== publication) continue;
+        const removals = 'removals' in record ? readRemovalMarks(record.removals) : undefined;
+        if (removals) return { publication, removals };
+        if (!('removals' in record) && 'paths' in record && Array.isArray(record.paths) && record.paths.every(isSourcePath)) {
+          return { publication, removals: Object.fromEntries(record.paths.map(path => [path, publication])) };
         }
       }
     } catch {
@@ -84,10 +87,12 @@ export class GraphFileStore implements GraphStore {
     return undefined;
   }
 
-  private async recordRemovals(projectRoot: string, graph: string, raw: string, paths: string[], previous?: RemovalProof): Promise<void> {
-    if (!paths.length) return;
+  private async recordRemovals(projectRoot: string, graph: string, raw: string, removals: Map<string, string>,
+    previous?: RemovalProof): Promise<void> {
+    if (!removals.size) return;
     const target = await targetPath(projectRoot, false, removalFile);
-    const candidateProof = { publication: await publicationKey(graph, raw), paths: paths.sort() };
+    const candidateProof = { publication: await publicationKey(graph, raw),
+      removals: Object.fromEntries([...removals.keys()].sort().map(path => [path, removals.get(path)])) };
     const records = previous && previous.publication !== candidateProof.publication ? [previous, candidateProof] : [candidateProof];
     const content = JSON.stringify(records) + '\n';
     const candidate = path.join(path.dirname(target), `.aftertaste-removals-${randomUUID()}.tmp`);
@@ -107,7 +112,7 @@ export class GraphFileStore implements GraphStore {
   }
 
   async save(projectRoot: string, raw: string, previous: string | undefined, removal?: {
-    requested: readonly string[]; active: readonly string[];
+    requested: readonly string[]; previousActive: ReadonlySet<string>;
   }): Promise<void> {
     let temporary: string | undefined;
     let handle: FileHandle | undefined;
@@ -115,13 +120,14 @@ export class GraphFileStore implements GraphStore {
     try {
       const target = await targetPath(projectRoot, true);
       const previousProof = removal && previous !== undefined ? await this.findRemovalProof(projectRoot, previous) : undefined;
-      const removed = new Set(previousProof?.paths);
-      for (const file of removal?.requested ?? []) removed.add(file);
-      for (const file of removal?.active ?? []) removed.delete(file);
+      const removed = new Map(Object.entries(previousProof?.removals ?? {}));
+      for (const file of removal?.requested ?? []) {
+        if (!removed.has(file) || removal?.previousActive.has(file)) removed.set(file, randomBytes(32).toString('hex'));
+      }
       if (raw === previous) {
         if (await this.read(projectRoot) !== previous) throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。',
           '重新查询后决定局部提交。', { projectRoot, graphPath, published: 0 });
-        await this.recordRemovals(projectRoot, target, raw, [...removed], previousProof);
+        await this.recordRemovals(projectRoot, target, raw, removed, previousProof);
         return;
       }
       const candidate = path.join(path.dirname(target), `.aftertaste-graph-${randomUUID()}.tmp`);
@@ -134,7 +140,7 @@ export class GraphFileStore implements GraphStore {
         throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。', '重新查询后决定局部提交，不自动重试覆盖。', { projectRoot, graphPath, published: 0 });
       }
       await targetPath(projectRoot, false);
-      await this.recordRemovals(projectRoot, temporary, raw, [...removed], previousProof);
+      await this.recordRemovals(projectRoot, temporary, raw, removed, previousProof);
       if (removed.size && (await this.read(projectRoot) !== previous || await targetPath(projectRoot, false) !== target)) {
         throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。', '重新查询后决定局部提交，不自动重试覆盖。',
           { projectRoot, graphPath, published: 0 });

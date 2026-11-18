@@ -8,7 +8,7 @@ import { chromium, firefox } from 'playwright';
 import { createReaderProject } from '../fixtures/reader-project.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
-const outputRoot = path.join(repositoryRoot, '.local/D011');
+const outputRoot = path.join(repositoryRoot, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D011');
 await mkdir(outputRoot, { recursive: true });
 const run = await mkdtemp(path.join(outputRoot, 'browser-'));
 const fixture = await createReaderProject(path.join(run, 'project'));

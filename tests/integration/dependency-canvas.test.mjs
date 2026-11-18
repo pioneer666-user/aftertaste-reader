@@ -7,14 +7,15 @@ import { createCanvasProject, applyGraphUpdate, repository } from '../fixtures/d
 import { startReader } from '../../dist/server/reader.js';
 import { GraphFileStore } from '../../dist/adapters/graph-store.js';
 
-const base = path.join(repository, '.local/D012');
+const base = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D012');
 await mkdir(base, { recursive: true });
 const rules = 'src/rules.mjs', service = 'src/service.mjs', audit = 'support/audit.mjs', api = 'src/api.mjs';
 const group = '10000000-0000-4000-8000-000000000000';
 const get = async url => fetch(url + '/api/dependency-canvas').then(response => response.json());
 const turn = (url, { revision, graphVersion, layout }, options = {}) => fetch(url + '/api/dependency-layout', {
   method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1', ...options.headers },
-  body: JSON.stringify({ expectedRevision: revision, revision: options.revision ?? randomUUID(), graphVersion, layout }),
+  body: JSON.stringify({ expectedRevision: revision, revision: options.revision ?? randomUUID(), graphVersion,
+    layout: { ...layout, positions: options.positions ?? Object.entries(layout.positions) } }),
 });
 
 test('真实项目的图和讲解读取，保存隔离、过期写入、校验与磁盘保护', async () => {
@@ -44,6 +45,11 @@ test('真实项目的图和讲解读取，保存隔离、过期写入、校验�
     const invalid = structuredClone(first);
     invalid.layout.positions['extra.mjs'] = { x: 0, y: 0 };
     assert.equal((await turn(reader.url, invalid)).status, 400);
+    const entries = Object.entries(first.layout.positions);
+    for (const positions of [first.layout.positions, [...entries, entries[0]], [rules, ...entries.slice(1)],
+      [[rules, { x: 0, y: 0, extra: true }], ...entries.slice(1)]]) {
+      assert.equal((await turn(reader.url, first, { positions })).status, 400);
+    }
     first.layout.positions[rules] = { x: -42.875, y: 82.625 };
     first.layout.groups = [{ id: group, name: '共同阅读', members: [rules, service] }];
     first.layout.viewport = { x: 99.25, y: -77.125, zoom: 0.625 };
@@ -134,6 +140,11 @@ test('真实图工具发布完整快照才协调，读写失败与布局坏文�
     assert.equal(Object.hasOwn(changed.layout.positions, audit), false);
     assert.deepEqual(await readFile(fixture.layout), oldLayout);
 
+    const receipt = path.join(fixture.data, 'dependency-graph-removals.json');
+    const proofs = JSON.parse(await readFile(receipt, 'utf8'));
+    await writeFile(receipt, JSON.stringify(proofs.map(({ publication, removals }) => ({ publication, paths: Object.keys(removals) }))));
+    assert.deepEqual((await get(reader.url)).confirmedRemovals, [audit]);
+
     const beforeFailure = await readFile(fixture.graph, 'utf8');
     const interrupted = JSON.parse(beforeFailure);
     interrupted.edges[0].reason = '图发布期间失败';
@@ -142,7 +153,7 @@ test('真实图工具发布完整快照才协调，读写失败与布局坏文�
       throw Object.assign(new Error('graph replacement denied'), { code: 'EPERM' });
     } });
     await assert.rejects(failingStore.save(fixture.projectRoot, attempted, beforeFailure,
-      { requested: [], active: interrupted.nodes.map(node => node.path) }), { code: 'GRAPH_WRITE_FAILED' });
+      { requested: [], previousActive: new Set(interrupted.nodes.map(node => node.path)) }), { code: 'GRAPH_WRITE_FAILED' });
     assert.equal(await readFile(fixture.graph, 'utf8'), beforeFailure);
     assert.deepEqual((await get(reader.url)).confirmedRemovals, [audit]);
     const beforeRetry = interrupted.edges[0];

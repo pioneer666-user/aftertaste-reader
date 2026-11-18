@@ -45,6 +45,9 @@ test('增删按身份协调，显式转组和保组重排', () => {
   assert.equal(Object.hasOwn(next.positions, a), false);
   assert.deepEqual(next.groups, [layout.groups[1]]);
   assert.deepEqual(reconcileLayout(next, [b, c, d]), next);
+  const readded = new Set([a]);
+  assert.deepEqual(reconcileLayout(layout, [a, b], readded),
+    reconcileLayout(reconcileLayout(layout, [b]), [a, b], readded));
   const updated = updateGroup(layout.groups, { id: first, name: '改名', members: [a, b, c] });
   assert.deepEqual(updated, [{ id: first, name: '改名', members: [a, b, c] }]);
   assert.deepEqual(rearrange({ ...layout, groups: updated }, [a, b, c]).groups, updated);

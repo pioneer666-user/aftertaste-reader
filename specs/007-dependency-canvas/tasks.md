@@ -33,6 +33,8 @@ description: "文件依赖图与布局保存实施清单"
 - [x] T003 [US1] 为图与讲解读取、环和缺图／空图／损坏图准备 tests/fixtures/dependency-canvas.mjs、tests/integration/dependency-canvas.test.mjs 与 tests/browser/dependency-canvas.mjs（FR-001、002）。
 - [x] T004 [US1] 在 src/application/dependency-canvas.ts、src/server/reader.ts 接入 D009 图和 D011 讲解清单（FR-001、002）。
 - [x] T005 [US1] 在 src/web/App.vue、DependencyCanvas.vue、DependencyEdge.vue、i18n.ts 与 canvas.css 呈现关系、选中、阅读返回及诊断（FR-001、002）。
+- [x] T013 [US1] 在 tests/browser/canvas-fixes.mjs 暂扣真实文件清单，检查打开新讲解后的标题正文、返回视野、默认首篇与刷新切篇（FR-002、SC-006、F4）。
+- [x] T014 [US1] 用 src/web/App.vue 的选篇序号保护较晚的阅读动作（FR-002、F4）。
 
 ## Phase 4: User Story 2 - 自由摆放并恢复 (P1)
 
@@ -43,6 +45,8 @@ description: "文件依赖图与布局保存实施清单"
 - [x] T006 [US2] 扩展 tests/integration/dependency-canvas.test.mjs 和 tests/browser/dependency-canvas.mjs 覆盖真实项目文件、两个组、视野与重启（FR-003、004）。
 - [x] T007 [US2] 在 src/adapters/layout-store.ts、src/application/dependency-canvas.ts、src/server/reader.ts 接入布局读写和确认（FR-004）。
 - [x] T008 [US2] 在 src/web/DependencyCanvas.vue、canvas.css 和 reader-api.ts 接入画布操作、显式分组及最新布局自动保存（FR-003、004）。
+- [x] T015 [US2] 在 tests/browser/canvas-fixes.mjs 通过真实拖动、HTTP 向服务保存含合法特殊名的已有布局，重开核对坐标，并在 tests/integration/dependency-canvas.test.mjs 核格式和修订（FR-004、006、SC-006、F3）。
+- [x] T016 [US2] 在 src/web/DependencyCanvas.vue、src/core/canvas-layout.ts 与 src/application/dependency-canvas.ts 接通坐标条目编码和严格解析，兼容磁盘旧布局（FR-004、006、F3）。
 
 ## Phase 5: User Story 3 - 图变化和失败时保全排布 (P1)
 
@@ -52,15 +56,20 @@ description: "文件依赖图与布局保存实施清单"
 
 - [x] T009 [US3] 扩展 tests/integration/dependency-canvas.test.mjs 和 tests/browser/dependency-canvas.mjs，验证正式图更新、临时缺图、损坏、写失败重试与旧修订（FR-005、006）。
 - [x] T010 [US3] 在 src/application/dependency-canvas.ts、src/adapters/layout-store.ts、src/server/reader.ts 与 src/web/DependencyCanvas.vue 接通协调、失败及冲突保护（FR-005、006）。
+- [x] T017 [US3] 在 tests/browser/canvas-fixes.mjs 验正式删空、恢复、同路径重加对照及旧页，在 tests/integration/dependency-canvas.test.mjs 核凭据保护，在 tests/unit/canvas-layout.test.mjs 比较重加时仍有其他删除的摆放结果（FR-005、006、SC-005、F1、F2）。
+- [x] T018 [US3] 在 src/application/dependency-graph.ts、src/adapters/graph-store.ts、src/core/canvas-layout.ts、src/application/dependency-canvas.ts 与 src/web/DependencyCanvas.vue 实施移除标记、协调写回和旧页保护（FR-005、006、F1、F2）。
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T011 更新 docs/usage/file-reader.md 及 specs/001-first-release/08-current-spec-and-acceptance.md 的交付范围。
 - [x] T012 运行 quickstart.md 检查，核 G01—G05，与证据一起固定候选并交执行侧独审，形成 D012 handoff。
+- [ ] T019 运行 quickstart.md 中受影响检查，固定 D013 候选、提交独审并在 docs/work/2026/11/D013-canvas-fixes/ 归档回执和原文（F1—F4）。
 
 ## Dependencies & Execution Order
 
 T001 → T002 → US1 → US2 → US3 → T011—T012。每个故事先定义行为检查，再接通核心、服务和页面。US2 使用 US1 的项目图及页面，US3 使用 US2 的真实保存入口。测试与浏览器串行，无并行资源运行。
+
+D013 使用已完成的 T001—T012。T013 → T014、T015 → T016、T017 → T018，各序列依托既有样例。三个故事完成后执行 T019。
 
 ## Implementation Strategy
 

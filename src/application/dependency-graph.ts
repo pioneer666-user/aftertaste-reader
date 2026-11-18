@@ -1,13 +1,13 @@
 import { checkedFixedSource, FixedSourceService, SourceError, validateSourcePath } from './fixed-source.js';
 import type { FixedSource } from './fixed-source.js';
 import { applyGraph, graphFormat, graphPath, GraphError, parseGraph, parseUpdate, queryGraph } from '../core/dependency-graph.js';
-import type { DependencyGraph, GraphDiagnostic } from '../core/dependency-graph.js';
+import type { DependencyGraph, GraphDiagnostic, RemovalMarks } from '../core/dependency-graph.js';
 
 export interface GraphStore {
   read(projectRoot: string): Promise<string | undefined>;
-  confirmedRemovals(projectRoot: string, raw: string): Promise<string[]>;
+  removalMarks(projectRoot: string, raw: string): Promise<RemovalMarks>;
   save(projectRoot: string, raw: string, previous: string | undefined, removal?: {
-    requested: readonly string[]; active: readonly string[];
+    requested: readonly string[]; previousActive: ReadonlySet<string>;
   }): Promise<void>;
 }
 
@@ -70,7 +70,7 @@ export class GraphService {
     const diagnostics = await this.checkFiles(fixed, candidate);
     if (diagnostics.length) throw new GraphError('GRAPH_INVALID', '合并候选的固定源码校验未完成。', '核对诊断中的真实固定文件；保留输入和原图。', { projectRoot: fixed.projectRoot, graphPath }, diagnostics);
     if (raw !== previous || update.remove.length) await this.store.save(fixed.projectRoot, raw, previous,
-      { requested: update.remove, active: candidate.nodes.map(node => node.path) });
+      { requested: update.remove, previousActive: new Set(original.nodes.map(node => node.path)) });
     return result;
   }
 
