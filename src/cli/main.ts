@@ -9,6 +9,9 @@ import { GraphFileStore, readGraphInput } from '../adapters/graph-store.js';
 import { GraphError } from '../core/dependency-graph.js';
 import { startReader } from '../server/reader.js';
 import { ReaderError } from '../application/file-reader.js';
+import { LoopService, loopMarkdown } from '../application/loops.js';
+import { LoopFileStore, readLoopInput } from '../adapters/loop-store.js';
+import { LoopError } from '../core/loops.js';
 
 const fixedOptions = ['--project', '--repository', '--prefix', '--commit'];
 
@@ -28,13 +31,15 @@ const commands: Record<string, { allowed: string[]; required: string[] }> = {
   'query-graph': { allowed: [...fixedOptions, '--path'], required: [...fixedOptions, '--path'] },
   'query-legends': { allowed: [...fixedOptions, '--id'], required: fixedOptions },
   'validate-graph': { allowed: fixedOptions, required: fixedOptions },
+  'create-loop': { allowed: [...fixedOptions, '--id', '--input'], required: [...fixedOptions, '--id', '--input'] },
+  'read-loop': { allowed: ['--project', '--id', '--format'], required: ['--project', '--id'] },
 };
 
 function argumentsFor(argv: string[]): { command: string; options: Map<string, string> } {
   const command = argv[0];
   const definition = command === undefined ? undefined : Object.hasOwn(commands, command) ? commands[command] : undefined;
   if (!command || !definition) {
-    throw new SourceError('INVALID_ARGUMENT', '缺少有效命令。', '使用取源、文档或图命令，调用约定见 specs/002、003 与 004 的 contracts/cli.md。');
+    throw new SourceError('INVALID_ARGUMENT', '缺少有效命令。', '使用取源、文档、图或闭环命令，调用约定见各能力的 contracts/cli.md。');
   }
   const options = new Map<string, string>();
   for (let index = 1; index < argv.length; index += 2) {
@@ -87,6 +92,26 @@ async function main(): Promise<void> {
       requestContext = { ...source, path: filePath };
       const file = await service.read(source, filePath);
       process.stdout.write(`${JSON.stringify({ ok: true, file })}\n`);
+    } else if (command === 'create-loop' || command === 'read-loop') {
+      const loops = new LoopService(service, new DocumentService(service, new DocumentFileStore()),
+        new GraphService(service, new GraphFileStore()), new LoopFileStore());
+      const id = options.get('--id')!;
+      requestContext = { projectRoot, loopId: id };
+      if (command === 'create-loop') {
+        const source = { projectRoot, repositoryRoot: options.get('--repository')!,
+          projectPrefix: options.get('--prefix')!, commit: options.get('--commit')! };
+        const inputPath = options.get('--input')!;
+        requestContext = { ...requestContext, ...source, inputPath };
+        const result = await loops.create(source, id, await readLoopInput(inputPath));
+        process.stdout.write(`${JSON.stringify({ ok: true, result })}\n`);
+      } else {
+        const format = options.get('--format') ?? 'json';
+        if (format !== 'json' && format !== 'markdown') {
+          throw new SourceError('INVALID_ARGUMENT', '读回格式无效。', '使用 json 或 markdown。');
+        }
+        const result = await loops.read(projectRoot, id);
+        process.stdout.write(format === 'markdown' ? loopMarkdown(result) : `${JSON.stringify({ ok: true, result })}\n`);
+      }
     } else {
       const mapping = { projectRoot, repositoryRoot: options.get('--repository')!, projectPrefix: options.get('--prefix')! };
       if (['apply-graph', 'query-graph', 'query-legends', 'validate-graph'].includes(command)) {
@@ -132,13 +157,13 @@ async function main(): Promise<void> {
       }
     }
   } catch (error) {
-    const problem = error instanceof SourceError || error instanceof DocumentError || error instanceof GraphError || error instanceof ReaderError ? error :
+    const problem = error instanceof SourceError || error instanceof DocumentError || error instanceof GraphError || error instanceof ReaderError || error instanceof LoopError ? error :
       new SourceError('INTERNAL_ERROR', '命令发生未预期错误。', '将命令及问题标识交给维护者检查。');
     process.stderr.write(`${JSON.stringify({ ok: false, error: {
       code: problem.code, message: problem.message, nextStep: problem.nextStep, context: { ...requestContext, ...problem.context },
       ...(problem instanceof GraphError && problem.diagnostics.length ? { diagnostics: problem.diagnostics } : {}),
     } })}\n`);
-    process.exitCode = ['INVALID_ARGUMENT', 'INVALID_PATH', 'BLOCK_PLAN_INVALID', 'GRAPH_INPUT_INVALID'].includes(problem.code) ? 2 : 1;
+    process.exitCode = ['INVALID_ARGUMENT', 'INVALID_PATH', 'BLOCK_PLAN_INVALID', 'GRAPH_INPUT_INVALID', 'LOOP_INPUT_INVALID'].includes(problem.code) ? 2 : 1;
   }
 }
 

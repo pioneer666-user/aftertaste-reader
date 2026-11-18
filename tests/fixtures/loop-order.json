@@ -1,0 +1,74 @@
+{
+  "format": "aftertaste-loop-input/v1",
+  "title": "订单数量校验怎样决定集合会不会改变",
+  "goal": "从调用 createOrder 开始，看输入怎样经过数量规则，以及通过和失败分别怎样影响调用者手里的订单集合。",
+  "explanation": "想知道集合会不会变，先看校验发生在什么时候。服务收到输入和一个已有的集合，先把数量交给规则。只有规则正常返回数字，服务才有机会建立订单并把它加入集合。规则抛出异常时，调用在集合变化之前就中断了。\n\n**假设示例。** 两次独立调用都从空集合开始。传入文本 `\"4\"` 时，规则返回数字 `4`，服务建立编号为 `1` 的订单，加入集合后返回同一个对象。传入文本 `\"0\"` 时，规则转换得到 `0` 后抛出异常，原集合仍为空，调用者接到的是异常。",
+  "entry": "start",
+  "nodes": [
+    {
+      "id": "start",
+      "path": "src/service.mjs",
+      "block_id": "m3vuiqzi",
+      "title": "服务先交出原始数量",
+      "explanation": "`createOrder` 接到业务输入和调用者提供的集合。它先读取输入的数量并交给规则。此时集合仍保持原状。",
+      "hint": "跟着数量去 `src/rules.mjs`，留意调用是正常返回还是抛出异常。"
+    },
+    {
+      "id": "check",
+      "path": "src/rules.mjs",
+      "block_id": "x4y6az2y",
+      "title": "规则转换并检查边界",
+      "explanation": "规则先把值转换成数字，再要求它是 1 到 9 的整数，含两个端点。转换成功只是第一关。数字 `0` 能转换出来，但过不了范围检查。"
+    },
+    {
+      "id": "resume",
+      "path": "src/service.mjs",
+      "block_id": "m3vuiqzi",
+      "title": "规则返回后回到服务",
+      "explanation": "成功返回的数字成为订单数量。服务根据集合此刻的长度推导编号，并建立订单对象。建立对象这一步还没有改变集合。"
+    },
+    {
+      "id": "store",
+      "path": "src/service.mjs",
+      "block_id": "cj9208pf",
+      "title": "订单加入集合并返回",
+      "explanation": "数组追加使调用者持有的集合增加一项。随后当前辅助函数只构造一段文本，服务忽略该文本并把刚加入集合的对象返回给调用者。"
+    },
+    {
+      "id": "stop",
+      "path": "src/rules.mjs",
+      "block_id": "x4y6az2y",
+      "title": "无效数量让创建提前结束",
+      "explanation": "规则在失败时抛出异常。`createOrder` 没有在这一处捕获，异常传给它的调用者。建立订单和追加集合都在这次调用之后，因此都没有发生。"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "check",
+      "reason": "服务把原始数量作为参数交给规则；规则负责决定能否返回可用的整数。"
+    },
+    {
+      "from": "check",
+      "to": "resume",
+      "reason": "规则正常返回后，服务拿这个数字继续创建订单。"
+    },
+    {
+      "from": "resume",
+      "to": "store",
+      "reason": "订单对象准备好之后，服务才走到追加集合与返回。"
+    },
+    {
+      "from": "check",
+      "to": "stop",
+      "reason": "不是整数或越出范围会抛出异常，服务里的剩余步骤因此跳过。"
+    }
+  ],
+  "reading_order": [
+    "start",
+    "check",
+    "resume",
+    "store",
+    "stop"
+  ]
+}
