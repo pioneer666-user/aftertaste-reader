@@ -10,3 +10,12 @@
 - **发现 1｜列表告警缺少它要求读者核对的字段。** 将隔离样例 A 的 `nodes[0].title` 置空后刷新列表。服务报告 `LOOP_INVALID`、字段 `$.nodes[0].title` 和原因为 `TEXT`，A 从可选项中移除，B 仍可阅读。中英文列表告警都要求核对所示字段，页面只展示错误代码和闭环 ID，读者因此无法从该告警定位坏字段。建议在现有列表告警中补上 `problem.context.field`，有原因时一并显示，沿用画布错误提示已有的呈现方式。 [列表告警实现](<D:/project/SpecDev Harness/aftertaste-reader/src/web/App.vue:175>) [补测报告](<D:/project/SpecDev Harness/aftertaste-reader/.local/D016/review-list-FeTTBm/report.json>)
 - 核阅执行方的 26/26 回归记录及最终构建上的 Chrome、Firefox 报告。本轮独立浏览器验证用 Edge。写入失败用注入的 `EACCES` 响应检查页面及草稿，实际文件系统权限失败未复现。闭环内容更新、历史、依赖路线高亮属后续任务。作者体验验收、合并及发布待各自授权。
 - **写入交还。** 审查前后 HEAD 均为固定候选，跟踪工作区干净。候选与构建保持冻结，补测仅使用 `.local/D016` 中的合成项目。自建浏览器和服务均已关闭。**采集结束，可以恢复写入。**
+
+## R2 · 2026-11-18
+
+**结论：通过。** R1 发现 1 已关闭。
+
+- 比较 R1 候选 `e6c417e6103a1d6bc18c691cbc7d9ef446228c97` 与 R2 固定候选 `3866952edfa0063ac8c08286603fdd8734459b4f`。用 `git diff <R1> <R2>` 核对闭环列表诊断、浏览器回归和 R1 原文归档，`git diff --check <R1> <R2>` 无输出。
+- 在 Windows 11、Node `24.22.3` 和 Edge `157.0.4341.60` 上，用 `node --input-type=module` 加载冻结的 `build-r2`，从隔离项目的新页面复核。将订单闭环首个节点标题置空后，中英文列表告警均显示 `LOOP_INVALID order-quantity $.nodes[0].title TEXT`，与服务返回的诊断一致。损坏闭环从选项移除，仍可从列表打开有效闭环，沿连线到下一步并读到保存的中文讲解。恢复订单成品并刷新后，订单闭环重新可选，能打开入口步骤。 [独立 Edge 复核报告](<D:/project/SpecDev Harness/aftertaste-reader/.local/D016/review-r2-lgl2es/report.json>)
+- 复核了两套冻结构建中 `adapters`、`application`、`cli`、`core` 和 `server` 共 44 个文件的 SHA-256，全部一致。沿用 R1 的后端与持久化证据，另核阅 R2 的 Edge、Chrome 和 Firefox 执行方报告，各 8 组通过。本轮独立实测覆盖本次变更的列表行为。R1 所载真实文件系统权限失败及后续功能的验证限制仍适用。作者体验、合并与发布待各自授权。
+- **写入交还。** 复核前后 HEAD 均为 R2 固定候选，跟踪工作区干净，冻结构建未改动。隔离样例已恢复，自建 Edge 和本地服务均已关闭。**采集结束，可以恢复写入。**

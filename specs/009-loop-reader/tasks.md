@@ -60,7 +60,7 @@ description: D016 已保存闭环的阅读与个人布局
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T011 更新 `docs/usage/file-reader.md` 和 `specs/001-first-release/08-current-spec-and-acceptance.md` 导航。
-- [ ] T012 运行串行自测和 [quickstart](quickstart.md) 的浏览器验收，完成 `docs/work/2026/11/D016-loop-reader/handoff.md` 及候选独审归档。
+- [x] T012 运行串行自测和 [quickstart](quickstart.md) 的浏览器验收，完成 `docs/work/2026/11/D016-loop-reader/handoff.md` 及候选独审归档。
 
 ## Dependencies & Execution Order
 
