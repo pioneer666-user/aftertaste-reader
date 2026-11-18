@@ -15,6 +15,8 @@ node <产品根>/dist/cli/main.js serve --project <绝对目录> [--port <1..655
 
 不接受项目、Git 提交、磁盘资源路径覆盖参数。path 只解码一次，编码残留和任何不规范路径按共用路径规则检查。源路径只从镜像推导，提交只从文档头读取。
 
+D012 的依赖图读取和布局写入另见 [依赖画布契约](../../007-dependency-canvas/contracts/graph-layout.md)。文件讲解接口仍只读。
+
 ## 访问及缓存边界
 
 Host 必须为 127.0.0.1 或 localhost 且端口与实际监听一致。Origin 若存在须精确等于该 Host 的 http 来源，Sec-Fetch-Site 若存在须为 same-origin/none。跨源读取返回 ACCESS_DENIED，无 CORS 授权。所有响应 Cache-Control no-store，nosniff，禁止 frame，CSP 仅自身脚本/样式、连接自身、禁外部图片及对象。Markdown 原生 HTML 按文本处理，图片按替代文本，链接仅允许锚点或明确 http/https/mailto，点击外链使用安全 rel，普通磁盘相对链接按文本。

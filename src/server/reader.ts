@@ -11,9 +11,19 @@ import { DocumentFileStore } from '../adapters/document-store.js';
 import { GitSourceRepository } from '../adapters/git-source.js';
 import { ReaderFileDirectory, readerProject } from '../adapters/reader-directory.js';
 import { systemCode } from '../adapters/data-directory.js';
+import { DependencyCanvasService } from '../application/dependency-canvas.js';
+import { LayoutFileStore } from '../adapters/layout-store.js';
+import { GraphFileStore } from '../adapters/graph-store.js';
+import { GraphError } from '../core/dependency-graph.js';
+import { CanvasError } from '../core/canvas-layout.js';
 
 export function readerProblem(error: unknown): ReaderProblem {
-  if (error instanceof SourceError || error instanceof DocumentError || error instanceof ReaderError) {
+  if (error instanceof GraphError) {
+    const first = error.diagnostics[0];
+    return { code: error.code, message: error.message, nextStep: error.nextStep,
+      context: { ...error.context, ...(first ? { field: first.field, diagnostic: first.code } : {}) } };
+  }
+  if (error instanceof SourceError || error instanceof DocumentError || error instanceof ReaderError || error instanceof CanvasError) {
     return { code: error.code, message: error.message, nextStep: error.nextStep, context: error.context };
   }
   return { code: 'INTERNAL_ERROR', message: '阅读服务发生未预期错误。', nextStep: '将问题标识和操作交给维护者检查。', context: {} };
@@ -38,6 +48,7 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   }
   const documents = new DocumentService(new FixedSourceService(new GitSourceRepository()), new DocumentFileStore());
   const reader = new FileReaderService(project, new ReaderFileDirectory(), documents);
+  const canvas = new DependencyCanvasService(reader, new GraphFileStore(), new LayoutFileStore(project));
   const server = Fastify({ logger: false, trustProxy: false, exposeHeadRoutes: false });
   server.addHook('onRequest', async (request, reply) => {
     reply.headers({
@@ -59,13 +70,24 @@ export async function startReader(projectRoot: string, port: number = 4317) {
       return reply.code(403).send({ ok: false, error: readerProblem(new ReaderError('ACCESS_DENIED',
         '请求来源不允许访问本地阅读资料。', '直接打开启动命令输出的本机阅读地址。')) });
     }
+    if (request.method === 'PUT' && request.url.split('?')[0] === '/api/dependency-layout') {
+      if (request.headers['x-aftertaste-layout'] !== '1') return reply.code(403).send({ ok: false,
+        error: readerProblem(new ReaderError('ACCESS_DENIED', '布局写入请求缺少本机页面标识。', '从本机阅读页面保存布局。')) });
+      return;
+    }
     if (request.method !== 'GET') return reply.code(405).send({ ok: false,
       error: readerProblem(new ReaderError('METHOD_NOT_ALLOWED', '阅读接口仅支持读取。', '使用页面中的文件选择或刷新。')) });
   });
   server.setErrorHandler((error, _request, reply) => {
+    if (error instanceof Error && 'statusCode' in error &&
+        (error.statusCode === 400 || error.statusCode === 413 || error.statusCode === 415)) {
+      return reply.code(error.statusCode).send({ ok: false, error: readerProblem(
+        new ReaderError('INVALID_ARGUMENT', '请求体无效。', '使用本机阅读页面提交布局。')) });
+    }
     const problem = readerProblem(error);
-    const status = ['INVALID_ARGUMENT', 'INVALID_PATH'].includes(problem.code) ? 400 :
-      problem.code === 'DOCUMENT_PATH_UNSAFE' ? 403 : problem.code === 'INTERNAL_ERROR' ? 500 : 422;
+    const status = ['INVALID_ARGUMENT', 'INVALID_PATH', 'LAYOUT_INVALID'].includes(problem.code) ? 400 :
+      problem.code.endsWith('_PATH_UNSAFE') ? 403 : ['LAYOUT_CONFLICT', 'LAYOUT_GRAPH_CHANGED'].includes(problem.code) ? 409 :
+      problem.code === 'INTERNAL_ERROR' ? 500 : 422;
     reply.code(status).send({ ok: false, error: problem });
   });
   server.setNotFoundHandler((_request, reply) => reply.code(404).send({ ok: false,
@@ -81,6 +103,16 @@ export async function startReader(projectRoot: string, port: number = 4317) {
       throw new SourceError('INVALID_ARGUMENT', '文档参数无效。', '仅提供一个 current 镜像文档 path。');
     }
     return { ok: true, result: await reader.read(query.path) };
+  });
+  server.get('/api/dependency-canvas', async request => {
+    if (Object.keys(request.query as object).length) throw new ReaderError('INVALID_ARGUMENT', '图参数无效。', '读取当前项目的依赖图。');
+    return { ok: true, ...await canvas.read() };
+  });
+  server.put('/api/dependency-layout', async request => {
+    if (Object.keys(request.query as object).length || request.headers['content-type']?.split(';')[0]?.trim().toLowerCase() !== 'application/json') {
+      throw new ReaderError('INVALID_ARGUMENT', '保存参数无效。', '使用本机页面提交当前依赖图布局。');
+    }
+    return { ok: true, ...await canvas.save(request.body) };
   });
   try {
     const url = await server.listen({ host: '127.0.0.1', port });
