@@ -1,6 +1,6 @@
 import { checkedFixedSource, FixedSourceService, SourceError, validateSourcePath } from './fixed-source.js';
 import type { FixedSource } from './fixed-source.js';
-import { applyGraph, graphFormat, graphPath, GraphError, parseGraph, parseUpdate, queryGraph } from '../core/dependency-graph.js';
+import { applyGraph, canvasIds, graphFormat, graphPath, GraphError, isLegendId, legendKey, parseGraph, parseUpdate, queryGraph } from '../core/dependency-graph.js';
 import type { DependencyGraph, GraphDiagnostic, RemovalMarks } from '../core/dependency-graph.js';
 
 export interface GraphRemovals {
@@ -75,19 +75,34 @@ export class GraphService {
     const candidate = parseGraph(raw);
     const diagnostics = await this.checkFiles(fixed, candidate);
     if (diagnostics.length) throw new GraphError('GRAPH_INVALID', '合并候选的固定源码校验未完成。', '核对诊断中的真实固定文件；保留输入和原图。', { projectRoot: fixed.projectRoot, graphPath }, diagnostics);
-    if (raw !== previous || update.remove.length) await this.store.save(fixed.projectRoot, raw, previous,
-      { requested: update.remove, previousActive: new Set(original.nodes.map(node => node.path)),
-        active: new Set(candidate.nodes.map(node => node.path)) });
+    const requested = [...update.remove, ...update.legendRemove.map(legendKey)];
+    if (raw !== previous || requested.length) await this.store.save(fixed.projectRoot, raw, previous,
+      { requested, previousActive: new Set(canvasIds(original)), active: new Set(canvasIds(candidate)) });
     return result;
   }
 
   async query(input: FixedSource, filePath: string) {
     const fixed = checkedFixedSource(input);
     validateSourcePath(filePath);
+    return queryGraph(await this.querySnapshot(fixed), filePath);
+  }
+
+  async queryLegends(input: FixedSource, id?: string) {
+    const fixed = checkedFixedSource(input);
+    if (id !== undefined && !isLegendId(id)) {
+      throw new SourceError('INVALID_ARGUMENT', '图例 ID 无效。', '使用查询返回的实例 ID。');
+    }
+    const graph = await this.querySnapshot(fixed);
+    const legends = graph.legends ?? [];
+    return { source_commit: graph.source_commit, legends: id === undefined ? legends : legends.filter(legend => legend.id === id),
+      sourceCheck: 'not-run' as const, semanticQuality: 'unchecked' as const };
+  }
+
+  private async querySnapshot(fixed: FixedSource) {
     const graph = parseGraph(await this.existing(fixed));
     const mismatch = versionError(graph, fixed);
     if (mismatch) throw mismatch;
-    return queryGraph(graph, filePath);
+    return graph;
   }
 
   async validate(input: FixedSource): Promise<GraphCheck> {

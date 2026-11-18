@@ -35,6 +35,12 @@ const chinese: Record<string, string> = {
   canvasDirection: "箭头从被依赖文件指向使用它的文件。",
   canvasChoose: "选中文件可查看关系和讲解。拖空白处平移画布。",
   canvasSelected: "所选文件",
+  canvasLibraryDirection: "箭头指向使用它的文件。虚线从库图例出发。",
+  canvasChooseLibrary: "选中文件或库图例查看详情。拖空白处平移画布。",
+  canvasSelectedLibrary: "所选库图例",
+  canvasStandardLibrary: "标准库",
+  canvasThirdPartyLibrary: "第三方库",
+  canvasUsedLibraries: "它使用的库",
   canvasReviewed: "已核对",
   canvasUnreviewed: "依赖尚未核对",
   canvasNoDependencies: "已核对，无直接依赖",
@@ -50,7 +56,7 @@ const chinese: Record<string, string> = {
   canvasGroupName: "组名",
   canvasMembers: "成员",
   canvasApplyGroup: "应用分组",
-  canvasGroupHelp: "拖组名可移动成员。勾选其他组的文件会转入当前组。",
+  canvasGroupHelp: "拖组名可移动成员。已分组的成员被勾选后会转入当前组。",
 };
 
 const english: Record<string, string> = {
@@ -88,6 +94,12 @@ const english: Record<string, string> = {
   canvasDirection: "Arrows point from a dependency to the file that uses it.",
   canvasChoose: "Select a file to see its relationships and explanation. Drag the background to pan.",
   canvasSelected: "Selected file",
+  canvasLibraryDirection: "Arrows point to the files that use each dependency. Dashed arrows start at library nodes.",
+  canvasChooseLibrary: "Select a file or library to see its details. Drag the background to pan.",
+  canvasSelectedLibrary: "Selected library",
+  canvasStandardLibrary: "Standard library",
+  canvasThirdPartyLibrary: "Third-party library",
+  canvasUsedLibraries: "Libraries it uses",
   canvasReviewed: "Reviewed",
   canvasUnreviewed: "Dependencies unreviewed",
   canvasNoDependencies: "Reviewed, no direct dependencies",
@@ -103,7 +115,7 @@ const english: Record<string, string> = {
   canvasGroupName: "Group name",
   canvasMembers: "Members",
   canvasApplyGroup: "Apply group",
-  canvasGroupHelp: "Drag a group name to move its members. Adding a file moves it from its previous group.",
+  canvasGroupHelp: "Drag a group name to move its members. Adding a member moves it from its previous group.",
 };
 
 export function translate(language: Language, key: string): string {
@@ -140,7 +152,7 @@ const problems: Record<string, { zh: readonly [string, string]; en: readonly [st
   LAYOUT_WRITE_FAILED: { zh: ["布局写入失败，本页排布仍在。","检查文件占用与目录权限后重试。"], en: ["The write failed. This tab still has your changes.","Check whether the file is in use and whether the folder is writable, then retry."] },
   LAYOUT_CONFLICT: { zh: ["另一个页面已保存更新的布局。","可放弃本页草稿，再读取磁盘布局。"], en: ["Another tab saved a newer layout.","You can discard this tab’s draft and load the saved layout."] },
   LAYOUT_GRAPH_CHANGED: { zh: ["保存前依赖图已变化。","刷新图后可继续保存本页排布。"], en: ["The dependency graph changed before saving.","Refresh the graph to continue saving this tab’s layout."] },
-  LAYOUT_GRAPH_UNCONFIRMED: { zh: ['图暂缺原布局中的文件，已保留布局。', '完成图更新或用依赖图工具明确确认移除，再刷新。'], en: ['The graph is missing a previously placed file. Its layout is preserved.', 'Finish updating the graph or confirm removal with the graph tool, then refresh.'] },
+  LAYOUT_GRAPH_UNCONFIRMED: { zh: ['图暂缺原布局中的文件或图例，已保留布局。', '完成图更新或用依赖图工具明确确认移除，再刷新。'], en: ['The graph is missing a previously placed file or library. Its layout is preserved.', 'Finish updating the graph or confirm removal with the graph tool, then refresh.'] },
   DOCUMENT_HEADER: { zh: ['固定提交头缺失、重复或位置无效。', '仅在首行保留一个含完整提交的 document 标记。'], en: ['The fixed-commit header is missing, duplicated or misplaced.', 'Keep one document marker with the full commit on the first line.'] },
   OUTSIDE_CONTENT: { zh: ['块外含有正文。', '将正文放进成对块标记内。'], en: ['Content appears outside a block.', 'Move content inside paired block markers.'] },
   MARKER_INVALID: { zh: ['块标记格式无效。', '按块契约将完整标记独占一行。'], en: ['A block marker is malformed.', 'Place a complete marker on its own top-level line.'] },

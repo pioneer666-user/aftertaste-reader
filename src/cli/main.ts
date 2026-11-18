@@ -26,6 +26,7 @@ const commands: Record<string, { allowed: string[]; required: string[] }> = {
   },
   'apply-graph': { allowed: [...fixedOptions, '--input'], required: [...fixedOptions, '--input'] },
   'query-graph': { allowed: [...fixedOptions, '--path'], required: [...fixedOptions, '--path'] },
+  'query-legends': { allowed: [...fixedOptions, '--id'], required: fixedOptions },
   'validate-graph': { allowed: fixedOptions, required: fixedOptions },
 };
 
@@ -88,7 +89,7 @@ async function main(): Promise<void> {
       process.stdout.write(`${JSON.stringify({ ok: true, file })}\n`);
     } else {
       const mapping = { projectRoot, repositoryRoot: options.get('--repository')!, projectPrefix: options.get('--prefix')! };
-      if (['apply-graph', 'query-graph', 'validate-graph'].includes(command)) {
+      if (['apply-graph', 'query-graph', 'query-legends', 'validate-graph'].includes(command)) {
         const graphs = new GraphService(service, new GraphFileStore());
         const source = { ...mapping, commit: options.get('--commit')! };
         requestContext = { ...source };
@@ -101,6 +102,9 @@ async function main(): Promise<void> {
           const filePath = options.get('--path')!;
           requestContext = { ...source, path: filePath };
           const result = await graphs.query(source, filePath);
+          process.stdout.write(`${JSON.stringify({ ok: true, result })}\n`);
+        } else if (command === 'query-legends') {
+          const result = await graphs.queryLegends(source, options.get('--id'));
           process.stdout.write(`${JSON.stringify({ ok: true, result })}\n`);
         } else {
           const result = await graphs.validate(source);

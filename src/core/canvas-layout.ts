@@ -1,4 +1,4 @@
-import { isSourcePath } from './source-path.js';
+import { isCanvasId } from './dependency-graph.js';
 import type { RemovalMarks } from './dependency-graph.js';
 
 export interface Point { x: number; y: number }
@@ -58,7 +58,7 @@ export function parseLayout(value: unknown, source: 'file' | 'request' = 'file')
   } else entries = Object.entries(positions);
   const coordinates = Object.fromEntries(entries.map(([id, value]) => {
     const field = `$.layout.positions[${JSON.stringify(id)}]`;
-    if (!isSourcePath(id)) invalid(field);
+    if (!isCanvasId(id)) invalid(field);
     const { x, y } = layoutObject(value, ['x', 'y'], field);
     return [id, { x: coordinate(x, field + '.x'), y: coordinate(y, field + '.y') }] as const;
   }));

@@ -8,6 +8,8 @@ import './canvas.css';
 import DependencyEdge from './DependencyEdge.vue';
 import { groupBounds, maxZoom, minZoom, moveMembers, nodeSize, rearrange, reconcileLayout, renewedPaths, updateGroup } from '../core/canvas-layout.js';
 import type { CanvasGroup, CanvasLayout, Point } from '../core/canvas-layout.js';
+import { canvasIds, isLegendKey, legendKey } from '../core/dependency-graph.js';
+import type { LibraryLegend } from '../core/dependency-graph.js';
 import type { CanvasReading, LayoutWrite } from '../application/dependency-canvas.js';
 import type { ReaderProblem } from '../application/file-reader.js';
 import { failed, request } from './reader-api.js';
@@ -36,12 +38,20 @@ let revision: string | null = null;
 let pending: LayoutWrite | undefined;
 let dragGroup: { group: CanvasGroup; origin: Point; layout: CanvasLayout } | undefined;
 
-const fileId = (path: string) => 'file:' + encodeURIComponent(path);
+const nodeId = (id: string) => isLegendKey(id) ? id : 'file:' + encodeURIComponent(id);
 const groupNodeId = (id: string) => 'group:' + id;
+const legendKind = (kind: LibraryLegend['kind']) => t(kind === 'standard' ? 'canvasStandardLibrary' : 'canvasThirdPartyLibrary');
 const canSave = computed(() => !!reading.value && !loading.value && !readProblem.value && !reading.value.layoutProblem);
 const editable = computed(() => ready.value && canSave.value);
 const idle = computed(() => !dragging.value && !moving.value);
 const selectedNode = computed(() => reading.value?.graph.nodes.find(node => node.path === selected.value));
+const legends = computed(() => reading.value?.graph.legends ?? []);
+const selectedLegend = computed(() => legends.value.find(legend => legendKey(legend.id) === selected.value));
+const usedLibraries = computed(() => legends.value.flatMap(legend => {
+  const use = legend.uses.find(use => use.path === selected.value);
+  return use ? [{ legend, reason: use.reason }] : [];
+}));
+const hasNodes = computed(() => !!reading.value && (reading.value.graph.nodes.length > 0 || legends.value.length > 0));
 const documentPath = computed(() => reading.value?.documents.find(entry => entry.sourcePath === selected.value)?.documentPath);
 const dependencies = computed(() => reading.value?.graph.edges.filter(edge => edge.dependent === selected.value) ?? []);
 const dependents = computed(() => reading.value?.graph.edges.filter(edge => edge.dependency === selected.value) ?? []);
@@ -58,8 +68,8 @@ const statusKey = computed(() => {
   return revision ? 'canvasSaved' : 'canvasDefault';
 });
 
-function dimensions(path: string) {
-  const measured = findNode(fileId(path))?.dimensions;
+function dimensions(id: string) {
+  const measured = findNode(nodeId(id))?.dimensions;
   return measured?.width && measured.height ? measured : nodeSize;
 }
 
@@ -74,16 +84,25 @@ function render() {
         zIndex: -1, data: { name: group.name }, style: { width: width + 'px', height: height + 'px' } };
     }),
     ...graph.nodes.map((node): Node => ({
-      id: fileId(node.path), type: 'canvasFile', position: { ...current.positions[node.path]! }, data: node,
+      id: nodeId(node.path), type: 'canvasFile', position: { ...current.positions[node.path]! }, data: { ...node, key: node.path },
+      style: { width: nodeSize.width + 'px', height: nodeSize.height + 'px' },
+    })),
+    ...legends.value.map((legend): Node => ({
+      id: legendKey(legend.id), type: 'canvasLegend', position: { ...current.positions[legendKey(legend.id)]! },
+      data: { ...legend, key: legendKey(legend.id) },
       style: { width: nodeSize.width + 'px', height: nodeSize.height + 'px' },
     })),
   ]);
-  setEdges(graph.edges.map((edge): Edge => ({
-    id: fileId(edge.dependency) + '→' + fileId(edge.dependent),
-    source: fileId(edge.dependency), target: fileId(edge.dependent), sourceHandle: 'out',
-    targetHandle: edge.dependency === edge.dependent ? 'self' : 'in', type: 'dependency',
-    data: edge, markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: '#486357' },
-  })));
+  const edge = (from: string, to: string, reason: string, library = false): Edge => ({
+    id: nodeId(from) + '→' + nodeId(to), source: nodeId(from), target: nodeId(to), sourceHandle: 'out',
+    targetHandle: from === to ? 'self' : 'in', type: 'dependency', data: { reason },
+    ...(library ? { class: 'library-use-edge' } : {}),
+    markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: library ? '#555493' : '#486357' },
+  });
+  setEdges([
+    ...graph.edges.map(({ dependency, dependent, reason }) => edge(dependency, dependent, reason)),
+    ...legends.value.flatMap(legend => legend.uses.map(use => edge(legendKey(legend.id), use.path, use.reason, true))),
+  ]);
 }
 
 async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
@@ -102,7 +121,7 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
       saveProblem.value = { code: 'LAYOUT_CONFLICT', message: '', nextStep: '', context: {} };
       return;
     }
-    const ids = next.graph.nodes.map(node => node.path);
+    const ids = canvasIds(next.graph);
     if (carry) {
       const accountedFor = new Set([...ids, ...next.confirmedRemovals]);
       const unconfirmed = Object.keys(carry.positions).find(path => !accountedFor.has(path));
@@ -117,7 +136,7 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
     pending = undefined;
     dirty.value = !next.layoutProblem && (!!carry || next.reconciled);
     saveProblem.value = undefined;
-    if (!next.graph.nodes.some(node => node.path === selected.value)) selected.value = '';
+    if (!ids.includes(selected.value)) selected.value = '';
     editGroup('');
     render();
     if (ready.value) await setViewport(layout.value.viewport);
@@ -196,12 +215,12 @@ function previewDrag({ node }: NodeDragEvent) {
   if (!dragging.value || !layout.value) return;
   if (dragGroup) {
     const moved = moveMembers(dragGroup.layout.positions, dragGroup.group.members, dragGroup.origin, node.position);
-    for (const [id, point] of Object.entries(moved)) updateNode(fileId(id), { position: point });
+    for (const [id, point] of Object.entries(moved)) updateNode(nodeId(id), { position: point });
   } else {
-    const path = node.data.path as string;
-    const group = layout.value.groups.find(item => item.members.includes(path));
+    const id = node.data.key as string;
+    const group = layout.value.groups.find(item => item.members.includes(id));
     if (!group) return;
-    const positions = { ...layout.value.positions, [path]: node.position };
+    const positions = { ...layout.value.positions, [id]: node.position };
     const { x, y, width, height } = groupBounds(positions, group.members, dimensions);
     updateNode(groupNodeId(group.id), { position: { x, y }, style: { width: width + 'px', height: height + 'px' } });
   }
@@ -210,8 +229,8 @@ function previewDrag({ node }: NodeDragEvent) {
 function endDrag(event: NodeDragEvent) {
   if (!dragging.value || !layout.value) return;
   previewDrag(event);
-  const nodes = dragGroup?.group.members ?? [event.node.data.path as string];
-  const positions = { ...layout.value.positions, ...Object.fromEntries(nodes.map(id => [id, { ...findNode(fileId(id))!.position }])) };
+  const nodes = dragGroup?.group.members ?? [event.node.data.key as string];
+  const positions = { ...layout.value.positions, ...Object.fromEntries(nodes.map(id => [id, { ...findNode(nodeId(id))!.position }])) };
   dragGroup = undefined;
   dragging.value = false;
   changed({ ...layout.value, positions });
@@ -240,7 +259,7 @@ async function zoom(factor: number) {
 
 async function relayout() {
   if (!editable.value || !idle.value || !layout.value || !reading.value) return;
-  changed(rearrange(layout.value, reading.value.graph.nodes.map(node => node.path)));
+  changed(rearrange(layout.value, canvasIds(reading.value.graph)));
   render();
   await setViewport(layout.value.viewport);
 }
@@ -258,7 +277,7 @@ onMounted(() => void load());
       <h1>{{ t('dependencyCanvas') }}</h1>
       <div class="canvas-actions">
         <button type="button" :disabled="loading || saving || dirty || !idle" @click="load()">{{ t('canvasRefresh') }}</button>
-        <button v-if="reading?.graph.nodes.length" type="button" :disabled="!editable || !idle" @click="relayout">{{ t('canvasRearrange') }}</button>
+        <button v-if="hasNodes" type="button" :disabled="!editable || !idle" @click="relayout">{{ t('canvasRearrange') }}</button>
       </div>
     </header>
     <p v-if="loading" role="status" class="canvas-status">{{ t('loading') }}</p>
@@ -272,9 +291,9 @@ onMounted(() => void load());
       <button v-else-if="!replaceDraft" type="button" :disabled="!canSave || saving" @click="save">{{ t('canvasRetrySave') }}</button>
       <button v-if="replaceDraft" type="button" :disabled="loading || saving || !idle" @click="discardDraft">{{ t('canvasLoadSaved') }}</button>
     </div>
-    <p v-if="reading && !reading.graph.nodes.length" class="canvas-empty">{{ t('canvasEmpty') }}</p>
+    <p v-if="reading && !hasNodes" class="canvas-empty">{{ t('canvasEmpty') }}</p>
 
-    <div v-if="reading" v-show="reading.graph.nodes.length" class="canvas-workspace">
+    <div v-if="reading" v-show="hasNodes" class="canvas-workspace">
       <section class="graph-area" :aria-label="t('dependencyCanvas')">
         <VueFlow :min-zoom="minZoom" :max-zoom="maxZoom" :nodes-connectable="false" :nodes-draggable="editable"
           :elements-selectable="false" :delete-key-code="null" :selection-key-code="null" :multi-selection-key-code="null"
@@ -292,6 +311,14 @@ onMounted(() => void load());
             </button>
             <Handle id="out" type="source" :position="Position.Right" />
           </template>
+          <template #node-canvasLegend="{ data }">
+            <button type="button" class="file-node library-node" :data-legend="data.id"
+              :aria-pressed="selected === data.key" :title="data.name" @click="selected = data.key">
+              <span>{{ data.name }}</span>
+              <small>{{ legendKind(data.kind) }}</small>
+            </button>
+            <Handle id="out" type="source" :position="Position.Right" />
+          </template>
           <template #node-canvasGroup="{ data, id }">
             <div class="group-frame" :data-group="id">
               <button type="button" class="group-handle" :title="data.name" @click="editGroup(id.slice(6))">{{ data.name }}</button>
@@ -306,10 +333,10 @@ onMounted(() => void load());
         </div>
       </section>
       <aside class="canvas-inspector">
-        <p class="canvas-hint">{{ t('canvasDirection') }}</p>
+        <p class="canvas-hint">{{ t(legends.length ? 'canvasLibraryDirection' : 'canvasDirection') }}</p>
         <section v-if="selectedNode" class="canvas-selection" :aria-label="t('canvasSelected')">
           <h2>{{ selectedNode.path }}</h2>
-          <p>{{ t(selectedNode.analysis === 'unreviewed' ? 'canvasUnreviewed' : dependencies.length ? 'canvasReviewed' : 'canvasNoDependencies') }}</p>
+          <p>{{ t(selectedNode.analysis === 'unreviewed' ? 'canvasUnreviewed' : dependencies.length || usedLibraries.length ? 'canvasReviewed' : 'canvasNoDependencies') }}</p>
           <button v-if="documentPath" type="button" @click="emit('read', documentPath)">{{ t('canvasRead') }}</button>
           <p v-else>{{ t(reading.documentsUnavailable ? 'canvasDocumentsUnavailable' : 'canvasNoDocument') }}</p>
           <template v-for="[label, edges] in [['canvasDependencies', dependencies], ['canvasDependents', dependents]] as const" :key="label">
@@ -324,8 +351,30 @@ onMounted(() => void load());
             </ul>
             <p v-else>{{ t('canvasNoEdges') }}</p>
           </template>
+          <template v-if="usedLibraries.length">
+            <h3>{{ t('canvasUsedLibraries') }}</h3>
+            <ul class="canvas-relations">
+              <li v-for="{ legend, reason } in usedLibraries" :key="legend.id">
+                <button type="button" @click="selected = legendKey(legend.id)">{{ legend.name }} · {{ legendKind(legend.kind) }}</button>
+                <p>{{ reason }}</p>
+              </li>
+            </ul>
+          </template>
         </section>
-        <p v-else class="canvas-hint">{{ t('canvasChoose') }}</p>
+        <section v-else-if="selectedLegend" class="canvas-selection" :aria-label="t('canvasSelectedLibrary')">
+          <h2>{{ selectedLegend.name }}</h2>
+          <p class="canvas-hint">{{ legendKind(selectedLegend.kind) }}</p>
+          <p class="library-description">{{ selectedLegend.description }}</p>
+          <h3>{{ t('canvasDependents') }}</h3>
+          <ul v-if="selectedLegend.uses.length" class="canvas-relations">
+            <li v-for="use in selectedLegend.uses" :key="use.path">
+              <button type="button" @click="selected = use.path">{{ use.path }}</button>
+              <p>{{ use.reason }}</p>
+            </li>
+          </ul>
+          <p v-else>{{ t('canvasNoEdges') }}</p>
+        </section>
+        <p v-else class="canvas-hint">{{ t(legends.length ? 'canvasChooseLibrary' : 'canvasChoose') }}</p>
 
         <form class="canvas-groups" @submit.prevent="applyGroup">
           <h2>{{ t('canvasGroups') }}</h2>
@@ -341,6 +390,9 @@ onMounted(() => void load());
             <legend>{{ t('canvasMembers') }}</legend>
             <label v-for="node in reading.graph.nodes" :key="node.path" class="canvas-member">
               <input v-model="members" type="checkbox" :value="node.path" />{{ node.path }}
+            </label>
+            <label v-for="legend in legends" :key="legendKey(legend.id)" class="canvas-member">
+              <input v-model="members" type="checkbox" :value="legendKey(legend.id)" />{{ legend.name }} · {{ legendKind(legend.kind) }}
             </label>
           </fieldset>
           <button type="submit" :disabled="!editable || !idle || (members.length ? !groupName.trim() : !groupId)">{{ t('canvasApplyGroup') }}</button>

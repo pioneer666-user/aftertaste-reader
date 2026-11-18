@@ -172,14 +172,14 @@ export class GraphFileStore implements GraphStore {
       const removed = new Map(Object.entries(prior.removals));
       const registered = new Set(prior.registered);
       const confirmed = new Set(prior.confirmed);
-      for (const file of removal?.requested ?? []) {
-        if (!removed.has(file) || removal?.previousActive.has(file) || registered.has(file)) removed.set(file, randomBytes(32).toString('hex'));
-        confirmed.add(file);
-        registered.delete(file);
+      for (const id of removal?.requested ?? []) {
+        if (!removed.has(id) || removal?.previousActive.has(id) || registered.has(id)) removed.set(id, randomBytes(32).toString('hex'));
+        confirmed.add(id);
+        registered.delete(id);
       }
-      for (const file of removal?.active ?? []) {
-        confirmed.delete(file);
-        if (removed.has(file) && !removal?.previousActive.has(file)) registered.add(file);
+      for (const id of removal?.active ?? []) {
+        confirmed.delete(id);
+        if (removed.has(id) && !removal?.previousActive.has(id)) registered.add(id);
       }
       const next = { removals: Object.fromEntries(removed), registered: [...registered].sort(), confirmed: [...confirmed].sort() };
       if (raw === previous) {
@@ -202,7 +202,7 @@ export class GraphFileStore implements GraphStore {
       let originalReceipt: Buffer | undefined;
       let stagedReceipt: Buffer | undefined;
       if (removed.size) {
-        candidateProof = { ...next, publication: await publicationKey(temporary, raw) };
+        candidateProof = { publication: await publicationKey(temporary, raw), ...next };
         const previousKey = previous === undefined ? '' : await publicationKey(target, previous);
         const previousRecords = prior.unresolvedRecords ?? [{ ...prior, publication: previousKey }];
         originalReceipt = await this.readReceipt(projectRoot);

@@ -6,15 +6,16 @@
 
 ## DependencyGraph
 
-唯一文件 docs/aftertaste/dependency-graph.json，UTF-8 JSON（允许 BOM）。顶层仅 format、source_commit、nodes、edges；format 固定 aftertaste-dependency-graph/v1。
+唯一内容文件 docs/aftertaste/dependency-graph.json，UTF-8 JSON（允许 BOM）。顶层包含 format、source_commit、nodes、edges 和可选 legends，format 固定 aftertaste-dependency-graph/v1。
 
 - nodes: 仅含 path、analysis 的数组；path 项目相对规范 Git 路径，同图唯一且大小写敏感；analysis 仅 unreviewed 或 reviewed。
 - edges: 仅含 dependency、dependent、reason 的数组；端点均已登记，同对端点唯一；reason 是非空且 Unicode 完好的说明（不得放源码）。方向 dependency → dependent；允许自环与循环。
+- legends: 当前图独立的库实例及使用关系。实例和文件各有独立身份。字段、校验和更新规则见 [库图例](contracts/cli.md#库图例)。
 - 所有路径沿 002 路径约束；核源码沿现有 UTF-8 普通文本读取契约。结构字段不允许未知项，避免未识别数据被更新丢弃。图不保存项目绝对路径、源码、讲解完成或理解状态。
 
 ## GraphUpdate
 
-顶层仅 format、可选 register、reviews、remove；format 固定 aftertaste-dependency-update/v1，至少显式出现一个动作，数组可以为空以明确初始化。
+顶层为 format、可选 register、reviews、remove、legendUpserts、legendRemove。format 固定 aftertaste-dependency-update/v1，至少显式出现一个动作，数组可以为空以明确初始化。
 
 共用用例接收程序构造输入时同样要求数组每个索引为自有项，拒绝空槽和继承槽，并读取到普通数组快照后校验；不执行输入数组自定义的遍历方法。合法 JSON 数组及明确空列表行为保持。
 
@@ -43,5 +44,7 @@ GraphDiagnostic: code、field（JSON 字段定位）、message、nextStep、para
 `apply-graph` 的显式 `remove` 可确认当前缺席路径，包括在直接编辑中已经删除的节点。项目文件 `dependency-graph-removals.json` 中的 `removals` 按路径保存最近一次正式移除的 64 位十六进制标记。删除已登记节点产生新标记，重复确认同一次缺席沿用它。工具把正式补回图中的路径记入 `registered`。这份已发布的身份历史跨直接编辑、原样写回和重启保留。手工恢复一个仅被正式删除的路径时，原布局仍可恢复。
 
 `confirmed` 列出可以清理布局的缺席路径，仅在图的内容、文件身份和修改时间与本次发布匹配时有效。替换图前先原子写入原图和候选的凭据。图发布成功后原子收为一条已发布记录。首次建图或替换图失败时，若文件仍是本次暂存的凭据，恢复原凭据字节，原本无凭据则清除本次暂存。收尾失败报告 `published=1`，可按实际图核对双记录。若外部又替换了图，只有双方一致的身份可继承。图和凭据无法判定时保全布局。
+
+`legendRemove` 使用同一凭据发布过程，图例的键为 `legend:<id>`。该键可出现在 `removals`、`registered`、`confirmed`，与文件路径无冲突。旧凭据继续读取。
 
 D012 的 `paths` 和 D013 第一候选的 `removals` 可按原快照读取，D012 路径取该发布摘要作标记。旧格式无法证明跨直接编辑的重加身份。仅有失配的旧移除标记时，画布展示带诊断的只读预览。可恢复匹配的图及凭据，或在确要重新移除相关节点时，用正式工具显式移除凭据中的全部路径，随后按需登记。参见[画布数据模型](../007-dependency-canvas/data-model.md#图与布局协调)。

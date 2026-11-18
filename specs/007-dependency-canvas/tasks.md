@@ -68,11 +68,28 @@ description: "文件依赖图与布局保存实施清单"
 - [x] T019 运行 quickstart.md 中受影响检查，固定 D013 候选、提交独审并在 docs/work/2026/11/D013-canvas-fixes/ 归档回执和原文（F1—F4）。
 - [x] T022 在 docs/work/2026/11/D013-canvas-fixes/ 记录 T020、T021 的真实服务与页面结果，固定补修候选并归档执行侧复核。
 
+## Phase 7: User Story 4 - 读懂一个库在本项目里的用途 (P1)
+
+**Goal**: 讲解 AI 可维护本图的库介绍和逐文件理由，读者可查阅和摆放。
+
+**Independent Test**: 在旧文件布局上登记标准库及第三方库，使用正式 CLI、阅读服务和浏览器，核对内容、原位、权限、故障和重启。
+
+- [x] T023 [US4] 在 src/core/dependency-graph.ts、src/application/dependency-graph.ts、src/adapters/graph-store.ts 和 src/cli/main.ts 接通查询、局部更新、删除凭据与端点校验（FR-007、L01、L04）。
+- [x] T024 [US4] 在 src/core/canvas-layout.ts、src/application/dependency-canvas.ts、src/web/DependencyCanvas.vue、src/web/canvas.css 和 src/web/i18n.ts 接通库节点、双语详情、共用布局与恢复（FR-008、FR-009、L02—L04）。
+- [x] T025 [US4] 在 tests/integration/dependency-legends.test.mjs 与 tests/browser/dependency-legends.mjs 复验正式工具、同名身份、读写边界、更新重开、故障恢复、旧页、文件移除和半发布重试（SC-007—SC-009、L01—L04）。
+
+## Phase 8: D014 Polish & Cross-Cutting Concerns
+
+- [x] T026 更新 skills/aftertaste-reader/references/generation.md、skills/aftertaste-reader/references/tools.md、docs/usage/file-reader.md 与 specs/001-first-release/08-current-spec-and-acceptance.md 的实际操作入口与交付范围（L01、L02）。
+- [x] T027 在 docs/work/2026/11/D014-dependency-legends/ 固定候选、归档独审及回执并提供试读（L01—L04）。
+
 ## Dependencies & Execution Order
 
 T001 → T002 → US1 → US2 → US3 → T011—T012。每个故事先定义行为检查，再接通核心、服务和页面。US2 使用 US1 的项目图及页面，US3 使用 US2 的真实保存入口。测试与浏览器串行，无并行资源运行。
 
 D013 使用已完成的 T001—T012。T013 → T014、T015 → T016、T017 → T018，各序列依托既有样例。三个故事完成后执行 T019。F2 复核所见两条失败链沿 T020 → T021 → T022 补测、修复及再次审查。
+
+D014 复用 D013 已验证的布局和文件阅读；T023 → T024 → T025 串行验证，T026 随实际接口更新，T027 以冻结的行为候选收束。
 
 ## Implementation Strategy
 
