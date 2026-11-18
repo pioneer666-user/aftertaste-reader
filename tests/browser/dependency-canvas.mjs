@@ -7,7 +7,7 @@ import { chromium, firefox } from 'playwright';
 import { applyGraphUpdate, cli, createCanvasProject, repository } from '../fixtures/dependency-canvas.mjs';
 
 const name = process.env.AFTERTASTE_BROWSER ?? 'edge';
-const runRoot = path.join(repository, '.local/D012');
+const runRoot = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D012');
 await mkdir(runRoot, { recursive: true });
 const run = await mkdtemp(path.join(runRoot, `browser-${name}-`));
 const fixture = await createCanvasProject(path.join(run, 'project'));

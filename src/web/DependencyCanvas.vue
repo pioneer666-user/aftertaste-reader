@@ -6,7 +6,7 @@ import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
 import './canvas.css';
 import DependencyEdge from './DependencyEdge.vue';
-import { groupBounds, maxZoom, minZoom, moveMembers, nodeSize, rearrange, reconcileLayout, updateGroup } from '../core/canvas-layout.js';
+import { groupBounds, maxZoom, minZoom, moveMembers, nodeSize, rearrange, reconcileLayout, renewedPaths, updateGroup } from '../core/canvas-layout.js';
 import type { CanvasGroup, CanvasLayout, Point } from '../core/canvas-layout.js';
 import type { CanvasReading, LayoutWrite } from '../application/dependency-canvas.js';
 import type { ReaderProblem } from '../application/file-reader.js';
@@ -38,7 +38,8 @@ let dragGroup: { group: CanvasGroup; origin: Point; layout: CanvasLayout } | und
 
 const fileId = (path: string) => 'file:' + encodeURIComponent(path);
 const groupNodeId = (id: string) => 'group:' + id;
-const editable = computed(() => ready.value && !loading.value && !readProblem.value && !reading.value?.layoutProblem);
+const canSave = computed(() => !!reading.value && !loading.value && !readProblem.value && !reading.value.layoutProblem);
+const editable = computed(() => ready.value && canSave.value);
 const idle = computed(() => !dragging.value && !moving.value);
 const selectedNode = computed(() => reading.value?.graph.nodes.find(node => node.path === selected.value));
 const documentPath = computed(() => reading.value?.documents.find(entry => entry.sourcePath === selected.value)?.documentPath);
@@ -110,10 +111,10 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
         return;
       }
     }
+    layout.value = carry ? reconcileLayout(carry, ids, renewedPaths(ids, reading.value?.nodeRemovals ?? {}, next.nodeRemovals)) : next.layout;
     reading.value = next;
     revision = next.revision;
     pending = undefined;
-    layout.value = carry ? reconcileLayout(carry, ids) : next.layout;
     dirty.value = !next.layoutProblem && (!!carry || next.reconciled);
     saveProblem.value = undefined;
     if (!next.graph.nodes.some(node => node.path === selected.value)) selected.value = '';
@@ -122,18 +123,17 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
     if (ready.value) await setViewport(layout.value.viewport);
   } catch (error) { readProblem.value = failed(error); }
   finally { loading.value = false; }
-  if (dirty.value && editable.value) void save();
+  if (dirty.value) void save();
 }
 
 async function init() {
   if (ready.value || !layout.value) return;
   await setViewport(layout.value.viewport);
   ready.value = true;
-  if (dirty.value) void save();
 }
 
 async function save() {
-  if (!editable.value || saving.value || !dirty.value || replaceDraft.value || refreshDraft.value) return;
+  if (!canSave.value || saving.value || !dirty.value || replaceDraft.value || refreshDraft.value) return;
   saving.value = true;
   saveProblem.value = undefined;
   try {
@@ -144,7 +144,7 @@ async function save() {
       try {
         const result: { revision: string } = await request('/api/dependency-layout', {
           method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1' },
-          body: JSON.stringify(attempt),
+          body: JSON.stringify({ ...attempt, layout: { ...attempt.layout, positions: Object.entries(attempt.layout.positions) } }),
         });
         revision = result.revision;
         pending = undefined;
@@ -269,7 +269,7 @@ onMounted(() => void load());
     </section>
     <div v-if="dirty && (saveProblem || readProblem)" class="canvas-actions canvas-recovery">
       <button v-if="refreshDraft && !replaceDraft" type="button" :disabled="loading || saving || !idle" @click="load('refresh')">{{ t('canvasRefreshDraft') }}</button>
-      <button v-else-if="!replaceDraft" type="button" :disabled="!editable || saving" @click="save">{{ t('canvasRetrySave') }}</button>
+      <button v-else-if="!replaceDraft" type="button" :disabled="!canSave || saving" @click="save">{{ t('canvasRetrySave') }}</button>
       <button v-if="replaceDraft" type="button" :disabled="loading || saving || !idle" @click="discardDraft">{{ t('canvasLoadSaved') }}</button>
     </div>
     <p v-if="reading && !reading.graph.nodes.length" class="canvas-empty">{{ t('canvasEmpty') }}</p>

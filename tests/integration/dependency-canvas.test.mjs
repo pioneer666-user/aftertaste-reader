@@ -7,14 +7,17 @@ import { createCanvasProject, applyGraphUpdate, repository } from '../fixtures/d
 import { startReader } from '../../dist/server/reader.js';
 import { GraphFileStore } from '../../dist/adapters/graph-store.js';
 
-const base = path.join(repository, '.local/D012');
+const base = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D012');
 await mkdir(base, { recursive: true });
 const rules = 'src/rules.mjs', service = 'src/service.mjs', audit = 'support/audit.mjs', api = 'src/api.mjs';
 const group = '10000000-0000-4000-8000-000000000000';
+const publicationFailure = (projectRoot, published) => ({ code: 'GRAPH_WRITE_FAILED',
+  context: { projectRoot, graphPath: 'docs/aftertaste/dependency-graph.json', published, reason: 'EPERM' } });
 const get = async url => fetch(url + '/api/dependency-canvas').then(response => response.json());
 const turn = (url, { revision, graphVersion, layout }, options = {}) => fetch(url + '/api/dependency-layout', {
   method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1', ...options.headers },
-  body: JSON.stringify({ expectedRevision: revision, revision: options.revision ?? randomUUID(), graphVersion, layout }),
+  body: JSON.stringify({ expectedRevision: revision, revision: options.revision ?? randomUUID(), graphVersion,
+    layout: { ...layout, positions: options.positions ?? Object.entries(layout.positions) } }),
 });
 
 test('真实项目的图和讲解读取，保存隔离、过期写入、校验与磁盘保护', async () => {
@@ -44,6 +47,11 @@ test('真实项目的图和讲解读取，保存隔离、过期写入、校验�
     const invalid = structuredClone(first);
     invalid.layout.positions['extra.mjs'] = { x: 0, y: 0 };
     assert.equal((await turn(reader.url, invalid)).status, 400);
+    const entries = Object.entries(first.layout.positions);
+    for (const positions of [first.layout.positions, [...entries, entries[0]], [rules, ...entries.slice(1)],
+      [[rules, { x: 0, y: 0, extra: true }], ...entries.slice(1)]]) {
+      assert.equal((await turn(reader.url, first, { positions })).status, 400);
+    }
     first.layout.positions[rules] = { x: -42.875, y: 82.625 };
     first.layout.groups = [{ id: group, name: '共同阅读', members: [rules, service] }];
     first.layout.viewport = { x: 99.25, y: -77.125, zoom: 0.625 };
@@ -134,15 +142,22 @@ test('真实图工具发布完整快照才协调，读写失败与布局坏文�
     assert.equal(Object.hasOwn(changed.layout.positions, audit), false);
     assert.deepEqual(await readFile(fixture.layout), oldLayout);
 
+    const receipt = path.join(fixture.data, 'dependency-graph-removals.json');
+    const proofs = JSON.parse(await readFile(receipt, 'utf8'));
+    await writeFile(receipt, JSON.stringify(proofs.map(({ publication, removals }) => ({ publication, paths: Object.keys(removals) }))));
+    assert.deepEqual((await get(reader.url)).confirmedRemovals, [audit]);
+
     const beforeFailure = await readFile(fixture.graph, 'utf8');
     const interrupted = JSON.parse(beforeFailure);
     interrupted.edges[0].reason = '图发布期间失败';
     const attempted = JSON.stringify(interrupted, null, 2) + '\n';
-    const failingStore = new GraphFileStore({ open, link, unlink, rename: async () => {
-      throw Object.assign(new Error('graph replacement denied'), { code: 'EPERM' });
+    const failingStore = new GraphFileStore({ open, link, unlink, rename: async (from, to) => {
+      if (to === fixture.graph) throw Object.assign(new Error('graph replacement denied'), { code: 'EPERM' });
+      await rename(from, to);
     } });
+    const active = new Set(interrupted.nodes.map(node => node.path));
     await assert.rejects(failingStore.save(fixture.projectRoot, attempted, beforeFailure,
-      { requested: [], active: interrupted.nodes.map(node => node.path) }), { code: 'GRAPH_WRITE_FAILED' });
+      { requested: [], previousActive: active, active }), publicationFailure(fixture.projectRoot, 0));
     assert.equal(await readFile(fixture.graph, 'utf8'), beforeFailure);
     assert.deepEqual((await get(reader.url)).confirmedRemovals, [audit]);
     const beforeRetry = interrupted.edges[0];
@@ -195,5 +210,138 @@ test('原坐标在边界时向可用外侧放置并真实落盘', async () => {
     assert.ok(expanded.layout.positions[api].x + 212 < first.layout.positions[service].x);
     assert.equal((await turn(reader.url, expanded)).status, 200);
     assert.deepEqual(JSON.parse(await readFile(fixture.layout)).layout, expanded.layout);
+  } finally { await reader.server.close(); }
+});
+
+test('正式重加的身份跨直接编辑和撤销保留，旧页写入始终被拒绝', async () => {
+  const run = await mkdtemp(path.join(base, 'identity-'));
+  const fixture = await createCanvasProject(path.join(run, 'project'));
+  await applyGraphUpdate(fixture, { reviews: [{ path: service, analysis: 'reviewed',
+    dependencies: [{ path: rules, reason: '数量校验' }] }] });
+  const original = await readFile(fixture.graph);
+  let reader = await startReader(fixture.projectRoot, 0);
+  try {
+    const first = await get(reader.url);
+    first.layout.positions[audit] = { x: 722, y: 55 };
+    first.layout.groups = [{ id: group, name: 'Audit', members: [audit] }];
+    assert.equal((await turn(reader.url, first)).status, 200);
+    const stale = await get(reader.url);
+    const disk = await readFile(fixture.layout);
+    await applyGraphUpdate(fixture, { remove: [audit] });
+    await applyGraphUpdate(fixture, { register: [audit] });
+    assert.deepEqual(await readFile(fixture.graph), original);
+    const verify = async () => {
+      const next = await get(reader.url);
+      assert.equal(next.layoutProblem, null);
+      assert.deepEqual(next.layout.positions[audit], { x: 570, y: 64 });
+      assert.deepEqual(next.layout.groups, []);
+      const rejected = await turn(reader.url, stale);
+      assert.equal(rejected.status, 409);
+      assert.equal((await rejected.json()).error.code, 'LAYOUT_GRAPH_CHANGED');
+      assert.deepEqual(await readFile(fixture.layout), disk);
+      return next;
+    };
+    const registered = await verify();
+    const graph = JSON.parse(original);
+    graph.edges[0].reason += '（修订）';
+    const replacement = path.join(run, 'edited.json');
+    await writeFile(replacement, JSON.stringify(graph));
+    await rename(replacement, fixture.graph);
+    assert.deepEqual((await verify()).nodeRemovals, registered.nodeRemovals);
+    await writeFile(fixture.graph, original);
+    assert.deepEqual((await verify()).nodeRemovals, registered.nodeRemovals);
+    await reader.server.close();
+    reader = await startReader(fixture.projectRoot, 0);
+    assert.equal((await verify()).graphVersion, registered.graphVersion);
+    assert.equal((await turn(reader.url, registered)).status, 200);
+    graph.nodes = graph.nodes.filter(node => node.path !== audit);
+    await writeFile(fixture.graph, JSON.stringify(graph));
+    await applyGraphUpdate(fixture, { reviews: [{ path: service, analysis: 'reviewed',
+      dependencies: [{ path: rules, reason: '核对另一条边' }] }] });
+    const partial = await get(reader.url);
+    assert.equal(partial.layoutProblem.code, 'LAYOUT_GRAPH_UNCONFIRMED');
+    assert.equal((await turn(reader.url, partial)).status, 409);
+    await writeFile(fixture.graph, original);
+    assert.deepEqual((await get(reader.url)).nodeRemovals, registered.nodeRemovals);
+  } finally { await reader.server.close(); }
+});
+
+test('旧标记凭据按快照迁移，发布失败和收尾中断保留可证明的身份', async () => {
+  const run = await mkdtemp(path.join(base, 'proofs-'));
+  const fixture = await createCanvasProject(path.join(run, 'project'));
+  const receipt = path.join(fixture.data, 'dependency-graph-removals.json');
+  await applyGraphUpdate(fixture, { remove: [audit] });
+  await applyGraphUpdate(fixture, { register: [audit] });
+  const [proof] = JSON.parse(await readFile(receipt, 'utf8'));
+  await writeFile(receipt, JSON.stringify([{ publication: proof.publication, removals: proof.removals }]));
+  const reader = await startReader(fixture.projectRoot, 0);
+  try {
+    const legacy = await get(reader.url);
+    assert.deepEqual(legacy.nodeRemovals, proof.removals);
+    assert.equal((await turn(reader.url, legacy)).status, 200);
+    const disk = await readFile(fixture.layout);
+    const original = await readFile(fixture.graph, 'utf8');
+    await writeFile(fixture.graph, original + ' ');
+    const uncertain = await get(reader.url);
+    assert.equal(uncertain.layoutProblem.code, 'GRAPH_READ_FAILED');
+    assert.equal((await turn(reader.url, legacy)).status, 422);
+    assert.deepEqual(await readFile(fixture.layout), disk);
+    await applyGraphUpdate(fixture, { remove: [audit] });
+    const absent = await readFile(fixture.graph, 'utf8');
+    const before = new Set(JSON.parse(absent).nodes.map(node => node.path));
+    const update = { previousActive: before, active: new Set([...before, audit]), requested: [] };
+    const failRename = (predicate) => new GraphFileStore({ open, link, unlink, rename: async (from, to) => {
+      if (predicate(to)) throw Object.assign(new Error('synthetic publication failure'), { code: 'EPERM' });
+      await rename(from, to);
+    } });
+    await assert.rejects(failRename(to => to === fixture.graph).save(fixture.projectRoot, original, absent, update),
+      publicationFailure(fixture.projectRoot, 0));
+    await writeFile(fixture.graph, original);
+    assert.deepEqual((await get(reader.url)).nodeRemovals, {});
+    assert.deepEqual((await get(reader.url)).layout, legacy.layout);
+    await writeFile(fixture.graph, absent);
+    let receipts = 0;
+    await assert.rejects(failRename(to => to === receipt && ++receipts === 2).save(fixture.projectRoot, original, absent, update),
+      publicationFailure(fixture.projectRoot, 1));
+    const published = await get(reader.url);
+    assert.equal(published.layoutProblem, null);
+    assert.notEqual(published.nodeRemovals[audit], proof.removals[audit]);
+    assert.equal(published.reconciled, true);
+    assert.deepEqual(await readFile(fixture.layout), disk);
+    await applyGraphUpdate(fixture, { register: [api] });
+    await writeFile(fixture.graph, (await readFile(fixture.graph, 'utf8')) + ' ');
+    assert.deepEqual((await get(reader.url)).nodeRemovals, published.nodeRemovals);
+  } finally { await reader.server.close(); }
+});
+
+test('首次建图失败恢复原凭据，正式 CLI 重试后可保存布局', async () => {
+  const run = await mkdtemp(path.join(base, 'init-retry-'));
+  const fixture = await createCanvasProject(path.join(run, 'project'));
+  await applyGraphUpdate(fixture, { remove: [audit] });
+  const receipt = path.join(fixture.data, 'dependency-graph-removals.json');
+  const originalReceipt = await readFile(receipt);
+  const { format, source_commit } = JSON.parse(await readFile(fixture.graph));
+  const empty = JSON.stringify({ format, source_commit, nodes: [], edges: [] }, null, 2) + '\n';
+  await rename(fixture.graph, path.join(run, 'original-graph.json'));
+  const failing = new GraphFileStore({ open, rename, unlink, link: async () => {
+    throw Object.assign(new Error('first link denied'), { code: 'EPERM' });
+  } });
+  const attempt = () => failing.save(fixture.projectRoot, empty, undefined,
+    { requested: [audit], previousActive: new Set(), active: new Set() });
+  await assert.rejects(attempt(), publicationFailure(fixture.projectRoot, 0));
+  assert.deepEqual(await readFile(receipt), originalReceipt);
+  await rename(receipt, path.join(run, 'original-receipt.json'));
+  await assert.rejects(attempt(), publicationFailure(fixture.projectRoot, 0));
+  for (const file of [fixture.graph, receipt]) await assert.rejects(readFile(file), { code: 'ENOENT' });
+  await applyGraphUpdate(fixture, { register: [audit] });
+  const reader = await startReader(fixture.projectRoot, 0);
+  try {
+    const current = await get(reader.url);
+    assert.equal(current.layoutProblem, null);
+    assert.deepEqual(current.nodeRemovals, {});
+    assert.deepEqual(Object.keys(current.layout.positions), [audit]);
+    current.layout.positions[audit] = { x: 668, y: 155 };
+    assert.equal((await turn(reader.url, current)).status, 200);
+    assert.deepEqual(JSON.parse(await readFile(fixture.layout)).layout, current.layout);
   } finally { await reader.server.close(); }
 });

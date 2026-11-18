@@ -22,5 +22,6 @@
 | D010 | [普通文件讲解的分批生成 Skill](2026/11/D010-generation-skill/task.md) |
 | D011 | [本地逐文件源码对照阅读](2026/11/D011-file-reader/task.md) |
 | D012 | [文件依赖图的阅读与布局保存](2026/11/D012-dependency-canvas/task.md) |
+| D013 | [画布布局与阅读导航修复](2026/11/D013-canvas-fixes/task.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。

@@ -63,6 +63,7 @@ async function selectDocument(documentPath: string) {
 
 async function refresh() {
   const sequence = ++listSequence;
+  const readingAtRequest = readSequence;
   listLoading.value = true;
   listError.value = undefined;
   try {
@@ -71,6 +72,7 @@ async function refresh() {
     projectRoot.value = data.projectRoot;
     documents.value = data.documents;
     problems.value = data.problems;
+    if (readingAtRequest !== readSequence) return;
     const current = data.documents.find(entry => entry.documentPath === selected.value) ?? data.documents[0];
     if (current) await selectDocument(current.documentPath);
     else {

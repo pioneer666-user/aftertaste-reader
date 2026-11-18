@@ -7,7 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { startReader } from '../../dist/server/reader.js';
 import { createReaderProject } from '../fixtures/reader-project.mjs';
 
-const runs = fileURLToPath(new URL('../../.local/D011/', import.meta.url));
+const runs = fileURLToPath(new URL(`../../.local/${process.env.AFTERTASTE_TEST_TASK ?? 'D011'}/`, import.meta.url));
 await mkdir(runs, { recursive: true });
 const root = await mkdtemp(path.join(runs, 'integration-'));
 const fixture = await createReaderProject(path.join(root, 'project'));

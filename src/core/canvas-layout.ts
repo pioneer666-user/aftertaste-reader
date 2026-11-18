@@ -1,4 +1,5 @@
 import { isSourcePath } from './source-path.js';
+import type { RemovalMarks } from './dependency-graph.js';
 
 export interface Point { x: number; y: number }
 export interface Size { width: number; height: number }
@@ -44,16 +45,24 @@ function coordinate(value: unknown, field: string): number {
   return value;
 }
 
-export function parseLayout(value: unknown): CanvasLayout {
+export function parseLayout(value: unknown, source: 'file' | 'request' = 'file'): CanvasLayout {
   const { positions, groups, viewport } = layoutObject(value, ['positions', 'groups', 'viewport'], '$.layout');
-  if (!positions || typeof positions !== 'object' || Array.isArray(positions)) invalid('$.layout.positions');
-  const entries = Object.entries(positions).map(([id, value]) => {
+  const positionsField = '$.layout.positions';
+  if (!positions || typeof positions !== 'object' || Array.isArray(positions) !== (source === 'request')) invalid(positionsField);
+  let entries: [string, unknown][];
+  if (Array.isArray(positions)) {
+    entries = Array.from(positions, (entry: unknown, index) => {
+      if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== 'string') invalid(`${positionsField}[${index}]`);
+      return [entry[0], entry[1]];
+    });
+  } else entries = Object.entries(positions);
+  const coordinates = Object.fromEntries(entries.map(([id, value]) => {
     const field = `$.layout.positions[${JSON.stringify(id)}]`;
     if (!isSourcePath(id)) invalid(field);
     const { x, y } = layoutObject(value, ['x', 'y'], field);
     return [id, { x: coordinate(x, field + '.x'), y: coordinate(y, field + '.y') }] as const;
-  });
-  const coordinates = Object.fromEntries(entries);
+  }));
+  if (Object.keys(coordinates).length !== entries.length) invalid(positionsField);
   const groupIds = new Set<string>();
   const membership = new Set<string>();
   if (!Array.isArray(groups)) invalid('$.layout.groups');
@@ -96,11 +105,18 @@ export function rearrange(layout: CanvasLayout, ids: readonly string[]): CanvasL
   return { ...layout, positions: Object.fromEntries(entries), viewport: { x: 0, y: 0, zoom: 1 } };
 }
 
-export function reconcileLayout(layout: CanvasLayout, ids: readonly string[]): CanvasLayout {
-  const current = new Set(ids);
-  const missing = ids.filter(id => !Object.hasOwn(layout.positions, id));
-  const placements = placeNewNodes(Object.values(layout.positions), missing);
-  const positions = Object.fromEntries(ids.map(id => [id, Object.hasOwn(layout.positions, id) ? layout.positions[id]! :
+export function renewedPaths(ids: readonly string[], before: RemovalMarks, after: RemovalMarks): Set<string> {
+  return new Set(ids.filter(id => Object.hasOwn(after, id) && before[id] !== after[id]));
+}
+
+export function reconcileLayout(layout: CanvasLayout, ids: readonly string[], renewed: ReadonlySet<string> = new Set()): CanvasLayout {
+  const current = new Set(ids.filter(id => !renewed.has(id)));
+  const missing = ids.filter(id => renewed.has(id) || !Object.hasOwn(layout.positions, id));
+  // A re-add must land the same way even if a page already pruned deleted nodes.
+  const anchors = renewed.size ? Object.entries(layout.positions).filter(([id]) => current.has(id)).map(([, point]) => point) :
+    Object.values(layout.positions);
+  const placements = placeNewNodes(anchors, missing);
+  const positions = Object.fromEntries(ids.map(id => [id, current.has(id) && Object.hasOwn(layout.positions, id) ? layout.positions[id]! :
     placements.get(id)!]));
   const groups = layout.groups.map(group => ({ ...group, members: group.members.filter(id => current.has(id)) }))
     .filter(group => group.members.length);
