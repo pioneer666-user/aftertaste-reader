@@ -313,3 +313,35 @@ test('旧标记凭据按快照迁移，发布失败和收尾中断保留可证�
     assert.deepEqual((await get(reader.url)).nodeRemovals, published.nodeRemovals);
   } finally { await reader.server.close(); }
 });
+
+test('首次建图失败恢复原凭据，正式 CLI 重试后可保存布局', async () => {
+  const run = await mkdtemp(path.join(base, 'init-retry-'));
+  const fixture = await createCanvasProject(path.join(run, 'project'));
+  await applyGraphUpdate(fixture, { remove: [audit] });
+  const receipt = path.join(fixture.data, 'dependency-graph-removals.json');
+  const originalReceipt = await readFile(receipt);
+  const { format, source_commit } = JSON.parse(await readFile(fixture.graph));
+  const empty = JSON.stringify({ format, source_commit, nodes: [], edges: [] }, null, 2) + '\n';
+  await rename(fixture.graph, path.join(run, 'original-graph.json'));
+  const failing = new GraphFileStore({ open, rename, unlink, link: async () => {
+    throw Object.assign(new Error('first link denied'), { code: 'EPERM' });
+  } });
+  const attempt = () => failing.save(fixture.projectRoot, empty, undefined,
+    { requested: [audit], previousActive: new Set(), active: new Set() });
+  await assert.rejects(attempt(), publicationFailure(fixture.projectRoot, 0));
+  assert.deepEqual(await readFile(receipt), originalReceipt);
+  await rename(receipt, path.join(run, 'original-receipt.json'));
+  await assert.rejects(attempt(), publicationFailure(fixture.projectRoot, 0));
+  for (const file of [fixture.graph, receipt]) await assert.rejects(readFile(file), { code: 'ENOENT' });
+  await applyGraphUpdate(fixture, { register: [audit] });
+  const reader = await startReader(fixture.projectRoot, 0);
+  try {
+    const current = await get(reader.url);
+    assert.equal(current.layoutProblem, null);
+    assert.deepEqual(current.nodeRemovals, {});
+    assert.deepEqual(Object.keys(current.layout.positions), [audit]);
+    current.layout.positions[audit] = { x: 668, y: 155 };
+    assert.equal((await turn(reader.url, current)).status, 200);
+    assert.deepEqual(JSON.parse(await readFile(fixture.layout)).layout, current.layout);
+  } finally { await reader.server.close(); }
+});

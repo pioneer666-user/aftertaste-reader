@@ -16,6 +16,10 @@ interface PriorRemovals extends GraphRemovals { unresolvedRecords?: unknown[] }
 
 const noRemovals: GraphRemovals = { removals: {}, registered: [], confirmed: [] };
 
+function proofBytes(records: readonly unknown[]): Buffer {
+  return Buffer.from(JSON.stringify(records) + '\n');
+}
+
 function pathList(value: unknown, marks: RemovalMarks): value is string[] {
   return Array.isArray(value) && value.every(id => typeof id === 'string' && Object.hasOwn(marks, id)) &&
     new Set(value).size === value.length;
@@ -90,13 +94,18 @@ export class GraphFileStore implements GraphStore {
     }
   }
 
+  private async readReceipt(projectRoot: string): Promise<Buffer | undefined> {
+    try { return await readFile(await targetPath(projectRoot, false, removalFile)); }
+    catch (error) { if (systemCode(error) !== 'ENOENT') throw error; }
+  }
+
   async removalState(projectRoot: string, raw: string, active: ReadonlySet<string>, removing: readonly string[] = []): Promise<PriorRemovals> {
     let value: unknown;
     try {
-      const receipt = await targetPath(projectRoot, false, removalFile);
-      value = JSON.parse(await readFile(receipt, 'utf8'));
+      const receipt = await this.readReceipt(projectRoot);
+      if (!receipt) return noRemovals;
+      value = JSON.parse(receipt.toString('utf8'));
     } catch (error) {
-      if (systemCode(error) === 'ENOENT') return noRemovals;
       throw new GraphError('GRAPH_READ_FAILED', '无法读取依赖图的移除凭据。', '核对项目内的移除凭据，保留布局后重试。', { graphPath, reason: systemCode(error) });
     }
     const publication = await publicationKey(await targetPath(projectRoot, false), raw);
@@ -132,15 +141,14 @@ export class GraphFileStore implements GraphStore {
       '保留布局，恢复配套的图和凭据，或用图工具明确移除凭据中的路径后按需登记。', { graphPath, receipt: removalFile });
   }
 
-  private async recordRemovals(projectRoot: string, records: unknown[]): Promise<void> {
+  private async writeReceipt(projectRoot: string, content: Buffer): Promise<void> {
     const target = await targetPath(projectRoot, false, removalFile);
-    const content = JSON.stringify(records) + '\n';
     const candidate = path.join(path.dirname(target), `.aftertaste-removals-${randomUUID()}.tmp`);
     const handle = await open(candidate, 'wx');
     let published = false;
     try {
       try {
-        await handle.writeFile(content, 'utf8');
+        await handle.writeFile(content);
         await handle.sync();
       } finally { await handle.close(); }
       await targetPath(projectRoot, false, removalFile);
@@ -177,7 +185,7 @@ export class GraphFileStore implements GraphStore {
       if (raw === previous) {
         if (await this.read(projectRoot) !== previous) throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。',
           '重新查询后决定局部提交。', { projectRoot, graphPath, published: 0 });
-        if (removed.size) await this.recordRemovals(projectRoot, [{ publication: await publicationKey(target, raw), ...next }]);
+        if (removed.size) await this.writeReceipt(projectRoot, proofBytes([{ publication: await publicationKey(target, raw), ...next }]));
         return;
       }
       const candidate = path.join(path.dirname(target), `.aftertaste-graph-${randomUUID()}.tmp`);
@@ -191,30 +199,34 @@ export class GraphFileStore implements GraphStore {
       }
       await targetPath(projectRoot, false);
       let candidateProof: RemovalProof | undefined;
-      let previousRecords: unknown[] = [];
-      const previousKey = removed.size && previous !== undefined ? await publicationKey(target, previous) : '';
+      let originalReceipt: Buffer | undefined;
+      let stagedReceipt: Buffer | undefined;
       if (removed.size) {
         candidateProof = { ...next, publication: await publicationKey(temporary, raw) };
-        previousRecords = prior.unresolvedRecords ?? [{ ...prior, publication: previousKey }];
-        await this.recordRemovals(projectRoot, [...previousRecords, candidateProof]);
-      }
-      if (removed.size && (await this.read(projectRoot) !== previous || await targetPath(projectRoot, false) !== target)) {
-        throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。', '重新查询后决定局部提交，不自动重试覆盖。',
-          { projectRoot, graphPath, published: 0 });
+        const previousKey = previous === undefined ? '' : await publicationKey(target, previous);
+        const previousRecords = prior.unresolvedRecords ?? [{ ...prior, publication: previousKey }];
+        originalReceipt = await this.readReceipt(projectRoot);
+        stagedReceipt = proofBytes([...previousRecords, candidateProof]);
+        await this.writeReceipt(projectRoot, stagedReceipt);
       }
       try {
+        if (stagedReceipt && (await this.read(projectRoot) !== previous || await targetPath(projectRoot, false) !== target)) {
+          throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。', '重新查询后决定局部提交，不自动重试覆盖。',
+            { projectRoot, graphPath, published: 0 });
+        }
         if (previous === undefined) await this.io.link(temporary, target);
         else await this.io.rename(temporary, target);
       } catch (error) {
-        // Keep the settled history across later edits after a failed graph replacement.
-        if (candidateProof && previous !== undefined && previousKey === await publicationKey(target, previous)) {
-          await this.recordRemovals(projectRoot, previousRecords);
+        // Revoke just our staged receipt if the graph was never published.
+        if (stagedReceipt && (await this.readReceipt(projectRoot))?.equals(stagedReceipt)) {
+          if (originalReceipt) await this.writeReceipt(projectRoot, originalReceipt);
+          else await unlink(await targetPath(projectRoot, false, removalFile));
         }
         throw error;
       }
       published = true;
       if (previous !== undefined) temporary = undefined;
-      if (candidateProof) await this.recordRemovals(projectRoot, [candidateProof]);
+      if (candidateProof) await this.writeReceipt(projectRoot, proofBytes([candidateProof]));
     } catch (error) {
       if (error instanceof GraphError && !published) throw error;
       throw new GraphError('GRAPH_WRITE_FAILED', '图保存失败。', '检查权限与文件系统，核对原图后重试。', { projectRoot, graphPath, published: Number(published), reason: systemCode(error) });
