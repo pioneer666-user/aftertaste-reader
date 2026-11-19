@@ -44,3 +44,15 @@
 | 原来记录身份、接口与草稿继续使用，展现与焦点在阅读区处理 | 同块书签可精确落到所选记录，持久化仍由既有规则保护 | 为回访增加独立记录路由或改写资料不能改善本批的布局和定位 |
 
 本批无待澄清技术项。
+
+## D023 增量研究
+
+沿已有 Vue、Markdown、固定源读取与 Playwright 环境。技术细节从基线 App.vue、ReaderDocument.vue、style.css、块选文及现有诊断复制用法核对，依赖与页面约束沿 D022。以下浏览器用法在本批隔离样例复核，Phase 0 无待澄清技术项。
+
+| Decision | Rationale | Alternatives considered |
+| --- | --- | --- |
+| 用项目名开启浏览器原生 popover，显示已接受的读取元数据 | 浮窗进入浏览器顶层，避免被侧栏本身裁剪。临时侧栏的关闭判断纳入浮窗状态，Esc 按层关闭，正文滚动由原阅读区管理 | 把资料留在题头会占用每篇的阅读空间。独立层叠管理与新的服务端元数据接口均非必要 |
+| 用块内 sticky 配合源码和阅读区高度测量，横向滚动只作用于代码列 | 块尾限制自然随文档流退出；长源码和矮窗时末行可通过主滚动到达，横移仍见行号 | 仅按行数估算不能适应字号、窗口和滚动条。独立纵向源码滚动让段落与源码较难在同一位置对照 |
+| 从同一渲染正文树和已显示的阅读结果生成 U73 文本，再写浏览器剪贴板 | 复用选文判定与定位字段，整块和选文走同一格式。内建 JSON 序列化支持中文、引号和换行，权限失败用该次文本手动复制 | 浮条重写或接管原生 Ctrl+C 会妨碍普通选文复制。使用当前 HEAD 会让引用与已读源码不一致 |
+
+平台接口依据见 [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API)、[Selection](https://developer.mozilla.org/en-US/docs/Web/API/Selection) 与 [Clipboard.writeText](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText)。

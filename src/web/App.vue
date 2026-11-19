@@ -39,6 +39,9 @@ const navigationEdge = ref<HTMLElement>();
 const treeScroll = ref<HTMLElement>();
 const outlineScroll = ref<HTMLElement>();
 const navigationButton = ref<HTMLButtonElement>();
+const projectInfoButton = ref<HTMLButtonElement>();
+const projectInfo = ref<HTMLElement>();
+const projectInfoOpen = ref(false);
 const fileShare = ref(53);
 const navigationMedia = window.matchMedia('(max-width: 850px)');
 const narrow = ref(navigationMedia.matches);
@@ -123,8 +126,12 @@ watch([navigationOpen, activeBlock, view], () => {
     revealNavigationItem(outlineScroll.value, '[aria-current="location"]');
   }
 }, { flush: 'post' });
+watch(navigationOpen, open => {
+  if (!open) closeProjectInfo();
+});
 watch(view, current => {
   if (current === 'reader') return;
+  closeProjectInfo();
   narrowOpen.value = false;
   closeNavigationPreview();
 });
@@ -147,7 +154,7 @@ function holdNavigationPreview(event: PointerEvent) {
 
 function schedulePreviewClose() {
   window.clearTimeout(peekTimer);
-  if (!desktopPeek.value) return;
+  if (!desktopPeek.value || projectInfoOpen.value) return;
   peekTimer = window.setTimeout(() => {
     if (!navigation.value?.contains(document.activeElement) && !navigation.value?.matches(':hover') &&
         !navigationEdge.value?.matches(':hover')) {
@@ -156,7 +163,50 @@ function schedulePreviewClose() {
   }, 220);
 }
 
+function toggleProjectInfo() {
+  const panel = projectInfo.value;
+  const trigger = projectInfoButton.value;
+  if (!panel || !trigger) return;
+  if (projectInfoOpen.value) {
+    closeProjectInfo(true);
+    return;
+  }
+  const bounds = trigger.getBoundingClientRect();
+  panel.style.setProperty('--project-info-x', bounds.left + 'px');
+  panel.style.setProperty('--project-info-y', bounds.bottom + 6 + 'px');
+  window.clearTimeout(peekTimer);
+  projectInfoOpen.value = true;
+  panel.showPopover();
+  panel.focus({ preventScroll: true });
+}
+
+function closeProjectInfo(restoreFocus = false) {
+  if (!projectInfoOpen.value) return;
+  projectInfoOpen.value = false;
+  projectInfo.value?.hidePopover();
+  if (restoreFocus) projectInfoButton.value?.focus({ preventScroll: true });
+  schedulePreviewClose();
+}
+
+function dismissProjectInfoOutside(event: PointerEvent) {
+  if (!(event.target instanceof Node) || projectInfo.value?.contains(event.target) ||
+      projectInfoButton.value?.contains(event.target)) return;
+  closeProjectInfo();
+}
+
+function escapeProjectInfo(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || event.defaultPrevented || !projectInfoOpen.value) return false;
+  event.preventDefault();
+  closeProjectInfo(true);
+  return true;
+}
+
+function dismissSidebar(event: KeyboardEvent) {
+  if (!escapeProjectInfo(event)) void setNavigation(false);
+}
+
 function dismissNavigationPreview(event: KeyboardEvent) {
+  if (escapeProjectInfo(event)) return;
   if (event.key === 'Escape' && desktopPeek.value && !event.defaultPrevented) closeNavigationPreview();
 }
 
@@ -206,6 +256,7 @@ async function setNavigation(open: boolean) {
 
 async function resizeNavigation(event: MediaQueryListEvent) {
   const focusInSidebar = navigation.value?.contains(document.activeElement);
+  closeProjectInfo();
   narrow.value = event.matches;
   narrowOpen.value = false;
   closeNavigationPreview();
@@ -500,6 +551,7 @@ async function changeLanguage(event: Event) {
 onMounted(() => {
   navigationMedia.addEventListener('change', resizeNavigation);
   document.addEventListener('keydown', dismissNavigationPreview);
+  document.addEventListener('pointerdown', dismissProjectInfoOutside);
   document.documentElement.lang = language.value;
   document.title = `${t('brand')} · ${t('title')}`;
   void refresh();
@@ -509,6 +561,7 @@ onMounted(() => {
 onUnmounted(() => {
   navigationMedia.removeEventListener('change', resizeNavigation);
   document.removeEventListener('keydown', dismissNavigationPreview);
+  document.removeEventListener('pointerdown', dismissProjectInfoOutside);
   closeNavigationPreview();
 });
 </script>
@@ -596,14 +649,25 @@ onUnmounted(() => {
     <aside v-show="navigationOpen" id="reader-navigation" ref="navigation" class="sidebar"
       :class="{ 'with-outline': outline.length, 'sidebar-overlay': narrow || desktopPeek }"
       :style="{ '--files-share': fileShare + 'fr', '--outline-share': (100 - fileShare) + 'fr' }"
-      :aria-label="t('readingNavigation')" tabindex="-1" @keydown.esc.stop="setNavigation(false)"
+      :aria-label="t('readingNavigation')" tabindex="-1" @keydown.esc.stop="dismissSidebar"
       @pointerenter="holdNavigationPreview" @pointerleave="schedulePreviewClose" @focusout="schedulePreviewClose">
       <header class="sidebar-header">
-        <h2 :title="projectRoot || undefined">{{ projectName || t('project') }}</h2>
-        <details v-if="projectRoot" class="project-location">
-          <summary>{{ t('projectPath') }}</summary>
-          <p>{{ projectRoot }}</p>
-        </details>
+        <h2 v-if="projectRoot">
+          <button ref="projectInfoButton" type="button" class="project-info-toggle" :title="projectName"
+            aria-haspopup="dialog" aria-controls="reader-project-info" :aria-expanded="projectInfoOpen" @click="toggleProjectInfo">
+            <span>{{ projectName }}</span>
+          </button>
+        </h2>
+        <h2 v-else>{{ t('project') }}</h2>
+        <div v-if="projectRoot" id="reader-project-info" ref="projectInfo" class="project-info" popover="manual"
+          role="dialog" tabindex="-1" :aria-label="t('projectInfo')">
+          <dl>
+            <div><dt>{{ t('projectPath') }}</dt><dd>{{ projectRoot }}</dd></div>
+            <div v-if="result"><dt>{{ t('document') }}</dt><dd>{{ result.documentPath }}</dd></div>
+            <div v-if="result"><dt>{{ t('commit') }}</dt><dd class="commit">{{ result.commit ?? t('unknown') }}</dd></div>
+          </dl>
+          <p v-if="result?.mechanicallyValid" class="check-status">{{ t('verified') }}</p>
+        </div>
       </header>
       <nav id="reader-file-navigation" class="sidebar-section" :aria-label="t('files')">
         <h2>{{ t('files') }}</h2>
@@ -639,7 +703,7 @@ onUnmounted(() => {
         <p v-if="readingLoading" class="reading-state" role="status">{{ t('loading') }}</p>
         <ReaderDocument v-else-if="result || readingError" :key="selected"
           v-bind="{ ...(result ? { result } : {}), ...(readingError ? { error: readingError } : {}) }"
-          :language="language" :bookmarks="bookmarks" :active-bookmark="activeBookmark" :active-mark="activeMark"
+          :language="language" :active="view === 'reader'" :bookmarks="bookmarks" :active-bookmark="activeBookmark" :active-mark="activeMark"
           :bookmarks-busy="bookmarksLoading || bookmarksSaving" :save-bookmark="saveBookmark"
           :marks="marks" :marks-busy="marksBusy" :save-mark="saveMark" :mark-list-error="markListError"
           @refresh-marks="refreshMarks" @add-to-notes="addToNotes" />
