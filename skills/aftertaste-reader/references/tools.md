@@ -8,34 +8,90 @@
 
 projectRoot 是用户目标项目绝对路径。pin 给 repositoryRoot、projectPrefix、commit，四项形成 fixed。子项目的 prefix 是 Git 仓库内前缀，根项目为空字符串。工具参数独立传 argv，特别是空 prefix 使用 Node child_process 的数组传递，避免 PowerShell 吞掉空参数或 JSON 引号。
 
-以下是可在宿主 JavaScript 中使用的调用形状，cli 与 projectRoot 须先解析为实际绝对路径。使用宿主已选择的 Node 24。源码输出仅在内存消费，调用日志只记动作、定位及诊断，执行终端应关闭 transcript／输出落盘。
+在 Node 24 的同一 JavaScript 上下文依次运行以下片段。先提供实际绝对路径 `cli`、`projectRoot`，以及本地版本 `revision`，默认用 `'HEAD'`。若已有本批的 `fixed`，复用原映射。源码正文仅在内存中消费，执行终端应关闭 transcript／输出落盘。
 
 ```javascript
-const { execFileSync } = await import('node:child_process');
-const result = JSON.parse(execFileSync(process.execPath,
-  [cli, 'pin', '--project', projectRoot],
-  { encoding: 'utf8', windowsHide: true }));
-const fixed = result.source;
+const { spawnSync } = await import('node:child_process');
+const gitMaxBuffer = 64 * 1024 * 1024;
+
+function receive(operation, program, args, options) {
+  const result = spawnSync(program, args, { encoding: 'utf8', windowsHide: true, ...options });
+  if (result.error || result.signal) {
+    throw Object.assign(new Error(`${operation} 未收到完整输出。`), {
+      status: result.status, signal: result.signal, code: result.error?.code,
+    });
+  }
+  return result;
+}
+
+function runCli(args, maxBuffer = gitMaxBuffer) {
+  const [operation] = args;
+  const { status, stdout, stderr } = receive(operation, process.execPath, [cli, ...args], { maxBuffer });
+  let response;
+  try { response = JSON.parse(status === 0 ? stdout : stderr); } catch { /* 只报告状态 */ }
+  if (status === 0 && response?.ok === true) return response;
+  throw Object.assign(new Error(`${operation} 调用失败。`), {
+    status, code: response?.error?.code ?? (status === 0 ? 'INVALID_RESPONSE' : 'CLI_FAILED'),
+    reason: response?.error?.context?.reason,
+  });
+}
+
+const { source: fixed } = runCli(['pin', '--project', projectRoot, '--revision', revision]);
 const mapping = ['--project', fixed.projectRoot,
   '--repository', fixed.repositoryRoot, '--prefix', fixed.projectPrefix];
 const sourceArgs = [...mapping, '--commit', fixed.commit];
-// 读取结果在内存中交 AI 分析，禁止重定向到文件。
-const source = JSON.parse(execFileSync(process.execPath,
-  [cli, 'read', ...sourceArgs, '--path', sourcePath],
-  { encoding: 'utf8', windowsHide: true }));
 ```
 
-跨工具调用可在有效上下文复用 fixed，保留四字段。子进程失败时捕获 status/stdout/stderr，解析 JSON 诊断后报告，避免打印可能带源码的异常对象。
+跨工具调用保留 `fixed` 四字段。失败时报告动作及已知定位（仓库、提交、文件），附 `status`、`signal`、`code` 或 `reason` 中可取得的诊断。丢弃中断或超限的输出，避免打印原始输出、解析异常或子进程异常对象。
 
 ## 固定文件枚举
 
-现有 CLI 没有 list 命令。可用 Git 的只读对象查询，用 argv 调用 `git --no-pager --no-lazy-fetch -C repositoryRoot ls-tree -r -z --name-only fixed.commit`。在内存按 NUL 分割，严格筛出 projectPrefix 下的项目路径，再按用户范围选择。空前缀表示仓库根。对选择的文件用 read 核普通文件与 UTF-8 支持，选取和分块均依固定树。
+从 `fixed.repositoryRoot` 查询 `fixed.commit`。本例沿用固定取源的 Git 环境规则，剔除继承的 `GIT_*` 配置，关闭对象替换和自动取源。用 NUL 分隔保留字面路径，按完整的 `projectPrefix/` 边界得到项目相对路径。根项目的前缀为空。
 
-Git 查询失败时保留真实状态，read 会核完整提交身份与项目映射。工作区 glob、HEAD 搜索和源码临时副本无法充当固定树清单。
+```javascript
+const { isUtf8 } = await import('node:buffer');
+const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')));
+const { status, stdout } = receive('列固定树', 'git', [
+  '--no-lazy-fetch', '--no-optional-locks', '--no-replace-objects', '--literal-pathspecs',
+  '-c', 'core.fsmonitor=false', '-C', fixed.repositoryRoot,
+  'ls-tree', '-r', '-z', '--name-only', fixed.commit,
+], {
+  env: { ...env, GIT_NO_LAZY_FETCH: '1', GIT_TERMINAL_PROMPT: '0',
+    GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null' },
+  encoding: 'buffer', maxBuffer: gitMaxBuffer, timeout: 30_000,
+});
+if (status !== 0) throw Object.assign(new Error('Git 无法列出固定树。'), { status, code: 'GIT_READ_FAILED' });
+
+const prefix = fixed.projectPrefix ? `${fixed.projectPrefix}/` : '';
+const paths = [];
+for (let start = 0; start < stdout.length;) {
+  const end = stdout.indexOf(0, start);
+  if (end === -1) throw new Error('固定树清单缺少 NUL 结尾。');
+  const bytes = stdout.subarray(start, end);
+  start = end + 1;
+  if (!isUtf8(bytes)) continue;
+  const name = bytes.toString('utf8');
+  if (name.startsWith(prefix)) paths.push(name.slice(prefix.length));
+}
+```
+
+## 读回选定文件
+
+按用户范围从 `paths` 选出 `sourcePath`，保留该项目相对路径原样。`read` 核对提交、项目映射、路径、普通文件及 UTF-8 正文。选取和分块都依据这棵固定树。
+
+Git 单次原始输出上限是 64 MiB。受支持的 UTF-8 正文中，换行、回车、制表符、引号及反斜杠经 JSON 转义最多占原字节数的两倍，其余正文保持原字节数。接收上限取两倍 Git 上限，加上 JSON 编码后的路径与固定映射字节数，再加 1 KiB 给其余字段和 JSON 外壳。
+
+```javascript
+const metadata = { ...fixed, path: sourcePath, repositoryPath: prefix + sourcePath };
+const maxBuffer = 2 * gitMaxBuffer + Buffer.byteLength(JSON.stringify(metadata)) + 1024;
+const { file } = runCli(['read', ...sourceArgs, '--path', sourcePath], maxBuffer);
+```
+
+在内存中分析 `file.content`。接收失败时沿用上面的诊断方式，取得完整成功结果后再继续分块。
 
 ## 已有命令
 
-下列 args 都交上述 Node argv 调用。命令无交互帮助页，以这里的参数和实际 JSON 为准。
+下列 args 按上述方式作为独立 argv 传入。命令无交互帮助页，以这里的参数和实际 JSON 为准。
 
 | 命令 | args 与判断 |
 | --- | --- |
