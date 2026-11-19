@@ -116,6 +116,57 @@
 - [x] T030 以 specs/006-file-reader/quickstart.md 和 tests/browser/reader-navigation.mjs 验左缘临时展开、拖动与键盘、顶栏高度和窄屏基本操作，同步 docs/usage/file-reader.md（SC-006/009）。
 - [x] T031 冻结试读调整候选，独审后沿同项目更新 4341，归档 docs/work/2026/11/D022-reader-navigation/review.md 与 handoff.md（SC-009）。
 
+## Phase 14 · D023 Setup & Foundational
+
+- [x] T032 按 tests/README.md 在 .local/D023/ 重建共用试读的隔离副本，使用现有 CLI、清单和当前讲解结果。固定改前构建和同组样例，依 specs/006-file-reader/quickstart.md 取得对照实图（FR-012—014，SC-010—012）。
+
+## Phase 15 · User Story 7 - 留在当前讲解查项目资料 (Priority: P1)
+
+**Goal** 资料可查可选，关闭后继续读当前位置。
+
+**Independent Test** 从临时侧栏打开资料，移入选取长路径，从 Esc 与窗外两种方式关闭，换篇检查字段。
+
+- [x] T033 [US7] 在 tests/browser/reader-center.mjs 验资料面板、临时侧栏、键盘焦点、原阅读位置、窗外关闭、换篇及诊断（SC-010）。
+- [x] T034 [US7] 在 src/web/App.vue、src/web/style.css 和 src/web/i18n.ts 由项目名开启资料浮窗，显示清单的项目路径和已显示讲解的路径、实际提交、校验。在 src/web/ReaderDocument.vue 保留影响阅读的诊断和修复（FR-012）。
+
+## Phase 16 · User Story 8 - 逐段对照同一块源码 (Priority: P1)
+
+**Goal** 从文件题头进入原文，滚动时短源码随块停留，所有源码行可读。
+
+**Independent Test** 从服务讲解首块滚到下一块，检查临界分栏与窄屏，再用长源码、长行、矮窗和纯讲解块核末行、行号及正文。
+
+- [x] T035 [US8] 在 tests/browser/reader-center.mjs 加入主阅读区滚动、长行、长源码、纯讲解和不同视口的行为检查，保存同组内容的候选实图（SC-011）。
+- [x] T036 [US8] 在 src/web/ReaderDocument.vue 和 src/web/style.css 呈现一行文件题头、原 Markdown 和同块内停留的固定源码。按 SC-011 响应可视高度及分栏，横向滚动保持行号（FR-013）。
+
+## Phase 17 · User Story 9 - 复制块定位去 AI 会话提问 (Priority: P1)
+
+**Goal** 用键盘或鼠标取得整块或带选文的 U73 文本。
+
+**Independent Test** 实际复制粘贴后拆解服务首块、第二块及无标题纯讲解块的载荷，在拒绝访问剪贴板时手动复制，并比较相同文本。
+
+- [x] T037 [US9] 在 tests/browser/reader-center.mjs 验选文与整块定位、文档提交独立于 HEAD、JSON 往返、反向与边缘、键盘、失效、手动复制、原生复制和加入笔记（SC-012）。
+- [x] T038 [US9] 在 src/web/ReaderDocument.vue、src/web/BlockLocationControl.vue、src/web/style.css 与 src/web/i18n.ts 加整块入口、选文浮条、键盘操作、双语反馈及兜底。复用 U73 对实际文档路径、块 ID 与源码提交的必填约束。选文可缺省，存在时为同一讲解块内的非空渲染原文，保留原片段的引号与换行（FR-014）。
+
+## Phase 18 · D023 Polish & Cross-Cutting Concerns
+
+- [x] T039 更新 docs/usage/file-reader.md。按 specs/006-file-reader/quickstart.md 完成类型、构建、隔离操作和受影响的 D022 串行回归，查实际兼容及呈现（FR-012—014，SC-010—012）。
+- [x] T040 冻结候选，按 docs/roles/审查.md 做独审，逐场景提供证据并请审查人复做关键操作，处理问题并保存 docs/work/2026/11/D023-reader-center/review.md（FR-012—014，SC-010—012）。
+- [x] T041 核 4341 服务归属后启动受审构建，沿原项目仅做确认。在 docs/work/2026/11/D023-reader-center/handoff.md 交回试读与作者体验入口（SC-010—012）。
+
+## Phase 19 · D023 试读调整 - User Story 7 与 User Story 8
+
+**Goal** 让讲解路径在打开文件后可见，同时保留按需查项目资料的入口。
+
+**Independent Test** 切换讲解，在源码文件标题下查找可选取的小号讲解路径。再打开项目资料，核项目路径、引用提交和正常校验结果。用窄屏长路径核断行。
+
+- [x] T042 [US8] 在 src/web/ReaderDocument.vue 和 src/web/style.css 将 `documentPath` 放到主标题下，按 SC-011 核字号及长路径断行（FR-013）。
+- [x] T043 [US7] 在 src/web/App.vue 调整资料浮窗字段，保有项目路径、引用提交和正常校验结果（FR-012）。
+
+## Phase 20 · D023 试读调整收束
+
+- [x] T044 同步 docs/usage/file-reader.md。用 tests/browser/reader-center.mjs 和 specs/006-file-reader/quickstart.md 复验题头、切篇、浮窗、窄屏及受影响的现有阅读行为（SC-010/011）。
+- [x] T045 冻结调整候选并由未参与实现的审查者复核，按 docs/work/2026/11/D023-reader-center/amendments.md 更新独审、回执及共用试读，在回执登记生效候选（SC-010/011）。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。
@@ -124,14 +175,22 @@ D022 沿用上述已实现基础。T018 为隔离验证前置，US4 先建立侧
 
 试读调整复用 D022 初版成果。T028、T029 在 App.vue 汇合，T030 验交互后再完成 T031。
 
+D023 复用已有清单、单篇读取、侧栏、Markdown、选文和诊断。T032 准备隔离输入和基线证据，US7 可独立验证资料，US8/US9 共用同一正文结构，先完成 US8 的排版再集成 US9 的入口。三个独立场景自测后做 T039，T040 独审通过后再做 T041。
+
+D023 试读调整在已审版本上接续。T042 与 T043 完成后用 T044 复验组合呈现，再冻结为 T045 的复核候选。
+
 ## Parallel Example
 
 US1 的 CLI 与页面文件理论可分工，本任务单执行实现，测试串行。US2 的安全 Markdown 与服务失败用例理论可独立阅读。US3 的字典与存储例子理论可并行编写，实际串行完成。独审发生在固定候选之后。
 
 D022 可分别编写块内记录组件和文件树组件。汇合处 App.vue、style.css 按各责任范围协调。需要真实服务或浏览器的步骤串行。
 
+D023 可并行准备隔离用例与阅读端的实现草案。US7 的项目资料和 US8/US9 的正文可分开设计，style.css 和翻译表的修改应协调合入，真实服务与浏览器验证串行执行。
+
 ## Implementation Strategy
 
 先接通服务和最小阅读路径，再补齐错误与双语，逐阶段验证。US1 是技术上的 MVP，本单交付包含全部 W01—W06。固定候选独审，作者体验待验后交回，不自动整合 dev。
 
 D022 先验证开讲解与收栏的独立路径，再验证本篇定位及记录往返。全范围自测、独审后使用固定试读项目交回，作者体验待验。
+
+D023 最小可验的阅读核心为 US8，当前批准交付同时包含 US7 和 US9。使用同组实文逐项验证，独审通过后换版并交回作者体验。

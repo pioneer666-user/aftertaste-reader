@@ -21,6 +21,8 @@ D012 的依赖图读取和布局写入另见 [依赖画布契约](../../007-depe
 
 D022 的文件树和块目录使用现有清单及单篇讲解返回值。读取请求和响应字段沿上述契约，导航状态仅保存在浏览器的本页中。书签、批注和笔记的读写与失败反馈分别沿 [D019](../../../docs/work/2026/11/D019-block-bookmarks/handoff.md)、[D021](../../../docs/work/2026/11/D021-understanding-marks/handoff.md)和 [D020](../../../docs/work/2026/11/D020-project-notes/handoff.md)的现有入口。
 
+D023 的项目资料使用上述既有清单和单篇读取。当前文件阅读页向系统剪贴板提供 [U73](../../001-first-release/05-reading-feedback.md#u73--复制文档块定位-v1作者授权-ai-定稿) 定义的纯文本。浏览器拒绝写入时在当前页提供同文手动复制，文档缺少必填字段时走下方诊断。操作使用已加载的当前结果，无额外服务请求和资料写入。
+
 ## 访问及缓存边界
 
 Host 必须为 127.0.0.1 或 localhost 且端口与实际监听一致。Origin 若存在须精确等于该 Host 的 http 来源，Sec-Fetch-Site 若存在须为 same-origin/none。跨源读取返回 ACCESS_DENIED，无 CORS 授权。所有响应 Cache-Control no-store，nosniff，禁止 frame，CSP 仅自身脚本/样式、连接自身、禁外部图片及对象。Markdown 原生 HTML 按文本处理，图片按替代文本，链接仅允许锚点或明确 http/https/mailto，点击外链使用安全 rel，普通磁盘相对链接按文本。

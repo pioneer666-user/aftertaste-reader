@@ -65,8 +65,11 @@ try {
       page.on('pageerror', error => pageErrors.push(error.message));
       await page.goto(ready.url);
       const file = name => page.locator(`#reader-navigation button[title="src/${name}"]`);
+      const heading = name => page.locator('#reading').getByRole('heading', { name, level: 1, exact: true });
+      const comparison = (target = page) => target.locator('#reading .document-blocks');
+      const projectInfo = page.locator('.project-info:popover-open');
       await file('rules.mjs').click();
-      await page.locator('.check-status').waitFor();
+      await comparison().waitFor();
       assert.equal(await page.locator('.source-line').count(), 7);
       const lineNumberContrast = await page.locator('.line-number').first().evaluate(element => {
         const luminance = color => {
@@ -83,9 +86,13 @@ try {
       assert.ok(lineNumberContrast >= 4.5, `${name} line number contrast ${lineNumberContrast}`);
       assert.match(await page.locator('.source-scroll').innerText(), /function parseQuantity/);
       assert.doesNotMatch(await page.locator('.source-scroll').innerText(), /WORKTREE_ONLY/);
-      assert.match(await page.locator('.commit').innerText(), new RegExp(fixture.commit));
+      await page.locator('.project-info-toggle').click();
+      await projectInfo.locator('.check-status').waitFor();
+      assert.equal(await projectInfo.locator('.commit').innerText(), fixture.commit);
+      await page.keyboard.press('Escape');
+      await projectInfo.waitFor({ state: 'hidden' });
       await file('service.mjs').click();
-      await page.locator('.check-status').waitFor();
+      await comparison().waitFor();
       assert.equal(await page.locator('.source-line').count(), 10);
       const pane = page.locator('.reading-pane');
       await pane.evaluate(element => { element.scrollTop = 300; });
@@ -93,11 +100,11 @@ try {
       await page.locator('.language-control select').selectOption('en');
       await page.getByRole('button', { name: 'Refresh documents' }).waitFor();
       assert.equal(await pane.evaluate(element => element.scrollTop), beforeScroll);
-      assert.equal(await page.locator('.document-header h1').innerText(), 'src/service.mjs');
+      await heading('src/service.mjs').waitFor();
       assert.deepEqual(await page.evaluate(() => Object.keys(localStorage)), ['aftertaste.language']);
       await page.reload();
       await page.getByRole('button', { name: 'Refresh documents' }).waitFor();
-      await page.locator('.check-status').waitFor();
+      await comparison().waitFor();
       assert.equal(await page.locator('html').getAttribute('lang'), 'en');
       assert.deepEqual(external, []);
       assert.deepEqual(pageErrors, []);
@@ -110,9 +117,9 @@ try {
         });
         await file('rules.mjs').click();
         await file('service.mjs').click();
-        await page.locator('.document-header h1').filter({ hasText: 'src/service.mjs' }).waitFor();
+        await heading('src/service.mjs').waitFor();
         await page.waitForTimeout(400);
-        assert.equal(await page.locator('.document-header h1').innerText(), 'src/service.mjs');
+        assert.ok(await heading('src/service.mjs').isVisible());
         await page.unroute('**/api/document?path=*rules.mjs.md');
 
         await writeFile(rules, originalRules.replace('## ', '## Updated from disk '));
@@ -140,7 +147,7 @@ try {
         await writeFile(rules, originalRules);
 
         await file('long.ts').click();
-        await page.locator('.check-status').waitFor();
+        await comparison().waitFor();
         assert.equal(await page.locator('.source-line').count(), 61);
         assert.equal(await page.locator('.source-pane').count(), 1);
         assert.equal(await page.locator('.explanation-pane').count(), 2);
@@ -172,9 +179,9 @@ try {
         await page.screenshot({ path: path.join(run, 'edge-read-error.png'), fullPage: true });
         await writeFile(rules, originalRules);
         await page.getByRole('button', { name: 'Refresh documents' }).click();
-        await page.locator('.check-status').waitFor();
+        await comparison().waitFor();
         await file('service.mjs').click();
-        await page.locator('.check-status').waitFor();
+        await comparison().waitFor();
         await pane.evaluate(element => { element.scrollTop = 0; });
         await page.screenshot({ path: path.join(run, 'edge-desktop.png'), fullPage: true });
         await page.setViewportSize({ width: 390, height: 844 });
@@ -184,7 +191,7 @@ try {
         await file('rules.mjs').waitFor();
         await file('rules.mjs').focus();
         await page.keyboard.press('Enter');
-        await page.locator('.document-header h1').filter({ hasText: 'src/rules.mjs' }).waitFor();
+        await heading('src/rules.mjs').waitFor();
         assert.notEqual(await page.locator(':focus').evaluate(element => getComputedStyle(element).outlineStyle), 'none');
         const denied = await browser.newContext();
         await denied.addInitScript(() => {
@@ -192,7 +199,7 @@ try {
         });
         const deniedPage = await denied.newPage();
         await deniedPage.goto(ready.url);
-        await deniedPage.locator('.check-status').waitFor();
+        await comparison(deniedPage).waitFor();
         await deniedPage.locator('.language-control select').selectOption('en');
         await deniedPage.getByText('Language changed for this page.', { exact: false }).waitFor();
         await denied.close();
@@ -213,7 +220,7 @@ try {
           } finally { await unlink(mirror); }
         } finally { await rename(`${mirror}-hidden`, mirror); }
         await page.getByRole('button', { name: 'Refresh documents' }).click();
-        await page.locator('.check-status').waitFor();
+        await comparison().waitFor();
       }
       report.browsers.push({ name, version: browser.version(), passed: true, lineNumberContrast, pageErrors, externalRequests: external });
       await context.close();
