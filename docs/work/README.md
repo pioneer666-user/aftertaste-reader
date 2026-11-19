@@ -31,5 +31,6 @@
 | D019 | [块级注解书签与回访](2026/11/D019-block-bookmarks/task.md) |
 | D020 | [项目内全局笔记与跨文件回访](2026/11/D020-project-notes/task.md) |
 | D021 | [块级理解标注与批注](2026/11/D021-understanding-marks/task.md) |
+| D022 | [阅读页文件树、块目录与块内记录](2026/11/D022-reader-navigation/task.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。

@@ -11,7 +11,7 @@ import { createBookmarkProject, rulesPath, servicePath, sharedBlockId } from '..
 
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
 assert.ok(['edge', 'chrome', 'firefox'].includes(engine));
-const root = fileURLToPath(new URL('../../.local/D019/', import.meta.url));
+const root = fileURLToPath(new URL(`../../.local/${process.env.AFTERTASTE_TEST_TASK ?? 'D019'}/`, import.meta.url));
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, `${engine}-`));
 const fixture = await createBookmarkProject(path.join(run, 'project'));
@@ -44,12 +44,18 @@ async function restart() {
 }
 
 async function openDocument(file, target = page) {
-  await button(file, target).click();
+  await target.locator(`#reader-navigation button[title="${file}"]`).click();
   await target.getByRole('heading', { name: file, exact: true }).waitFor();
   await block(target).waitFor();
 }
 
+async function openBlockBookmarks(target = page) {
+  const toggle = block(target).locator('button.block-bookmarks-toggle');
+  if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+}
+
 async function draft(text, target = page, keyboard = false) {
+  await openBlockBookmarks(target);
   const add = button('加书签', block(target));
   if (keyboard) {
     await add.focus();
@@ -65,7 +71,7 @@ async function save(target = page, status = '书签已保存') {
 }
 
 async function openBookmarks() {
-  await button('书签').click();
+  await button('书签', page.locator('.app-header')).click();
   await page.getByRole('heading', { name: '书签', exact: true }).waitFor();
 }
 
@@ -175,6 +181,7 @@ try {
 
   if (engine === 'edge' && process.platform === 'win32') {
     await openDocument('src/rules.mjs');
+    await openBlockBookmarks();
     const before = await raw();
     locker = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
       'try { $f = [IO.File]::Open($env:D019_LOCK_FILE, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read); [Console]::WriteLine("LOCKED"); [void][Console]::ReadLine() } finally { if ($f) { $f.Close() } }'],

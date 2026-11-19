@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, ref } from 'vue';
+import { computed, inject, nextTick, ref, watch } from 'vue';
 import { emptyAnnotationRevision, isMarkStatus, markKey, markStatuses } from '../core/understanding-marks.js';
 import type { MarkEdit, ReaderMark } from '../core/understanding-marks.js';
 import { problemText, translate } from './i18n.js';
@@ -11,6 +11,7 @@ const props = defineProps<{
   documentPath: string;
   blockId: string;
   mark: ReaderMark | undefined;
+  active: boolean;
   language: Language;
   busy: boolean;
   unavailable: boolean;
@@ -22,6 +23,8 @@ const drafts = inject(markDraftsKey)!;
 const identity = { documentPath: props.documentPath, blockId: props.blockId };
 const key = markKey(identity);
 const draft = computed(() => drafts.get(key));
+const expanded = ref(!!draft.value?.annotation);
+const detailsId = `annotation-${props.blockId}`;
 const annotationInput = ref<HTMLTextAreaElement>();
 const annotationButton = ref<HTMLButtonElement>();
 const feedback = ref('');
@@ -31,6 +34,10 @@ const savedAnnotationRevision = computed(() => props.mark?.annotationRevision ??
 const shownStatus = computed(() => draft.value?.status?.value ?? savedStatus.value);
 const statusConflict = computed(() => draft.value?.status?.problem?.code === 'MARK_CONFLICT');
 const annotationConflict = computed(() => draft.value?.annotation?.problem?.code === 'MARK_CONFLICT');
+
+watch(() => props.active, active => {
+  if (active) expanded.value = true;
+}, { immediate: true });
 
 function getDraft() {
   if (!draft.value) drafts.set(key, {});
@@ -54,7 +61,7 @@ async function openAnnotation() {
 async function closeAnnotation() {
   clear('annotation');
   await nextTick();
-  annotationButton.value?.focus({ preventScroll: true });
+  if (expanded.value) annotationButton.value?.focus();
 }
 
 function changeStatus(event: Event) {
@@ -98,7 +105,7 @@ async function persist(edit: MarkEdit) {
 </script>
 
 <template>
-  <div class="block-mark">
+  <div :id="'mark-' + blockId" class="block-mark" tabindex="-1" role="group" :aria-label="t('markStatus')">
     <div class="mark-controls">
       <label>
         <span>{{ t('markStatus') }}</span>
@@ -106,8 +113,7 @@ async function persist(edit: MarkEdit) {
           <option v-for="status in markStatuses" :key="status" :value="status">{{ t(status) }}</option>
         </select>
       </label>
-      <button ref="annotationButton" type="button" :aria-expanded="!!draft?.annotation"
-        :disabled="busy || unavailable || !!draft?.annotation" @click="openAnnotation">
+      <button type="button" class="record-toggle" :aria-controls="detailsId" :aria-expanded="expanded" @click="expanded = !expanded">
         {{ t(savedAnnotation ? 'annotationPresent' : 'annotation') }}
       </button>
     </div>
@@ -119,21 +125,41 @@ async function persist(edit: MarkEdit) {
       <button type="button" :disabled="busy || unavailable" @click="saveStatus">{{ t(statusConflict ? 'applyMyStatus' : 'retryMark') }}</button>
       <button type="button" :disabled="busy" @click="clear('status')">{{ t('cancelMark') }}</button>
     </div>
-    <form v-if="draft?.annotation" class="bookmark-editor" @submit.prevent="saveAnnotation">
-      <label>
-        <span>{{ t('annotationOptional') }}</span>
-        <textarea ref="annotationInput" v-model="draft.annotation.value" :readonly="busy" rows="3" />
-      </label>
-      <div v-if="draft.annotation.problem" class="bookmark-error" role="alert">
-        <p>{{ t('annotationSaveFailed') }} {{ problemText(language, draft.annotation.problem).message }} {{ problemText(language, draft.annotation.problem).nextStep }}</p>
-        <p v-if="annotationConflict && !unavailable">{{ t('savedAnnotation') }}</p>
-        <p v-if="annotationConflict && !unavailable" class="bookmark-note">{{ savedAnnotation || t('annotationEmpty') }}</p>
-      </div>
-      <div class="bookmark-actions">
-        <button type="submit" :disabled="busy || unavailable">{{ t(annotationConflict ? 'applyMyAnnotation' : 'saveAnnotation') }}</button>
-        <button type="button" :disabled="busy" @click="closeAnnotation">{{ t('cancelMark') }}</button>
-      </div>
-    </form>
+    <div v-if="draft?.annotation?.problem" class="bookmark-error" role="alert">
+      <p>{{ t('annotationSaveFailed') }} {{ problemText(language, draft.annotation.problem).message }} {{ problemText(language, draft.annotation.problem).nextStep }}</p>
+      <template v-if="expanded && annotationConflict && !unavailable">
+        <p>{{ t('savedAnnotation') }}</p>
+        <p class="bookmark-note">{{ savedAnnotation || t('annotationEmpty') }}</p>
+      </template>
+    </div>
+    <div v-show="expanded" :id="detailsId" class="annotation-details">
+      <p v-if="savedAnnotation && (!draft?.annotation || (active && !annotationConflict))" class="bookmark-note annotation-text">{{ savedAnnotation }}</p>
+      <button v-if="!draft?.annotation" ref="annotationButton" type="button" :disabled="busy || unavailable"
+        @click="openAnnotation">{{ t('editAnnotation') }}</button>
+      <form v-else class="bookmark-editor" @submit.prevent="saveAnnotation">
+        <label>
+          <span>{{ t('annotationOptional') }}</span>
+          <textarea ref="annotationInput" v-model="draft.annotation.value" :readonly="busy" rows="3" />
+        </label>
+        <div class="bookmark-actions">
+          <button type="submit" :disabled="busy || unavailable">{{ t(annotationConflict ? 'applyMyAnnotation' : 'saveAnnotation') }}</button>
+          <button type="button" :disabled="busy" @click="closeAnnotation">{{ t('cancelMark') }}</button>
+        </div>
+      </form>
+    </div>
     <p class="bookmark-status" role="status">{{ feedback ? t(feedback) : '' }}</p>
   </div>
 </template>
+
+<style scoped>
+.block-mark { margin: 0; scroll-margin-block: 8px; }
+.block-mark:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.annotation-details { margin-block-start: 8px; }
+.annotation-details > button { font-size: 13px; }
+.annotation-text {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  background: #f2f6f2;
+  line-height: 1.5;
+}
+</style>

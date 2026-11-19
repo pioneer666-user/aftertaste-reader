@@ -15,7 +15,7 @@ const props = defineProps<{
   result?: ReadingDocument; error?: ReaderProblem; language: Language;
   bookmarks: readonly Bookmark[]; activeBookmark: string; bookmarksBusy: boolean;
   saveBookmark: (action: BookmarkAction) => Promise<void>;
-  marks: readonly ReaderMark[]; marksBusy: boolean; markListError: ReaderProblem | undefined;
+  marks: readonly ReaderMark[]; activeMark: string; marksBusy: boolean; markListError: ReaderProblem | undefined;
   saveMark: (edit: MarkEdit) => Promise<void>;
 }>();
 const emit = defineEmits<{ addToNotes: [quote: BlockQuote]; refreshMarks: [] }>();
@@ -109,17 +109,18 @@ onUnmounted(() => document.removeEventListener('selectionchange', captureSelecti
           </div>
         </div>
         <div class="explanation-pane">
-          <BlockBookmarks :document-path="result.documentPath" :block-id="block.id"
-            :bookmarks="bookmarks.filter(entry => entry.documentPath === result?.documentPath && entry.blockId === block.id)"
-            :active-bookmark="activeBookmark" :busy="bookmarksBusy" :language="language" :save-bookmark="saveBookmark">
-            <h2 class="pane-label">{{ t('explanation') }} <code>{{ block.id }}</code></h2>
-          </BlockBookmarks>
-          <BlockUnderstandingMark :document-path="result.documentPath" :block-id="block.id" :mark="blockMarks.get(block.id)"
-            :language="language" :busy="marksBusy" :unavailable="!!markListError" :save-mark="saveMark" />
+          <h2 class="pane-label">{{ t('explanation') }} <code>{{ block.id }}</code></h2>
           <p v-if="!block.body.trim()" class="notice">{{ t('unfilled') }}</p>
           <div class="markdown explanation-text" v-html="renderMarkdown(block.body)"></div>
           <button v-if="quote?.blockId === block.id" type="button" class="note-selection-action"
             @mousedown.prevent @click="addSelection">{{ t('noteAddSelection') }}</button>
+          <footer class="block-records">
+            <BlockUnderstandingMark :document-path="result.documentPath" :block-id="block.id" :mark="blockMarks.get(block.id)"
+              :active="block.id === activeMark" :language="language" :busy="marksBusy" :unavailable="!!markListError" :save-mark="saveMark" />
+            <BlockBookmarks :document-path="result.documentPath" :block-id="block.id"
+              :bookmarks="bookmarks.filter(entry => entry.documentPath === result?.documentPath && entry.blockId === block.id)"
+              :active-bookmark="activeBookmark" :busy="bookmarksBusy" :language="language" :save-bookmark="saveBookmark" />
+          </footer>
         </div>
       </section>
     </div>
@@ -148,3 +149,35 @@ onUnmounted(() => document.removeEventListener('selectionchange', captureSelecti
     <textarea class="repair-text" readonly :aria-label="t('manual')" :value="repairText" rows="10"></textarea>
   </section>
 </template>
+
+<style scoped>
+.block-records {
+  display: grid;
+  gap: 8px;
+  margin-block-start: 24px;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+}
+.block-records :deep(.record-toggle) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.block-records :deep(.record-toggle[aria-expanded="true"]) {
+  color: var(--accent);
+  background: #edf4ee;
+}
+.block-records :deep(.record-toggle::after) {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-block-end: 1px solid;
+  border-inline-end: 1px solid;
+  transform: translateY(-2px) rotate(45deg);
+}
+.block-records :deep(.record-toggle[aria-expanded="true"]::after) {
+  transform: translateY(2px) rotate(225deg);
+}
+</style>

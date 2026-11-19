@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "notes": [
+    {
+      "id": "ab5470b9-0012-4ca1-a744-a7dd5f57d078",
+      "revision": "8e525d31-8723-4140-bc22-efbbb7fe8be6",
+      "body": "数量无效时，订单去哪了？\n\n从[数量规则承担转换与边界检查](<#aftertaste-block/docs%2Faftertaste%2Fcurrent%2Fsrc%2Frules.mjs.md/x4y6az2y>)看哪些输入会被拒绝。再读[先校验数量，再建立待加入集合的对象](<#aftertaste-block/docs%2Faftertaste%2Fcurrent%2Fsrc%2Fservice.mjs.md/m3vuiqzi>)，确认失败时集合有没有变化。",
+      "tags": ["订单", "回访"]
+    },
+    {
+      "id": "4706f6ab-5503-4c71-8666-9ccb03143ba5",
+      "revision": "a67ef91f-cfce-4143-9cb9-d4cb1859cf42",
+      "body": "下次想读的路径工具\n\n我经常混淆从路径取出名字和把目录、名字拼成路径。下次从闭环里的两个例子分别读一遍。",
+      "tags": ["回访"]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "marks": [
+    {
+      "documentPath": "docs/aftertaste/current/src/rules.mjs.md",
+      "blockId": "x4y6az2y",
+      "status": "not-understood",
+      "annotation": "为什么要先校验数量？如果把这一步放到加入集合之后，会留下什么？"
+    },
+    {
+      "documentPath": "docs/aftertaste/current/src/service.mjs.md",
+      "blockId": "m3vuiqzi",
+      "status": "understood",
+      "annotation": "明白了，校验失败时还没有建立订单。"
+    },
+    {
+      "documentPath": "docs/aftertaste/current/support/audit.mjs.md",
+      "blockId": "overview",
+      "status": "unmarked",
+      "annotation": "下次和上传入口的取文件名对照读。"
+    }
+  ]
+}
