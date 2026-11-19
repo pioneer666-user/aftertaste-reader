@@ -102,11 +102,27 @@
 - [x] T026 冻结候选，按 docs/roles/审查.md 委派独审并处理发现，保存 docs/work/2026/11/D022-reader-navigation/review.md（FR-007—011）。
 - [x] T027 核实共用试读服务归属，向 4341 部署受审候选，沿同项目打开并烟测，将入口、验收待办及 Git 状态记入 docs/work/2026/11/D022-reader-navigation/handoff.md（SC-006—008）。
 
+## Phase 12 · D022 试读调整 - User Story 4 与 User Story 5
+
+**Goal** 让桌面读者更顺手地打开导航及分配文件树和本篇目录的空间，减少顶栏占用。
+
+**Independent Test** 收栏、从左缘临时打开、用图标固定，拖动分隔线后收栏并重开。比较正文宽度、阅读位置和两区比例。
+
+- [x] T028 [US4] 在 src/web/App.vue、src/web/style.css 和 src/web/i18n.ts 实现桌面紧凑顶栏、侧栏图标与左缘临时展开，保留窄屏和键盘路径（FR-008/011）。
+- [x] T029 [US5] 在 src/web/ReaderSidebarDivider.vue、src/web/App.vue、src/web/style.css 和 src/web/i18n.ts 接通文件树与本篇目录的可拖分隔线及键盘入口，份额限制在 20%—80%（FR-009）。
+
+## Phase 13 · D022 试读调整收束
+
+- [x] T030 以 specs/006-file-reader/quickstart.md 和 tests/browser/reader-navigation.mjs 验左缘临时展开、拖动与键盘、顶栏高度和窄屏基本操作，同步 docs/usage/file-reader.md（SC-006/009）。
+- [ ] T031 冻结试读调整候选，独审后沿同项目更新 4341，归档 docs/work/2026/11/D022-reader-navigation/review.md 与 handoff.md（SC-009）。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。
 
 D022 沿用上述已实现基础。T018 为隔离验证前置，US4 先建立侧栏，US5 接入同一导航工作区。US6 可独立通过旧记录入口验证，集成到 US4/US5 后核复合焦点。T025—027 在三个场景具备后收束。
+
+试读调整复用 D022 初版成果。T028、T029 在 App.vue 汇合，T030 验交互后再完成 T031。
 
 ## Parallel Example
 

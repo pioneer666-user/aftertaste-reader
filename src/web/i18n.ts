@@ -3,6 +3,7 @@ export type Language = 'zh-CN' | 'en';
 const chinese: Record<string, string> = {
   brand: '回味', title: '源码对照阅读', files: '文件讲解', refresh: '刷新资料',
   readingNavigation: '阅读导航', openNavigation: '展开阅读导航', closeNavigation: '收起阅读导航',
+  pinNavigation: '固定阅读导航', resizeNavigationSections: '调整文件树和本篇目录的比例',
   projectPath: '项目路径', outline: '本篇目录', sourceLines: '源码行',
   language: '界面语言', loading: '正在读取…', choose: '选择一篇讲解开始阅读',
   empty: '还没有文件讲解', emptyHelp: '请先为这个项目生成讲解，再刷新此页。',
@@ -109,6 +110,7 @@ const english: Record<string, string> = {
   noteBlockMissing: 'The current explanation does not contain this block.',
   title: 'Source comparison', files: 'File explanations', refresh: 'Refresh documents',
   readingNavigation: 'Reading navigation', openNavigation: 'Open reading navigation', closeNavigation: 'Close reading navigation',
+  pinNavigation: 'Pin reading navigation', resizeNavigationSections: 'Resize file tree and page outline',
   projectPath: 'Project path', outline: 'On this page', sourceLines: 'Source lines',
   language: 'Interface language', loading: 'Reading…', choose: 'Choose an explanation to start reading',
   empty: 'No file explanations yet', emptyHelp: 'Generate explanations for this project, then refresh this page.',

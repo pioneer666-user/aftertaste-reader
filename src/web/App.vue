@@ -12,6 +12,7 @@ import { markDraftsKey } from './mark-drafts.js';
 import type { MarkDraft } from './mark-drafts.js';
 import ReaderDocument from './ReaderDocument.vue';
 import ReaderFileTree, { buildFileTree } from './ReaderFileTree.vue';
+import ReaderSidebarDivider from './ReaderSidebarDivider.vue';
 import ProjectNotes from './ProjectNotes.vue';
 import ProjectMarks from './ProjectMarks.vue';
 import DependencyCanvas from './DependencyCanvas.vue';
@@ -34,15 +35,18 @@ const listLoading = ref(true);
 const readingLoading = ref(false);
 const readingPane = ref<HTMLElement>();
 const navigation = ref<HTMLElement>();
+const navigationEdge = ref<HTMLElement>();
 const treeScroll = ref<HTMLElement>();
 const outlineScroll = ref<HTMLElement>();
-const openNavigationButton = ref<HTMLButtonElement>();
-const closeNavigationButton = ref<HTMLButtonElement>();
+const navigationButton = ref<HTMLButtonElement>();
+const fileShare = ref(53);
 const navigationMedia = window.matchMedia('(max-width: 850px)');
 const narrow = ref(navigationMedia.matches);
 const desktopOpen = ref(true);
+const desktopPeek = ref(false);
 const narrowOpen = ref(false);
-const navigationOpen = computed(() => narrow.value ? narrowOpen.value : desktopOpen.value);
+const navigationOpen = computed(() => narrow.value ? narrowOpen.value : desktopOpen.value || desktopPeek.value);
+const navigationAction = computed(() => desktopPeek.value ? 'pinNavigation' : navigationOpen.value ? 'closeNavigation' : 'openNavigation');
 const projectName = computed(() => projectRoot.value.split(/[\\/]/u).filter(Boolean).at(-1) ?? projectRoot.value);
 const fileTree = computed(() => buildFileTree(documents.value));
 const expandedFolders = reactive(new Set<string>());
@@ -85,6 +89,7 @@ let readSequence = 0;
 let bookmarkVisitSequence = 0;
 let controller: AbortController | undefined;
 let handledScrollTop = 0;
+let peekTimer: number | undefined;
 
 function expandAncestors(path: string) {
   let end = path.lastIndexOf('/');
@@ -118,7 +123,42 @@ watch([navigationOpen, activeBlock, view], () => {
     revealNavigationItem(outlineScroll.value, '[aria-current="location"]');
   }
 }, { flush: 'post' });
-watch(view, current => { if (current !== 'reader') narrowOpen.value = false; });
+watch(view, current => {
+  if (current === 'reader') return;
+  narrowOpen.value = false;
+  closeNavigationPreview();
+});
+
+function closeNavigationPreview() {
+  window.clearTimeout(peekTimer);
+  desktopPeek.value = false;
+}
+
+function scheduleNavigationPreview(event: PointerEvent) {
+  if (event.pointerType !== 'mouse' || event.buttons) return;
+  window.clearTimeout(peekTimer);
+  if (desktopPeek.value) return;
+  peekTimer = window.setTimeout(() => { desktopPeek.value = true; }, 180);
+}
+
+function holdNavigationPreview(event: PointerEvent) {
+  if (event.pointerType === 'mouse' && desktopPeek.value) window.clearTimeout(peekTimer);
+}
+
+function schedulePreviewClose() {
+  window.clearTimeout(peekTimer);
+  if (!desktopPeek.value) return;
+  peekTimer = window.setTimeout(() => {
+    if (!navigation.value?.contains(document.activeElement) && !navigation.value?.matches(':hover') &&
+        !navigationEdge.value?.matches(':hover')) {
+      desktopPeek.value = false;
+    }
+  }, 220);
+}
+
+function dismissNavigationPreview(event: KeyboardEvent) {
+  if (event.key === 'Escape' && desktopPeek.value && !event.defaultPrevented) closeNavigationPreview();
+}
 
 function blockElement(id: string) {
   return readingPane.value?.querySelector<HTMLElement>(`.document-block#${CSS.escape(id)}`);
@@ -140,6 +180,7 @@ function trackReadingPosition() {
 }
 
 async function setNavigation(open: boolean) {
+  closeNavigationPreview();
   if (narrow.value) {
     narrowOpen.value = open;
     await nextTick();
@@ -160,18 +201,18 @@ async function setNavigation(open: boolean) {
       handledScrollTop = pane.scrollTop;
     }
   }
-  (open ? closeNavigationButton : openNavigationButton).value?.focus({ preventScroll: true });
+  (open ? navigation : navigationButton).value?.focus({ preventScroll: true });
 }
 
 async function resizeNavigation(event: MediaQueryListEvent) {
   const focusInSidebar = navigation.value?.contains(document.activeElement);
-  const focusOnOpener = document.activeElement === openNavigationButton.value;
   narrow.value = event.matches;
   narrowOpen.value = false;
+  closeNavigationPreview();
   await nextTick();
-  if (view.value !== 'reader') return;
-  if (focusInSidebar && !navigationOpen.value) openNavigationButton.value?.focus({ preventScroll: true });
-  else if (focusOnOpener && navigationOpen.value) closeNavigationButton.value?.focus({ preventScroll: true });
+  if (view.value === 'reader' && focusInSidebar && !navigationOpen.value) {
+    navigationButton.value?.focus({ preventScroll: true });
+  }
 }
 
 function focusReadingTarget(target: HTMLElement, blockId: string) {
@@ -185,23 +226,26 @@ async function jumpToBlock(id: string) {
   const block = blockElement(id);
   if (!block) return;
   narrowOpen.value = false;
+  closeNavigationPreview();
   await nextTick();
   if (block.isConnected && view.value === 'reader') focusReadingTarget(block, id);
 }
 
 async function readFromTree(path: string) {
   void selectDocument(path);
-  if (narrow.value) {
+  if (narrow.value || desktopPeek.value) {
     narrowOpen.value = false;
+    closeNavigationPreview();
     await nextTick();
     readingPane.value?.focus({ preventScroll: true });
   }
 }
 
 async function skipToReading(event: MouseEvent) {
-  if (view.value !== 'reader' || !narrowOpen.value) return;
+  if (view.value !== 'reader' || (!narrowOpen.value && !desktopPeek.value)) return;
   event.preventDefault();
   narrowOpen.value = false;
+  closeNavigationPreview();
   await nextTick();
   readingPane.value?.focus({ preventScroll: true });
 }
@@ -455,20 +499,31 @@ async function changeLanguage(event: Event) {
 
 onMounted(() => {
   navigationMedia.addEventListener('change', resizeNavigation);
+  document.addEventListener('keydown', dismissNavigationPreview);
   document.documentElement.lang = language.value;
   document.title = `${t('brand')} · ${t('title')}`;
   void refresh();
   void refreshBookmarks();
   void refreshMarks();
 });
-onUnmounted(() => navigationMedia.removeEventListener('change', resizeNavigation));
+onUnmounted(() => {
+  navigationMedia.removeEventListener('change', resizeNavigation);
+  document.removeEventListener('keydown', dismissNavigationPreview);
+  closeNavigationPreview();
+});
 </script>
 
 <template>
   <a :href="view === 'canvas' ? '#canvas-reading' : view === 'loops' ? '#loop-navigation' : view === 'reader' ? '#reading' : '#' + view"
     class="skip-link" @click="skipToReading">{{ t('skip') }}</a>
-  <header class="app-header">
-    <div class="brand"><strong>{{ t('brand') }}</strong><span>{{ t('title') }}</span></div>
+  <header class="app-header" :class="{ 'reader-header': view === 'reader' }">
+    <button v-if="view === 'reader'" ref="navigationButton" type="button" class="reader-navigation-toggle"
+      :class="{ 'navigation-pinned': narrow ? narrowOpen : desktopOpen }" :aria-label="t(navigationAction)"
+      :title="t(navigationAction)" :aria-expanded="navigationOpen" aria-controls="reader-navigation"
+      @click="setNavigation(desktopPeek || !navigationOpen)">
+      <span class="sidebar-icon" aria-hidden="true"></span>
+    </button>
+    <div v-else class="brand"><strong>{{ t('brand') }}</strong><span>{{ t('title') }}</span></div>
     <div class="toolbar">
       <button v-if="view !== 'canvas'" type="button" @click="openCanvas">{{ t(view === 'reader' && fromCanvas ? 'canvasBack' : 'dependencyCanvas') }}</button>
       <button v-if="view !== 'reader'" type="button" @click="view = 'reader'; fromCanvas = false">{{ t('files') }}</button>
@@ -535,21 +590,22 @@ onUnmounted(() => navigationMedia.removeEventListener('change', resizeNavigation
       :active="view === 'loops' && selectedLoop === id" :language="language" />
   </div>
   <div v-show="view === 'reader'" class="workspace"
-    :class="{ 'workspace-active': view === 'reader', 'with-navigation': navigationOpen }">
+    :class="{ 'workspace-active': view === 'reader', 'with-navigation': !narrow && desktopOpen }">
+    <div v-if="!narrow && !desktopOpen" ref="navigationEdge" class="navigation-edge" data-testid="reader-navigation-edge" aria-hidden="true"
+      @pointerenter="scheduleNavigationPreview" @pointerleave="schedulePreviewClose"></div>
     <aside v-show="navigationOpen" id="reader-navigation" ref="navigation" class="sidebar"
-      :class="{ 'with-outline': outline.length }" :aria-label="t('readingNavigation')" @keydown.esc.stop="setNavigation(false)">
+      :class="{ 'with-outline': outline.length, 'sidebar-overlay': narrow || desktopPeek }"
+      :style="{ '--files-share': fileShare + 'fr', '--outline-share': (100 - fileShare) + 'fr' }"
+      :aria-label="t('readingNavigation')" tabindex="-1" @keydown.esc.stop="setNavigation(false)"
+      @pointerenter="holdNavigationPreview" @pointerleave="schedulePreviewClose" @focusout="schedulePreviewClose">
       <header class="sidebar-header">
-        <div class="sidebar-project">
-          <h2 :title="projectRoot || undefined">{{ projectName || t('project') }}</h2>
-          <details v-if="projectRoot" class="project-location">
-            <summary>{{ t('projectPath') }}</summary>
-            <p>{{ projectRoot }}</p>
-          </details>
-        </div>
-        <button ref="closeNavigationButton" type="button" class="sidebar-close" :aria-label="t('closeNavigation')"
-          :title="t('closeNavigation')" aria-controls="reader-navigation" @click="setNavigation(false)"></button>
+        <h2 :title="projectRoot || undefined">{{ projectName || t('project') }}</h2>
+        <details v-if="projectRoot" class="project-location">
+          <summary>{{ t('projectPath') }}</summary>
+          <p>{{ projectRoot }}</p>
+        </details>
       </header>
-      <nav class="sidebar-section" :aria-label="t('files')">
+      <nav id="reader-file-navigation" class="sidebar-section" :aria-label="t('files')">
         <h2>{{ t('files') }}</h2>
         <div ref="treeScroll" class="navigation-scroll">
           <p v-if="listLoading" class="navigation-status" role="status">{{ t('loading') }}</p>
@@ -566,7 +622,8 @@ onUnmounted(() => navigationMedia.removeEventListener('change', resizeNavigation
           </section>
         </div>
       </nav>
-      <nav v-if="outline.length" class="sidebar-section block-outline" :aria-label="t('outline')">
+      <ReaderSidebarDivider v-if="outline.length" v-model="fileShare" :label="t('resizeNavigationSections')" />
+      <nav v-if="outline.length" class="sidebar-section" :aria-label="t('outline')">
         <h2>{{ t('outline') }}</h2>
         <div ref="outlineScroll" class="navigation-scroll">
           <ol class="outline-list"><li v-for="entry in outline" :key="entry.id">
@@ -578,10 +635,6 @@ onUnmounted(() => navigationMedia.removeEventListener('change', resizeNavigation
       </nav>
     </aside>
     <div class="reading-workspace" :inert="narrow && navigationOpen">
-      <div v-if="!navigationOpen || narrow" class="navigation-tools">
-        <button ref="openNavigationButton" type="button" :aria-expanded="navigationOpen" aria-controls="reader-navigation"
-          @click="setNavigation(true)">{{ t('openNavigation') }}</button>
-      </div>
       <main id="reading" ref="readingPane" class="reading-pane" tabindex="-1" :aria-busy="readingLoading" @scroll.passive="trackReadingPosition">
         <p v-if="readingLoading" class="reading-state" role="status">{{ t('loading') }}</p>
         <ReaderDocument v-else-if="result || readingError" :key="selected"

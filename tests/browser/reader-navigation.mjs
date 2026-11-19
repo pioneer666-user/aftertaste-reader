@@ -81,15 +81,21 @@ async function tabTo(target, key = 'Tab') {
 
 try {
   reader = await startReader(fixture.projectRoot, 0);
-  page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
   page.on('pageerror', error => report.errors.push(error.message));
   const button = (name, scope = page) => scope.getByRole('button', { name, exact: true });
   const nav = page.locator('#reader-navigation');
   const file = source => nav.locator(`button[title="${source}"]`);
   const heading = name => page.getByRole('heading', { name, level: 1, exact: true });
   const toc = name => nav.getByRole('navigation', { name, exact: true });
+  const tree = toc('文件讲解');
   const contents = toc('本篇目录');
   const active = contents.locator('[aria-current="location"]');
+  const reading = page.locator('#reading');
+  const divider = nav.getByRole('separator');
+  const edge = page.getByTestId('reader-navigation-edge');
+  const topMenu = page.locator('header.app-header');
+  const navigationToggle = topMenu.locator('button[aria-controls="reader-navigation"]');
   async function openFile(source) {
     await file(source).click();
     await heading(source).waitFor();
@@ -98,11 +104,43 @@ try {
     await locator.click();
     await page.locator(`#${id}:focus`).waitFor();
   }
+  async function readingPosition() {
+    return reading.evaluate(element => {
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return { x, y, width, height, scrollTop: element.scrollTop };
+    });
+  }
+  async function dragDivider(toY) {
+    const bounds = await divider.boundingBox();
+    assert.ok(bounds, 'The divider must be visible before dragging');
+    const x = bounds.x + bounds.width / 2;
+    await page.mouse.move(x, bounds.y + bounds.height / 2);
+    await page.mouse.down();
+    try { await page.mouse.move(x, toY, { steps: 10 }); }
+    finally { await page.mouse.up(); }
+  }
+  async function division() {
+    const value = await divider.getAttribute('aria-valuenow');
+    assert.ok(value !== null && Number.isFinite(Number(value)), 'The divider must expose its current value');
+    return Number(value);
+  }
 
   await page.goto(reader.url);
-  const topMenu = page.locator('header.app-header');
   const topActions = ['文件依赖图', '闭环阅读', '书签', '标注', '笔记'];
   assert.deepEqual((await topMenu.getByRole('button').allTextContents()).filter(label => topActions.includes(label)), topActions);
+  assert.equal((await topMenu.boundingBox()).height, 48);
+  assert.equal(await topMenu.getByText('回味', { exact: true }).isVisible(), false);
+  assert.equal(await navigationToggle.count(), 1);
+  const toggleBounds = await navigationToggle.boundingBox();
+  assert.ok(toggleBounds && toggleBounds.x <= 24 && toggleBounds.width <= 40 && toggleBounds.height <= 40);
+  assert.equal(await navigationToggle.innerText(), '');
+  for (const [label, panel] of [['文件依赖图', '#canvas-reading'], ['闭环阅读', '#loop-navigation'], ['笔记', '#notes']]) {
+    await button(label, topMenu).click();
+    await page.locator(panel).waitFor();
+    await button('文件讲解', topMenu).click();
+    await nav.waitFor();
+  }
+  report.checks.push('48px desktop heading, one compact sidebar icon without branding, top navigation order and view switching');
   await openFile('src/service.mjs');
   await contents.getByRole('button').nth(2).waitFor();
   assert.deepEqual(await contents.getByRole('button').allTextContents().then(values => values.map(value => value.trim())), [
@@ -118,21 +156,70 @@ try {
   assert.equal(await page.locator(':focus').getAttribute('id'), 'cj9208pf');
   await button('support', nav).click();
   await file('support/audit.mjs').waitFor();
-  await button('收起阅读导航').click();
+
+  await divider.waitFor();
+  assert.equal(await divider.getAttribute('aria-orientation'), 'horizontal');
+  const initialDivider = await divider.boundingBox();
+  const initialTree = await tree.boundingBox();
+  const initialOutline = await contents.boundingBox();
+  const handleY = initialDivider.y + initialDivider.height / 2;
+  assert.ok(initialTree.y + initialTree.height <= handleY && handleY <= initialOutline.y);
+  const originalDivision = await division();
+  await dragDivider(handleY + 86);
+  const pointerDivision = await division();
+  assert.ok(pointerDivision > originalDivision);
+  assert.ok((await tree.boundingBox()).height > initialTree.height);
+  assert.ok((await contents.boundingBox()).height < initialOutline.height);
+  await divider.press('ArrowUp');
+  assert.ok(await division() < pointerDivision);
+  await divider.press('ArrowDown');
+  assert.equal(await division(), pointerDivision);
+  const savedDivider = await divider.boundingBox();
+  await dragDivider(899);
+  assert.equal(await division(), Number(await divider.getAttribute('aria-valuemax')));
+  assert.ok((await tree.boundingBox()).height >= 44 && (await contents.boundingBox()).height >= 44);
+  await dragDivider(savedDivider.y + savedDivider.height / 2);
+  const savedDivision = await division();
+  report.checks.push('desktop divider separates two usable panes, supports pointer and keyboard resize, clamps at short pane limits');
+
+  await button('收起阅读导航', topMenu).press('Enter');
   await nav.waitFor({ state: 'hidden' });
-  await button('展开阅读导航').click();
+  await navigationToggle.locator(':scope:focus').waitFor();
+  assert.equal(await navigationToggle.getAttribute('aria-expanded'), 'false');
+  const collapsedReading = await readingPosition();
+  await edge.hover();
+  await nav.waitFor();
+  assert.deepEqual(await readingPosition(), collapsedReading);
+  assert.equal(await navigationToggle.evaluate(element => element === document.activeElement), true);
+  await button('support', nav).hover();
+  await assert.rejects(nav.waitFor({ state: 'hidden', timeout: 550 }), { name: 'TimeoutError' });
+  await page.mouse.move(collapsedReading.x + collapsedReading.width * 0.75, collapsedReading.y + collapsedReading.height / 2);
+  await nav.waitFor({ state: 'hidden' });
+  assert.deepEqual(await readingPosition(), collapsedReading);
+  await edge.hover();
+  await button('固定阅读导航', topMenu).click();
+  await button('收起阅读导航', topMenu).waitFor();
+  assert.ok((await readingPosition()).width < collapsedReading.width);
+  assert.equal(await division(), savedDivision);
+  await button('收起阅读导航', topMenu).press('Enter');
+  await nav.waitFor({ state: 'hidden' });
+  await button('展开阅读导航', topMenu).press('Enter');
+  await nav.locator(':scope:focus').waitFor();
+  assert.equal(await navigationToggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(await division(), savedDivision);
   await file('support/audit.mjs').waitFor();
   assert.equal(await file('src/service.mjs').getAttribute('aria-current'), 'page');
   await active.filter({ hasText: '先校验数量' }).waitFor();
   const samplesFolder = button('zz-samples', nav);
   await samplesFolder.click();
-  const treeScroll = toc('文件讲解').locator('.navigation-scroll');
+  const treeScroll = tree.locator('.navigation-scroll');
   assert.ok(await treeScroll.evaluate(element => element.scrollHeight > element.clientHeight));
   await file(samples.at(-1)).scrollIntoViewIfNeeded();
   assert.ok(await treeScroll.evaluate(element => element.scrollTop > 0));
   assert.ok(await contents.getByRole('heading').evaluate(element => element.getBoundingClientRect().bottom < innerHeight));
   await samplesFolder.click();
   report.checks.push('service order and jumps, manual scroll without moving focus, collapse retains position and two open folders');
+  report.checks.push('left-edge hover opens without moving content or focus, remains open inside, closes outside and can be pinned');
   report.checks.push('nested file list scrolls independently of the visible block outline');
 
   await openFile('support/audit.mjs');
@@ -156,6 +243,7 @@ try {
   await button('刷新资料').click();
   await page.locator('.fallback-markdown').waitFor();
   assert.equal(await contents.isVisible() && await contents.getByRole('button').count() > 0, false);
+  assert.equal(await divider.isVisible(), false);
   await writeFile(explanationFile(fixture, duplicate), valid);
   report.checks.push('audit excerpts and language, same named files and headings, code/empty fallback, Markdown degradation');
 
@@ -215,7 +303,6 @@ try {
   await page.keyboard.press('Enter');
   await page.locator('#m3vuiqzi:focus').waitFor();
   await nav.waitFor({ state: 'hidden' });
-  const reading = page.locator('#reading');
   const narrowPosition = await reading.evaluate(element => element.scrollTop);
   await button('展开阅读导航').press('Enter');
   await nav.waitFor();
