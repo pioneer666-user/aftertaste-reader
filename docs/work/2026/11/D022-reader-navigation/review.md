@@ -69,3 +69,16 @@
 本轮独立补测仅运行 Windows Edge。Chrome 和 Firefox 的新边界问题、其他系统、实体手机、全量 npm 测试、源码版本更新联验及作者体验未在本轮验证。4341 作者入口未操作。
 
 结束时 `codex/feat-reader-navigation` 的 HEAD 仍为 `f37298669ceb7b78c9c7c5ebd305d8037ab88886`，工作区干净，`git diff --check f21c503..f372986` 通过。所用 `dist/web` 的 HTML、JS、CSS 及执行证据采用的闭环样例哈希前后一致。自建浏览器和隔离服务都已关闭，端口 54354、51152 和 50691 均已解除监听。**采集结束，可以恢复写入**。[写入交还](../../../../development/workflow.md#review-handoff)
+
+## R4 · 2026-11-19
+
+**结论为通过。** 固定候选 `431398b63fe50c32ee0372045fa5e4808ca37bb0` 关闭 R3 的两项问题。复核 `git diff f372986..431398b`，覆盖分隔线、阅读顶栏、相关回归及 006 的实施计划和快速验证。
+
+1. **矮桌面窗口的两个导航区均可操作。** 在 Windows Edge 打开 `src/service.mjs`，将视口设为 1440×320。分隔线的可访问范围为 45%—55%。按 End 后，独立通过鼠标实点较小的本篇目录内完整的 36 CSS px 首项，正文聚焦到 `#zhidif44`。按 Home 后，在较小的文件树内实点同样完整的 `src` 目录项，可收起和展开目录。恢复到 900 CSS px 高，范围回到 20%—80%，方向键和拖动生效，松开鼠标后捕获释放。再次缩矮并关闭、重开侧栏，再恢复窗口高度，先前 80% 的设置恢复。235 CSS px 高时，分隔线有效值为 50%，可滚动外层侧栏后点选本篇条目。
+2. **英文顶栏在原失败宽度恢复单行。** 在 851 CSS px 宽的桌面布局，通过键盘操作语言选择器，在中英文之间切换。控件保持焦点，并分别保留「界面语言」和 `Interface language` 的可访问名称。两种语言在 851、870、900、950、1000 和 1280 CSS px 宽度均实测为单行 48 CSS px，选择器完整可见。006 计划与快速验证均明确了桌面临界宽度的中英文要求。
+
+独立补测使用 Windows 11、Node `24.11.1`、Edge `157.0.4341.60`，从已有合成项目 `compact-A0NJWW/project` 启动隔离服务。报告和截图在 `.local/D022/review-r4-dZ1P5X/`，脚本为 `.local/D022/review-r4.mjs`。核读同候选的 Edge 完整导航报告 `.local/D022/browser-nonJX6/`，以及 Chrome 和 Firefox 的窄桌面顶栏和矮窗口报告 `.local/D022/short-chrome-BtK0yd/`、`.local/D022/short-firefox-6ArDKl/`。两款兼容浏览器的所测顶栏均为 48 CSS px，1440×320 和 1440×390 下的 Home、End 两端均有完整 36 CSS px 条目。其余检查沿 R3 证据。隔离证据不随克隆恢复。
+
+本轮未独立重跑全量 npm 测试、其他系统或实体手机。4341 作者入口未操作，作者体验待验。
+
+结束时 `codex/feat-reader-navigation` 的 HEAD 仍为 `431398b63fe50c32ee0372045fa5e4808ca37bb0`，工作区干净，候选差异通过 `git diff --check`。所用构建的 HTML、JS、CSS 哈希和样例提交及服务讲解文件哈希前后一致。自建 Edge 和隔离服务均已关闭，端口 60377 已解除监听。**采集结束，可以恢复写入**。[写入交还](../../../../development/workflow.md#review-handoff)
