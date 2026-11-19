@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "bookmarks": [
+    {
+      "id": "892cf00e-fab8-4d6d-a307-74e0c4bbb89c",
+      "documentPath": "docs/aftertaste/current/src/rules.mjs.md",
+      "blockId": "x4y6az2y",
+      "note": "这个边界例子讲得巧。空文本会变成 0，正好能解释为什么还要检查下限。"
+    },
+    {
+      "id": "5464f4f4-29ee-4cd1-a360-1be5b7c08d31",
+      "documentPath": "docs/aftertaste/current/src/service.mjs.md",
+      "blockId": "cj9208pf",
+      "note": "下次从这里看，订单究竟在哪一步进了集合。"
+    }
+  ]
+}
