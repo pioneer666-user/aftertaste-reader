@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { ReadingDocument } from '../application/document-blocks.js';
 import type { ReaderProblem } from '../application/file-reader.js';
 import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
+import type { BlockQuote } from '../core/notes.js';
 import BlockBookmarks from './BlockBookmarks.vue';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
@@ -13,8 +14,11 @@ const props = defineProps<{
   bookmarks: readonly Bookmark[]; activeBookmark: string; bookmarksBusy: boolean;
   saveBookmark: (action: BookmarkAction) => Promise<void>;
 }>();
+const emit = defineEmits<{ addToNotes: [quote: BlockQuote] }>();
 const t = (key: string) => translate(props.language, key);
 const copyStatus = ref('');
+const blockRoot = ref<HTMLElement>();
+const quote = ref<BlockQuote>();
 const diagnostics = computed(() => props.result?.diagnostics ?? []);
 const hasProblems = computed(() => Boolean(props.error || diagnostics.value.length || props.result?.sourceError));
 const repairText = computed(() => {
@@ -37,6 +41,29 @@ async function copyRepair() {
     copyStatus.value = 'copied';
   } catch { copyStatus.value = 'copyFailed'; }
 }
+
+function captureSelection() {
+  quote.value = undefined;
+  const selection = window.getSelection();
+  if (selection?.rangeCount !== 1 || selection.isCollapsed || !props.result) return;
+  const range = selection.getRangeAt(0);
+  const start = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
+  const explanation = start?.closest('.explanation-text');
+  const block = explanation?.closest<HTMLElement>('.document-block');
+  if (!block || !blockRoot.value?.contains(block) || !explanation?.contains(range.endContainer)) return;
+  const text = selection.toString();
+  if (text.trim()) quote.value = { documentPath: props.result.documentPath, blockId: block.id, text };
+}
+
+function addSelection() {
+  if (!quote.value) return;
+  emit('addToNotes', quote.value);
+  window.getSelection()?.removeAllRanges();
+  quote.value = undefined;
+}
+
+onMounted(() => document.addEventListener('selectionchange', captureSelection));
+onUnmounted(() => document.removeEventListener('selectionchange', captureSelection));
 </script>
 
 <template>
@@ -61,8 +88,8 @@ async function copyRepair() {
         <p>{{ t('fallbackHelp') }}</p>
       </div>
     </header>
-    <div v-if="result.renderMode === 'comparison'" class="document-blocks">
-      <section v-for="block in result.blocks" :id="block.id" :key="block.id" class="document-block" :class="{ comparison: block.lines }">
+    <div v-if="result.renderMode === 'comparison'" ref="blockRoot" class="document-blocks">
+      <section v-for="block in result.blocks" :id="block.id" :key="block.id" tabindex="-1" class="document-block" :class="{ comparison: block.lines }">
         <div v-if="block.lines" class="source-pane">
           <h2 class="pane-label">{{ t('source') }} <span>{{ block.lines.start }}–{{ block.lines.end }}</span></h2>
           <div class="source-scroll" tabindex="0" role="region" :aria-label="t('sourceScroll')">
@@ -76,7 +103,9 @@ async function copyRepair() {
             <h2 class="pane-label">{{ t('explanation') }} <code>{{ block.id }}</code></h2>
           </BlockBookmarks>
           <p v-if="!block.body.trim()" class="notice">{{ t('unfilled') }}</p>
-          <div class="markdown" v-html="renderMarkdown(block.body)"></div>
+          <div class="markdown explanation-text" v-html="renderMarkdown(block.body)"></div>
+          <button v-if="quote?.blockId === block.id" type="button" class="note-selection-action"
+            @mousedown.prevent @click="addSelection">{{ t('noteAddSelection') }}</button>
         </div>
       </section>
     </div>

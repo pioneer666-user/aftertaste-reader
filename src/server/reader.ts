@@ -24,6 +24,9 @@ import { CanvasError } from '../core/canvas-layout.js';
 import { BookmarkError } from '../core/bookmarks.js';
 import { BookmarkService } from '../application/bookmarks.js';
 import { BookmarkFileStore } from '../adapters/bookmark-store.js';
+import { NoteError } from '../core/notes.js';
+import { NotesService } from '../application/notes.js';
+import { NotesFileStore } from '../adapters/notes-store.js';
 
 export function readerProblem(error: unknown): ReaderProblem {
   if (error instanceof GraphError) {
@@ -32,7 +35,7 @@ export function readerProblem(error: unknown): ReaderProblem {
       context: { ...error.context, ...(first ? { field: first.field, diagnostic: first.code } : {}) } };
   }
   if (error instanceof SourceError || error instanceof DocumentError || error instanceof ReaderError ||
-      error instanceof CanvasError || error instanceof LoopError || error instanceof BookmarkError) {
+      error instanceof CanvasError || error instanceof LoopError || error instanceof BookmarkError || error instanceof NoteError) {
     return { code: error.code, message: error.message, nextStep: error.nextStep, context: error.context };
   }
   return { code: 'INTERNAL_ERROR', message: '阅读服务发生未预期错误。', nextStep: '将问题标识和操作交给维护者检查。', context: {} };
@@ -59,6 +62,7 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   const documents = new DocumentService(source, new DocumentFileStore());
   const reader = new FileReaderService(project, new ReaderFileDirectory(), documents);
   const bookmarks = new BookmarkService(new BookmarkFileStore(project), documentPath => reader.read(documentPath));
+  const notes = new NotesService(new NotesFileStore(project));
   const graphStore = new GraphFileStore();
   const canvas = new DependencyCanvasService(reader, graphStore, new LayoutFileStore(project));
   const loopStore = new LoopFileStore();
@@ -91,6 +95,11 @@ export async function startReader(projectRoot: string, port: number = 4317) {
         error: readerProblem(new ReaderError('ACCESS_DENIED', '书签写入请求缺少本机页面标识。', '从本机阅读页面保存书签。')) });
       return;
     }
+    if (request.method === 'PUT' && requestPath === '/api/notes') {
+      if (request.headers['x-aftertaste-notes'] !== '1') return reply.code(403).send({ ok: false,
+        error: readerProblem(new ReaderError('ACCESS_DENIED', '笔记写入请求缺少本机页面标识。', '从本机阅读页面保存笔记。')) });
+      return;
+    }
     if (request.method === 'PUT' && (requestPath === '/api/dependency-layout' || /^\/api\/loops\/[^/]+\/layout$/u.test(requestPath))) {
       if (request.headers['x-aftertaste-layout'] !== '1') return reply.code(403).send({ ok: false,
         error: readerProblem(new ReaderError('ACCESS_DENIED', '布局写入请求缺少本机页面标识。', '从本机阅读页面保存布局。')) });
@@ -102,13 +111,15 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   server.setErrorHandler((error, request, reply) => {
     if (error instanceof Error && 'statusCode' in error &&
         (error.statusCode === 400 || error.statusCode === 413 || error.statusCode === 415)) {
-      const isBookmark = request.url.split('?')[0] === '/api/bookmarks';
+      const route = request.url.split('?')[0];
+      const nextStep = route === '/api/bookmarks' ? '使用本机阅读页面提交书签。' :
+        route === '/api/notes' ? '使用本机阅读页面提交笔记。' : '使用本机阅读页面提交布局。';
       return reply.code(error.statusCode).send({ ok: false, error: readerProblem(
-        new ReaderError('INVALID_ARGUMENT', '请求体无效。', isBookmark ? '使用本机阅读页面提交书签。' : '使用本机阅读页面提交布局。')) });
+        new ReaderError('INVALID_ARGUMENT', '请求体无效。', nextStep)) });
     }
     const problem = readerProblem(error);
     const status = ['INVALID_ARGUMENT', 'INVALID_PATH', 'LAYOUT_INVALID'].includes(problem.code) ? 400 :
-      problem.code.endsWith('_PATH_UNSAFE') ? 403 : ['LAYOUT_CONFLICT', 'LAYOUT_GRAPH_CHANGED', 'LAYOUT_GRAPH_UNCONFIRMED', 'BOOKMARK_CONFLICT'].includes(problem.code) ? 409 :
+      problem.code.endsWith('_PATH_UNSAFE') ? 403 : ['LAYOUT_CONFLICT', 'LAYOUT_GRAPH_CHANGED', 'LAYOUT_GRAPH_UNCONFIRMED', 'BOOKMARK_CONFLICT', 'NOTE_CONFLICT'].includes(problem.code) ? 409 :
       ['LOOP_NOT_FOUND', 'BOOKMARK_NOT_FOUND'].includes(problem.code) ? 404 : problem.code === 'INTERNAL_ERROR' ? 500 : 422;
     reply.code(status).send({ ok: false, error: problem });
   });
@@ -135,6 +146,16 @@ export async function startReader(projectRoot: string, port: number = 4317) {
       throw new BookmarkError('INVALID_ARGUMENT', '书签操作参数无效。', '使用本机阅读页面提交单条书签操作。');
     }
     return { ok: true, bookmarks: await bookmarks.save(request.body) };
+  });
+  server.get('/api/notes', async request => {
+    if (Object.keys(request.query as object).length) throw new NoteError('INVALID_ARGUMENT', '笔记列表参数无效。', '读取所选项目的笔记。');
+    return { ok: true, notes: await notes.list() };
+  });
+  server.put('/api/notes', async request => {
+    if (Object.keys(request.query as object).length || request.headers['content-type']?.split(';')[0]?.trim().toLowerCase() !== 'application/json') {
+      throw new NoteError('INVALID_ARGUMENT', '笔记操作参数无效。', '使用本机阅读页面提交单条笔记操作。');
+    }
+    return { ok: true, note: await notes.save(request.body) };
   });
   server.get('/api/dependency-canvas', async request => {
     if (Object.keys(request.query as object).length) throw new ReaderError('INVALID_ARGUMENT', '图参数无效。', '读取当前项目的依赖图。');
