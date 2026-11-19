@@ -165,7 +165,7 @@
 ## Phase 20 · D023 试读调整收束
 
 - [x] T044 同步 docs/usage/file-reader.md。用 tests/browser/reader-center.mjs 和 specs/006-file-reader/quickstart.md 复验题头、切篇、浮窗、窄屏及受影响的现有阅读行为（SC-010/011）。
-- [ ] T045 冻结调整候选并由未参与实现的审查者复核，按 docs/work/2026/11/D023-reader-center/amendments.md 更新独审、回执及共用试读，在回执登记生效候选（SC-010/011）。
+- [x] T045 冻结调整候选并由未参与实现的审查者复核，按 docs/work/2026/11/D023-reader-center/amendments.md 更新独审、回执及共用试读，在回执登记生效候选（SC-010/011）。
 
 ## Dependencies & Execution Order
 
