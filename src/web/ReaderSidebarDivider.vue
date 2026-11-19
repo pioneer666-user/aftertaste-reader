@@ -1,15 +1,38 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 const percentage = defineModel<number>({ required: true });
 defineProps<{ label: string }>();
 
-const minimum = 20;
-const maximum = 80;
+const dividerElement = ref<HTMLElement>();
+const minimum = ref(20);
+const maximum = computed(() => 100 - minimum.value);
+const visiblePercentage = computed(() => clamp(percentage.value));
 const drag = ref<{ pointerId: number; offset: number }>();
+let observer: ResizeObserver | undefined;
+
+onMounted(() => {
+  const divider = dividerElement.value;
+  const files = divider?.previousElementSibling;
+  const outline = divider?.nextElementSibling;
+  if (!divider || !files || !outline) return;
+  observer = new ResizeObserver(() => {
+    const total = files.clientHeight + outline.clientHeight;
+    if (total === 0) return;
+    const pixels = Number.parseFloat(getComputedStyle(divider).getPropertyValue('--sidebar-section-minimum'));
+    minimum.value = Math.min(50, Math.max(20, Math.ceil(pixels / total * 100)));
+  });
+  observer.observe(files);
+  observer.observe(outline);
+});
+onUnmounted(() => observer?.disconnect());
+
+function clamp(value: number) {
+  return Math.min(maximum.value, Math.max(minimum.value, Math.round(value)));
+}
 
 function resize(value: number) {
-  percentage.value = Math.min(maximum, Math.max(minimum, Math.round(value)));
+  percentage.value = clamp(value);
 }
 
 function startDrag(event: PointerEvent) {
@@ -38,10 +61,10 @@ function endDrag(event: PointerEvent) {
 
 function resizeFromKeyboard(event: KeyboardEvent) {
   switch (event.key) {
-    case 'ArrowUp': resize(percentage.value - 5); break;
-    case 'ArrowDown': resize(percentage.value + 5); break;
-    case 'Home': resize(minimum); break;
-    case 'End': resize(maximum); break;
+    case 'ArrowUp': resize(visiblePercentage.value - 5); break;
+    case 'ArrowDown': resize(visiblePercentage.value + 5); break;
+    case 'Home': resize(minimum.value); break;
+    case 'End': resize(maximum.value); break;
     default: return;
   }
   event.preventDefault();
@@ -50,9 +73,9 @@ function resizeFromKeyboard(event: KeyboardEvent) {
 
 <template>
   <div
-    class="sidebar-divider" role="separator" tabindex="0" aria-orientation="horizontal"
+    ref="dividerElement" class="sidebar-divider" role="separator" tabindex="0" aria-orientation="horizontal"
     aria-controls="reader-file-navigation" :aria-label="label" :aria-valuemin="minimum" :aria-valuemax="maximum"
-    :aria-valuenow="percentage" :aria-valuetext="`${percentage}%`" :data-dragging="drag ? '' : undefined"
+    :aria-valuenow="visiblePercentage" :aria-valuetext="`${visiblePercentage}%`" :data-dragging="drag ? '' : undefined"
     @pointerdown="startDrag" @pointermove="moveDivider" @lostpointercapture="endDrag" @keydown="resizeFromKeyboard"
   ></div>
 </template>

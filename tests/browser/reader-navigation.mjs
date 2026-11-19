@@ -227,7 +227,14 @@ try {
   await jump(contents.getByRole('button', { name: /^从已有名字构建路径/u }), 'overview');
   await page.getByRole('combobox', { name: '界面语言' }).selectOption('en');
   await toc('On this page').getByRole('button', { name: /^从已有名字构建路径/u }).waitFor();
+  for (const width of [851, 900]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal((await topMenu.boundingBox()).height, 48);
+    assert.ok(await topMenu.getByRole('combobox', { name: 'Interface language' }).isVisible());
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('combobox', { name: 'Interface language' }).selectOption('zh-CN');
+  report.checks.push('English toolbar remains one 48px row at 851px and 900px');
 
   assert.equal(await file('src/service.mjs').innerText(), 'service.mjs');
   assert.equal(await file(duplicate).innerText(), 'service.mjs');
@@ -286,6 +293,25 @@ try {
   await page.locator('#marks button.bookmark-entry').filter({ hasText: '为什么要先校验数量' }).press('Enter');
   await page.locator('#mark-x4y6az2y:focus').getByText(/为什么要先校验数量/u).waitFor();
   report.checks.push('delayed document cannot replace current content, prose before folded records, exact bookmark and annotation focus');
+
+  await page.setViewportSize({ width: 1440, height: 320 });
+  await page.waitForFunction(() => Number(document.querySelector('.sidebar-divider')?.getAttribute('aria-valuemin')) > 20);
+  async function checkFirstRow(section) {
+    const scroller = section.locator('.navigation-scroll');
+    await scroller.evaluate(element => { element.scrollTop = 0; });
+    const frame = await scroller.boundingBox();
+    const row = await section.getByRole('button').first().boundingBox();
+    assert.ok(row && frame && row.y >= frame.y &&
+      row.y + row.height <= Math.min(frame.y + frame.height, page.viewportSize().height) + 1);
+  }
+  await divider.press('End');
+  assert.equal(await division(), Number(await divider.getAttribute('aria-valuemax')));
+  await checkFirstRow(contents);
+  await dragDivider(0);
+  assert.equal(await division(), Number(await divider.getAttribute('aria-valuemin')));
+  await divider.press('Home');
+  await checkFirstRow(tree);
+  report.checks.push('1440×320 divider limits leave a complete row available in the smaller pane');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
