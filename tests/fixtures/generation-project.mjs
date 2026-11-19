@@ -53,10 +53,11 @@ export async function createGenerationProject(target) {
     await writeFile(path.join(project, name), content, 'utf8');
   }
   const git = (...args) => execFileSync('git', ['-C', project, '-c', 'core.autocrlf=false', ...args], { encoding: 'utf8', windowsHide: true });
-  git('init', '--initial-branch=main');
+  git('init', '--initial-branch=main', '--object-format=sha1');
   git('add', 'src', 'support');
   execFileSync('git', ['-C', project, '-c', 'user.name=Synthetic Fixture', '-c', 'user.email=fixture@example.invalid',
-    '-c', 'commit.gpgsign=false', '-c', 'core.autocrlf=false', 'commit', '-m', 'synthetic reading fixture'], {
+    '-c', 'commit.gpgsign=false', '-c', 'core.autocrlf=false', '-c', 'i18n.commitEncoding=UTF-8',
+    'commit', '-m', 'synthetic reading fixture'], {
     encoding: 'utf8', windowsHide: true,
     env: { ...process.env, GIT_AUTHOR_DATE: '2026-11-17T00:00:00Z', GIT_COMMITTER_DATE: '2026-11-17T00:00:00Z' },
   });
