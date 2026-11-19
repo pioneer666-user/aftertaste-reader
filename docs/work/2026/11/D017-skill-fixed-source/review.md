@@ -38,3 +38,32 @@ Set-Location -LiteralPath (Join-Path $repo '.local/D017')
 - 本轮实测用超过默认接收上限的小样例覆盖 JSON 转义，未实跑 64 MiB 上限。未复跑全套测试，未检查其他平台、宿主自动发现、安装发布、浏览器或作者真实项目的讲解体验。
 - 审查前后 HEAD 均为冻结候选，跟踪工作树干净。Skill 入口、受影响参考、测试及 fixture、批准任务、CLI 契约及三个相关构建文件的 SHA-256 一致。合成样例的 A／B 提交保持一致，测试设置的替换引用已撤除，子进程均结束。未启动服务或浏览器，未操作 D016 服务。自动执行策略拒绝了本轮合成样例的目录清理命令，样例留在 `.local/D017/example-csVsUN` 供复核。
 - **采集结束，可以恢复写入。** 本轮结论限于上述候选与范围。作者体验、合并和发布由各自流程确认。[写入交还规则](../../../../development/workflow.md#review-handoff)
+
+## R2 · 2026-11-19
+
+**结论：通过。** R1 的 P2 已关闭。已有固定映射时，公开示例会复用该映射，即使 HEAD 已移动。首次固定、Git 隔离、完整正文读回及失败诊断均通过复验。
+
+### 复核对象与验证
+
+- 批准依据仍为 [D017](task.md) @ `65e199f4efea12edff85d61d8689b7f44598c32f`，无有效调整。新冻结候选为 `codex/fix-skill-fixed-source@4544cacca9fc305b4ebd1b2b3b4f91221976c10f`，对比 R1 候选 `641fe20054b2d94ebc0b6971152bcf474f11b744`。差异包含 R1 原文、工具示例的 `previousFixed` 输入与首次固定分支，以及续跑回归。`git diff --check` 通过。
+- 示例说明明确将接续批次的四字段映射作为 `previousFixed` 传入。该值存在时，代码直接使用原映射；缺省时才按指定版本或 `HEAD` 调用 `pin`。[工具参考](../../../../../skills/aftertaste-reader/references/tools.md)
+
+本轮在 Windows build 26200、Node `24.22.3`、Git `2.50.1.windows.1` 环境中，从非目标项目 cwd 独立串行执行。回归提取最终公开说明的三个 JavaScript 代码块，实际调用开发树 CLI 和 Git，结果 5/5 通过。
+
+```powershell
+$Node24 = (Get-Command node -All | Select-Object -Last 1).Source
+$repo = (Get-Location).Path
+$test = Join-Path $repo 'tests/skills/fixed-source-example.test.mjs'
+Set-Location -LiteralPath (Join-Path $repo '.local/D017')
+& $Node24 --test --test-concurrency=1 --test-reporter=tap $test
+```
+
+- **R1 关闭依据**。先指定提交 A `9a928d5c65da8e441fccad10b67c81d6aec72784` 取得固定映射。HEAD 为 B `971969dc44c48aa89b478e981511d89880bbff0c` 时，新上下文无映射且缺省版本的首次调用固定 B。另一个新上下文传入 A 的映射后，四字段与原映射一致，子项目完整路径集为 `唯 一 A.txt`、`较大 文件.txt`，选中的 `唯 一 A.txt` 返回提交 A 和逐字一致的正文。
+- **固定树枚举复验**。分别开启 `git replace A B` 和将宿主 `GIT_DIR` 指到独立仓库。两种干扰下均验证根项目及带空格和中文的子项目完整路径集，子项目排除名称前缀相似的相邻目录，选中文件逐字读回 A 的正文。
+- **完整读回及失败复验**。`792000` B 正文经 CLI 编码为 `1152526` B JSON，解析后的项目相对路径、仓库相对路径、提交和完整正文均匹配。正文 SHA-256 为 `528e36a6b4f94c566dba965eefca03660a1fd8b13d0b42f995e35196b5067d6d`。受控接收超限返回 `ENOBUFS`，读取 A 中缺失的文件返回状态 `1` 和 `FILE_NOT_FOUND`。两种错误均未附原始输出流。[行为回归](../../../../../tests/skills/fixed-source-example.test.mjs)
+
+### 未验证项与写入交还
+
+- 未实跑 64 MiB 边界、全套测试、其他平台、宿主自动发现、安装发布和浏览器。作者真实项目的讲解体验仍待作者验收。
+- 复核前后 HEAD 均为 `4544cacca9fc305b4ebd1b2b3b4f91221976c10f`，跟踪工作树干净。批准任务、CLI 契约、Skill 入口及相关参考、测试与 fixture、三个相关构建文件的 SHA-256 前后一致。独立合成样例保留于 `.local/D017/example-IAe6Gm`，A／B 提交与测试记录一致，样例工作树干净，替换引用已撤除。子进程均已结束。未启动服务或浏览器，未操作 D016 服务。
+- **采集结束，可以恢复写入。** 本轮结论限于该候选及上述复核范围。作者体验、合并与发布由各自流程确认。[写入交还规则](../../../../development/workflow.md#review-handoff)
