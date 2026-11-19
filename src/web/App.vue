@@ -4,9 +4,11 @@ import type { DocumentEntry, ReaderProblem } from '../application/file-reader.js
 import type { ReadingDocument } from '../application/document-blocks.js';
 import type { LoopEntry } from '../application/loop-reader.js';
 import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
+import type { BlockQuote, BlockTarget } from '../core/notes.js';
 import { bookmarkDraftsKey } from './bookmark-drafts.js';
 import type { BookmarkDraft } from './bookmark-drafts.js';
 import ReaderDocument from './ReaderDocument.vue';
+import ProjectNotes from './ProjectNotes.vue';
 import DependencyCanvas from './DependencyCanvas.vue';
 import { failed, request } from './reader-api.js';
 import { problemText, readLanguage, saveLanguage, translate } from './i18n.js';
@@ -26,7 +28,8 @@ const listLoading = ref(true);
 const readingLoading = ref(false);
 const readingPane = ref<HTMLElement>();
 const canvasOpened = ref(false);
-const view = ref<'reader' | 'canvas' | 'loops' | 'bookmarks'>('reader');
+const view = ref<'reader' | 'canvas' | 'loops' | 'bookmarks' | 'notes'>('reader');
+const noteQuote = ref<BlockQuote>();
 const fromCanvas = ref(false);
 const loopEntries = ref<LoopEntry[]>([]);
 const loopsLoaded = ref(false);
@@ -122,6 +125,39 @@ async function visitBookmark(bookmark: Bookmark) {
   unavailableBookmark.value = bookmark;
   await nextTick();
   if (visit === bookmarkVisitSequence && view.value === 'bookmarks') unavailableMessage.value?.focus();
+}
+
+function addToNotes(quote: BlockQuote) {
+  noteQuote.value = quote;
+  view.value = 'notes';
+}
+
+async function visitNoteBlock(target: BlockTarget): Promise<string | undefined> {
+  const loading = selectDocument(target.documentPath, false);
+  const reading = readSequence;
+  await loading;
+  if (reading !== readSequence || view.value !== 'notes') return;
+  const location = `${target.documentPath} · ${target.blockId}`;
+  if (readingError.value) {
+    const message = readingError.value.code === 'DOCUMENT_READ_FAILED' && readingError.value.context.reason === 'ENOENT'
+      ? t('noteDocumentMissing') : problemText(language.value, readingError.value).message;
+    return `${message} ${location}`;
+  }
+  if (result.value?.renderMode !== 'comparison') {
+    const problem = result.value?.sourceError ?? result.value?.diagnostics.find(item => item.severity === 'error');
+    return `${t('noteDocumentInvalid')} ${problem ? problemText(language.value, problem).message + ' ' : ''}${location}`;
+  }
+  if (!result.value.blocks.some(block => block.id === target.blockId)) return `${t('noteBlockMissing')} ${location}`;
+
+  fromCanvas.value = false;
+  view.value = 'reader';
+  await nextTick();
+  if (reading !== readSequence || view.value !== 'reader') return;
+  const block = readingPane.value?.querySelector<HTMLElement>(`#${CSS.escape(target.blockId)}`);
+  if (block) {
+    block.scrollIntoView({ block: 'center', inline: 'nearest' });
+    block.focus({ preventScroll: true });
+  }
 }
 
 function openCanvas() {
@@ -231,7 +267,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <a :href="view === 'canvas' ? '#canvas-reading' : view === 'loops' ? '#loop-navigation' : view === 'bookmarks' ? '#bookmarks' : '#reading'"
+  <a :href="view === 'canvas' ? '#canvas-reading' : view === 'loops' ? '#loop-navigation' : view === 'bookmarks' ? '#bookmarks' : view === 'notes' ? '#notes' : '#reading'"
     class="skip-link">{{ t('skip') }}</a>
   <header class="app-header">
     <div class="brand"><strong>{{ t('brand') }}</strong><span>{{ t('title') }}</span></div>
@@ -240,6 +276,7 @@ onMounted(() => {
       <button v-if="view !== 'reader'" type="button" @click="view = 'reader'; fromCanvas = false">{{ t('files') }}</button>
       <button type="button" :aria-pressed="view === 'loops'" @click="openLoops">{{ t('loops') }}</button>
       <button type="button" :aria-pressed="view === 'bookmarks'" @click="openBookmarks">{{ t('bookmarks') }}</button>
+      <button type="button" :aria-pressed="view === 'notes'" @click="view = 'notes'">{{ t('notes') }}</button>
       <button v-if="view === 'reader'" type="button" :disabled="listLoading" @click="refresh">{{ t('refresh') }}</button>
       <label class="language-control"><span>{{ t('language') }}</span>
         <select :value="language" :aria-label="t('language')" @change="changeLanguage"><option value="zh-CN">简体中文</option><option value="en">English</option></select>
@@ -272,6 +309,8 @@ onMounted(() => {
       </li>
     </ul>
   </main>
+  <ProjectNotes v-show="view === 'notes'" :visible="view === 'notes'" :language="language" :quote="noteQuote"
+    :visit="visitNoteBlock" @clear-quote="noteQuote = undefined" />
   <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" :active="view === 'canvas'" :language="language" @read="readFromCanvas" />
   <div v-show="view === 'loops'">
     <section id="loop-navigation" ref="loopNavigation" class="loop-navigation" :aria-label="t('loops')" tabindex="-1">
@@ -318,7 +357,7 @@ onMounted(() => {
       <ReaderDocument v-else-if="result || readingError" :key="selected"
         v-bind="{ ...(result ? { result } : {}), ...(readingError ? { error: readingError } : {}) }"
         :language="language" :bookmarks="bookmarks" :active-bookmark="activeBookmark"
-        :bookmarks-busy="bookmarksLoading || bookmarksSaving" :save-bookmark="saveBookmark" />
+        :bookmarks-busy="bookmarksLoading || bookmarksSaving" :save-bookmark="saveBookmark" @add-to-notes="addToNotes" />
       <section v-else-if="!listLoading && !listError && !documents.length && !problems.length" class="empty-state">
         <h1>{{ t('empty') }}</h1><p>{{ t('emptyHelp') }}</p><code>docs/aftertaste/current/</code>
       </section>
