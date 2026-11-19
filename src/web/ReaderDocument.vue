@@ -4,7 +4,9 @@ import type { ReadingDocument } from '../application/document-blocks.js';
 import type { ReaderProblem } from '../application/file-reader.js';
 import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
 import type { BlockQuote } from '../core/notes.js';
+import type { MarkEdit, ReaderMark } from '../core/understanding-marks.js';
 import BlockBookmarks from './BlockBookmarks.vue';
+import BlockUnderstandingMark from './BlockUnderstandingMark.vue';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { renderMarkdown } from './markdown.js';
@@ -13,12 +15,16 @@ const props = defineProps<{
   result?: ReadingDocument; error?: ReaderProblem; language: Language;
   bookmarks: readonly Bookmark[]; activeBookmark: string; bookmarksBusy: boolean;
   saveBookmark: (action: BookmarkAction) => Promise<void>;
+  marks: readonly ReaderMark[]; marksBusy: boolean; markListError: ReaderProblem | undefined;
+  saveMark: (edit: MarkEdit) => Promise<void>;
 }>();
-const emit = defineEmits<{ addToNotes: [quote: BlockQuote] }>();
+const emit = defineEmits<{ addToNotes: [quote: BlockQuote]; refreshMarks: [] }>();
 const t = (key: string) => translate(props.language, key);
 const copyStatus = ref('');
 const blockRoot = ref<HTMLElement>();
 const quote = ref<BlockQuote>();
+const blockMarks = computed(() => new Map(props.marks.filter(mark => mark.documentPath === props.result?.documentPath)
+  .map(mark => [mark.blockId, mark])));
 const diagnostics = computed(() => props.result?.diagnostics ?? []);
 const hasProblems = computed(() => Boolean(props.error || diagnostics.value.length || props.result?.sourceError));
 const repairText = computed(() => {
@@ -88,6 +94,12 @@ onUnmounted(() => document.removeEventListener('selectionchange', captureSelecti
         <p>{{ t('fallbackHelp') }}</p>
       </div>
     </header>
+    <div v-if="result.renderMode === 'comparison' && markListError" class="mark-read-error">
+      <p class="bookmark-error" role="alert">
+        {{ problemText(language, markListError).message }} {{ problemText(language, markListError).nextStep }}
+      </p>
+      <button type="button" :disabled="marksBusy" @click="emit('refreshMarks')">{{ t('markRefresh') }}</button>
+    </div>
     <div v-if="result.renderMode === 'comparison'" ref="blockRoot" class="document-blocks">
       <section v-for="block in result.blocks" :id="block.id" :key="block.id" tabindex="-1" class="document-block" :class="{ comparison: block.lines }">
         <div v-if="block.lines" class="source-pane">
@@ -102,6 +114,8 @@ onUnmounted(() => document.removeEventListener('selectionchange', captureSelecti
             :active-bookmark="activeBookmark" :busy="bookmarksBusy" :language="language" :save-bookmark="saveBookmark">
             <h2 class="pane-label">{{ t('explanation') }} <code>{{ block.id }}</code></h2>
           </BlockBookmarks>
+          <BlockUnderstandingMark :document-path="result.documentPath" :block-id="block.id" :mark="blockMarks.get(block.id)"
+            :language="language" :busy="marksBusy" :unavailable="!!markListError" :save-mark="saveMark" />
           <p v-if="!block.body.trim()" class="notice">{{ t('unfilled') }}</p>
           <div class="markdown explanation-text" v-html="renderMarkdown(block.body)"></div>
           <button v-if="quote?.blockId === block.id" type="button" class="note-selection-action"

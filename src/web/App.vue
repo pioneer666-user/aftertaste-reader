@@ -5,10 +5,14 @@ import type { ReadingDocument } from '../application/document-blocks.js';
 import type { LoopEntry } from '../application/loop-reader.js';
 import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
 import type { BlockQuote, BlockTarget } from '../core/notes.js';
+import type { MarkEdit, ReaderMark, UnderstandingMark } from '../core/understanding-marks.js';
 import { bookmarkDraftsKey } from './bookmark-drafts.js';
 import type { BookmarkDraft } from './bookmark-drafts.js';
+import { markDraftsKey } from './mark-drafts.js';
+import type { MarkDraft } from './mark-drafts.js';
 import ReaderDocument from './ReaderDocument.vue';
 import ProjectNotes from './ProjectNotes.vue';
+import ProjectMarks from './ProjectMarks.vue';
 import DependencyCanvas from './DependencyCanvas.vue';
 import { failed, request } from './reader-api.js';
 import { problemText, readLanguage, saveLanguage, translate } from './i18n.js';
@@ -28,7 +32,7 @@ const listLoading = ref(true);
 const readingLoading = ref(false);
 const readingPane = ref<HTMLElement>();
 const canvasOpened = ref(false);
-const view = ref<'reader' | 'canvas' | 'loops' | 'bookmarks' | 'notes'>('reader');
+const view = ref<'reader' | 'canvas' | 'loops' | 'bookmarks' | 'notes' | 'marks'>('reader');
 const noteQuote = ref<BlockQuote>();
 const fromCanvas = ref(false);
 const loopEntries = ref<LoopEntry[]>([]);
@@ -49,10 +53,46 @@ const unavailableMessage = ref<HTMLElement>();
 const unavailableBookmark = ref<Bookmark>();
 const activeBookmark = ref('');
 const visitingBookmark = ref(false);
+const markRoute = '/api/understanding-marks';
+const marks = ref<ReaderMark[]>([]);
+const markFilter = ref<'all' | 'not-understood'>('all');
+const marksBusy = ref(false);
+const markListError = ref<ReaderProblem>();
+provide(markDraftsKey, reactive(new Map<string, MarkDraft>()));
 let listSequence = 0;
 let readSequence = 0;
 let bookmarkVisitSequence = 0;
 let controller: AbortController | undefined;
+
+async function loadMarks() {
+  try {
+    const data = await request<{ marks: ReaderMark[] }>(markRoute);
+    marks.value = data.marks;
+    markListError.value = undefined;
+  } catch (error) { markListError.value = failed(error); }
+}
+
+async function refreshMarks() {
+  if (marksBusy.value) return;
+  marksBusy.value = true;
+  try { await loadMarks(); }
+  finally { marksBusy.value = false; }
+}
+
+async function saveMark(edit: MarkEdit) {
+  marksBusy.value = true;
+  try {
+    const data = await request<{ marks: ReaderMark[] }>(markRoute, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Understanding-Marks': '1' },
+      body: JSON.stringify(edit),
+    });
+    marks.value = data.marks;
+  } catch (error) {
+    if (failed(error).code === 'MARK_CONFLICT') await loadMarks();
+    throw error;
+  } finally { marksBusy.value = false; }
+}
 
 async function loadBookmarks() {
   try {
@@ -132,11 +172,11 @@ function addToNotes(quote: BlockQuote) {
   view.value = 'notes';
 }
 
-async function visitNoteBlock(target: BlockTarget): Promise<string | undefined> {
+async function visitBlock(target: BlockTarget, from: 'notes' | 'marks'): Promise<string | undefined> {
   const loading = selectDocument(target.documentPath, false);
   const reading = readSequence;
   await loading;
-  if (reading !== readSequence || view.value !== 'notes') return;
+  if (reading !== readSequence || view.value !== from) return;
   const location = `${target.documentPath} · ${target.blockId}`;
   if (readingError.value) {
     const message = readingError.value.code === 'DOCUMENT_READ_FAILED' && readingError.value.context.reason === 'ENOENT'
@@ -159,6 +199,9 @@ async function visitNoteBlock(target: BlockTarget): Promise<string | undefined> 
     block.focus({ preventScroll: true });
   }
 }
+
+const visitNoteBlock = (target: BlockTarget) => visitBlock(target, 'notes');
+const visitMark = (target: UnderstandingMark) => visitBlock(target, 'marks');
 
 function openCanvas() {
   canvasOpened.value = true;
@@ -263,11 +306,12 @@ onMounted(() => {
   document.title = `${t('brand')} · ${t('title')}`;
   void refresh();
   void refreshBookmarks();
+  void refreshMarks();
 });
 </script>
 
 <template>
-  <a :href="view === 'canvas' ? '#canvas-reading' : view === 'loops' ? '#loop-navigation' : view === 'bookmarks' ? '#bookmarks' : view === 'notes' ? '#notes' : '#reading'"
+  <a :href="view === 'canvas' ? '#canvas-reading' : view === 'loops' ? '#loop-navigation' : view === 'reader' ? '#reading' : '#' + view"
     class="skip-link">{{ t('skip') }}</a>
   <header class="app-header">
     <div class="brand"><strong>{{ t('brand') }}</strong><span>{{ t('title') }}</span></div>
@@ -276,8 +320,9 @@ onMounted(() => {
       <button v-if="view !== 'reader'" type="button" @click="view = 'reader'; fromCanvas = false">{{ t('files') }}</button>
       <button type="button" :aria-pressed="view === 'loops'" @click="openLoops">{{ t('loops') }}</button>
       <button type="button" :aria-pressed="view === 'bookmarks'" @click="openBookmarks">{{ t('bookmarks') }}</button>
+      <button type="button" :aria-pressed="view === 'marks'" @click="view = 'marks'; refreshMarks()">{{ t('marks') }}</button>
       <button type="button" :aria-pressed="view === 'notes'" @click="view = 'notes'">{{ t('notes') }}</button>
-      <button v-if="view === 'reader'" type="button" :disabled="listLoading" @click="refresh">{{ t('refresh') }}</button>
+      <button v-if="view === 'reader'" type="button" :disabled="listLoading" @click="refresh(); refreshMarks()">{{ t('refresh') }}</button>
       <label class="language-control"><span>{{ t('language') }}</span>
         <select :value="language" :aria-label="t('language')" @change="changeLanguage"><option value="zh-CN">简体中文</option><option value="en">English</option></select>
       </label>
@@ -309,6 +354,8 @@ onMounted(() => {
       </li>
     </ul>
   </main>
+  <ProjectMarks v-if="view === 'marks'" v-model:filter="markFilter" :language="language" :marks="marks"
+    :busy="marksBusy" v-bind="markListError ? { error: markListError } : {}" :visit="visitMark" @refresh="refreshMarks" />
   <ProjectNotes v-show="view === 'notes'" :visible="view === 'notes'" :language="language" :quote="noteQuote"
     :visit="visitNoteBlock" @clear-quote="noteQuote = undefined" />
   <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" :active="view === 'canvas'" :language="language" @read="readFromCanvas" />
@@ -357,7 +404,9 @@ onMounted(() => {
       <ReaderDocument v-else-if="result || readingError" :key="selected"
         v-bind="{ ...(result ? { result } : {}), ...(readingError ? { error: readingError } : {}) }"
         :language="language" :bookmarks="bookmarks" :active-bookmark="activeBookmark"
-        :bookmarks-busy="bookmarksLoading || bookmarksSaving" :save-bookmark="saveBookmark" @add-to-notes="addToNotes" />
+        :bookmarks-busy="bookmarksLoading || bookmarksSaving" :save-bookmark="saveBookmark"
+        :marks="marks" :marks-busy="marksBusy" :save-mark="saveMark" :mark-list-error="markListError"
+        @refresh-marks="refreshMarks" @add-to-notes="addToNotes" />
       <section v-else-if="!listLoading && !listError && !documents.length && !problems.length" class="empty-state">
         <h1>{{ t('empty') }}</h1><p>{{ t('emptyHelp') }}</p><code>docs/aftertaste/current/</code>
       </section>
