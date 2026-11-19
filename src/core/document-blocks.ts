@@ -60,6 +60,10 @@ export class DocumentError extends Error {
   }
 }
 
+export function isDocumentBlockId(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-z0-9]{8}$/u.test(value);
+}
+
 export function physicalLineCount(text: string): number {
   if (text === '') return 0;
   const breaks = text.match(/\r\n|\r|\n/gu)?.length ?? 0;
@@ -147,7 +151,7 @@ export function parseDocument(raw: string, documentPath: string): ParsedDocument
       } else fields.set(pair[1]!, pair[2]!);
     }
     const id = fields.get('id');
-    if (!id || !/^[a-z0-9]{8}$/u.test(id)) {
+    if (!isDocumentBlockId(id)) {
       diagnostics.push(problem(documentPath, 'BLOCK_ID_INVALID', '块 ID 格式无效。', '使用同篇唯一的 8 位小写字母数字 ID。', line));
       active.valid = false;
     } else {
@@ -232,7 +236,7 @@ export function generateSkeleton(commit: string, input: unknown, lineCount: numb
     let id = '';
     for (let attempt = 0; attempt < 100; attempt++) {
       const candidate = makeId();
-      if (typeof candidate === 'string' && /^[a-z0-9]{8}$/u.test(candidate) && !used.has(candidate)) {
+      if (isDocumentBlockId(candidate) && !used.has(candidate)) {
         id = candidate;
         break;
       }

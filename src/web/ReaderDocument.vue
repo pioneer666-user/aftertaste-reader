@@ -2,11 +2,17 @@
 import { computed, ref } from 'vue';
 import type { ReadingDocument } from '../application/document-blocks.js';
 import type { ReaderProblem } from '../application/file-reader.js';
+import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
+import BlockBookmarks from './BlockBookmarks.vue';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { renderMarkdown } from './markdown.js';
 
-const props = defineProps<{ result?: ReadingDocument; error?: ReaderProblem; language: Language }>();
+const props = defineProps<{
+  result?: ReadingDocument; error?: ReaderProblem; language: Language;
+  bookmarks: readonly Bookmark[]; activeBookmark: string; bookmarksBusy: boolean;
+  saveBookmark: (action: BookmarkAction) => Promise<void>;
+}>();
 const t = (key: string) => translate(props.language, key);
 const copyStatus = ref('');
 const diagnostics = computed(() => props.result?.diagnostics ?? []);
@@ -64,7 +70,11 @@ async function copyRepair() {
           </div>
         </div>
         <div class="explanation-pane">
-          <h2 class="pane-label">{{ t('explanation') }} <code>{{ block.id }}</code></h2>
+          <BlockBookmarks :document-path="result.documentPath" :block-id="block.id"
+            :bookmarks="bookmarks.filter(entry => entry.documentPath === result?.documentPath && entry.blockId === block.id)"
+            :active-bookmark="activeBookmark" :busy="bookmarksBusy" :language="language" :save-bookmark="saveBookmark">
+            <h2 class="pane-label">{{ t('explanation') }} <code>{{ block.id }}</code></h2>
+          </BlockBookmarks>
           <p v-if="!block.body.trim()" class="notice">{{ t('unfilled') }}</p>
           <div class="markdown" v-html="renderMarkdown(block.body)"></div>
         </div>
