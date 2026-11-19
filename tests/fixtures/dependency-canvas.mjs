@@ -11,7 +11,7 @@ export const cli = path.join(build, 'cli/main.js');
 export async function createCanvasProject(target) {
   const fixed = await createGenerationProject(target);
   const data = path.join(fixed.projectRoot, 'docs/aftertaste');
-  const sample = path.join(repository, 'docs/work/2026/11/D010-generation-skill/sample');
+  const sample = fileURLToPath(new URL('./order-reading/', import.meta.url));
   await mkdir(data, { recursive: true });
   for (const entry of ['current', 'dependency-graph.json', 'preferences.md', 'reading-direction.md']) {
     await cp(path.join(sample, entry), path.join(data, entry), { recursive: true, errorOnExist: true, force: false });

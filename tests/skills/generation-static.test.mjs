@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFile, access, mkdir, mkdtemp } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,12 +26,22 @@ test('入口、参考、模板均存在，包内相对链接可解析', async ()
   assert.match(entry, /^---\r?\nname: aftertaste-reader\r?\ndescription: .+\r?\n---/);
 });
 
-test('合成项目可重建同一 Git 提交，工作区差异独立存在', async () => {
+test('合成项目不受 Git 默认对象格式和提交编码影响，工作区差异独立存在', async () => {
   const runs = path.join(root, '.local/D010');
   await mkdir(runs, { recursive: true });
   const run = await mkdtemp(path.join(runs, 'fixture-check-'));
   const first = await createGenerationProject(path.join(run, 'first'));
-  const second = await createGenerationProject(path.join(run, 'second'));
+  const script = fileURLToPath(new URL('../fixtures/generation-project.mjs', import.meta.url));
+  const output = execFileSync(process.execPath, [script, path.join(run, 'second')], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      GIT_CONFIG_COUNT: '2',
+      GIT_CONFIG_KEY_0: 'init.defaultObjectFormat', GIT_CONFIG_VALUE_0: 'sha256',
+      GIT_CONFIG_KEY_1: 'i18n.commitEncoding', GIT_CONFIG_VALUE_1: 'ISO-8859-1',
+    },
+  });
+  const second = JSON.parse(output);
   assert.equal(first.commit, second.commit);
   assert.equal(await readFile(path.join(first.projectRoot, 'src/rules.mjs'), 'utf8'), 'export const WORKTREE_ONLY = true;\n');
   await assert.rejects(createGenerationProject(first.projectRoot), { code: 'EEXIST' });

@@ -5,7 +5,7 @@ import { createGenerationProject } from './generation-project.mjs';
 
 export async function createReaderProject(target) {
   const project = await createGenerationProject(target);
-  const sample = fileURLToPath(new URL('../../docs/work/2026/11/D010-generation-skill/sample/current/src/', import.meta.url));
+  const sample = fileURLToPath(new URL('./order-reading/current/src/', import.meta.url));
   const documents = path.join(project.projectRoot, 'docs/aftertaste/current/src');
   await mkdir(documents, { recursive: true });
   for (const name of ['rules.mjs.md', 'service.mjs.md']) {
