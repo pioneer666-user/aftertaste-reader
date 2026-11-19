@@ -29,7 +29,7 @@ Edge 目录有订单分支和窄屏截图。写失败的页面检查使用注入
 
 ## 资源与交回
 
-- 试读服务由 D016 执行启动，进程 `38156`，目录 `.local/D016/trial-3866952/project`，用 `.local/D016/candidate/build-r2` 和 Node 24。试读项目固定提交 `4be951b2bf9aae434e0acc3e1aeab3e4e0cf0734`。服务日志在 `.local/D016/trial-3866952/reader.log`。
+- 试读使用 `.local/D016/candidate/build-r2`、Node 24 和 `.local/D016/trial-3866952/project`，样例固定提交 `4be951b2bf9aae434e0acc3e1aeab3e4e0cf0734`。2026-11-19 接回时原端口已无监听，主脑以相同构建、样例和端口 4336 恢复，监听 PID 为 `18208`。首页返回 200，读回订单闭环 5 步、路径工具闭环 2 步，两者 `sourceCheck` 均为 `completed`。
 - 结束试读后可停止该进程。重新启动时在回味仓库的 PowerShell 中运行下列命令，保留目标项目目录便会恢复已保存的排布。前台启动后按 Ctrl+C 停止。
 
 ```powershell

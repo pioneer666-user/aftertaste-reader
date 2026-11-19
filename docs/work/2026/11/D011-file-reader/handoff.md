@@ -4,7 +4,7 @@
 
 W01—W06 已实现、自测和独审闭合，已获作者明确授权并合入 dev，作者体验待验。行为候选为 984b2917c5ca9cd106a0eb3524ff56b83d7019b5，批准任务为 [task.md @38b173f](task.md)，比较 dev 基线 bf15ac71b3f9bac97b37524598e73d9ec060234b，本批来源为 codex/feat-file-reader。独审 R1 绑定 0b041b0，发现行号对比度不足；第 1 轮修复后三浏览器均为 5.513，原审查者 R2 复核通过。[独审原文](review.md)保留发现和复核。
 
-作者体验入口为 [本机阅读页](http://127.0.0.1:4317)，使用独立 D010 合成首批，项目位于 `.local/D011/author-sample/`。当前只读两篇讲解，源码依据 5394d8f86c961ce1b327674235525f57bf0b982c。作者尚未体验验收，真实项目教学效果待验。
+D011 试读使用 `.local/D011/author-sample/` 中的两篇合成讲解，源码依据 5394d8f86c961ce1b327674235525f57bf0b982c。2026-11-19 核查时，原端口 4317 已无监听。当前版本的逐文件阅读可从 [D016 试读](../D016-loop-reader/handoff.md) 打开。D011 作者体验和真实项目教学效果待验。
 
 2026-11-17，作者在本执行聊天明确指令“合并到dev”。按此授权将交回提交 028fa57 正常 --no-ff 整合，合并为 b7933d0bdca138eff9ef1cdb9b435737a40ba6cc。该指令记录为合并许可，页面作者体验继续待验。候选提交和原始审查记录可从 dev 合并历史追溯，合成试读资料与服务保留。
 
@@ -41,12 +41,6 @@ Git 停在 dev，已核合并双亲为 bf15ac7 与 028fa57，合并树与 028fa5
 
 2026-11-18 主脑接回时，原执行服务（PID 40824）所在的 4317 端口已无监听。核对 35 个构建文件与独审 R2 清单一致后，使用原合成样例在原地址恢复待验服务，本次 PID 41004。首页返回 HTTP 200，文档列表返回 rules、service 两篇讲解。普通浏览器直接打开上述地址。
 
-如进程已经关闭，在 Windows PowerShell 运行以下一条命令即可重启。它使用本机已有 Node 24，只读取合成样例，看到 ready 和 URL 表示完成。
-
-```powershell
-& 'D:/project/SpecDev Harness/aftertaste-reader/.local/D009/runtime/node.exe' 'D:/project/SpecDev Harness/aftertaste-reader/dist/cli/main.js' serve --project 'D:/project/SpecDev Harness/aftertaste-reader/.local/D011/author-sample'
-```
-
-自行重启的服务在该终端 Ctrl+C 停止。主脑恢复的后台服务可在核对端口进程与上述 PID、样例路径一致后停止。验收完成且确认不再复核时可清理 D011 自建样例与截图。D010 原件、沙盒及其他任务资源保留。
+2026-11-19 按 `.local/D011/build-hashes-r2.json` 核对仓根 `dist/`，35 项中有 13 项不同或缺失。以后如需复验 D011 原版，从受审候选 `984b291` 在隔离目录重建，用该清单逐项核对相对路径和 SHA-256，再用已核对的 CLI 及上面的原样例启动。原构建和 Node、Git 版本见本页验证记录。验收完成且确认不再复核时可清理 D011 自建样例与截图。
 
 可移植使用说明见 [本地阅读](../../../../usage/file-reader.md)。正式运行需要 Node24/Git，当前开发树与本机 Node 路径并非安装发布入口。
