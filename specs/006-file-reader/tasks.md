@@ -150,8 +150,8 @@
 ## Phase 18 · D023 Polish & Cross-Cutting Concerns
 
 - [x] T039 更新 docs/usage/file-reader.md。按 specs/006-file-reader/quickstart.md 完成类型、构建、隔离操作和受影响的 D022 串行回归，查实际兼容及呈现（FR-012—014，SC-010—012）。
-- [ ] T040 冻结候选，按 docs/roles/审查.md 做独审，逐场景提供证据并请审查人复做关键操作，处理问题并保存 docs/work/2026/11/D023-reader-center/review.md（FR-012—014，SC-010—012）。
-- [ ] T041 核 4341 服务归属后启动受审构建，沿原项目仅做确认。在 docs/work/2026/11/D023-reader-center/handoff.md 交回试读与作者体验入口（SC-010—012）。
+- [x] T040 冻结候选，按 docs/roles/审查.md 做独审，逐场景提供证据并请审查人复做关键操作，处理问题并保存 docs/work/2026/11/D023-reader-center/review.md（FR-012—014，SC-010—012）。
+- [x] T041 核 4341 服务归属后启动受审构建，沿原项目仅做确认。在 docs/work/2026/11/D023-reader-center/handoff.md 交回试读与作者体验入口（SC-010—012）。
 
 ## Dependencies & Execution Order
 
