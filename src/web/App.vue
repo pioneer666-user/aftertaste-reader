@@ -663,7 +663,6 @@ onUnmounted(() => {
           role="dialog" tabindex="-1" :aria-label="t('projectInfo')">
           <dl>
             <div><dt>{{ t('projectPath') }}</dt><dd>{{ projectRoot }}</dd></div>
-            <div v-if="result"><dt>{{ t('document') }}</dt><dd>{{ result.documentPath }}</dd></div>
             <div v-if="result"><dt>{{ t('commit') }}</dt><dd class="commit">{{ result.commit ?? t('unknown') }}</dd></div>
           </dl>
           <p v-if="result?.mechanicallyValid" class="check-status">{{ t('verified') }}</p>

@@ -153,6 +153,20 @@
 - [x] T040 冻结候选，按 docs/roles/审查.md 做独审，逐场景提供证据并请审查人复做关键操作，处理问题并保存 docs/work/2026/11/D023-reader-center/review.md（FR-012—014，SC-010—012）。
 - [x] T041 核 4341 服务归属后启动受审构建，沿原项目仅做确认。在 docs/work/2026/11/D023-reader-center/handoff.md 交回试读与作者体验入口（SC-010—012）。
 
+## Phase 19 · D023 试读调整 - User Story 7 与 User Story 8
+
+**Goal** 让讲解路径在打开文件后可见，同时保留按需查项目资料的入口。
+
+**Independent Test** 切换讲解，在源码文件标题下查找可选取的小号讲解路径。再打开项目资料，核项目路径、引用提交和正常校验结果。用窄屏长路径核断行。
+
+- [x] T042 [US8] 在 src/web/ReaderDocument.vue 和 src/web/style.css 将 `documentPath` 放到主标题下，按 SC-011 核字号及长路径断行（FR-013）。
+- [x] T043 [US7] 在 src/web/App.vue 调整资料浮窗字段，保有项目路径、引用提交和正常校验结果（FR-012）。
+
+## Phase 20 · D023 试读调整收束
+
+- [x] T044 同步 docs/usage/file-reader.md。用 tests/browser/reader-center.mjs 和 specs/006-file-reader/quickstart.md 复验题头、切篇、浮窗、窄屏及受影响的现有阅读行为（SC-010/011）。
+- [ ] T045 冻结调整候选并由未参与实现的审查者复核，按 docs/work/2026/11/D023-reader-center/amendments.md 更新独审、回执及共用试读，在回执登记生效候选（SC-010/011）。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。
@@ -162,6 +176,8 @@ D022 沿用上述已实现基础。T018 为隔离验证前置，US4 先建立侧
 试读调整复用 D022 初版成果。T028、T029 在 App.vue 汇合，T030 验交互后再完成 T031。
 
 D023 复用已有清单、单篇读取、侧栏、Markdown、选文和诊断。T032 准备隔离输入和基线证据，US7 可独立验证资料，US8/US9 共用同一正文结构，先完成 US8 的排版再集成 US9 的入口。三个独立场景自测后做 T039，T040 独审通过后再做 T041。
+
+D023 试读调整在已审版本上接续。T042 与 T043 完成后用 T044 复验组合呈现，再冻结为 T045 的复核候选。
 
 ## Parallel Example
 

@@ -129,6 +129,7 @@ a { color: var(--accent); text-underline-offset: .2em; }
 .document-header { padding-block: 25px 18px; border-bottom: 1px solid var(--line); }
 h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; overflow-wrap: anywhere; letter-spacing: -.02em; }
 .document-header h1 { display: flex; margin: 0; white-space: nowrap; }
+.document-path { margin: 2px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
 .file-directory, .file-name { overflow: hidden; text-overflow: ellipsis; }
 .file-directory { min-width: 0; color: var(--muted); font-weight: 400; }
 .file-name { flex: 0 0 auto; max-width: 100%; font-weight: 650; }

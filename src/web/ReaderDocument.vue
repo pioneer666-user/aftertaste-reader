@@ -197,6 +197,7 @@ onUnmounted(() => {
         <span v-if="sourceNameIndex" class="file-directory">{{ sourcePath.slice(0, sourceNameIndex) }}</span><span
           class="file-name">{{ sourcePath.slice(sourceNameIndex) }}</span>
       </h1>
+      <p class="document-path">{{ result.documentPath }}</p>
       <p v-if="result.contentStatus === 'unfilled'" class="notice">{{ t('unfilled') }}</p>
       <div v-if="result.renderMode === 'markdown'" class="notice" role="status">
         <p v-if="result.sourceCheck === 'unavailable'">{{ t('unavailable') }}</p>

@@ -56,3 +56,5 @@
 | 从同一渲染正文树和已显示的阅读结果生成 U73 文本，再写浏览器剪贴板 | 复用选文判定与定位字段，整块和选文走同一格式。内建 JSON 序列化支持中文、引号和换行，权限失败用该次文本手动复制 | 浮条重写或接管原生 Ctrl+C 会妨碍普通选文复制。使用当前 HEAD 会让引用与已读源码不一致 |
 
 平台接口依据见 [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API)、[Selection](https://developer.mozilla.org/en-US/docs/Web/API/Selection) 与 [Clipboard.writeText](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText)。
+
+试读调整将现有讲解路径随题头显示，其余资料继续由浮窗提供。两个位置继续从同一读取结果取值，适用上述平台与验证依据。[作者调整](../../docs/work/2026/11/D023-reader-center/amendments.md)

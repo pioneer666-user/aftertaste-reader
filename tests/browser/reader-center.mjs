@@ -163,6 +163,7 @@ try {
   const edge = page.getByTestId('reader-navigation-edge');
   const projectName = nav.locator('.project-info-toggle');
   const panel = nav.locator('.project-info:popover-open');
+  const documentPath = reading.locator('.document-header > h1 + p.document-path');
   const block = id => reading.locator('#' + id);
   const first = block('zhidif44'), second = block('m3vuiqzi'), third = block('cj9208pf'), pure = block('overview');
   const sourcePane = item => item.locator('.source-pane');
@@ -182,6 +183,8 @@ try {
   async function openFile(file) {
     await nav.locator('button[title="' + file + '"]').click();
     await reading.getByRole('heading', { name: file, level: 1, exact: true }).waitFor();
+    await documentPath.waitFor();
+    assert.equal((await documentPath.textContent()).trim(), 'docs/aftertaste/current/' + file + '.md');
   }
 
   async function screenshot(name) {
@@ -199,14 +202,19 @@ try {
     return checkPaste(expected);
   }
 
-  async function checkPanel(file, commit) {
+  async function checkPanel(commit) {
     await panel.getByText(fixture.projectRoot, { exact: true }).waitFor();
-    await panel.getByText('docs/aftertaste/current/' + file + '.md', { exact: true }).waitFor();
     await panel.getByText(commit, { exact: true }).waitFor();
+    await panel.locator('.check-status').waitFor();
+    assert.equal(await panel.getByText(/docs\/aftertaste\/current\//u).count(), 0);
   }
 
   await openFile(serviceFile);
   const heading = reading.getByRole('heading', { name: serviceFile, level: 1, exact: true });
+  assert.equal(await documentPath.evaluate(element => getComputedStyle(element).fontSize), '11px');
+  const pathBox = await box(documentPath);
+  const headingBox = await box(heading);
+  assert.ok(pathBox.y >= headingBox.y + headingBox.height);
   const firstHeading = prose(first).getByRole('heading', { name: '服务把规则与辅助动作接到一起', exact: true });
   assert.equal(await prose(first).locator(':scope > :first-child').evaluate(el => el.textContent), '服务把规则与辅助动作接到一起');
   assert.ok((await box(firstHeading)).y > (await box(heading)).y);
@@ -250,7 +258,7 @@ try {
   await edge.hover();
   await nav.waitFor();
   await projectName.click();
-  await checkPanel(serviceFile, fixture.commit);
+  await checkPanel(fixture.commit);
   const projectPath = panel.getByText(fixture.projectRoot, { exact: true });
   await pointerSelect(projectPath, fixture.projectRoot);
   await page.waitForFunction(() => document.querySelector('.project-info:popover-open')?.matches(':hover'));
@@ -271,7 +279,7 @@ try {
   await nav.getByRole('button', { name: 'support', exact: true }).click();
   await openFile(auditFile);
   await projectName.press('Enter');
-  await checkPanel(auditFile, head);
+  await checkPanel(head);
   await page.keyboard.press('Escape');
   await panel.waitFor({ state: 'hidden' });
   assert.equal(await prose(pure).getByText('从已有名字构建路径。', { exact: true }).count(), 1);
@@ -281,7 +289,7 @@ try {
   assert.ok(Math.abs(pureBox.x + pureBox.width / 2 - pureBlock.x - pureBlock.width / 2) <= 1);
   await screenshot('candidate-audit');
   await clickAndPaste(directCopy(pure), expectedLocation(auditFile, 'overview', head));
-  report.checks.push('peek keeps reading position, drag selects the full path, Escape restores focus, keyboard/outside close, metadata follows a document with a different commit, untitled explanation has no source pane');
+  report.checks.push('peek keeps reading position, drag selects the full project path, Escape restores focus, keyboard/outside close, popover commit follows the document, the 11px document path follows the file heading without duplication, untitled explanation has no source pane');
 
   await openFile(serviceFile);
   const expected = expectedLocation(serviceFile, 'zhidif44', fixture.commit, selectedPhrase);
@@ -459,9 +467,20 @@ try {
   assert.equal(await directCopy(longBlock).count(), 0);
   await reading.locator('.repair-text').waitFor();
   assert.match(await reading.locator('.repair-text').inputValue(), /SOURCE_GAP/u);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await jump(0);
+  assert.equal((await documentPath.textContent()).trim(), 'docs/aftertaste/current/' + longFile + '.md');
+  assert.ok(await documentPath.evaluate(element => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const lines = [...range.getClientRects()];
+    return lines.length > 1 && lines.every(line => line.left >= 0 && line.right <= innerWidth + 1) &&
+      element.scrollWidth <= element.clientWidth + 1;
+  }), 'The full long document path must wrap within the narrow viewport');
+  await screenshot('candidate-narrow-document-path');
   assert.deepEqual(await readRecords(), originalRecords);
   assert.deepEqual(report.errors, []);
-  report.checks.push('indentation and blank source row, stationary gutter and visible long-line end, last source row reachable in short window, quotes/newline survive native paste, fallback diagnosis visible, records unchanged');
+  report.checks.push('indentation and blank source row, stationary gutter and visible long-line end, last source row reachable in short window, quotes/newline survive native paste, fallback diagnosis visible, long document path wraps without horizontal clipping, records unchanged');
   report.passed = true;
 } catch (error) {
   report.failure = error.stack;
