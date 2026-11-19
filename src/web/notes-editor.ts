@@ -105,8 +105,16 @@ export function useNotesEditor() {
     draft.replacing = true;
     delete draft.problem;
     try {
-      const revision = draft.pending?.revision ?? draft.revision;
-      if (revision) await submit({ action: 'remove', id: draft.id, previousRevision: revision });
+      const pendingRevision = draft.pending?.revision;
+      const revision = draft.revision ?? pendingRevision;
+      if (revision) {
+        try { await submit({ action: 'remove', id: draft.id, previousRevision: revision }); }
+        catch (error) {
+          // These are the only two versions this tab may have saved.
+          if (!pendingRevision || pendingRevision === revision || failed(error).code !== 'NOTE_CONFLICT') throw error;
+          await submit({ action: 'remove', id: draft.id, previousRevision: pendingRevision });
+        }
+      }
       drafts.delete(draft.id);
       if (selected.value === draft.id) selected.value = '';
     } catch (error) { draft.problem = failed(error); }

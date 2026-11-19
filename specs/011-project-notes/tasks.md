@@ -85,6 +85,7 @@ description: "D020 项目内全局笔记与跨文件回访"
 - [X] T013 完善 `src/web/i18n.ts`、`src/web/style.css` 的中英文、焦点和窄屏，浏览器核对真实渲染。
 - [X] T014 同步 `docs/usage/file-reader.md`、`skills/aftertaste-reader/references/feedback.md` 与 `specs/001-first-release/05-reading-feedback.md`、`08-current-spec-and-acceptance.md`。
 - [X] T015 串行执行 [quickstart.md](quickstart.md) 和受影响的既有回归，固定受审候选和证据。
+- [X] T016 复核独审 R1 的断线删除。在 `src/web/notes-editor.ts` 检查本页可能保存过的修订，在 `tests/browser/notes.mjs` 验证请求未抵达及响应丢失。
 
 ## Dependencies & Execution Order
 

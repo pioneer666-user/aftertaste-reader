@@ -268,6 +268,28 @@ try {
     evidence.checks.push('real Windows write failure, original intact, editable draft and retry without duplicate');
   }
 
+  for (const committed of [false, true]) {
+    await button('新建笔记').click();
+    const original = `断开前的笔记 ${committed}`;
+    const changed = `结果未知的编辑 ${committed}`;
+    await body().fill(original);
+    await saved();
+    const record = (await disk()).find(note => note.body === original);
+    await page.route('**/api/notes', async route => {
+      assert.equal(route.request().method(), 'PUT');
+      if (committed) assert.equal((await route.fetch()).status(), 200);
+      await route.abort('failed');
+    }, { times: 1 });
+    await body().fill(changed);
+    await notes().getByRole('alert').filter({ hasText: '无法连接本地阅读服务' }).waitFor();
+    assert.equal((await disk()).find(note => note.id === record.id).body, committed ? changed : original);
+    page.once('dialog', dialog => dialog.accept());
+    await button('删除笔记').click();
+    await body().waitFor({ state: 'detached' });
+    assert.equal((await disk()).some(note => note.id === record.id), false);
+  }
+  evidence.checks.push('delete after interrupted save checks confirmed or committed candidate revision');
+
   await button('新建笔记').click();
   await body().fill('另一条可并行编辑');
   await saved();
