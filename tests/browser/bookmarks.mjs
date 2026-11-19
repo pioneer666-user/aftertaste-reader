@@ -195,9 +195,20 @@ try {
     assert.ok((await readdir(path.dirname(fixture.bookmarks))).every(name => !name.startsWith('.aftertaste-bookmarks-')));
     await page.screenshot({ path: path.join(run, 'write-failed.png') });
     await unlock();
+    const refreshed = page.waitForResponse(response => response.url().includes('/api/document?path=') && response.ok());
+    await button('刷新资料').click();
+    await refreshed;
+    await block().waitFor();
+    assert.equal(await field().count(), 1, 'document refresh keeps the failed draft open');
+    assert.equal(await field().inputValue(), pending);
+    await block().getByRole('alert').filter({ hasText: '书签未保存' }).waitFor();
+    await openDocument('src/service.mjs');
+    assert.equal(await field().count(), 0, 'same block ID in another document does not share the draft');
+    await openDocument('src/rules.mjs');
+    assert.equal(await field().inputValue(), pending);
     await save();
     assert.equal((await disk()).find(item => item.id === first.id).note, pending);
-    report.checks.push('real Windows replacement denied, old bytes and draft kept, retry saved');
+    report.checks.push('real Windows replacement denied, original kept, draft survives refresh and remains scoped by document, retry saved');
   }
 
   await openDocument('src/rules.mjs');

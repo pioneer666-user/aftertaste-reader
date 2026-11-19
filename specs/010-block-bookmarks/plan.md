@@ -69,6 +69,7 @@ src/
     ├── App.vue                       # 列表及回访
     ├── ReaderDocument.vue            # 块级接入
     ├── BlockBookmarks.vue            # 单块交互
+    ├── bookmark-drafts.ts            # 读页会话内的草稿类型
     ├── i18n.ts
     └── style.css
 tests/
@@ -79,3 +80,5 @@ tests/
 ```
 
 **Structure Decision**：沿现有 TypeScript 分层与 Vue 阅读页。用法归 `docs/usage/file-reader.md`，AI 读取与权限归产品 Skill 的 `references/feedback.md`。
+
+草稿在打开的页面内按文档路径和块 ID 保存，块重新渲染后可继续编辑。成功保存或读者取消时清除该草稿。

@@ -58,7 +58,7 @@ description: "块级注解书签与回访实施清单"
 **Independent Test**：两页发送交错保存，阻断一次真实替换，核原件、输入与重试。
 
 - [X] T012 [US3] 在 `tests/integration/bookmarks.test.mjs` 与 `tests/browser/bookmarks.mjs` 写并发、同记录冲突、写失败及重试检查。
-- [X] T013 [US3] 在 `src/application/bookmarks.ts`、`src/web/App.vue` 和 `src/web/BlockBookmarks.vue` 收口写入队列、成功确认、草稿保留与冲突恢复（FR-007）。
+- [X] T013 [US3] 在 `src/application/bookmarks.ts`、`src/web/App.vue`、`src/web/BlockBookmarks.vue` 和 `src/web/bookmark-drafts.ts` 收口写入队列、成功确认、刷新后草稿保留与冲突恢复（FR-007）。
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 

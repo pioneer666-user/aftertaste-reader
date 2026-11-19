@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue';
+import { computed, inject, nextTick, ref } from 'vue';
 import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
 import type { ReaderProblem } from '../application/file-reader.js';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { failed } from './reader-api.js';
+import { bookmarkDraftsKey } from './bookmark-drafts.js';
 
 const props = defineProps<{
   documentPath: string;
@@ -17,50 +18,50 @@ const props = defineProps<{
 }>();
 
 const t = (key: string) => translate(props.language, key);
-const editor = ref<{ action: 'create'; id: string; note: string } |
-  { action: 'edit'; id: string; note: string; previousNote: string }>();
+const drafts = inject(bookmarkDraftsKey)!;
+const draftKey = `${props.documentPath}\n${props.blockId}`;
+const editor = computed(() => drafts.get(draftKey));
 const noteInput = ref<HTMLTextAreaElement>();
 const addButton = ref<HTMLButtonElement>();
 const errorMessage = ref<HTMLElement>();
 const status = ref('');
-const error = ref<ReaderProblem>();
+const removeError = ref<ReaderProblem>();
+const error = computed(() => editor.value?.problem ?? removeError.value);
 
 async function start(bookmark?: Bookmark) {
   status.value = '';
-  error.value = undefined;
-  editor.value = bookmark ? { action: 'edit', id: bookmark.id, note: bookmark.note, previousNote: bookmark.note } :
-    { action: 'create', id: crypto.randomUUID(), note: '' };
+  removeError.value = undefined;
+  drafts.set(draftKey, { command: bookmark ?
+    { action: 'edit', id: bookmark.id, note: bookmark.note, previousNote: bookmark.note } :
+    { action: 'create', id: crypto.randomUUID(), note: '' } });
   await nextTick();
   noteInput.value?.focus();
 }
 
 async function cancel() {
-  const previous = editor.value;
-  editor.value = undefined;
-  error.value = undefined;
+  const previous = editor.value?.command;
+  drafts.delete(draftKey);
   await nextTick();
   const editButton = previous?.action === 'edit' ? document.getElementById(`edit-bookmark-${previous.id}`) : null;
   (editButton ?? addButton.value)?.focus();
 }
 
 async function save(action: BookmarkAction) {
+  const draft = editor.value;
   status.value = '';
-  error.value = undefined;
+  removeError.value = undefined;
+  if (draft) delete draft.problem;
   try {
     await props.saveBookmark(action);
-    editor.value = undefined;
+    drafts.delete(draftKey);
     status.value = action.action === 'remove' ? 'bookmarkRemoved' : 'bookmarkSaved';
     await nextTick();
     const target = action.action === 'remove' ? addButton.value : document.getElementById(`bookmark-${action.id}`);
     target?.focus();
   } catch (cause) {
-    error.value = failed(cause);
+    if (draft) draft.problem = failed(cause);
+    else removeError.value = failed(cause);
     await nextTick();
-    const draft = editor.value;
-    if (error.value.code === 'BOOKMARK_CONFLICT' && draft?.action === 'edit') {
-      const latest = props.bookmarks.find(bookmark => bookmark.id === draft.id);
-      if (latest) draft.previousNote = latest.note;
-    }
     (noteInput.value ?? errorMessage.value)?.focus();
   }
 }
@@ -68,7 +69,12 @@ async function save(action: BookmarkAction) {
 function submit() {
   const draft = editor.value;
   if (!draft || props.busy) return;
-  void save(draft.action === 'create' ? { ...draft, documentPath: props.documentPath, blockId: props.blockId } : draft);
+  const command = draft.command;
+  if (command.action === 'edit' && draft.problem?.code === 'BOOKMARK_CONFLICT') {
+    const latest = props.bookmarks.find(bookmark => bookmark.id === command.id);
+    if (latest) command.previousNote = latest.note;
+  }
+  void save(command.action === 'create' ? { ...command, documentPath: props.documentPath, blockId: props.blockId } : command);
 }
 </script>
 
@@ -76,7 +82,7 @@ function submit() {
   <div class="bookmark-heading">
     <slot />
     <button ref="addButton" type="button" :disabled="busy || !!editor"
-      :aria-expanded="editor?.action === 'create'" @click="start()">{{ t('bookmarkAdd') }}</button>
+      :aria-expanded="editor?.command.action === 'create'" @click="start()">{{ t('bookmarkAdd') }}</button>
   </div>
   <ul v-if="bookmarks.length" class="block-bookmarks">
     <li v-for="bookmark in bookmarks" :id="'bookmark-' + bookmark.id" :key="bookmark.id" tabindex="-1"
@@ -94,7 +100,7 @@ function submit() {
   <form v-if="editor" class="bookmark-editor" @submit.prevent="submit">
     <label>
       <span>{{ t('bookmarkNote') }}</span>
-      <textarea ref="noteInput" v-model="editor.note" :readonly="busy" rows="3" />
+      <textarea ref="noteInput" v-model="editor.command.note" :readonly="busy" rows="3" />
     </label>
     <div class="bookmark-actions">
       <button type="submit" :disabled="busy">{{ t('bookmarkSave') }}</button>

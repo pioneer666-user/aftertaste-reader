@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue';
+import { nextTick, onMounted, provide, reactive, ref } from 'vue';
 import type { DocumentEntry, ReaderProblem } from '../application/file-reader.js';
 import type { ReadingDocument } from '../application/document-blocks.js';
 import type { LoopEntry } from '../application/loop-reader.js';
 import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
+import { bookmarkDraftsKey } from './bookmark-drafts.js';
+import type { BookmarkDraft } from './bookmark-drafts.js';
 import ReaderDocument from './ReaderDocument.vue';
 import DependencyCanvas from './DependencyCanvas.vue';
 import { failed, request } from './reader-api.js';
@@ -35,6 +37,7 @@ const loopNavigation = ref<HTMLElement>();
 const selectedLoop = ref('');
 const openedLoops = ref<string[]>([]);
 const bookmarks = ref<Bookmark[]>([]);
+provide(bookmarkDraftsKey, reactive(new Map<string, BookmarkDraft>()));
 const bookmarksLoading = ref(false);
 const bookmarksSaving = ref(false);
 const bookmarkListError = ref<ReaderProblem>();
