@@ -334,15 +334,55 @@ try {
   await screenshot('candidate-copy-denied');
   await manual.press('Control+A');
   await manual.press('Control+C');
+  await manual.press('Escape');
   await checkPaste(expected);
+
+  const wholeBlock = expectedLocation(serviceFile, 'zhidif44', fixture.commit);
+  const directManual = directCopy(first).locator('xpath=..').locator('.location-copy-text');
+  await directCopy(first).click();
+  await directManual.locator(':scope:focus').waitFor();
+  assert.deepEqual(parseLocation(await directManual.inputValue()), wholeBlock);
+  const desktopManualBounds = await box(directManual);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const directField = await directManual.elementHandle();
+  try {
+    await page.waitForFunction(field => {
+      const { x, y, width, height } = field.getBoundingClientRect();
+      const centerX = x + width / 2;
+      const centerY = y + height / 2;
+      return centerX > 0 && centerX < innerWidth && centerY > 0 && centerY < innerHeight;
+    }, directField);
+  } finally { await directField.dispose(); }
+  report.directFallbackResize = { desktop: desktopManualBounds, narrow: await box(directManual) };
+  assert.ok(await directManual.evaluate(field => field === document.activeElement));
+  assert.deepEqual(parseLocation(await directManual.inputValue()), wholeBlock);
+  await screenshot('candidate-direct-copy-denied-narrow');
+  await directManual.press('Control+A');
+  await directManual.press('Control+C');
+  await directManual.press('Escape');
+  await checkPaste(wholeBlock);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await nav.waitFor();
   await page.evaluate(() => { delete navigator.clipboard.writeText; });
   await page.locator('.language-control select').selectOption('zh-CN');
   await openFile(serviceFile);
-  await pointerSelect(paragraph, selectedPhrase);
-  await first.getByRole('button', { name: '加入笔记', exact: true }).click();
-  await page.locator('#notes blockquote').getByText(selectedPhrase, { exact: true }).waitFor();
+  const noteSelection = '文本，服务随后忽略这';
+  const noteRelease = await pointerSelect(paragraph, noteSelection);
+  await floatingCopy.waitFor();
+  assert.ok(await page.evaluate(() => getSelection().getRangeAt(0).getClientRects().length > 1));
+  const note = first.getByRole('button', { name: '加入笔记', exact: true });
+  const noteCenter = await note.evaluate(element => {
+    const { x, y, width, height } = element.getBoundingClientRect();
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    return { x: centerX, y: centerY, hit: element.contains(document.elementFromPoint(centerX, centerY)) };
+  });
+  report.noteTarget = { selection: noteSelection, release: noteRelease, center: noteCenter };
+  assert.ok(noteCenter.hit, 'The visible center of Add to note must receive the mouse click');
+  await page.mouse.click(noteCenter.x, noteCenter.y);
+  await page.locator('#notes blockquote').getByText(noteSelection, { exact: true }).waitFor();
   await page.getByRole('button', { name: '文件讲解', exact: true }).click();
-  report.checks.push('English control and rejection feedback, native manually copied fallback round trips, existing add-to-note receives the original passage');
+  report.checks.push('English control and rejection feedback, native selection and resized whole-block fallbacks round trip, actual mouse hit adds the entire wrapped passage to notes');
 
   for (const width of [1051, 1050, 390]) {
     await page.setViewportSize({ width, height: 844 });

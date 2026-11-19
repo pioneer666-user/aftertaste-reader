@@ -36,8 +36,17 @@ function placePanel() {
     const far = position - gap - size;
     return Math.max(gap, Math.min(limit - size - gap, near + size + gap <= limit ? near : far));
   }
-  panel.style.left = fit(point.x, width, window.innerWidth) + 'px';
-  panel.style.top = fit(point.y, height, window.innerHeight) + 'px';
+  const left = fit(point.x, width, window.innerWidth);
+  let top = fit(point.y, height, window.innerHeight);
+  if (props.anchor && !manualText.value) {
+    const note = panel.closest('.explanation-pane')?.querySelector('.note-selection-action')?.getBoundingClientRect();
+    if (note && left < note.right && left + width > note.left && top < note.bottom && top + height > note.top) {
+      const above = Math.min(point.y, note.top) - gap - height;
+      top = above >= gap ? above : fit(note.bottom, height, window.innerHeight);
+    }
+  }
+  panel.style.left = left + 'px';
+  panel.style.top = top + 'px';
 }
 
 async function copyLocation() {
@@ -73,6 +82,10 @@ watch(() => props.location, () => {
   manualText.value = '';
 });
 watch(() => props.anchor, placePanel, { flush: 'post' });
+watch(manualText, text => {
+  if (text) window.addEventListener('resize', placePanel);
+  else window.removeEventListener('resize', placePanel);
+});
 onMounted(() => {
   if (!props.anchor || !control.value) return;
   placePanel();
@@ -82,6 +95,7 @@ onMounted(() => {
 onUnmounted(() => {
   ++attempt;
   observer?.disconnect();
+  window.removeEventListener('resize', placePanel);
   window.clearTimeout(feedbackTimer);
 });
 </script>
