@@ -26,7 +26,7 @@ async function examples() {
   assert.equal(blocks.length, 3);
   const [pin, list, read] = blocks;
   // Inject only inputs and the in-memory observation points between the public steps.
-  return new AsyncFunction('cli', 'projectRoot', 'revision', `
+  return new AsyncFunction('cli', 'projectRoot', 'revision', 'previousFixed', `
     ${pin}
     ${list}
     return { fixed, paths, sourceArgs, runCli, read: sourcePath => {
@@ -116,6 +116,19 @@ test('按 Skill 原样执行 pin、固定树枚举和 read', async t => {
       if (previous === undefined) delete process.env.GIT_DIR;
       else process.env.GIT_DIR = previous;
     }
+  });
+
+  await t.test('HEAD 已为 B，接续本批时用原固定映射列出并读回 A', async () => {
+    const first = await runExamples(cli, project, a);
+    assert.equal(first.fixed.commit, a);
+    assert.equal((await runExamples(cli, project)).fixed.commit, b);
+    const { fixed, paths, read } = await runExamples(cli, project, undefined, first.fixed);
+    assert.deepEqual(fixed, first.fixed);
+    assert.deepEqual([...paths].sort(), [smallPath, largePath].sort());
+    const file = read(paths.find(name => name === smallPath));
+    assert.equal(file.path, smallPath);
+    assert.equal(file.commit, a);
+    assert.ok(file.content === smallText, '续读须使用原提交的完整正文');
   });
 
   await t.test('读取超过 1 MiB 的 JSON，源码完整，中断与命令失败仅给诊断', async t => {

@@ -8,7 +8,7 @@
 
 projectRoot 是用户目标项目绝对路径。pin 给 repositoryRoot、projectPrefix、commit，四项形成 fixed。子项目的 prefix 是 Git 仓库内前缀，根项目为空字符串。工具参数独立传 argv，特别是空 prefix 使用 Node child_process 的数组传递，避免 PowerShell 吞掉空参数或 JSON 引号。
 
-在 Node 24 的同一 JavaScript 上下文依次运行以下片段。先提供实际绝对路径 `cli`、`projectRoot`，以及本地版本 `revision`，默认用 `'HEAD'`。若已有本批的 `fixed`，复用原映射。源码正文仅在内存中消费，执行终端应关闭 transcript／输出落盘。
+在一个 Node 24 JavaScript 执行上下文中依次运行以下片段。先提供实际绝对路径 `cli`、`projectRoot`，以及本地版本 `revision`（缺省传 `undefined`，首次固定时使用 `'HEAD'`）。接续本批时，将已保存的 `fixed` 四字段作为 `previousFixed` 传入。首次固定时，`previousFixed` 传 `undefined`。源码正文仅在内存中消费，执行终端应关闭 transcript／输出落盘。
 
 ```javascript
 const { spawnSync } = await import('node:child_process');
@@ -36,7 +36,7 @@ function runCli(args, maxBuffer = gitMaxBuffer) {
   });
 }
 
-const { source: fixed } = runCli(['pin', '--project', projectRoot, '--revision', revision]);
+const fixed = previousFixed ?? runCli(['pin', '--project', projectRoot, '--revision', revision ?? 'HEAD']).source;
 const mapping = ['--project', fixed.projectRoot,
   '--repository', fixed.repositoryRoot, '--prefix', fixed.projectPrefix];
 const sourceArgs = [...mapping, '--commit', fixed.commit];
