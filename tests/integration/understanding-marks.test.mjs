@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { link, mkdir, mkdtemp, readFile, rename, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +9,7 @@ import { createBookmarkProject, rulesPath, servicePath, sharedBlockId } from '..
 
 const root = fileURLToPath(new URL('../../.local/D021/', import.meta.url));
 const route = '/api/understanding-marks';
+const emptyRevision = createHash('sha256').digest('hex');
 
 test('real HTTP merges independent edits, rejects stale writes and preserves unavailable records', async t => {
   await mkdir(root, { recursive: true });
@@ -27,7 +29,7 @@ test('real HTTP merges independent edits, rejects stale writes and preserves una
   }
   const target = { documentPath: rulesPath, blockId: sharedBlockId };
   const status = { ...target, field: 'status', previous: 'unmarked', value: 'not-understood' };
-  const annotation = { ...target, field: 'annotation', previous: '', value: '  为什么？\r\n🌱  ' };
+  const annotation = { ...target, field: 'annotation', previous: emptyRevision, value: '  为什么？\r\n🌱  ' };
   const put = (body, headers, endpoint = route) => request(endpoint, { method: 'PUT',
     headers: { 'content-type': 'application/json', 'x-aftertaste-understanding-marks': '1', ...headers },
     body: JSON.stringify(body) });
@@ -46,8 +48,12 @@ test('real HTTP merges independent edits, rejects stale writes and preserves una
   assert.deepEqual(together.map(result => result.status), [200, 200, 200]);
   const first = { ...target, status: status.value, annotation: annotation.value };
   const second = { ...first, documentPath: servicePath, annotation: '' };
-  const byPath = marks => new Map(marks.map(mark => [mark.documentPath, mark]));
-  assert.deepEqual(byPath((await request()).marks), byPath([first, second]));
+  const byPath = marks => new Map(marks.map(({ annotationRevision, ...mark }) => [mark.documentPath, mark]));
+  const initial = (await request()).marks;
+  const revision = initial.find(mark => mark.documentPath === rulesPath).annotationRevision;
+  assert.equal(revision, createHash('sha256').update(annotation.value).digest('hex'));
+  assert.equal(initial.find(mark => mark.documentPath === servicePath).annotationRevision, emptyRevision);
+  assert.deepEqual(byPath(initial), byPath([first, second]));
   assert.equal((await put(annotation)).status, 200);
   assert.equal((await put({ ...annotation, value: '陈旧草稿' })).status, 409);
   assert.equal((await put({ ...status, value: 'understood' })).status, 409);
@@ -65,9 +71,18 @@ test('real HTTP merges independent edits, rejects stale writes and preserves una
   await writeFile(project.rules, originalDoc);
   assert.equal((await put({ ...understood, previous: 'understood', value: 'unmarked' })).status, 200);
   assert.deepEqual(byPath((await request()).marks), byPath([{ ...first, status: 'unmarked' }, second]));
-  assert.deepEqual((await put({ ...annotation, previous: annotation.value, value: '' })).marks, [second]);
+  assert.deepEqual(byPath((await put({ ...annotation, previous: revision, value: '' })).marks), byPath([second]));
   assert.equal(await readFile(project.bookmarks, 'utf8'), '{"version":1,"bookmarks":[]}\n');
   assert.equal(await readFile(notes, 'utf8'), '{"version":1,"notes":[]}\n');
+
+  const longText = '例'.repeat(180_000);
+  const created = await put({ ...annotation, value: longText });
+  assert.equal(created.status, 200);
+  const longRevision = created.marks.find(mark => mark.documentPath === rulesPath).annotationRevision;
+  const extended = await put({ ...annotation, previous: longRevision, value: longText + '。' });
+  assert.equal(extended.status, 200);
+  assert.equal(JSON.parse(await readFile(file, 'utf8')).marks.find(mark => mark.documentPath === rulesPath).annotation, longText + '。');
+  assert.equal((await put({ ...annotation, previous: longRevision, value: '过期的批注' })).status, 409);
 
   for (const corrupt of [Buffer.from('{bad'), Buffer.from([0xff, 0xfe]),
     Buffer.from(JSON.stringify({ version: 1, marks: [{ ...first, documentPath: '../outside.js.md' }] }))]) {

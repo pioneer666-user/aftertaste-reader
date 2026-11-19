@@ -77,6 +77,7 @@ description: "D021 块级理解标注与批注实施清单"
 
 - [X] T012 同步 `specs/001-first-release/05-reading-feedback.md`、`specs/001-first-release/08-current-spec-and-acceptance.md` 和 `docs/usage/file-reader.md`（FR-002、007）。
 - [X] T013 用 [quickstart](quickstart.md) 串行验证，遵照 [D021 派单](../../docs/work/2026/11/D021-understanding-marks/task.md) 区分正式版本更新联验。
+- [X] T014 复验独审发现的长批注编辑。先在 `tests/integration/understanding-marks.test.mjs` 固定首次写入 540,000 字节并追加一字的 HTTP 用例，再在 `src/core/understanding-marks.ts`、`src/application/understanding-marks.ts`、`src/web/App.vue`、`src/web/ReaderDocument.vue` 和 `src/web/BlockUnderstandingMark.vue` 接通固定长度摘要，保持陈旧编辑保护（FR-002、005）。
 
 ## Dependencies & Execution Order
 

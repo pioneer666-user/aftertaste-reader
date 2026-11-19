@@ -1,6 +1,7 @@
+import { createHash } from 'node:crypto';
 import { DocumentError } from '../core/document-blocks.js';
 import { invalidMarkData, markConflict, MarkError, parseMarkEdit, parseUnderstandingMarks } from '../core/understanding-marks.js';
-import type { MarkEdit, UnderstandingMark } from '../core/understanding-marks.js';
+import type { MarkEdit, ReaderMark, UnderstandingMark } from '../core/understanding-marks.js';
 import { sourcePathForDocument } from './document-blocks.js';
 import type { ReadingDocument } from './document-blocks.js';
 
@@ -13,21 +14,29 @@ function unavailable() {
   return new MarkError('MARK_TARGET_UNAVAILABLE', '当前讲解中暂时无法定位这个块。', '恢复讲解后重试。');
 }
 
+function annotationRevision(text: string): string {
+  return createHash('sha256').update(text, 'utf8').digest('hex');
+}
+
+function readerMarks(marks: UnderstandingMark[]): ReaderMark[] {
+  return marks.map(mark => ({ ...mark, annotationRevision: annotationRevision(mark.annotation) }));
+}
+
 export class UnderstandingMarkService {
   private pending = Promise.resolve();
 
   constructor(private readonly store: MarkStore, private readonly readDocument: (path: string) => Promise<ReadingDocument>) {}
 
-  async list(): Promise<UnderstandingMark[]> {
-    return this.read(await this.store.read());
+  async list(): Promise<ReaderMark[]> {
+    return readerMarks(this.read(await this.store.read()));
   }
 
-  save(body: unknown): Promise<UnderstandingMark[]> {
+  save(body: unknown): Promise<ReaderMark[]> {
     const edit = parseMarkEdit(body);
     sourcePathForDocument(edit.documentPath);
     const result = this.pending.then(() => this.apply(edit));
     this.pending = result.then(() => {}, () => {});
-    return result;
+    return result.then(readerMarks);
   }
 
   private read(raw: string | undefined): UnderstandingMark[] {
@@ -47,7 +56,8 @@ export class UnderstandingMarkService {
     const index = marks.findIndex(mark => mark.documentPath === documentPath && mark.blockId === blockId);
     const current: UnderstandingMark = marks[index] ?? { documentPath, blockId, status: 'unmarked', annotation: '' };
     if (current[field] === value) return marks;
-    if (current[field] !== edit.previous) throw markConflict();
+    const revision = field === 'status' ? current.status : annotationRevision(current.annotation);
+    if (revision !== edit.previous) throw markConflict();
 
     const document = await this.readDocument(documentPath).catch((error: unknown) => {
       if (error instanceof DocumentError) throw unavailable();

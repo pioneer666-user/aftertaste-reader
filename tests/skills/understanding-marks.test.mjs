@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,9 +33,10 @@ test('feedback guide reads current self-assessment separately from literal annot
   const question = '为什么要先校验数量？';
   const explanation = '  规则先约束，再创建订单。\n原文保留。  ';
   await save(rulesPath, 'status', 'unmarked', 'not-understood');
-  await save(rulesPath, 'annotation', '', question);
+  const emptyRevision = createHash('sha256').digest('hex');
+  await save(rulesPath, 'annotation', emptyRevision, question);
   await save(rulesPath, 'status', 'not-understood', 'understood');
-  await save(servicePath, 'annotation', '', explanation);
+  await save(servicePath, 'annotation', emptyRevision, explanation);
   const fullPath = path.join(fixture.projectRoot, relative);
   const before = await readFile(fullPath);
   const data = JSON.parse(before);

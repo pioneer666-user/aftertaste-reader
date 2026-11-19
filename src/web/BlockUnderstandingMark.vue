@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, ref } from 'vue';
-import { isMarkStatus, markKey, markStatuses } from '../core/understanding-marks.js';
-import type { MarkEdit, UnderstandingMark } from '../core/understanding-marks.js';
+import { emptyAnnotationRevision, isMarkStatus, markKey, markStatuses } from '../core/understanding-marks.js';
+import type { MarkEdit, ReaderMark } from '../core/understanding-marks.js';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { markDraftsKey } from './mark-drafts.js';
@@ -10,7 +10,7 @@ import { failed } from './reader-api.js';
 const props = defineProps<{
   documentPath: string;
   blockId: string;
-  mark: UnderstandingMark | undefined;
+  mark: ReaderMark | undefined;
   language: Language;
   busy: boolean;
   unavailable: boolean;
@@ -27,6 +27,7 @@ const annotationButton = ref<HTMLButtonElement>();
 const feedback = ref('');
 const savedStatus = computed(() => props.mark?.status ?? 'unmarked');
 const savedAnnotation = computed(() => props.mark?.annotation ?? '');
+const savedAnnotationRevision = computed(() => props.mark?.annotationRevision ?? emptyAnnotationRevision);
 const shownStatus = computed(() => draft.value?.status?.value ?? savedStatus.value);
 const statusConflict = computed(() => draft.value?.status?.problem?.code === 'MARK_CONFLICT');
 const annotationConflict = computed(() => draft.value?.annotation?.problem?.code === 'MARK_CONFLICT');
@@ -45,7 +46,7 @@ function clear(field: 'status' | 'annotation') {
 
 async function openAnnotation() {
   feedback.value = '';
-  getDraft().annotation ??= { previous: savedAnnotation.value, value: savedAnnotation.value };
+  getDraft().annotation ??= { previous: savedAnnotationRevision.value, value: savedAnnotation.value };
   await nextTick();
   annotationInput.value?.focus();
 }
@@ -79,7 +80,7 @@ function saveStatus() {
 function saveAnnotation() {
   const entry = draft.value?.annotation;
   if (!entry || props.busy || props.unavailable) return;
-  if (annotationConflict.value) entry.previous = savedAnnotation.value;
+  if (annotationConflict.value) entry.previous = savedAnnotationRevision.value;
   void persist({ ...identity, field: 'annotation', previous: entry.previous, value: entry.value });
 }
 

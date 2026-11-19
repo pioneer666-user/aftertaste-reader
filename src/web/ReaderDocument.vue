@@ -4,7 +4,7 @@ import type { ReadingDocument } from '../application/document-blocks.js';
 import type { ReaderProblem } from '../application/file-reader.js';
 import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
 import type { BlockQuote } from '../core/notes.js';
-import type { MarkEdit, UnderstandingMark } from '../core/understanding-marks.js';
+import type { MarkEdit, ReaderMark } from '../core/understanding-marks.js';
 import BlockBookmarks from './BlockBookmarks.vue';
 import BlockUnderstandingMark from './BlockUnderstandingMark.vue';
 import { problemText, translate } from './i18n.js';
@@ -15,7 +15,7 @@ const props = defineProps<{
   result?: ReadingDocument; error?: ReaderProblem; language: Language;
   bookmarks: readonly Bookmark[]; activeBookmark: string; bookmarksBusy: boolean;
   saveBookmark: (action: BookmarkAction) => Promise<void>;
-  marks: readonly UnderstandingMark[]; marksBusy: boolean; markListError: ReaderProblem | undefined;
+  marks: readonly ReaderMark[]; marksBusy: boolean; markListError: ReaderProblem | undefined;
   saveMark: (edit: MarkEdit) => Promise<void>;
 }>();
 const emit = defineEmits<{ addToNotes: [quote: BlockQuote]; refreshMarks: [] }>();

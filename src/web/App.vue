@@ -5,7 +5,7 @@ import type { ReadingDocument } from '../application/document-blocks.js';
 import type { LoopEntry } from '../application/loop-reader.js';
 import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
 import type { BlockQuote, BlockTarget } from '../core/notes.js';
-import type { MarkEdit, UnderstandingMark } from '../core/understanding-marks.js';
+import type { MarkEdit, ReaderMark, UnderstandingMark } from '../core/understanding-marks.js';
 import { bookmarkDraftsKey } from './bookmark-drafts.js';
 import type { BookmarkDraft } from './bookmark-drafts.js';
 import { markDraftsKey } from './mark-drafts.js';
@@ -54,7 +54,7 @@ const unavailableBookmark = ref<Bookmark>();
 const activeBookmark = ref('');
 const visitingBookmark = ref(false);
 const markRoute = '/api/understanding-marks';
-const marks = ref<UnderstandingMark[]>([]);
+const marks = ref<ReaderMark[]>([]);
 const markFilter = ref<'all' | 'not-understood'>('all');
 const marksBusy = ref(false);
 const markListError = ref<ReaderProblem>();
@@ -66,7 +66,7 @@ let controller: AbortController | undefined;
 
 async function loadMarks() {
   try {
-    const data = await request<{ marks: UnderstandingMark[] }>(markRoute);
+    const data = await request<{ marks: ReaderMark[] }>(markRoute);
     marks.value = data.marks;
     markListError.value = undefined;
   } catch (error) { markListError.value = failed(error); }
@@ -82,7 +82,7 @@ async function refreshMarks() {
 async function saveMark(edit: MarkEdit) {
   marksBusy.value = true;
   try {
-    const data = await request<{ marks: UnderstandingMark[] }>(markRoute, {
+    const data = await request<{ marks: ReaderMark[] }>(markRoute, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Understanding-Marks': '1' },
       body: JSON.stringify(edit),

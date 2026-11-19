@@ -2,6 +2,7 @@ import { isDocumentBlockId } from './document-blocks.js';
 
 export const markStatuses = ['unmarked', 'understood', 'not-understood'] as const;
 export type MarkStatus = typeof markStatuses[number];
+export const emptyAnnotationRevision = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
 interface MarkTarget {
   readonly documentPath: string;
@@ -11,6 +12,10 @@ interface MarkTarget {
 export interface UnderstandingMark extends MarkTarget {
   readonly status: MarkStatus;
   readonly annotation: string;
+}
+
+export interface ReaderMark extends UnderstandingMark {
+  readonly annotationRevision: string;
 }
 
 export type MarkEdit = MarkTarget & (
@@ -84,7 +89,8 @@ export function parseMarkEdit(input: unknown): MarkEdit {
     if (field === 'status' && isMarkStatus(previous) && isMarkStatus(value)) {
       return { documentPath, blockId, field, previous, value };
     }
-    if (field === 'annotation' && annotation(previous) && annotation(value)) {
+    if (field === 'annotation' && typeof previous === 'string' && previous.length === 64 &&
+        !/[^a-f0-9]/u.test(previous) && annotation(value)) {
       return { documentPath, blockId, field, previous, value };
     }
   }
