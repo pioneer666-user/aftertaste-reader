@@ -29,3 +29,16 @@
 本轮独立补测仅运行 Windows Edge。全量 npm 测试、其他操作系统、真实作者资料、源码版本更新联验和作者体验未在本轮验证。4341 作者入口未操作。结论仅适用于本候选的独审范围。
 
 结束时 `codex/feat-reader-navigation` 的 HEAD 仍为 `59f4e23c6fd655d8bb75269cac625e3f6bb6eeef`，工作区干净，候选差异通过 `git diff --check`，所用 `dist/web` 文件哈希核对一致。自建隔离 Edge 和服务均已关闭，两次测试的回环端口均已解除监听。按[写入交还](../../../../development/workflow.md#review-handoff)，**采集结束，可以恢复写入**。
+
+## R2 · 2026-11-19
+
+**结论：通过。** R1 的两项问题均在固定候选 `72e0f16bc44612408627e3070ad41ffd78d136aa` 中关闭。复核差异 `git diff 59f4e23..72e0f16`，包括阅读页跳过链接、批注失败提示、对应的两份浏览器回归和首轮审查原文。
+
+1. **窄屏跳过链接恢复正文焦点。** `src/web/App.vue:201–207、468–469` 在窄屏导航已打开时先收栏，待正文解除 `inert` 后再聚焦阅读区。独立在 Windows Edge 157.0.4341.60、390×844 下打开 `src/service.mjs`，正文滚到 260px，从导航关闭按钮 Shift+Tab 到跳过链接并按 Enter。导航收起，焦点落在 `main#reading`，正文仍在 260px。另核重开后 Escape 回到展开按钮、收栏时跳过链接聚焦正文，以及书签列表的跳过链接聚焦 `main#bookmarks`。核读候选的 Edge、Chrome 和 Firefox 回归报告 `.local/D022/browser-E98Iel/`、`browser-SlCPGJ/`、`browser-dKJ5JU/`，三款均通过。
+2. **折叠批注时能看见保存失败。** `src/web/BlockUnderstandingMark.vue:128–145` 将错误提示移出折叠区域，冲突时的已存原文仍随详情展开。独立从项目标注回访，聚焦 `#mark-x4y6az2y` 并看见原批注。提交编辑后，在请求等待时收起详情，再模拟连接失败。草稿编辑器保持隐藏，错误提示可见，磁盘原件字节一致。展开后能看到原草稿，重试成功后错误消失，书签和笔记字节一致。核读 `.local/D022/edge-oBWzAh/report.json` 和对应回归，真实 Windows 文件锁下的 `422 MARK_WRITE_FAILED`、折叠时提示、原件和草稿保护及解锁重试均通过。
+
+独立证据为 `.local/D022/review-r2-tXjFHT/review-r2.json` 及同目录截图。使用 R1 脚本副本 `.local/D022/review-r2.mjs`，保留 R1 原件。首跑 `.local/D022/review-r2-mOpaPQ/review-r2.json` 已验证跳过链接，批注段在打开项目标注后等待回访焦点超时。脚本补上等待列表刷新完成、按钮可操作的前提后一轮复跑，两段均通过。隔离证据不会随克隆恢复。
+
+本轮复用候选的类型检查、构建和最终隔离试读证据。未受改动的核心、书签、笔记、依赖图继续引用 R1 核读的证据。本轮未运行全量 npm 测试、其他操作系统或源码版本更新联验。4341 作者入口未操作，作者体验待验。
+
+结束时 `codex/feat-reader-navigation` 的 HEAD 仍为 `72e0f16bc44612408627e3070ad41ffd78d136aa`，工作区干净，候选差异通过 `git diff --check`。复核前后 `dist` 均为 71 个文件，使用的 `dist/web` 文件哈希一致。自建隔离 Edge 和服务均已关闭，两次复核的回环端口均已解除监听。按[写入交还](../../../../development/workflow.md#review-handoff)，**采集结束，可以恢复写入**。

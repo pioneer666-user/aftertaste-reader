@@ -98,9 +98,9 @@
 
 ## Phase 11 · D022 Polish & Cross-Cutting Concerns
 
-- [ ] T025 更新 docs/usage/file-reader.md，按 specs/006-file-reader/quickstart.md 核真实渲染、顶栏、类型、构建及串行回归，在本次回执记录证据（FR-007—011，SC-006—008）。
-- [ ] T026 冻结候选，按 docs/roles/审查.md 委派独审并处理发现，保存 docs/work/2026/11/D022-reader-navigation/review.md（FR-007—011）。
-- [ ] T027 核实共用试读服务归属，向 4341 部署受审候选，沿同项目打开并烟测，将入口、验收待办及 Git 状态记入 docs/work/2026/11/D022-reader-navigation/handoff.md（SC-006—008）。
+- [x] T025 更新 docs/usage/file-reader.md，按 specs/006-file-reader/quickstart.md 核真实渲染、顶栏、类型、构建及串行回归，在本次回执记录证据（FR-007—011，SC-006—008）。
+- [x] T026 冻结候选，按 docs/roles/审查.md 委派独审并处理发现，保存 docs/work/2026/11/D022-reader-navigation/review.md（FR-007—011）。
+- [x] T027 核实共用试读服务归属，向 4341 部署受审候选，沿同项目打开并烟测，将入口、验收待办及 Git 状态记入 docs/work/2026/11/D022-reader-navigation/handoff.md（SC-006—008）。
 
 ## Dependencies & Execution Order
 
