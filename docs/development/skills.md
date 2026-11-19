@@ -10,7 +10,7 @@
 | 执行实现、修复、重构；主脑已定方向的细化 | 同上 full | 最少必要机制，完成所有受影响调用方、资料和检查 |
 | 独立代码审查 | [Ponytail Review](../../.agents/skills/ponytail-review/SKILL.md) | 读真实调用链，报告具体场景；由未参与实现的子代理执行 |
 | 规范、角色、产品 Skill 与 AI 参考资料写作 | [writing-for-agents](../../.agents/skills/writing-for-agents/SKILL.md) | 单一主定义、明确读取条件与完成条件；产品 Skill 再读其 SKILL-MECHANICS |
-| 创建／更新产品 Skill 包 | 当前宿主提供的 `skill-creator` | 通过本会话技能目录定位并读完整入口，组织描述、参考与脚本并验证；缺失时先报告，不凭名字冒称已调用 |
+| 创建产品 Skill 包，或改入口、元数据、结构与打包方式 | 当前宿主提供的 `skill-creator` | 按宿主目录定位并读完整入口。仅改已有参考指南时，用 writing-for-agents 整理，在实际场景读回验证。任务明确指定的包校验照做 |
 | 产品需求、澄清、方案、任务、一致性 | 官方 [Spec Kit 项目接入](spec-kit.md) | 正式设计与后续更新必须沿对应技能／模板；偏离须告知，见下节 |
 | 新阅读页面、布局或交互呈现；对应设计审查 | [Impeccable](../../.agents/skills/impeccable/SKILL.md) | 先按下方任务范围选流程，再选 Read／Operate 模式 |
 | 块解析、行范围、图关系、序列化等可表达性质的代码 | [property-based-testing](../../.agents/vendor/trailofbits-skills/plugins/property-based-testing/skills/property-based-testing/SKILL.md) | 生成／审查／解释失败按对应参考；具体例子测试仍保留 |
@@ -20,9 +20,10 @@
 
 - Ponytail 的简洁以完整解决本项、易读和减少机制为准；保留已批准功能、分层边界、校验、错误处理、可访问性与必要测试，不竞赛最短 diff。
 - `ultra` 用于尚未定案的价值审视；已确认目标用 full 落实。技能的持续模式不扩展任务授权。
-- Review 的结论采用项目中文“通过／需修复／证据不足”；其中 Ship 不等于获准发布、合并或作者验收。简短测试建议不削减本批必要覆盖。
+- Ponytail Review 的发现、触发场景、证据与结论写进同一份[中文独审原文](../work/_templates/review.md)。结论用“通过／需修复／证据不足”，Git 合并、发布及作者验收各按对应授权。
 - writing-for-agents 指导如何表达，产品原话、关键约束和失败证据不能因“精简”删除。调用策略以实际宿主为准，不直接照搬其他宿主的元数据字段。
 - 开发技能与产品 Skill 的验证分开：来源一致只证明复制一致；能读取不代表宿主已自动发现，入口能启动也不证明效果。真实验证范围见 D001 回执和后续任务。
+- Windows 上用 skill-creator 的 Python 校验器检查中文 UTF-8 包时，在本次解释器调用加 `-X utf8`，如 `python -X utf8 "<校验器实际路径>/quick_validate.py" skills/aftertaste-reader`。结构校验后，按改动核实际使用场景，例如从项目资料分别读出当前自评和读者保留的旧问句。
 
 ## Spec Kit 的现状与使用
 
