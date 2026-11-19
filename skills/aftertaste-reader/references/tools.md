@@ -24,11 +24,14 @@ function receive(operation, program, args, options) {
   return result;
 }
 
-function runCli(args, maxBuffer = gitMaxBuffer) {
+function parseCliOutput(text) {
+  try { return JSON.parse(text); } catch { return undefined; } // 解析异常可能包含输出原文。
+}
+
+function runSourceCli(args, maxBuffer = gitMaxBuffer) {
   const [operation] = args;
   const { status, stdout, stderr } = receive(operation, process.execPath, [cli, ...args], { maxBuffer });
-  let response;
-  try { response = JSON.parse(status === 0 ? stdout : stderr); } catch { /* 只报告状态 */ }
+  const response = parseCliOutput(status === 0 ? stdout : stderr);
   if (status === 0 && response?.ok === true) return response;
   throw Object.assign(new Error(`${operation} 调用失败。`), {
     status, code: response?.error?.code ?? (status === 0 ? 'INVALID_RESPONSE' : 'CLI_FAILED'),
@@ -36,7 +39,7 @@ function runCli(args, maxBuffer = gitMaxBuffer) {
   });
 }
 
-const fixed = previousFixed ?? runCli(['pin', '--project', projectRoot, '--revision', revision ?? 'HEAD']).source;
+const fixed = previousFixed ?? runSourceCli(['pin', '--project', projectRoot, '--revision', revision ?? 'HEAD']).source;
 const mapping = ['--project', fixed.projectRoot,
   '--repository', fixed.repositoryRoot, '--prefix', fixed.projectPrefix];
 const sourceArgs = [...mapping, '--commit', fixed.commit];
@@ -84,14 +87,14 @@ Git 单次原始输出上限是 64 MiB。受支持的 UTF-8 正文中，换行�
 ```javascript
 const metadata = { ...fixed, path: sourcePath, repositoryPath: prefix + sourcePath };
 const maxBuffer = 2 * gitMaxBuffer + Buffer.byteLength(JSON.stringify(metadata)) + 1024;
-const { file } = runCli(['read', ...sourceArgs, '--path', sourcePath], maxBuffer);
+const { file } = runSourceCli(['read', ...sourceArgs, '--path', sourcePath], maxBuffer);
 ```
 
 在内存中分析 `file.content`。接收失败时沿用上面的诊断方式，取得完整成功结果后再继续分块。
 
 ## 已有命令
 
-下列 args 按上述方式作为独立 argv 传入。命令无交互帮助页，以这里的参数和实际 JSON 为准。
+每个参数独立传入 argv。`runSourceCli` 专用于 `pin` 和 `read`。调用表中的两条校验命令时，按[读取校验结果](#读取校验结果)处理。
 
 | 命令 | args 与判断 |
 | --- | --- |
@@ -163,6 +166,29 @@ const { file } = runCli(['read', ...sourceArgs, '--path', sourcePath], maxBuffer
 用 `read-loop --project projectRoot --id 闭环ID` 读回 JSON。result.loop 是独立成品，result.sources 含本次取出的源码行，只在内存查看。给读者一份文本可用 `--format markdown` 输出讲解、关系、图例及源码引用。源码部分缺失时，工具仍会交回讲解，result.sourceCheck 为 unavailable，result.mechanicallyValid 为 false，并给出各失败引用。
 
 `LOOP_BLOCK_INVALID` 定位需核对的现有块，`LOOP_LEGEND_INVALID` 定位所选图例及用法，`LOOP_INPUT_INVALID` 定位输入字段。已占用的 ID 返回 `LOOP_EXISTS`，可以重读原成果。保存失败后先核对诊断和成品是否可读，确认尚未发布再重试。
+
+## 读取校验结果
+
+沿用上文的 `cli`、`receive` 和 `parseCliOutput`。逐篇校验时调用 `runValidation(['validate-document', ...mapping, '--document', documentPath])`，其中 `documentPath` 是项目相对讲解路径。收尾时调用 `runValidation(['validate-graph', ...sourceArgs])`。
+
+```javascript
+function runValidation(args) {
+  const [operation] = args;
+  const { status, stdout, stderr } = receive(operation, process.execPath, [cli, ...args], { maxBuffer: gitMaxBuffer });
+  const response = parseCliOutput(stdout || stderr);
+  if (stdout && typeof response?.ok === 'boolean' && response.result?.mechanicallyValid === response.ok
+      && status === (response.ok ? 0 : 1)) {
+    return response.result;
+  }
+  const error = response?.error;
+  throw Object.assign(new Error(error?.message ?? `${operation} 未取得校验结果。`), {
+    status, code: error?.code ?? 'INVALID_RESPONSE', context: error?.context,
+    nextStep: error?.nextStep, diagnostics: error?.diagnostics,
+  });
+}
+```
+
+返回结果后先看 `mechanicallyValid` 和 `sourceCheck`。校验未通过时，按 `diagnostics` 中的文档路径、块 ID、行号或图字段定位，取源原因见 `sourceError` 或图诊断的 `params.sourceCode`。仅摘取所需诊断；文档结果的 `raw` 含整篇讲解。
 
 ## 结果和诊断
 
