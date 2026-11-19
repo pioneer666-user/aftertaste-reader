@@ -125,6 +125,13 @@ async function persist(edit: MarkEdit) {
       <button type="button" :disabled="busy || unavailable" @click="saveStatus">{{ t(statusConflict ? 'applyMyStatus' : 'retryMark') }}</button>
       <button type="button" :disabled="busy" @click="clear('status')">{{ t('cancelMark') }}</button>
     </div>
+    <div v-if="draft?.annotation?.problem" class="bookmark-error" role="alert">
+      <p>{{ t('annotationSaveFailed') }} {{ problemText(language, draft.annotation.problem).message }} {{ problemText(language, draft.annotation.problem).nextStep }}</p>
+      <template v-if="expanded && annotationConflict && !unavailable">
+        <p>{{ t('savedAnnotation') }}</p>
+        <p class="bookmark-note">{{ savedAnnotation || t('annotationEmpty') }}</p>
+      </template>
+    </div>
     <div v-show="expanded" :id="detailsId" class="annotation-details">
       <p v-if="savedAnnotation && (!draft?.annotation || (active && !annotationConflict))" class="bookmark-note annotation-text">{{ savedAnnotation }}</p>
       <button v-if="!draft?.annotation" ref="annotationButton" type="button" :disabled="busy || unavailable"
@@ -134,11 +141,6 @@ async function persist(edit: MarkEdit) {
           <span>{{ t('annotationOptional') }}</span>
           <textarea ref="annotationInput" v-model="draft.annotation.value" :readonly="busy" rows="3" />
         </label>
-        <div v-if="draft.annotation.problem" class="bookmark-error" role="alert">
-          <p>{{ t('annotationSaveFailed') }} {{ problemText(language, draft.annotation.problem).message }} {{ problemText(language, draft.annotation.problem).nextStep }}</p>
-          <p v-if="annotationConflict && !unavailable">{{ t('savedAnnotation') }}</p>
-          <p v-if="annotationConflict && !unavailable" class="bookmark-note">{{ savedAnnotation || t('annotationEmpty') }}</p>
-        </div>
         <div class="bookmark-actions">
           <button type="submit" :disabled="busy || unavailable">{{ t(annotationConflict ? 'applyMyAnnotation' : 'saveAnnotation') }}</button>
           <button type="button" :disabled="busy" @click="closeAnnotation">{{ t('cancelMark') }}</button>

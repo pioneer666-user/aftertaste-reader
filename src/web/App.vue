@@ -198,6 +198,14 @@ async function readFromTree(path: string) {
   }
 }
 
+async function skipToReading(event: MouseEvent) {
+  if (view.value !== 'reader' || !narrowOpen.value) return;
+  event.preventDefault();
+  narrowOpen.value = false;
+  await nextTick();
+  readingPane.value?.focus({ preventScroll: true });
+}
+
 async function loadMarks() {
   try {
     const data = await request<{ marks: ReaderMark[] }>(markRoute);
@@ -458,7 +466,7 @@ onUnmounted(() => navigationMedia.removeEventListener('change', resizeNavigation
 
 <template>
   <a :href="view === 'canvas' ? '#canvas-reading' : view === 'loops' ? '#loop-navigation' : view === 'reader' ? '#reading' : '#' + view"
-    class="skip-link">{{ t('skip') }}</a>
+    class="skip-link" @click="skipToReading">{{ t('skip') }}</a>
   <header class="app-header">
     <div class="brand"><strong>{{ t('brand') }}</strong><span>{{ t('title') }}</span></div>
     <div class="toolbar">

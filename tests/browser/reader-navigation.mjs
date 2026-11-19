@@ -71,10 +71,10 @@ const browser = engine === 'firefox' ? await firefox.launch({ headless: true }) 
 const report = { run, engine, browser: browser.version(), node: process.version, checks: [], errors: [] };
 let reader, page;
 
-async function tabTo(target) {
+async function tabTo(target, key = 'Tab') {
   for (let attempt = 0; attempt < 30; attempt++) {
     if (await target.evaluate(element => element === document.activeElement)) return;
-    await page.keyboard.press('Tab');
+    await page.keyboard.press(key);
   }
   assert.fail('Keyboard traversal did not reach the requested navigation control');
 }
@@ -223,10 +223,17 @@ try {
   await nav.waitFor({ state: 'hidden' });
   await button('展开阅读导航').locator(':scope:focus').waitFor();
   assert.equal(await reading.evaluate(element => element.scrollTop), narrowPosition);
+  await page.keyboard.press('Enter');
+  await nav.waitFor();
+  await tabTo(page.locator('.skip-link'), 'Shift+Tab');
+  await page.keyboard.press('Enter');
+  await nav.waitFor({ state: 'hidden' });
+  await reading.locator(':scope:focus').waitFor();
+  assert.equal(await reading.evaluate(element => element.scrollTop), narrowPosition);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   assert.deepEqual(await Promise.all(recordFiles.map(name => readFile(path.join(fixture.data, name), 'utf8'))), before);
   assert.deepEqual(report.errors, []);
-  report.checks.push('390px keyboard file selection, jump and Escape return focus, record files unchanged');
+  report.checks.push('390px keyboard file selection, jump, Escape and skip link return focus, record files unchanged');
   report.passed = true;
 } catch (error) {
   report.failure = error.stack;

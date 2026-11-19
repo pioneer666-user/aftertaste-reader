@@ -199,12 +199,31 @@ try {
     assert.deepEqual(await once(createInterface({ input: locker.stdout }), 'line', { signal: AbortSignal.timeout(12000) }), ['LOCKED']);
     await openAnnotation();
     await editor().fill('真实保存失败时保留的输入');
-    const failure = responseTo(page);
-    await button('保存批注', block()).click();
-    const response = await failure;
+    const release = Promise.withResolvers();
+    const annotation = block().getByRole('button', { name: /^批注/u });
+    await page.route('**/api/understanding-marks', async route => {
+      if (route.request().method() !== 'PUT') return route.continue();
+      const response = await route.fetch();
+      await release.promise;
+      await route.fulfill({ response });
+    });
+    let response;
+    try {
+      const failure = responseTo(page);
+      await button('保存批注', block()).click();
+      await annotation.click();
+      assert.equal(await annotation.getAttribute('aria-expanded'), 'false');
+      release.resolve();
+      response = await failure;
+    } finally {
+      release.resolve();
+      await page.unrouteAll({ behavior: 'wait' });
+    }
     assert.equal(response.status(), 422);
     assert.equal((await response.json()).error.code, 'MARK_WRITE_FAILED');
     await block().getByRole('alert').filter({ hasText: '无法保存标注' }).waitFor();
+    assert.equal(await editor().isVisible(), false);
+    await annotation.click();
     assert.equal(await editor().inputValue(), '真实保存失败时保留的输入');
     assert.deepEqual(await readFile(file), before);
     assert.ok((await readdir(path.dirname(file))).every(name => !name.startsWith('.aftertaste-understanding-marks-')));
@@ -212,7 +231,7 @@ try {
     await unlock();
     await saveAnnotation('真实保存失败时保留的输入');
   }
-  evidence.checks.push('stale annotation protected until explicit confirmation; Windows file lock preserves original and input when applicable');
+  evidence.checks.push('stale annotation protected until explicit confirmation; Windows file lock reports failure while collapsed and preserves the original and draft');
 
   const original = await readFile(fixture.rules, 'utf8');
   await writeFile(fixture.rules, original.replace('数量超出范围时', '后来改写的标题'));
