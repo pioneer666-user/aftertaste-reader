@@ -29,7 +29,7 @@ async function examples() {
   return new AsyncFunction('cli', 'projectRoot', 'revision', 'previousFixed', `
     ${pin}
     ${list}
-    return { fixed, paths, sourceArgs, runCli, read: sourcePath => {
+    return { fixed, paths, sourceArgs, runSourceCli, read: sourcePath => {
       ${read}
       return file;
     } };
@@ -132,7 +132,7 @@ test('按 Skill 原样执行 pin、固定树枚举和 read', async t => {
   });
 
   await t.test('读取超过 1 MiB 的 JSON，源码完整，中断与命令失败仅给诊断', async t => {
-    const { paths, read, sourceArgs, runCli } = await runExamples(cli, project, a);
+    const { paths, read, sourceArgs, runSourceCli } = await runExamples(cli, project, a);
     const selection = paths.find(name => name === largePath);
     const file = read(selection);
     assert.equal(file.path, largePath);
@@ -144,7 +144,7 @@ test('按 Skill 原样执行 pin、固定树枚举和 read', async t => {
     const digest = createHash('sha256').update(file.content).digest('hex');
     assert.ok(bytes < 1024 * 1024 && jsonBytes > 1024 * 1024);
     t.diagnostic(`源码 ${bytes} B，CLI JSON ${jsonBytes} B，正文 SHA-256 ${digest}`);
-    assert.throws(() => runCli(['read', ...sourceArgs, '--path', selection], 1024 * 1024), error =>
+    assert.throws(() => runSourceCli(['read', ...sourceArgs, '--path', selection], 1024 * 1024), error =>
       error.code === 'ENOBUFS' && !('stdout' in error) && !('stderr' in error) && !('cause' in error));
     assert.throws(() => read('唯 一 B.txt'), error =>
       error.status === 1 && error.code === 'FILE_NOT_FOUND' && !('stdout' in error) && !('stderr' in error));
