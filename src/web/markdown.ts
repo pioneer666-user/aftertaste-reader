@@ -27,6 +27,34 @@ export function renderMarkdown(raw: string, internalLinks?: InternalLinks): stri
   return markdown.render(raw, { internalLinks });
 }
 
+type InlineToken = { type: string; content: string; children?: InlineToken[] | null };
+const sentences = new Intl.Segmenter(undefined, { granularity: 'sentence' });
+
+function inlineText(tokens: readonly InlineToken[], includeCode: boolean): string {
+  return tokens.map(token => {
+    if (token.type === 'text' || (includeCode && token.type === 'code_inline')) return token.content;
+    if (token.type === 'image') return inlineText(token.children ?? [], includeCode);
+    return token.type === 'softbreak' || token.type === 'hardbreak' ? ' ' : '';
+  }).join('').replace(/\s+/gu, ' ').trim();
+}
+
+export function blockLabel(body: string): string {
+  const tokens: InlineToken[] = markdown.parse(body, {});
+  if (tokens[0]?.type === 'heading_open') {
+    const title = inlineText(tokens[1]?.children ?? [], true);
+    if (title) return title;
+  }
+  for (const [index, token] of tokens.entries()) {
+    if (token.type !== 'inline' || tokens[index - 1]?.type === 'heading_open') continue;
+    const children = token.children ?? [];
+    if (!inlineText(children, false)) continue;
+    const first = sentences.segment(inlineText(children, true))[Symbol.iterator]().next().value?.segment.trim() ?? '';
+    const characters = [...first];
+    return characters.length > 48 ? `${characters.slice(0, 48).join('')}…` : first;
+  }
+  return '';
+}
+
 export function blockLinkInsertion(body: string, link: string): string {
   if (!body) return link;
   const tail = markdown.parse(body + '\n\n' + link, {}).at(-1);

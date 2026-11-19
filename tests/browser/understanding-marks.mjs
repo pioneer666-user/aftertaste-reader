@@ -13,7 +13,7 @@ assert.ok(['edge', 'chrome', 'firefox'].includes(engine));
 const serverModule = process.argv[2] ? pathToFileURL(path.resolve(process.argv[2], 'server/reader.js')) :
   new URL('../../dist/server/reader.js', import.meta.url);
 const { startReader } = await import(serverModule.href);
-const root = fileURLToPath(new URL('../../.local/D021/', import.meta.url));
+const root = fileURLToPath(new URL(`../../.local/${process.env.AFTERTASTE_TEST_TASK ?? 'D021'}/`, import.meta.url));
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, `${engine}-`));
 const fixture = await createBookmarkProject(path.join(run, 'project'));
@@ -42,7 +42,7 @@ const responseTo = target => target.waitForResponse(response => response.request
   response.url().endsWith('/api/understanding-marks'));
 
 async function selectFile(source, target = page) {
-  await button(source, target).click();
+  await target.locator(`#reader-navigation button[title="${source}"]`).click();
   await target.getByRole('heading', { name: source, exact: true }).waitFor();
 }
 
@@ -69,9 +69,15 @@ async function status(value, target = page) {
 }
 
 async function openAnnotation(target = page, keyboard = false) {
+  if (await editor(target).isVisible()) return;
   const control = block(target).getByRole('button', { name: /^批注/u });
-  if (keyboard) await control.press('Enter');
-  else await control.click();
+  if (await control.getAttribute('aria-expanded') !== 'true') {
+    if (keyboard) await control.press('Enter');
+    else await control.click();
+  }
+  const edit = button('编辑批注', block(target));
+  if (keyboard) await edit.press('Enter');
+  else await edit.click();
   await editor(target).locator(':scope:focus').waitFor();
 }
 
@@ -91,7 +97,7 @@ async function openMarks() {
 async function visit(target, name) {
   await entry(target).and(page.locator('button:enabled')).press('Enter');
   await page.getByRole('heading', { name, exact: true }).waitFor();
-  await block().locator(':scope:focus').waitFor();
+  await block().locator(`#mark-${sharedBlockId}:focus`).waitFor();
   assert.ok(await block().evaluate(element => {
     const pane = element.closest('.reading-pane').getBoundingClientRect();
     const bounds = element.getBoundingClientRect();
@@ -115,6 +121,7 @@ try {
   await status('not-understood');
   await openAnnotation(page, true);
   await saveAnnotation(question);
+  await block().locator('button.block-bookmarks-toggle').click();
   await button('加书签', block()).click();
   await block().getByRole('textbox', { name: '备注（选填）' }).fill(bookmark);
   await button('保存书签', block()).click();
@@ -148,6 +155,7 @@ try {
   assert.match(await entry(rulesPath).innerText(), /已理解/u);
   await page.screenshot({ path: path.join(run, 'marks.png') });
   await visit(rulesPath, 'src/rules.mjs');
+  await openAnnotation();
   await editor().waitFor();
   await saveAnnotation(explanation);
   await status('unmarked');
@@ -241,6 +249,7 @@ try {
   await visit(rulesPath, 'src/rules.mjs');
   await openAnnotation();
   await saveAnnotation('');
+  await block().locator('button.block-bookmarks-toggle').click();
   await block().getByText(bookmark, { exact: true }).waitFor();
   assert.equal(await readFile(notes, 'utf8'), noteSentinel);
   assert.deepEqual((await readMarks()).map(mark => mark.documentPath), [servicePath]);

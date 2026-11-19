@@ -11,7 +11,7 @@ import { createBookmarkProject, rulesPath, servicePath, sharedBlockId } from '..
 
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
 assert.ok(['edge', 'chrome', 'firefox'].includes(engine));
-const root = fileURLToPath(new URL('../../.local/D020/', import.meta.url));
+const root = fileURLToPath(new URL(`../../.local/${process.env.AFTERTASTE_TEST_TASK ?? 'D020'}/`, import.meta.url));
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, `${engine}-`));
 const fixture = await createBookmarkProject(path.join(run, 'project'));
@@ -49,7 +49,7 @@ async function restart() {
 }
 
 async function selectFile(name) {
-  await button(name).click();
+  await page.locator(`#reader-navigation button[title="${name}"]`).click();
   await page.getByRole('heading', { name, exact: true }).waitFor();
 }
 

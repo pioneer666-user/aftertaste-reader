@@ -14,6 +14,8 @@ fixtures 保留必要的合成输入和重建脚本；临时仓库、浏览器�
 
 [打开本机试读](http://127.0.0.1:4341/)。各批页面候选使用同一目标项目 `.local/2026-11-19-page-preview/project`。它有四篇讲解、订单依赖图（含分组与库图例）、订单和路径工具两条闭环。两条书签、三条带批注的理解标记和两篇笔记的初始内容在 [page-preview](fixtures/page-preview/)。
 
+D022 浏览器回归在构建后运行 `node tests/browser/reader-navigation.mjs`。脚本在 `.local/D022/` 中重建试读资料，使用独立端口验证收栏、目录跳转、同名路径、块名回退、窄屏键盘操作和精确回访。默认使用 Edge，可用进程级 `AFTERTASTE_BROWSER` 依次指定 `chrome` 或 `firefox`。相关的 `file-reader.mjs`、`bookmarks.mjs`、`understanding-marks.mjs` 和 `notes.mjs` 可用 `AFTERTASTE_TEST_TASK=D022` 将样例和报告归到同一任务目录。
+
 可从标注的「不理解」回到数量校验块，同时看到该块的收藏理由。笔记《数量无效时，订单去哪了？》的两个链接分别跳到规则文件和订单服务。两张图可用「订单数量校验怎样决定集合会不会改变」这条闭环对照查看。
 
 **每批换页面时**，使用该批已构建的 CLI，交接时核对监听进程与项目目录，重开此专用服务并刷新页面。资料目录跨批沿用，读者改过的笔记、书签、批注及个人排布会保留。在本机仓库根用 PowerShell 启动当前构建的命令如下，看到 `"status":"ready"` 即可打开上方链接。

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, provide, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, provide, reactive, ref, watch } from 'vue';
 import type { DocumentEntry, ReaderProblem } from '../application/file-reader.js';
 import type { ReadingDocument } from '../application/document-blocks.js';
 import type { LoopEntry } from '../application/loop-reader.js';
@@ -11,12 +11,14 @@ import type { BookmarkDraft } from './bookmark-drafts.js';
 import { markDraftsKey } from './mark-drafts.js';
 import type { MarkDraft } from './mark-drafts.js';
 import ReaderDocument from './ReaderDocument.vue';
+import ReaderFileTree, { buildFileTree } from './ReaderFileTree.vue';
 import ProjectNotes from './ProjectNotes.vue';
 import ProjectMarks from './ProjectMarks.vue';
 import DependencyCanvas from './DependencyCanvas.vue';
 import { failed, request } from './reader-api.js';
 import { problemText, readLanguage, saveLanguage, translate } from './i18n.js';
 import type { Language } from './i18n.js';
+import { blockLabel } from './markdown.js';
 
 const language = ref<Language>(readLanguage());
 const t = (key: string) => translate(language.value, key);
@@ -31,6 +33,24 @@ const selected = ref('');
 const listLoading = ref(true);
 const readingLoading = ref(false);
 const readingPane = ref<HTMLElement>();
+const navigation = ref<HTMLElement>();
+const treeScroll = ref<HTMLElement>();
+const outlineScroll = ref<HTMLElement>();
+const openNavigationButton = ref<HTMLButtonElement>();
+const closeNavigationButton = ref<HTMLButtonElement>();
+const navigationMedia = window.matchMedia('(max-width: 850px)');
+const narrow = ref(navigationMedia.matches);
+const desktopOpen = ref(true);
+const narrowOpen = ref(false);
+const navigationOpen = computed(() => narrow.value ? narrowOpen.value : desktopOpen.value);
+const projectName = computed(() => projectRoot.value.split(/[\\/]/u).filter(Boolean).at(-1) ?? projectRoot.value);
+const fileTree = computed(() => buildFileTree(documents.value));
+const expandedFolders = reactive(new Set<string>());
+const selectedSource = computed(() => documents.value.find(entry => entry.documentPath === selected.value)?.sourcePath ?? '');
+const outline = computed(() => result.value?.renderMode === 'comparison' ? result.value.blocks.map((block, index) => ({
+  id: block.id, label: blockLabel(block.body), lines: block.lines, number: index + 1,
+})) : []);
+const activeBlock = ref('');
 const canvasOpened = ref(false);
 const view = ref<'reader' | 'canvas' | 'loops' | 'bookmarks' | 'notes' | 'marks'>('reader');
 const noteQuote = ref<BlockQuote>();
@@ -52,6 +72,7 @@ const bookmarkPanel = ref<HTMLElement>();
 const unavailableMessage = ref<HTMLElement>();
 const unavailableBookmark = ref<Bookmark>();
 const activeBookmark = ref('');
+const activeMark = ref('');
 const visitingBookmark = ref(false);
 const markRoute = '/api/understanding-marks';
 const marks = ref<ReaderMark[]>([]);
@@ -63,6 +84,119 @@ let listSequence = 0;
 let readSequence = 0;
 let bookmarkVisitSequence = 0;
 let controller: AbortController | undefined;
+let handledScrollTop = 0;
+
+function expandAncestors(path: string) {
+  let end = path.lastIndexOf('/');
+  while (end > 0) {
+    expandedFolders.add(path.slice(0, end));
+    end = path.lastIndexOf('/', end - 1);
+  }
+}
+watch(selectedSource, expandAncestors);
+
+function toggleFolder(path: string) {
+  if (expandedFolders.has(path)) expandedFolders.delete(path);
+  else expandedFolders.add(path);
+}
+
+function revealNavigationItem(scroller: HTMLElement | undefined, selector: string) {
+  const item = scroller?.querySelector(selector)?.getBoundingClientRect();
+  if (!scroller || !item) return;
+  const frame = scroller.getBoundingClientRect();
+  if (item.top < frame.top) scroller.scrollTop += item.top - frame.top;
+  else if (item.bottom > frame.bottom) scroller.scrollTop += item.bottom - frame.bottom;
+}
+
+watch([navigationOpen, selected, view], () => {
+  if (navigationOpen.value && view.value === 'reader') {
+    revealNavigationItem(treeScroll.value, '[aria-current="page"], [data-current-directory]');
+  }
+}, { flush: 'post' });
+watch([navigationOpen, activeBlock, view], () => {
+  if (navigationOpen.value && view.value === 'reader') {
+    revealNavigationItem(outlineScroll.value, '[aria-current="location"]');
+  }
+}, { flush: 'post' });
+watch(view, current => { if (current !== 'reader') narrowOpen.value = false; });
+
+function blockElement(id: string) {
+  return readingPane.value?.querySelector<HTMLElement>(`.document-block#${CSS.escape(id)}`);
+}
+
+function trackReadingPosition() {
+  const pane = readingPane.value;
+  if (!pane || view.value !== 'reader' || pane.scrollTop === handledScrollTop || !outline.value.length) return;
+  handledScrollTop = pane.scrollTop;
+  const readingLine = pane.getBoundingClientRect().top + 32;
+  const blocks = pane.querySelectorAll<HTMLElement>('.document-block');
+  let current = blocks[0];
+  for (const block of blocks) {
+    if (block.getBoundingClientRect().top > readingLine) break;
+    current = block;
+  }
+  if (pane.scrollTop > 0 && pane.scrollTop + pane.clientHeight >= pane.scrollHeight - 1) current = blocks[blocks.length - 1];
+  if (current) activeBlock.value = current.id;
+}
+
+async function setNavigation(open: boolean) {
+  if (narrow.value) {
+    narrowOpen.value = open;
+    await nextTick();
+  } else {
+    trackReadingPosition();
+    const pane = readingPane.value;
+    const block = blockElement(activeBlock.value);
+    const before = block?.getBoundingClientRect();
+    const previousTop = pane?.scrollTop ?? 0;
+    const frameTop = pane?.getBoundingClientRect().top ?? 0;
+    desktopOpen.value = open;
+    await nextTick();
+    if (pane && before && block?.isConnected && previousTop > 0) {
+      const after = block.getBoundingClientRect();
+      const offset = frameTop - before.top;
+      const restored = offset > 0 && before.height ? offset * after.height / before.height : offset;
+      pane.scrollTop += after.top + restored - pane.getBoundingClientRect().top;
+      handledScrollTop = pane.scrollTop;
+    }
+  }
+  (open ? closeNavigationButton : openNavigationButton).value?.focus({ preventScroll: true });
+}
+
+async function resizeNavigation(event: MediaQueryListEvent) {
+  const focusInSidebar = navigation.value?.contains(document.activeElement);
+  const focusOnOpener = document.activeElement === openNavigationButton.value;
+  narrow.value = event.matches;
+  narrowOpen.value = false;
+  await nextTick();
+  if (view.value !== 'reader') return;
+  if (focusInSidebar && !navigationOpen.value) openNavigationButton.value?.focus({ preventScroll: true });
+  else if (focusOnOpener && navigationOpen.value) closeNavigationButton.value?.focus({ preventScroll: true });
+}
+
+function focusReadingTarget(target: HTMLElement, blockId: string) {
+  target.scrollIntoView({ block: 'start', inline: 'nearest' });
+  handledScrollTop = readingPane.value?.scrollTop ?? 0;
+  activeBlock.value = blockId;
+  target.focus({ preventScroll: true });
+}
+
+async function jumpToBlock(id: string) {
+  const block = blockElement(id);
+  if (!block) return;
+  narrowOpen.value = false;
+  await nextTick();
+  if (block.isConnected && view.value === 'reader') focusReadingTarget(block, id);
+}
+
+async function readFromTree(path: string) {
+  void selectDocument(path);
+  if (narrow.value) {
+    narrowOpen.value = false;
+    await nextTick();
+    readingPane.value?.focus({ preventScroll: true });
+  }
+}
 
 async function loadMarks() {
   try {
@@ -156,8 +290,7 @@ async function visitBookmark(bookmark: Bookmark) {
     if (reading !== readSequence || view.value !== 'reader') return;
     const record = document.getElementById(`bookmark-${bookmark.id}`);
     if (record && readingPane.value?.contains(record)) {
-      record.scrollIntoView({ block: 'center', inline: 'nearest' });
-      record.focus({ preventScroll: true });
+      focusReadingTarget(record, bookmark.blockId);
       return;
     }
     view.value = 'bookmarks';
@@ -190,14 +323,14 @@ async function visitBlock(target: BlockTarget, from: 'notes' | 'marks'): Promise
   if (!result.value.blocks.some(block => block.id === target.blockId)) return `${t('noteBlockMissing')} ${location}`;
 
   fromCanvas.value = false;
+  activeMark.value = from === 'marks' ? target.blockId : '';
   view.value = 'reader';
   await nextTick();
   if (reading !== readSequence || view.value !== 'reader') return;
-  const block = readingPane.value?.querySelector<HTMLElement>(`#${CSS.escape(target.blockId)}`);
-  if (block) {
-    block.scrollIntoView({ block: 'center', inline: 'nearest' });
-    block.focus({ preventScroll: true });
-  }
+  const block = blockElement(target.blockId);
+  const record = activeMark.value ? block?.querySelector<HTMLElement>(`#mark-${CSS.escape(target.blockId)}`) : undefined;
+  const destination = record ?? block;
+  if (destination) focusReadingTarget(destination, target.blockId);
 }
 
 const visitNoteBlock = (target: BlockTarget) => visitBlock(target, 'notes');
@@ -239,6 +372,7 @@ function readFromCanvas(documentPath: string) {
   view.value = 'reader';
   fromCanvas.value = true;
   void selectDocument(documentPath);
+  expandAncestors(selectedSource.value);
 }
 
 async function selectDocument(documentPath: string, resetScroll = true) {
@@ -246,20 +380,29 @@ async function selectDocument(documentPath: string, resetScroll = true) {
   controller?.abort();
   controller = new AbortController();
   selected.value = documentPath;
+  if (!resetScroll) expandAncestors(selectedSource.value);
   activeBookmark.value = '';
+  activeMark.value = '';
+  activeBlock.value = '';
   readingLoading.value = true;
   result.value = undefined;
   readingError.value = undefined;
   try {
     const data = await request<{ result: ReadingDocument }>(`/api/document?path=${encodeURIComponent(documentPath)}`, { signal: controller.signal });
-    if (sequence === readSequence) result.value = data.result;
+    if (sequence === readSequence) {
+      result.value = data.result;
+      activeBlock.value = outline.value[0]?.id ?? '';
+    }
   } catch (error) {
     if (sequence === readSequence) readingError.value = { ...failed(error), context: { ...failed(error).context, documentPath } };
   } finally {
     if (sequence === readSequence) {
       readingLoading.value = false;
       await nextTick();
-      if (resetScroll && sequence === readSequence) readingPane.value?.scrollTo({ top: 0 });
+      if (resetScroll && sequence === readSequence) {
+        readingPane.value?.scrollTo({ top: 0 });
+        handledScrollTop = 0;
+      }
     }
   }
 }
@@ -299,15 +442,18 @@ async function changeLanguage(event: Event) {
   document.title = `${t('brand')} · ${t('title')}`;
   await nextTick();
   readingPane.value?.scrollTo({ top });
+  handledScrollTop = readingPane.value?.scrollTop ?? 0;
 }
 
 onMounted(() => {
+  navigationMedia.addEventListener('change', resizeNavigation);
   document.documentElement.lang = language.value;
   document.title = `${t('brand')} · ${t('title')}`;
   void refresh();
   void refreshBookmarks();
   void refreshMarks();
 });
+onUnmounted(() => navigationMedia.removeEventListener('change', resizeNavigation));
 </script>
 
 <template>
@@ -380,37 +526,67 @@ onMounted(() => {
     <DependencyCanvas v-for="id in openedLoops" v-show="selectedLoop === id" :key="id" :loop-id="id"
       :active="view === 'loops' && selectedLoop === id" :language="language" />
   </div>
-  <div v-show="view === 'reader'" class="workspace">
-    <aside class="sidebar">
-      <h2>{{ t('files') }}</h2>
-      <p class="project-root" :title="projectRoot">{{ projectRoot }}</p>
-      <p v-if="listLoading" role="status">{{ t('loading') }}</p>
-      <section v-if="listError" role="alert" class="list-error">
-        <h3>{{ t('listError') }}</h3>
-        <p>{{ problemText(language, listError).message }}</p>
-        <p>{{ problemText(language, listError).nextStep }}</p><code>{{ listError.code }}</code>
-      </section>
-      <nav :aria-label="t('files')"><ul class="file-list"><li v-for="entry in documents" :key="entry.documentPath">
-        <button type="button" :aria-current="selected === entry.documentPath ? 'page' : undefined" @click="selectDocument(entry.documentPath)">{{ entry.sourcePath }}</button>
-      </li></ul></nav>
-      <section v-for="(problem, index) in problems" :key="index" class="list-problem" role="alert">
-        <code>{{ problem.code }}</code><p>{{ problem.context.documentPath }}</p>
-        <p>{{ problemText(language, problem).message }}</p><p>{{ problemText(language, problem).nextStep }}</p>
-      </section>
-      <p class="read-only">{{ t('readOnly') }}</p>
+  <div v-show="view === 'reader'" class="workspace"
+    :class="{ 'workspace-active': view === 'reader', 'with-navigation': navigationOpen }">
+    <aside v-show="navigationOpen" id="reader-navigation" ref="navigation" class="sidebar"
+      :class="{ 'with-outline': outline.length }" :aria-label="t('readingNavigation')" @keydown.esc.stop="setNavigation(false)">
+      <header class="sidebar-header">
+        <div class="sidebar-project">
+          <h2 :title="projectRoot || undefined">{{ projectName || t('project') }}</h2>
+          <details v-if="projectRoot" class="project-location">
+            <summary>{{ t('projectPath') }}</summary>
+            <p>{{ projectRoot }}</p>
+          </details>
+        </div>
+        <button ref="closeNavigationButton" type="button" class="sidebar-close" :aria-label="t('closeNavigation')"
+          :title="t('closeNavigation')" aria-controls="reader-navigation" @click="setNavigation(false)"></button>
+      </header>
+      <nav class="sidebar-section" :aria-label="t('files')">
+        <h2>{{ t('files') }}</h2>
+        <div ref="treeScroll" class="navigation-scroll">
+          <p v-if="listLoading" class="navigation-status" role="status">{{ t('loading') }}</p>
+          <section v-if="listError" role="alert" class="list-error">
+            <h3>{{ t('listError') }}</h3>
+            <p>{{ problemText(language, listError).message }}</p>
+            <p>{{ problemText(language, listError).nextStep }}</p><code>{{ listError.code }}</code>
+          </section>
+          <ReaderFileTree :entries="fileTree" :expanded="expandedFolders" :selected="selected" :selected-source="selectedSource"
+            @toggle="toggleFolder" @select="readFromTree" />
+          <section v-for="(problem, index) in problems" :key="index" class="list-problem" role="alert">
+            <code>{{ problem.code }}</code><p>{{ problem.context.documentPath }}</p>
+            <p>{{ problemText(language, problem).message }}</p><p>{{ problemText(language, problem).nextStep }}</p>
+          </section>
+        </div>
+      </nav>
+      <nav v-if="outline.length" class="sidebar-section block-outline" :aria-label="t('outline')">
+        <h2>{{ t('outline') }}</h2>
+        <div ref="outlineScroll" class="navigation-scroll">
+          <ol class="outline-list"><li v-for="entry in outline" :key="entry.id">
+            <button type="button" :aria-current="entry.id === activeBlock ? 'location' : undefined" @click="jumpToBlock(entry.id)">
+              {{ entry.label || (entry.lines ? `${t('sourceLines')} ${entry.lines.start}–${entry.lines.end}` : `${t('block')} ${entry.number}`) }}
+            </button>
+          </li></ol>
+        </div>
+      </nav>
     </aside>
-    <main id="reading" ref="readingPane" class="reading-pane" tabindex="-1" :aria-busy="readingLoading">
-      <p v-if="readingLoading" class="reading-state" role="status">{{ t('loading') }}</p>
-      <ReaderDocument v-else-if="result || readingError" :key="selected"
-        v-bind="{ ...(result ? { result } : {}), ...(readingError ? { error: readingError } : {}) }"
-        :language="language" :bookmarks="bookmarks" :active-bookmark="activeBookmark"
-        :bookmarks-busy="bookmarksLoading || bookmarksSaving" :save-bookmark="saveBookmark"
-        :marks="marks" :marks-busy="marksBusy" :save-mark="saveMark" :mark-list-error="markListError"
-        @refresh-marks="refreshMarks" @add-to-notes="addToNotes" />
-      <section v-else-if="!listLoading && !listError && !documents.length && !problems.length" class="empty-state">
-        <h1>{{ t('empty') }}</h1><p>{{ t('emptyHelp') }}</p><code>docs/aftertaste/current/</code>
-      </section>
-      <p v-else-if="!listLoading" class="reading-state">{{ t('choose') }}</p>
-    </main>
+    <div class="reading-workspace" :inert="narrow && navigationOpen">
+      <div v-if="!navigationOpen || narrow" class="navigation-tools">
+        <button ref="openNavigationButton" type="button" :aria-expanded="navigationOpen" aria-controls="reader-navigation"
+          @click="setNavigation(true)">{{ t('openNavigation') }}</button>
+      </div>
+      <main id="reading" ref="readingPane" class="reading-pane" tabindex="-1" :aria-busy="readingLoading" @scroll.passive="trackReadingPosition">
+        <p v-if="readingLoading" class="reading-state" role="status">{{ t('loading') }}</p>
+        <ReaderDocument v-else-if="result || readingError" :key="selected"
+          v-bind="{ ...(result ? { result } : {}), ...(readingError ? { error: readingError } : {}) }"
+          :language="language" :bookmarks="bookmarks" :active-bookmark="activeBookmark" :active-mark="activeMark"
+          :bookmarks-busy="bookmarksLoading || bookmarksSaving" :save-bookmark="saveBookmark"
+          :marks="marks" :marks-busy="marksBusy" :save-mark="saveMark" :mark-list-error="markListError"
+          @refresh-marks="refreshMarks" @add-to-notes="addToNotes" />
+        <section v-else-if="!listLoading && !listError && !documents.length && !problems.length" class="empty-state">
+          <h1>{{ t('empty') }}</h1><p>{{ t('emptyHelp') }}</p><code>docs/aftertaste/current/</code>
+        </section>
+        <p v-else-if="!listLoading" class="reading-state">{{ t('choose') }}</p>
+      </main>
+    </div>
   </div>
 </template>

@@ -64,7 +64,8 @@ try {
       page.on('request', request => { if (!request.url().startsWith(ready.url)) external.push(request.url()); });
       page.on('pageerror', error => pageErrors.push(error.message));
       await page.goto(ready.url);
-      await page.locator('button', { hasText: 'src/rules.mjs' }).click();
+      const file = name => page.locator(`#reader-navigation button[title="src/${name}"]`);
+      await file('rules.mjs').click();
       await page.locator('.check-status').waitFor();
       assert.equal(await page.locator('.source-line').count(), 7);
       const lineNumberContrast = await page.locator('.line-number').first().evaluate(element => {
@@ -83,13 +84,13 @@ try {
       assert.match(await page.locator('.source-scroll').innerText(), /function parseQuantity/);
       assert.doesNotMatch(await page.locator('.source-scroll').innerText(), /WORKTREE_ONLY/);
       assert.match(await page.locator('.commit').innerText(), new RegExp(fixture.commit));
-      await page.getByRole('button', { name: 'src/service.mjs', exact: true }).click();
+      await file('service.mjs').click();
       await page.locator('.check-status').waitFor();
       assert.equal(await page.locator('.source-line').count(), 10);
       const pane = page.locator('.reading-pane');
       await pane.evaluate(element => { element.scrollTop = 300; });
       const beforeScroll = await pane.evaluate(element => element.scrollTop);
-      await page.locator('select').selectOption('en');
+      await page.locator('.language-control select').selectOption('en');
       await page.getByRole('button', { name: 'Refresh documents' }).waitFor();
       assert.equal(await pane.evaluate(element => element.scrollTop), beforeScroll);
       assert.equal(await page.locator('.document-header h1').innerText(), 'src/service.mjs');
@@ -107,15 +108,15 @@ try {
           await new Promise(resolve => setTimeout(resolve, 300));
           await route.fulfill({ response }).catch(() => {});
         });
-        await page.getByRole('button', { name: 'src/rules.mjs', exact: true }).click();
-        await page.getByRole('button', { name: 'src/service.mjs', exact: true }).click();
+        await file('rules.mjs').click();
+        await file('service.mjs').click();
         await page.locator('.document-header h1').filter({ hasText: 'src/service.mjs' }).waitFor();
         await page.waitForTimeout(400);
         assert.equal(await page.locator('.document-header h1').innerText(), 'src/service.mjs');
         await page.unroute('**/api/document?path=*rules.mjs.md');
 
         await writeFile(rules, originalRules.replace('## ', '## Updated from disk '));
-        await page.getByRole('button', { name: 'src/rules.mjs', exact: true }).click();
+        await file('rules.mjs').click();
         await page.getByText('Updated from disk', { exact: false }).first().waitFor();
         await writeFile(rules, originalRules.replace('lines=1-7', 'lines=2-7'));
         await page.getByRole('button', { name: 'Refresh documents' }).click();
@@ -138,7 +139,7 @@ try {
         await page.screenshot({ path: path.join(run, 'edge-fallback.png'), fullPage: true });
         await writeFile(rules, originalRules);
 
-        await page.getByRole('button', { name: 'src/long.ts', exact: true }).click();
+        await file('long.ts').click();
         await page.locator('.check-status').waitFor();
         assert.equal(await page.locator('.source-line').count(), 61);
         assert.equal(await page.locator('.source-pane').count(), 1);
@@ -146,10 +147,10 @@ try {
         assert.match(await page.locator('.problem-list').innerText(), /SOURCE_TOO_LARGE/);
         assert.match(await page.locator('.problem-list').innerText(), /EXPLANATION_TOO_LARGE/);
         assert.ok(await page.locator('.source-scroll').evaluate(element => element.scrollWidth > element.clientWidth));
-        await page.getByRole('button', { name: 'src/empty.ts', exact: true }).click();
+        await file('empty.ts').click();
         await page.getByText('This explanation is unfinished').first().waitFor();
         assert.equal(await page.locator('.source-pane').count(), 0);
-        await page.getByRole('button', { name: 'src/unsafe.ts', exact: true }).click();
+        await file('unsafe.ts').click();
         await page.locator('.fallback-markdown').waitFor();
         assert.equal(await page.evaluate(() => window.UNSAFE), undefined);
         assert.equal(await page.locator('.markdown img, .markdown script').count(), 0);
@@ -157,7 +158,7 @@ try {
 
         await rename(path.join(fixture.projectRoot, '.git'), path.join(fixture.projectRoot, 'git-hidden'));
         try {
-          await page.getByRole('button', { name: 'src/rules.mjs', exact: true }).click();
+          await file('rules.mjs').click();
           await page.getByText('Fixed source unavailable', { exact: true }).waitFor();
           assert.ok(await page.locator('.fallback-markdown').innerText());
           await page.screenshot({ path: path.join(run, 'edge-git-unavailable.png'), fullPage: true });
@@ -172,7 +173,7 @@ try {
         await writeFile(rules, originalRules);
         await page.getByRole('button', { name: 'Refresh documents' }).click();
         await page.locator('.check-status').waitFor();
-        await page.getByRole('button', { name: 'src/service.mjs', exact: true }).click();
+        await file('service.mjs').click();
         await page.locator('.check-status').waitFor();
         await pane.evaluate(element => { element.scrollTop = 0; });
         await page.screenshot({ path: path.join(run, 'edge-desktop.png'), fullPage: true });
@@ -180,7 +181,8 @@ try {
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         await page.screenshot({ path: path.join(run, 'edge-mobile.png'), fullPage: true });
         await page.setViewportSize({ width: 1280, height: 900 });
-        await page.getByRole('button', { name: 'src/rules.mjs', exact: true }).focus();
+        await file('rules.mjs').waitFor();
+        await file('rules.mjs').focus();
         await page.keyboard.press('Enter');
         await page.locator('.document-header h1').filter({ hasText: 'src/rules.mjs' }).waitFor();
         assert.notEqual(await page.locator(':focus').evaluate(element => getComputedStyle(element).outlineStyle), 'none');
@@ -191,7 +193,7 @@ try {
         const deniedPage = await denied.newPage();
         await deniedPage.goto(ready.url);
         await deniedPage.locator('.check-status').waitFor();
-        await deniedPage.locator('select').selectOption('en');
+        await deniedPage.locator('.language-control select').selectOption('en');
         await deniedPage.getByText('Language changed for this page.', { exact: false }).waitFor();
         await denied.close();
         const invalid = await browser.newContext();
