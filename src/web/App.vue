@@ -1026,8 +1026,16 @@ onUnmounted(() => {
         </div>
         <div class="document-blocks">
           <div class="document-block comparison">
-            <div class="source-pane placeholder-lines"><i></i><i></i><i></i><i></i></div>
-            <div class="explanation-pane placeholder-lines"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="placeholder-code">
+              <div v-for="group in 16" :key="group" class="source-pane placeholder-lines">
+                <i v-for="line in 5" :key="line"></i>
+              </div>
+            </div>
+            <div class="explanation-pane">
+              <div v-for="group in 16" :key="group" class="placeholder-lines placeholder-paragraph">
+                <i v-for="line in 6" :key="line"></i>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -207,8 +207,10 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 }
 .file-switch-placeholder .document-header h1 { display: block; white-space: normal; }
 .file-switch-placeholder .document-block { border: 0; }
+.file-switch-placeholder .placeholder-code { display: grid; gap: 20px; }
 .document-block .source-pane.placeholder-lines { padding: 20px; }
 .file-switch-placeholder .placeholder-lines { display: grid; gap: 12px; }
+.placeholder-paragraph + .placeholder-paragraph { margin-block-start: 24px; }
 .placeholder-lines i {
   display: block;
   width: 82%;
@@ -218,7 +220,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 }
 .placeholder-lines i:nth-child(3n + 1) { width: 52%; }
 .placeholder-lines i:nth-child(3n) { width: 71%; }
-.explanation-pane.placeholder-lines i:first-child { height: 15px; margin-block-end: 6px; background: #dfe9e1; }
+.placeholder-paragraph i:first-child { height: 15px; margin-block-end: 6px; background: #dfe9e1; }
 .file-directory, .file-name { overflow: hidden; text-overflow: ellipsis; }
 .file-directory { min-width: 0; color: var(--muted); font-weight: 400; }
 .file-name { flex: 0 0 auto; max-width: 100%; font-weight: 650; }
@@ -376,6 +378,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
   .language-control span { display: none; }
   .document-block.comparison { grid-template-columns: minmax(0, 1fr); }
   .document-block .source-pane.is-sticky { position: static; }
+  .placeholder-code .source-pane:not(:first-child) { display: none; }
 }
 @media (max-width: 850px) {
   .app-page-menu:not([popover]) { display: none; }

@@ -203,6 +203,20 @@ async function frameGeometry() {
   }));
 }
 
+async function placeholderCoverage(screenshot, stacked = false) {
+  const gaps = await placeholder().evaluate(root => {
+    const bottom = root.getBoundingClientRect().bottom;
+    return ['.placeholder-code i', '.explanation-pane i'].map(selector => {
+      const visible = Array.from(root.querySelectorAll(selector), line => line.getBoundingClientRect())
+        .filter(rect => rect.height && rect.top < bottom);
+      return Math.max(0, bottom - Math.max(...visible.map(rect => rect.bottom)));
+    });
+  });
+  assert.ok(gaps[1] <= 48 && (stacked || gaps[0] <= 48), JSON.stringify({ screenshot, gaps }));
+  (report.placeholderCoverage ??= {})[screenshot] = gaps;
+  await shot(screenshot);
+}
+
 try {
   reader = await startReader(project, 0);
   browser = engine === 'firefox' ? await firefox.launch({ headless: true }) :
@@ -239,7 +253,10 @@ try {
     assert.equal(await page.locator('.file-switch-announcement').textContent(), '正在打开 ' + rules);
     assert.equal(await page.locator('#reader-project-info .commit').count(), 0);
     assert.equal(await main().getByRole('button', { name: '加书签', exact: true }).count(), 0);
-    await shot('desktop-waiting');
+    await placeholderCoverage('desktop-waiting');
+    await page.setViewportSize({ width: 1440, height: 1200 });
+    await placeholderCoverage('desktop-tall-waiting');
+    await page.setViewportSize({ width: 1440, height: 900 });
     await toggle().click();
     await nav().waitFor({ state: 'hidden' });
     assert.ok(await placeholder().isVisible());
@@ -336,12 +353,14 @@ try {
       const source = root.querySelector('.source-pane').getBoundingClientRect();
       const prose = root.querySelector('.explanation-pane').getBoundingClientRect();
       return { headingTop: heading.top, sourceLeft: source.left, sourceBottom: source.bottom,
-        proseLeft: prose.left, proseTop: prose.top, animations: root.getAnimations({ subtree: true }).length };
+        proseLeft: prose.left, proseTop: prose.top, animations: root.getAnimations({ subtree: true }).length,
+        visibleSourcePanes: [...root.querySelectorAll('.source-pane')].filter(pane => pane.offsetHeight > 0).length };
     });
     assert.ok(layout.headingTop > 0 && layout.headingTop < 844 &&
       layout.sourceLeft === layout.proseLeft && layout.sourceBottom < layout.proseTop);
     assert.equal(layout.animations, 0);
-    await shot('narrow-waiting');
+    assert.equal(layout.visibleSourcePanes, 1);
+    await placeholderCoverage('narrow-waiting', true);
     await held.release();
     await settled(rules);
     assert.equal(await main().evaluate(pane => pane === document.activeElement), true);

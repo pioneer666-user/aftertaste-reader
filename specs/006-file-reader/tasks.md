@@ -226,8 +226,12 @@
 
 ## Phase 30 · D030 Polish & Cross-Cutting Concerns
 
-- [ ] T062 固定构建及输入，交独审并归档 `docs/work/2026/11/D030-reader-file-switch/review.md`。
+- [x] T062 固定构建及输入，交独审并归档 `docs/work/2026/11/D030-reader-file-switch/review.md`。
 - [ ] T063 独审通过后以固定构建换版 4341，在 `docs/work/2026/11/D030-reader-file-switch/handoff.md` 提供证据与作者验收入口。
+
+## Phase 31 · D030 试读调整 - User Story 4 (P1)
+
+- [ ] T064 [US4] 按占位覆盖调整更新 `src/web/App.vue`、`src/web/style.css` 并用 `tests/browser/reader-file-switch.mjs` 核对桌面、增高和窄窗占位填充（FR-018、SC-017），交审查者复核受影响的视口及自然、受控切篇。
 
 ## Dependencies & Execution Order
 
@@ -248,6 +252,8 @@ D028 在 T049 固定同一输入。T050 → T051、T052 → T053 可按场景先
 D029 先固定比较输入，再由 T055 实现、T056 串行验。T057 在固定候选上独立进行，随后 T058 用受审构建换版。
 
 D030 复用 US4 和 US11 的现有实现。T059 固定输入和重现路径，T060 集成反馈，T061 串行自测。T062 独审后以 T063 组织试读。
+
+D030 占位覆盖调整由 T064 在已审版本上补齐，复核通过后更新共用试读和回执。
 
 ## Parallel Example
 
