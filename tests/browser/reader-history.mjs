@@ -131,7 +131,12 @@ async function checkRailMotion() {
           sample(event.type);
           // Vue may finish a transition by timeout and clear the element before transitionend.
           if (part === 'rail' && event.type === 'transitionrun') {
-            requestAnimationFrame(() => requestAnimationFrame(() => sample('frame')));
+            const observe = () => {
+              if (!rail.classList.contains(`canvas-rail-${phase}-active`)) return;
+              sample('frame');
+              requestAnimationFrame(observe);
+            };
+            requestAnimationFrame(observe);
           }
         }
       }, { capture: true });
@@ -712,6 +717,11 @@ async function checkNarrow() {
   assert.equal(await activeLabel.evaluate(element => element.matches(':hover') &&
     getComputedStyle(element).visibility === 'visible'), true, 'short-window label stays visible on pointer transfer');
   await shot('short-narrow-rail-label');
+  await top().locator('.app-page-menu-toggle').press('Enter');
+  const pageMenu = top().locator('#app-page-menu:popover-open');
+  await pageMenu.waitFor();
+  await page.keyboard.press('Escape');
+  await pageMenu.waitFor({ state: 'hidden' });
   await page.mouse.move(8, 70);
   await page.setViewportSize({ width: 390, height: 760 });
   await button(summary(), '查看关系').click();

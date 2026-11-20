@@ -565,12 +565,13 @@ watch(() => props.toolsOpen, open => {
 
 function trackControl(event: KeyboardEvent) {
   if (!props.active) return;
-  if (event.type === 'keydown' && event.key === 'Escape' && !event.defaultPrevented && props.toolsOpen) {
-    const rail = toolsRail.value;
-    if (toolsMenu.value?.open || rail?.matches(':hover, :has(:focus-visible)')) {
+  if (event.type === 'keydown' && event.key === 'Escape' && !event.defaultPrevented &&
+      props.toolsOpen && !document.querySelector(':popover-open')) {
+    const helpOpen = toolsMenu.value?.open;
+    if (helpOpen || (!labelsDismissed.value && toolsRail.value?.matches(':hover, :has(:focus-visible)'))) {
       closeTools(true);
       labelsDismissed.value = true;
-      event.preventDefault();
+      if (helpOpen) event.preventDefault();
     }
   }
   if (event.key !== 'Control') return;
