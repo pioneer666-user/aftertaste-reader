@@ -204,6 +204,18 @@
 
 - [x] T054 按 `specs/006-file-reader/quickstart.md` 串行验证，核受影响的旧阅读回访。同步 `docs/usage/file-reader.md`，并把证据交 007 的联合独审（SC-013—015）。
 
+## Phase 27 · D029 User Story 12 - 沿同一套轮廓阅读与操作 (P1)
+
+**Independent Test** 按 SC-016 在同一订单项目的 `src/service.mjs` 中复现小控件、整行和源码板，并操作有焦点的浮层与块后记录。
+
+- [x] T055 [US12] 在 `src/web/style.css` 按共用顶栏与文件讲解入口设置不同尺寸的连续转角及可见焦点（FR-017）。
+- [x] T056 [US12] 按 `specs/006-file-reader/quickstart.md` 固定副本、做三引擎视窗对照，串行复用 `tests/browser/reader-center.mjs`、`tests/browser/reader-history.mjs` 和记录回访（SC-016）。
+
+## Phase 28 · D029 Polish & Cross-Cutting Concerns
+
+- [ ] T057 冻结候选，交独立审查者按 `docs/roles/审查.md` 实走桌面、窄窗和非常规状态，归档 `docs/work/2026/11/D029-reader-continuous-corners/review.md`（SC-016）。
+- [ ] T058 独审通过后用固定构建换版 4341，在 `docs/work/2026/11/D029-reader-continuous-corners/handoff.md` 提供原项目的待验入口与对照（SC-016）。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。
@@ -219,6 +231,8 @@ D023 试读调整在已审版本上接续。T042 与 T043 完成后用 T044 复�
 D026 顶栏依次 T046 → T047 → T048，图往返在 007 的依赖图详情工作完成后合验。复用已有配置和隔离试读，验证资源串行。
 
 D028 在 T049 固定同一输入。T050 → T051、T052 → T053 可按场景先准备检查，App.vue 由同一执行者集成。T054 依赖图的回访接口与浮层就绪，与 007 同候选串行联验。
+
+D029 先固定比较输入，再由 T055 实现、T056 串行验。T057 在固定候选上独立进行，随后 T058 用受审构建换版。
 
 ## Parallel Example
 
@@ -241,3 +255,5 @@ D023 最小可验的阅读核心为 US8，当前批准交付同时包含 US7 和
 D026 先形成可切页的 US10，随后与 007 的首屏及分组在同一隔离项目验收并交回。
 
 D028 先让六页顶栏位置一致，再核访问历史与各页落点。完整访问与回归证据提交 007 的冻结候选及独审。
+
+D029 以同一份文件讲解覆盖核心阅读场景。等主要轮廓、相关状态和原操作均验证后，交独审与试读。

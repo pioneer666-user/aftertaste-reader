@@ -163,7 +163,6 @@ onUnmounted(() => {
   width: max-content;
   padding: 4px 9px;
   border: 1px solid var(--line);
-  border-radius: 5px;
   background: #f4faf5;
   color: var(--accent);
   font-size: 12px;
@@ -183,7 +182,6 @@ onUnmounted(() => {
   max-height: calc(100dvh - 16px);
   overflow: auto;
   padding: 12px;
-  border-radius: 8px;
   background: #fff;
   box-shadow: 0 4px 20px #183d2b3b;
   font-size: 13px;
@@ -202,7 +200,6 @@ onUnmounted(() => {
   margin-block-end: 8px;
   padding: 8px;
   border: 1px solid #a7b8ac;
-  border-radius: 4px;
   font: 12px/1.5 Consolas, monospace;
   resize: vertical;
 }

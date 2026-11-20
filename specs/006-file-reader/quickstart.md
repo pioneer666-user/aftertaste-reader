@@ -50,3 +50,9 @@ D010 合成样例使用 tests/fixtures/reader-project.mjs 重建到全新隔离�
 - 按 [SC-013](spec.md#measurable-outcomes) 量测坐标并用键盘验证中英文入口。
 - 按 SC-014 走依赖图、讲解中段、书签的往返，并验证分支、重复入口及浏览器重新加载。
 - 按 SC-015 走标注和笔记跨文件回访，在副本模拟失效、读取延迟及保存失败，观察原位草稿和最后有效落点。闭环右栏跟 007 同轮核验。
+
+## D029 连续圆角
+
+按 [共用试读重建说明](../../tests/README.md#页面改版共用试读)固定一份订单项目。分别使用 D028 固定构建与本批构建启动副本，从 `src/service.mjs` 的「更新集合、调用辅助函数、返回同一对象」块对照 [SC-016](spec.md#measurable-outcomes)。用同一视口、100% 页面缩放、相同的选中及焦点状态拍整窗与原尺寸局部。项目浮窗退回项目名，源码区可聚焦，例码可选，窄窗菜单焦点完整，打开块后批注和书签时对照外壳、输入框和动作。
+
+用 Node 24 依次运行 `npm run typecheck` 和 `npm run build`。设置 `AFTERTASTE_TEST_TASK=D029` 与 `AFTERTASTE_READER_INPUT`（上述固定副本路径），按 Edge、Chrome、Firefox 依次运行 `node tests/browser/reader-center.mjs`。脚本在各自副本验证原生选文复制、剪贴板拒绝、长行横滚及小窗末行。设置 `AFTERTASTE_BROWSER=edge` 后串行运行 `tests/browser/reader-history.mjs` 及受影响的记录回访。强制色时看键盘焦点。图内节点、框选浮条和管理页内部用同一输入短访核对。实图、日志和副本归 `.local/D029/`。

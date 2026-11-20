@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -14,10 +14,19 @@ if (process.env.AFTERTASTE_D023_BUILD) {
 const { build } = await import('../fixtures/dependency-canvas.mjs');
 const { createLoopReaderProject, explanationFile, git } = await import('../fixtures/loop-reader.mjs');
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')).href);
-const output = fileURLToPath(new URL('../../.local/D023/', import.meta.url));
+const output = path.join(fileURLToPath(new URL('../../.local/', import.meta.url)), process.env.AFTERTASTE_TEST_TASK ?? 'D023');
 await mkdir(output, { recursive: true });
 const run = await mkdtemp(path.join(output, engine + '-'));
-const fixture = await createLoopReaderProject(path.join(run, 'project'));
+const projectRoot = path.join(run, 'project');
+const input = process.env.AFTERTASTE_READER_INPUT;
+let fixture;
+if (input) {
+  await cp(path.resolve(input), projectRoot, { recursive: true, force: false, errorOnExist: true });
+  const commit = git({ projectRoot }, 'rev-parse', 'HEAD').trim();
+  fixture = { projectRoot, data: path.join(projectRoot, 'docs/aftertaste'), commit };
+} else {
+  fixture = await createLoopReaderProject(projectRoot);
+}
 const recordFiles = ['bookmarks.json', 'understanding-marks.json', 'notes.json'];
 for (const name of recordFiles) {
   await copyFile(new URL('../fixtures/page-preview/' + name, import.meta.url), path.join(fixture.data, name));
@@ -53,7 +62,7 @@ const longMarkdown = [
 await writeFile(longDocument, longMarkdown);
 
 const report = {
-  run, build, engine, node: process.version, os: release(), project: fixture.projectRoot, head,
+  run, build, engine, node: process.version, os: release(), project: fixture.projectRoot, input, head,
   serviceDocumentCommit: fixture.commit, checks: [], screenshots: {}, pasted: [], errors: [],
 };
 let browser, reader, page;
