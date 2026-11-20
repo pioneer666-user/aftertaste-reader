@@ -135,7 +135,7 @@ description: "文件依赖图与布局保存实施清单"
 ## Phase 15: D028 试读细化 - User Story 7
 
 - [x] T047 [US7] 按作者确认在 `src/web/DependencyCanvas.vue` 和 `src/web/canvas.css` 细化浮条、摘要及依赖图直接控件，处理动效、名称避让、触控和焦点（FR-019—020）。
-- [ ] T048 按 `specs/007-dependency-canvas/quickstart.md` 串行复验桌面、短窗和减少动态效果，冻结候选交独审。复核通过后按 D028 授权换版并记录回执（SC-017—018）。
+- [x] T048 按 `specs/007-dependency-canvas/quickstart.md` 串行复验桌面、短窗和减少动态效果，冻结候选交独审。复核通过后按 D028 授权换版并记录回执（SC-017—018）。
 
 ## Dependencies & Execution Order
 
