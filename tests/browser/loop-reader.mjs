@@ -8,6 +8,7 @@ import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { api, audit, legendId, readJSON, standardLegend } from '../fixtures/dependency-legends.mjs';
 import { orderId, orderInput } from '../fixtures/loop-authoring.mjs';
 import { artifact, createLoopReaderProject, explanationFile, git, legendLoopId, loopLayout } from '../fixtures/loop-reader.mjs';
+import { dependencySaved as saved, openDependencyGroups } from './dependency-controls.mjs';
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
@@ -27,7 +28,6 @@ const legendPath = loopLayout(project, legendLoopId);
 const orderPath = loopLayout(project, orderId);
 const orderRoute = '/api/loops/' + orderId;
 const legendRoute = '/api/loops/' + legendLoopId;
-const saved = scope => scope.getByTestId('layout-status').filter({ hasText: '布局已保存' }).waitFor();
 const title = id => orderInput.nodes.find(node => node.id === id).title;
 const errors = [];
 
@@ -221,7 +221,10 @@ try {
   assert.deepEqual(dependencyInitial.layout.viewport, oldDependency.layout.viewport);
   const dependencyRoute = '/api/dependency-layout';
   await saveAction(page, dependency, dependencyRoute, project.layout,
-    () => addGroup(dependency, '依赖图路径', [audit, 'node:path · 标准库']));
+    async () => {
+      await openDependencyGroups(page);
+      await addGroup(dependency, '依赖图路径', [audit, 'node:path · 标准库']);
+    });
   const arranged = await saveAction(page, dependency, dependencyRoute, project.layout, () => button(dependency, '重新布局').click());
   const depLegend = await saveAction(page, dependency, dependencyRoute, project.layout, () => drag(page, legend(dependency), 57, 61));
   assert.notDeepEqual(depLegend.layout.positions[legendId], arranged.layout.positions[legendId]);

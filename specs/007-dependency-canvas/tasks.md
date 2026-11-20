@@ -83,6 +83,22 @@ description: "文件依赖图与布局保存实施清单"
 - [x] T026 更新 skills/aftertaste-reader/references/generation.md、skills/aftertaste-reader/references/tools.md、docs/usage/file-reader.md 与 specs/001-first-release/08-current-spec-and-acceptance.md 的实际操作入口与交付范围（L01、L02）。
 - [x] T027 在 docs/work/2026/11/D014-dependency-legends/ 固定候选、归档独审及回执并提供试读（L01—L04）。
 
+## Phase 9: D026 User Story 5 - 在图上就近编组 (P1)
+
+**Goal** 正常首屏以图为主，选中后查详情，框选后就近成组。
+
+**Independent Test** 在共用试读副本从组背景框选文件与库，分别通过浮钮与按键编组，并确认旧组成员转移、取消、真实保存失败重试和重开。
+
+- [x] T028 [US5] 在 `tests/browser/dependency-canvas-selection.mjs` 用共用试读副本定义首屏、详情往返、矩形命中与浮层、写盘边界及故障恢复场景（SC-010—013）。
+- [x] T029 [US5] 在 `src/web/DependencyCanvas.vue`、`src/web/canvas.css` 与 `src/web/i18n.ts` 实现大画布首屏、可关闭详情、次级入口与可见诊断。沿 `src/web/App.vue` 保留图到讲解再返回的原节点、视野（FR-002、FR-010）。
+- [x] T030 [US5] 在 `src/web/DependencyCanvas.vue`、`src/web/canvas.css` 与 `src/web/i18n.ts` 接入活动依赖图的 Ctrl 框选、边缘避让浮钮和同一命名路径。组名去除首尾空白后为 1—160 UTF-16 字符，允许重名；沿既有组成员转移、空组清理及保存逻辑。保留可键盘操作的原组编辑（FR-011—013）。
+
+## Phase 10: D026 Polish & Cross-Cutting Concerns
+
+- [x] T031 按 `specs/007-dependency-canvas/quickstart.md` 串行验证类型、构建、隔离实操及受影响的 `tests/browser/` 旧图和闭环路径；按实际入口更新 `docs/usage/file-reader.md`（SC-010—013）。
+- [x] T032 固定候选，按 `docs/roles/审查.md` 委派独审及实操，保存原文至 `docs/work/2026/11/D026-dependency-canvas-selection/review.md`（SC-010—013）。
+- [x] T033 独审通过后核 4341 服务归属，在原试读项目启动受审构建，核读者资料与排布，留 `docs/work/2026/11/D026-dependency-canvas-selection/handoff.md`（SC-010—013、006 SC-013）。
+
 ## Dependencies & Execution Order
 
 T001 → T002 → US1 → US2 → US3 → T011—T012。每个故事先定义行为检查，再接通核心、服务和页面。US2 使用 US1 的项目图及页面，US3 使用 US2 的真实保存入口。测试与浏览器串行，无并行资源运行。
@@ -91,6 +107,10 @@ D013 使用已完成的 T001—T012。T013 → T014、T015 → T016、T017 → T
 
 D014 复用 D013 已验证的布局和文件阅读；T023 → T024 → T025 串行验证，T026 随实际接口更新，T027 以冻结的行为候选收束。
 
+D026 沿既有依赖和配置，T028 → T029 → T030 → T031 → T032 → T033。新增浏览器场景可与视觉方案准备并行，同一脚本与共用文件由双方协调，服务及浏览器验证串行。共用顶栏在 006 验收后合验图往返。
+
 ## Implementation Strategy
 
 优先走通选中、关系及阅读返回，再接入保存恢复，最终验证更新与异常。使用同一隔离样例验证增量，另备试读原始项目。
+
+D026 先验证可阅读的首屏与详情，再以同一试读副本验证框选和保存。交付含本批完整 US5 及 006 的 US10。

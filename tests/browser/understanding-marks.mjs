@@ -280,6 +280,7 @@ try {
   await saveAnnotation(explanation);
   await page.setViewportSize({ width: 380, height: 700 });
   await page.getByRole('combobox', { name: '界面语言' }).selectOption('en');
+  await page.locator('header [popovertarget="app-page-menu"]').click();
   await button('Marks').click();
   await panel().getByRole('combobox', { name: 'Filter marks' }).waitFor();
   assert.equal(await entry(servicePath).locator('.bookmark-note').textContent(), explanation);

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { fitFloatingAxis } from './floating-position.js';
 import { translate } from './i18n.js';
 import type { Language } from './i18n.js';
 
@@ -31,18 +32,13 @@ function placePanel() {
   const gap = 8;
   const width = panel.offsetWidth;
   const height = panel.offsetHeight;
-  function fit(position: number, size: number, limit: number) {
-    const near = position + gap;
-    const far = position - gap - size;
-    return Math.max(gap, Math.min(limit - size - gap, near + size + gap <= limit ? near : far));
-  }
-  const left = fit(point.x, width, window.innerWidth);
-  let top = fit(point.y, height, window.innerHeight);
+  const left = fitFloatingAxis(point.x, width, window.innerWidth);
+  let top = fitFloatingAxis(point.y, height, window.innerHeight);
   if (props.anchor && !manualText.value) {
     const note = panel.closest('.explanation-pane')?.querySelector('.note-selection-action')?.getBoundingClientRect();
     if (note && left < note.right && left + width > note.left && top < note.bottom && top + height > note.top) {
       const above = Math.min(point.y, note.top) - gap - height;
-      top = above >= gap ? above : fit(note.bottom, height, window.innerHeight);
+      top = above >= gap ? above : fitFloatingAxis(note.bottom, height, window.innerHeight);
     }
   }
   panel.style.left = left + 'px';
@@ -101,8 +97,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="control" class="block-location-control" :class="{ 'selection-copy-panel': anchor }">
-    <button ref="button" type="button" :class="anchor ? 'selection-copy-action' : 'block-copy-button'"
+  <div ref="control" class="block-location-control" :class="{ 'selection-copy-panel selection-float': anchor }">
+    <button ref="button" type="button" :class="anchor ? 'selection-copy-action selection-float-action' : 'block-copy-button'"
       :aria-label="t('copyBlockLocation')" :title="anchor ? undefined : t('copyBlockLocation')"
       @mousedown="anchor && $event.preventDefault()" @click="copyLocation">
       <span v-if="anchor">{{ t('copyBlockLocation') }}</span>
@@ -153,23 +149,12 @@ onUnmounted(() => {
 }
 .selection-copy-panel {
   position: fixed;
-  z-index: 2;
-  max-width: calc(100vw - 16px);
   margin: 0;
-  padding: 4px;
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 4px 20px #183d2b3b;
 }
-.selection-copy-action, .location-copy-manual button {
+.location-copy-manual button {
   min-height: 32px;
   padding: 5px 10px;
   font-size: 13px;
-}
-.selection-copy-action {
-  color: var(--accent);
-  border-color: transparent;
-  white-space: nowrap;
 }
 .location-copy-status:not(:empty) {
   position: absolute;

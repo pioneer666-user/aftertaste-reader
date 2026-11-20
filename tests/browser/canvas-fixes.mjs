@@ -7,6 +7,7 @@ import path from 'node:path';
 import { chromium, firefox } from 'playwright';
 import { startReader } from '../../dist/server/reader.js';
 import { applyGraphUpdate, createCanvasProject, repository } from '../fixtures/dependency-canvas.mjs';
+import { dependencyOptions, dependencySaved as saved, openDependencyGroups, refreshDependency } from './dependency-controls.mjs';
 
 const rules = 'src/rules.mjs', service = 'src/service.mjs', audit = 'support/audit.mjs';
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
@@ -18,9 +19,7 @@ const report = { run, browser: channel, version: browser.version(), os: release(
 const fixture = name => createCanvasProject(path.join(run, name));
 const button = (page, name) => page.getByRole('button', { name, exact: true });
 const node = (page, id) => page.locator(`[data-file="${id}"]`);
-const status = page => page.getByTestId('layout-status');
 const disk = async project => JSON.parse(await readFile(project.layout, 'utf8'));
-const saved = page => status(page).filter({ hasText: '布局已保存' }).waitFor();
 const write = (file, data) => writeFile(file, JSON.stringify(data, null, 2) + '\n');
 const viewport = page => page.locator('.vue-flow__transformationpane').evaluate(element => getComputedStyle(element).transform);
 
@@ -93,6 +92,7 @@ async function emptyGraph() {
   const project = await fixture('empty');
   const initial = await withService(project, async (url, context) => {
     const page = await openCanvas(context, url);
+    await openDependencyGroups(page);
     await page.getByLabel('组名').fill('Start');
     await page.getByRole('checkbox', { name: rules, exact: true }).check();
     await savedAction(page, () => button(page, '应用分组').click());
@@ -117,9 +117,9 @@ async function emptyGraph() {
     const empty = await disk(project);
     assert.deepEqual(empty.layout, { positions: {}, groups: [], viewport: initial.layout.viewport });
     assert.notEqual(empty.revision, initial.revision);
-    assert.ok(await button(page, '刷新图和布局').isEnabled());
+    assert.ok(await button(await dependencyOptions(page), '刷新图和布局').isEnabled());
     await applyGraphUpdate(project, { register: [rules] });
-    await savedAction(page, () => button(page, '刷新图和布局').click());
+    await savedAction(page, () => refreshDependency(page));
     await node(page, rules).waitFor();
     const returned = (await disk(project)).layout;
     await savedAction(page, () => drag(page, node(page, rules), 80, 50));
@@ -169,7 +169,7 @@ async function samePath() {
       await savedAction(page, () => drag(page, node(page, audit), 65, 85));
       const placed = (await disk(project)).layout;
       moved(reset, placed, audit);
-      await button(page, '刷新图和布局').click();
+      await refreshDependency(page);
       await saved(page);
       assert.deepEqual((await disk(project)).layout, placed);
       return { reset, placed };
@@ -179,6 +179,7 @@ async function samePath() {
         const page = await openCanvas(context, url);
         await saved(page);
         await expectPoint(page, audit, results[name].placed.positions[audit]);
+        await openDependencyGroups(page);
         await page.getByLabel('组名').fill('Old tab');
         await page.getByRole('checkbox', { name: audit, exact: true }).check();
         await savedAction(page, () => button(page, '应用分组').click());
@@ -205,17 +206,18 @@ async function samePath() {
         assert.deepEqual(recovered.groups, []);
         assert.equal(recovered.viewport.zoom, 1.44);
 
+        await openDependencyGroups(page);
         await page.getByLabel('组名').fill('Temporary');
         await page.getByRole('checkbox', { name: audit, exact: true }).check();
         await savedAction(page, () => button(page, '应用分组').click());
         const beforePartial = await disk(project);
         const graph = JSON.parse(originalGraph);
         await write(project.graph, { ...graph, nodes: graph.nodes.filter(node => node.path !== audit) });
-        await button(page, '刷新图和布局').click();
+        await refreshDependency(page);
         await page.getByText(/LAYOUT_GRAPH_UNCONFIRMED/u).waitFor();
         assert.deepEqual(await disk(project), beforePartial);
         await writeFile(project.graph, originalGraph);
-        await button(page, '刷新图和布局').click();
+        await refreshDependency(page);
         await saved(page);
         assert.deepEqual(await disk(project), beforePartial);
         await expectPoint(page, audit, beforePartial.layout.positions[audit]);
@@ -232,6 +234,7 @@ async function samePath() {
 async function retainReaddedDraft() {
   const project = await fixture('latest-draft');
   const group = async (page, name) => {
+    await openDependencyGroups(page);
     await page.getByLabel('组名').fill(name);
     await page.getByRole('checkbox', { name: audit, exact: true }).check();
     await button(page, '应用分组').click();
@@ -263,7 +266,7 @@ async function retainReaddedDraft() {
     }, { times: 1 });
     try {
       await Promise.all([page.waitForRequest(request => request.url().endsWith('/api/dependency-layout')),
-        button(page, '刷新图和布局').click()]);
+        refreshDependency(page)]);
       await drag(page, node(page, audit), 98, 91);
       await group(page, 'Second latest');
       await button(page, 'Second latest').waitFor();
@@ -370,18 +373,18 @@ async function lateList() {
       assert.ok(before.some(text => text.includes('数量')));
       releaseList.resolve();
       await refresh.and(page.locator(':enabled')).waitFor();
-      assert.equal(await title.innerText(), service);
+      assert.equal(await title.textContent(), service);
       assert.deepEqual(await body(), before);
       await button(page, '返回依赖图').click();
       assert.equal(await viewport(page), view);
       await button(page, '文件讲解').click();
       await refresh.click();
       await refresh.and(page.locator(':enabled')).waitFor();
-      assert.equal(await title.innerText(), service);
+      assert.equal(await title.textContent(), service);
       assert.deepEqual(await body(), before);
-      await button(page, rules).click();
+      await page.locator('#reader-navigation .file-list').getByTitle(rules, { exact: true }).click();
       await title.filter({ hasText: rules }).waitFor();
-      await button(page, service).click();
+      await page.locator('#reader-navigation .file-list').getByTitle(service, { exact: true }).click();
       await title.filter({ hasText: service }).waitFor();
       const fresh = await context.newPage();
       await fresh.goto(url);

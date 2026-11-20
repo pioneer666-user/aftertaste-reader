@@ -21,7 +21,7 @@ D022 浏览器回归在构建后运行 `node tests/browser/reader-navigation.mjs
 **每批换页面时**，使用该批已构建的 CLI，交接时核对监听进程与项目目录，重开此专用服务并刷新页面。资料目录跨批沿用，读者改过的笔记、书签、批注及个人排布会保留。在本机仓库根用 PowerShell 启动当前构建的命令如下，看到 `"status":"ready"` 即可打开上方链接。
 
 ```powershell
-node dist/cli/main.js serve --project '.local/2026-11-19-page-preview/project' --port 4341
+node dist/cli/main.js serve --project (Resolve-Path -LiteralPath '.local/2026-11-19-page-preview/project').Path --port 4341
 ```
 
 **首次建立新副本。** 在回味仓库根使用 PowerShell，准备 Git、已有构建（含运行依赖），并确认 `node --version` 显示 `v24.x`。这组命令在尚不存在的目录中生成试读项目并填入初始阅读记录。需要另一份初始资料时，为 `$trialHome` 选一个新目录。

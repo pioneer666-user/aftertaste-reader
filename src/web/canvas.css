@@ -1,16 +1,59 @@
 /* Use the reader's typography and controls around the canvas. */
-.app-header .toolbar { flex-wrap: wrap; }
 .canvas-page { padding: 22px 28px; }
 .canvas-header, .canvas-actions, .canvas-zoom { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .canvas-header { justify-content: space-between; }
 .canvas-header h1 { margin: 0; }
 .canvas-status { margin: 10px 0 12px; color: var(--accent); font-size: 14px; }
+.loop-canvas .canvas-header .canvas-status { flex-basis: 100%; margin-top: 2px; }
+#app:has(> .canvas-active) { display: flex; flex-direction: column; min-height: 100dvh; }
+.dependency-canvas { display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 8px clamp(8px, 1.5vw, 24px) 12px; }
+.dependency-canvas .canvas-header { justify-content: flex-end; }
+.dependency-canvas .canvas-header .canvas-status { order: -1; margin: 0 auto 0 0; }
+.dependency-canvas .canvas-actions > button, .canvas-tools summary {
+  min-height: 32px;
+  padding: 5px 10px;
+  font-size: 13px;
+}
+.canvas-tools { position: relative; }
+.canvas-tools summary {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.canvas-tools summary:hover, .canvas-tools[open] summary { background: #e7efe9; color: var(--accent); }
+.canvas-tools-menu {
+  position: absolute;
+  z-index: 4;
+  inset-inline-end: 0;
+  top: calc(100% + 6px);
+  display: grid;
+  gap: 5px;
+  width: min(17rem, calc(100vw - 24px));
+  padding: 8px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 20px #183d2b3b;
+}
+.canvas-tools-menu button {
+  min-height: 34px;
+  padding: 5px 8px;
+  text-align: start;
+  border-color: transparent;
+  font-size: 13px;
+}
+.canvas-tools-menu .canvas-hint { margin: 4px 8px; }
+.dependency-canvas .canvas-problem, .dependency-canvas .canvas-recovery { margin: 0; }
 .canvas-empty { padding: 28px; background: #fff; border: 1px solid var(--line); }
 .canvas-problem { margin: 0 0 12px; padding: 10px 14px; background: #fff8e9; border: 1px solid #dfc895; color: #6d4a14; overflow-wrap: anywhere; }
 .canvas-problem p { margin: 0 0 4px; }
 .canvas-recovery { margin: 0 0 12px; }
 .canvas-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.dependency-canvas .canvas-workspace { flex: 1; grid-template-columns: minmax(0, 1fr); }
+.dependency-canvas .canvas-workspace:has(> .canvas-inspector) { grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); }
 .graph-area { position: relative; min-height: 400px; height: calc(100dvh - 220px); background: #f2f6f2; }
+.dependency-canvas .graph-area { height: auto; min-height: min(280px, 60dvh); }
+.dependency-canvas .graph-area:focus-visible { outline-offset: -4px; }
 .graph-area .vue-flow { position: absolute; inset: 0; }
 .graph-area .vue-flow__edge-path { stroke: #486357; stroke-width: 2; }
 .graph-area .library-use-edge .vue-flow__edge-path { stroke: #555493; stroke-dasharray: 5 3; }
@@ -25,12 +68,21 @@
 .file-node[aria-pressed="true"] { background: #d8ecdf; border: 2px solid var(--accent); padding-inline: 9px; }
 .library-node { background: #f5f3ff; border-color: #8580b4; }
 .library-node[aria-pressed="true"] { background: #ede8ff; border-color: #555493; }
+.file-node[data-box-selected="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.file-node[data-box-selected="true"]:focus-visible { outline-width: 3px; outline-offset: 4px; }
 .library-node small { color: #514c80; }
 .library-description { line-height: 1.55; white-space: pre-wrap; }
 .canvas-zoom { position: absolute; left: 12px; bottom: 12px; color: var(--muted); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 3px; }
 .canvas-zoom button { min-height: 32px; padding: 3px 9px; }
 .canvas-zoom output { min-width: 3.4em; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
 .canvas-inspector { background: #fff; border-left: 1px solid var(--line); max-height: calc(100dvh - 220px); min-height: 400px; overflow: auto; padding: 16px; overflow-wrap: anywhere; font-size: 14px; }
+.dependency-canvas .canvas-inspector { min-height: 0; max-height: max(280px, calc(100dvh - 112px)); }
+.canvas-inspector-close {
+  min-height: 30px;
+  margin-bottom: 12px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
 .canvas-inspector h2 { margin: 0 0 10px; font-size: 16px; }
 .canvas-inspector h3 { margin: 18px 0 5px; font-size: 14px; }
 .canvas-hint { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.55; }
@@ -39,12 +91,36 @@
 .canvas-relations button { min-height: 32px; padding: 4px 8px; text-align: left; overflow-wrap: anywhere; max-width: 100%; }
 .canvas-relations p { margin: 5px 0 0; line-height: 1.5; white-space: pre-wrap; }
 .canvas-groups { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.dependency-canvas .canvas-groups { margin: 0; padding: 0; border: 0; }
 .canvas-groups > label { display: block; margin: 8px 0 4px; }
 .canvas-groups > select, .canvas-groups > input { width: 100%; }
-.canvas-groups > input { font: inherit; border: 1px solid #a6b8ac; border-radius: 6px; min-height: 36px; padding: 6px 8px; }
+.canvas-groups > input, .canvas-selection-form input { font: inherit; border: 1px solid #a6b8ac; border-radius: 6px; min-height: 36px; padding: 6px 8px; }
 .canvas-groups fieldset { margin: 12px 0; padding: 4px 8px; border: 1px solid var(--line); }
 .canvas-member { display: flex; align-items: baseline; gap: 5px; padding: 5px 0; }
 .canvas-groups .canvas-hint { margin-top: 8px; }
+.canvas-selection-rect {
+  position: absolute;
+  border: 1px solid var(--accent);
+  background: #2b8c6720;
+  pointer-events: none;
+}
+.canvas-group-float { position: fixed; z-index: 5; }
+.canvas-selection-form {
+  display: grid;
+  gap: 8px;
+  width: min(20rem, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+  font-size: 13px;
+}
+.canvas-selection-form p { margin: 0; }
+.canvas-selection-form input { width: 100%; }
+.canvas-selection-form input:focus-visible { outline-offset: 1px; }
+.canvas-transfers { color: #694614; padding: 8px; border-radius: 6px; background: #fff8e9; }
+.canvas-transfers ul { max-height: min(8rem, 24dvh); overflow: auto; margin: 5px 0 0; padding-inline-start: 18px; overflow-wrap: anywhere; }
+.canvas-transfers li + li { margin-top: 3px; }
 .loop-navigation { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 16px 28px 0; }
 .loop-navigation select { max-width: min(100%, 420px); }
 .loop-navigation p, .loop-navigation .canvas-problem { margin-block: 0; }
@@ -65,6 +141,10 @@
 .loop-step .source-pane { border: 1px solid var(--line); }
 @media (max-width: 760px) {
   .canvas-page { padding: 16px; }
+  .dependency-canvas { padding: 8px; }
+  .dependency-canvas .canvas-workspace:has(> .canvas-inspector) { grid-template-columns: minmax(0, 1fr); }
+  .dependency-canvas .canvas-workspace:has(> .canvas-inspector) .graph-area { min-height: 0; height: max(180px, 46dvh); }
+  .dependency-canvas .canvas-inspector { max-height: none; }
   .canvas-workspace { grid-template-columns: minmax(0, 1fr); }
   .graph-area { height: 55dvh; min-height: 280px; }
   .canvas-inspector { min-height: 0; max-height: none; border-left: 0; border-top: 1px solid var(--line); }

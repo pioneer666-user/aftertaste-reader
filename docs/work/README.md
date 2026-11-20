@@ -35,5 +35,6 @@
 | D023 | [讲解中区阅读与复制块定位](2026/11/D023-reader-center/task.md) |
 | D024 | [理清首版规格入口与历史裁决](2026/11/D024-current-spec-entry/task.md) |
 | D025 | [统一当前试读入口，让共用样例可独立重建](2026/11/D025-preview-fixtures/task.md) |
+| D026 | [文件依赖图首屏与框选分组](2026/11/D026-dependency-canvas-selection/task.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。
