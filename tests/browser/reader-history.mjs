@@ -11,11 +11,13 @@ import { createLoopReaderProject } from '../fixtures/loop-reader.mjs';
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
-const baseline = process.env.AFTERTASTE_D028_STAGE === 'baseline';
+const stage = process.env.AFTERTASTE_D028_STAGE;
+const baseline = stage === 'baseline';
+const surfaceBefore = stage === 'surface-before';
 assert.ok(['edge', 'chrome', 'firefox'].includes(engine));
 const root = path.join(repository, '.local/D028');
 await mkdir(root, { recursive: true });
-const run = await mkdtemp(path.join(root, (baseline ? 'baseline' : 'history') + '-' + engine + '-'));
+const run = await mkdtemp(path.join(root, (baseline ? 'baseline' : surfaceBefore ? 'surface-before' : 'history') + '-' + engine + '-'));
 const project = path.join(run, 'project');
 const data = path.join(project, 'docs/aftertaste');
 const layoutPath = path.join(data, 'dependency-layout.json');
@@ -110,26 +112,228 @@ async function desktopProbe() {
   }
 }
 
-async function checkCanvas() {
-  const initial = await geometry();
+async function checkRailMotion() {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.mouse.move(8, 70);
+  const restX = (await tools().boundingBox()).x;
+  await tools().evaluate(rail => {
+    rail.d028Transitions = [];
+    for (const eventName of ['transitionrun', 'transitionend', 'transitioncancel']) {
+      rail.addEventListener(eventName, event => {
+        const part = event.target === rail ? 'rail' : event.target.matches('.canvas-tool-label') ? 'label' : '';
+        if (part && event.propertyName === 'opacity') {
+          const phase = rail.classList.contains('canvas-rail-leave-active') ? 'leave' :
+            rail.classList.contains('canvas-rail-enter-active') ? 'enter' : '';
+          const sample = kind => rail.d028Transitions.push({
+            part, phase, event: kind, opacity: Number(getComputedStyle(event.target).opacity),
+            x: event.target.getBoundingClientRect().x,
+          });
+          sample(event.type);
+          // Vue may finish a transition by timeout and clear the element before transitionend.
+          if (part === 'rail' && event.type === 'transitionrun') {
+            requestAnimationFrame(() => requestAnimationFrame(() => sample('frame')));
+          }
+        }
+      }, { capture: true });
+    }
+  });
   await toggle().click();
   await tools().waitFor({ state: 'hidden' });
   assert.equal(await toggle().getAttribute('aria-expanded'), 'false');
   await toggle().click();
-  await tools().waitFor();
+  await page.waitForFunction(() => {
+    const rail = document.querySelector('#dependency-tools');
+    return getComputedStyle(rail).opacity === '1' && !rail.classList.contains('canvas-rail-enter-active');
+  });
   assert.equal(await toggle().getAttribute('aria-expanded'), 'true');
-  const rail = await tools().boundingBox();
-  assert.ok(Math.abs((rail.y + rail.height / 2) - (initial.pane.y + initial.pane.height / 2)) < 2);
-  const labelStates = () => tools().locator('[data-tooltip]').evaluateAll(items =>
-    items.map(item => getComputedStyle(item, '::after').visibility));
-  await page.mouse.move(8, 70);
-  assert.deepEqual(await labelStates(), Array(4).fill('hidden'));
+  const labels = tools().locator('.canvas-tool-label');
+  const values = () => labels.evaluateAll(items => items.map(item => ({
+    opacity: Number(getComputedStyle(item).opacity), visibility: getComputedStyle(item).visibility,
+  })));
+  const allHidden = () => page.waitForFunction(() => [...document.querySelectorAll('#dependency-tools .canvas-tool-label')]
+    .every(label => getComputedStyle(label).opacity === '0'));
+  await allHidden();
   await shot('desktop-rail-icons');
   await tools().hover();
-  assert.deepEqual(await labelStates(), Array(4).fill('visible'));
+  await page.waitForFunction(() => [...document.querySelectorAll('#dependency-tools .canvas-tool-label')]
+    .every(label => getComputedStyle(label).opacity === '1'));
+  assert.deepEqual(await values(), Array(4).fill({ opacity: 1, visibility: 'visible' }));
   await shot('desktop-rail-labels');
+
+  // Move from the hovered icon through the gap and then into its own label.
+  const action = button(tools(), '编辑分组');
+  const label = action.locator('.canvas-tool-label');
+  await action.hover();
+  const target = await label.boundingBox();
+  assert.ok(target);
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 12 });
+  await tick();
+  assert.equal(await label.evaluate(element => element.matches(':hover') && getComputedStyle(element).opacity === '1'), true);
+  await page.keyboard.press('Escape');
+  await allHidden();
+  assert.equal((await values()).every(state => state.opacity === 0), true, 'Escape dismisses labels with pointer still over rail');
+
   await page.mouse.move(8, 70);
-  assert.deepEqual(await labelStates(), Array(4).fill('hidden'));
+  await page.keyboard.press('Tab');
+  await action.focus();
+  await page.waitForFunction(() => getComputedStyle(
+    document.querySelector('#dependency-tools button:focus-visible .canvas-tool-label')).opacity === '1');
+  await page.keyboard.press('Escape');
+  await allHidden();
+  assert.equal(await action.evaluate(element => document.activeElement === element), true, 'Escape retains keyboard focus');
+  const samples = await tools().evaluate(rail => rail.d028Transitions);
+  const normalRail = samples.filter(sample => sample.part === 'rail' && sample.event === 'frame');
+  for (const phase of ['leave', 'enter']) {
+    assert.ok(normalRail.some(sample => sample.phase === phase && sample.opacity > 0 && sample.opacity < 1 &&
+      sample.x < restX - .5), 'rail slides as it fades on ' + phase);
+  }
+  const normalLabel = samples.filter(sample => sample.part === 'label' && sample.event === 'transitionend');
+  assert.ok(normalLabel.some(sample => sample.opacity === 0));
+  assert.ok(normalLabel.some(sample => sample.opacity === 1));
+
+  await toggle().evaluate(async control => {
+    for (let count = 0; count < 6; count++) {
+      control.click();
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
+  });
+  await page.waitForFunction(() => {
+    const rail = document.querySelector('#dependency-tools');
+    return !rail.inert && getComputedStyle(rail).opacity === '1' && !rail.className.includes('-active');
+  });
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await toggle().click();
+  await tools().waitFor({ state: 'hidden' });
+  await toggle().click();
+  await tools().waitFor();
+  await tools().hover();
+  assert.deepEqual(await values(), Array(4).fill({ opacity: 1, visibility: 'visible' }));
+  const reduced = await tools().evaluate(rail => [rail, ...rail.querySelectorAll('.canvas-tool-label')]
+    .map(element => getComputedStyle(element).transitionDuration));
+  assert.ok(reduced.every(value => value.split(',').every(duration => parseFloat(duration) === 0)));
+  await page.mouse.move(8, 70);
+  assert.deepEqual(await values(), Array(4).fill({ opacity: 0, visibility: 'hidden' }));
+  report.motion = { rail: normalRail, labelEvents: normalLabel.length, reduced };
+  report.checks.push('rail changes actual opacity and horizontal position; hover and keyboard labels animate, are hoverable and Escape dismissible; no reduced-motion transitions');
+}
+
+async function checkGlassStyle() {
+  const metrics = await summary().evaluate(element => {
+    const panel = getComputedStyle(element.closest('.canvas-panel'));
+    const actions = [...element.querySelectorAll('.canvas-summary-actions button')].map(button => {
+      const bounds = button.getBoundingClientRect();
+      return { border: getComputedStyle(button).borderTopWidth, x: bounds.x, right: bounds.right, width: bounds.width, height: bounds.height };
+    });
+    const glyph = element.querySelector('.canvas-clear-detail svg').getBoundingClientRect();
+    return { color: panel.backgroundColor, image: panel.backgroundImage, backdrop: panel.backdropFilter,
+      shadow: panel.boxShadow, opacity: panel.opacity, actions, glyph: { width: glyph.width, height: glyph.height } };
+  });
+  assert.match(metrics.image, /linear-gradient/u);
+  const alphas = [...metrics.image.matchAll(/rgba\([^)]*,\s*([\d.]+)\)/gu)].map(match => Number(match[1]));
+  assert.ok(alphas.length >= 1 && alphas.every(alpha => alpha <= .6), metrics.image);
+  const tint = Number(metrics.color.match(/rgba\([^)]*,\s*([\d.]+)\)/u)?.[1]);
+  assert.ok(tint >= 0 && tint <= .5, metrics.color);
+  const blur = Number(metrics.backdrop.match(/blur\(([\d.]+)px\)/u)?.[1]);
+  const saturation = Number(metrics.backdrop.match(/saturate\(([\d.]+)\)/u)?.[1]);
+  assert.ok(blur > 0 && blur <= 7, metrics.backdrop);
+  assert.ok(saturation > 1, metrics.backdrop);
+  assert.equal(metrics.opacity, '1');
+  assert.match(metrics.shadow, /inset/u);
+  assert.equal(metrics.actions.length, 3);
+  for (const [index, action] of metrics.actions.entries()) {
+    assert.equal(action.border, '0px');
+    assert.ok(action.width >= 32 && action.height >= 32);
+    if (index) assert.ok(action.x > metrics.actions[index - 1].right);
+  }
+  assert.ok(metrics.glyph.width >= 10 && metrics.glyph.width <= 14 && metrics.glyph.width === metrics.glyph.height);
+  report.glass = { ...metrics, tint, alphas };
+  await page.emulateMedia({ forcedColors: 'active' });
+  try {
+    const fallback = await summary().evaluate(element => {
+      const style = getComputedStyle(element.closest('.canvas-panel'));
+      return { image: style.backgroundImage, backdrop: style.backdropFilter };
+    });
+    assert.deepEqual(fallback, { image: 'none', backdrop: 'none' });
+  } finally { await page.emulateMedia({ forcedColors: 'none' }); }
+  report.checks.push('compact glass has translucent gradient, backdrop blur/saturation, edge highlight and shadow with an opaque forced-colors fallback; three separate borderless actions keep a full hit target');
+}
+
+async function captureGlass(restore) {
+  const panel = await summary().boundingBox();
+  const card = await file(service).boundingBox();
+  const pane = await graph().locator('.graph-area').boundingBox();
+  assert.ok(panel && card && pane);
+  const shift = {
+    x: Math.round(panel.x + panel.width / 3 - card.x - card.width / 2),
+    y: Math.round(panel.y + panel.height / 2 - card.y - card.height / 2),
+  };
+  const start = { x: Math.round(pane.x + pane.width * .51), y: Math.round(pane.y + 18) };
+  const end = { x: start.x + shift.x, y: start.y + shift.y };
+  assert.ok(end.x > pane.x && end.x < pane.x + pane.width && end.y > pane.y && end.y < panel.y);
+  async function pan(from, to) {
+    await saveLayout(async () => {
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      try { await page.mouse.move(to.x, to.y, { steps: 18 }); }
+      finally { await page.mouse.up(); }
+    });
+  }
+  await pan(start, end);
+  try {
+    const behind = await file(service).boundingBox();
+    assert.ok(behind.x < panel.x + panel.width && behind.x + behind.width > panel.x);
+    assert.ok(behind.y < panel.y + panel.height && behind.y + behind.height > panel.y);
+    await page.mouse.move(pane.x + pane.width - 8, pane.y + 8);
+    await tick();
+    await shot('desktop-glass-over-node');
+    const textSamples = await summary().evaluate(element => {
+      const texts = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      const samples = [];
+      while (texts.nextNode()) {
+        const node = texts.currentNode;
+        if (!node.textContent.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const color = getComputedStyle(node.parentElement).color;
+        for (const bounds of range.getClientRects()) {
+          if (bounds.width > 0) samples.push({ text: node.textContent.trim(), color, x: bounds.x, y: bounds.y,
+            width: bounds.width, height: bounds.height });
+        }
+      }
+      return samples;
+    });
+    const colors = await summary().evaluate(element => Array.from(element.querySelectorAll('*'), child => {
+      const color = child.style.getPropertyValue('color');
+      const priority = child.style.getPropertyPriority('color');
+      child.style.setProperty('color', 'transparent', 'important');
+      return { color, priority };
+    }));
+    try { await shot('desktop-glass-contrast-backing'); }
+    finally {
+      await summary().evaluate((element, values) => element.querySelectorAll('*').forEach((child, index) => {
+        const { color, priority } = values[index];
+        if (color) child.style.setProperty('color', color, priority);
+        else child.style.removeProperty('color');
+      }), colors);
+    }
+    report.glassOverlap = { panel, node: behind, textSamples };
+  } finally {
+    if (restore) {
+      const from = { x: end.x + 48, y: end.y };
+      const to = { x: start.x + 48, y: start.y };
+      await pan(from, to);
+    }
+  }
+}
+
+async function checkCanvas() {
+  const initial = await geometry();
+  await checkRailMotion();
+  const railPaint = await tools().evaluate(element => getComputedStyle(element).backgroundColor);
+  assert.ok(railPaint.match(/\d+/gu).slice(0, 3).every(channel => Number(channel) > 190), 'floating rail uses a light surface');
+  const rail = await tools().boundingBox();
+  assert.ok(Math.abs((rail.y + rail.height / 2) - (initial.pane.y + initial.pane.height / 2)) < 2);
   await button(tools(), '重新布局').waitFor();
   await button(tools(), '刷新图和布局').waitFor();
   await tools().locator('summary').click();
@@ -145,7 +349,7 @@ async function checkCanvas() {
   assert.ok(Math.abs((bounds.x + bounds.width / 2) - (initial.pane.x + initial.pane.width / 2)) < 2);
   assert.ok(initial.map.x + initial.map.width < bounds.x, 'summary clears minimap');
   assert.ok(bounds.height <= 58, 'desktop summary fits in one compact horizontal row');
-  assert.match(await summary().evaluate(element => getComputedStyle(element.closest('.canvas-panel')).backdropFilter), /blur/u);
+  await checkGlassStyle();
   assert.match(await summary().innerText(), /依赖.*service\.mjs/su);
   assert.match(await summary().innerText(), /使用.*node:path/su);
   await button(summary(), '查看关系').click();
@@ -197,7 +401,17 @@ async function checkHistory() {
   await addScrollableApi();
   const viewport = await transform(graph());
   const layout = await readFile(layoutPath, 'utf8');
-  await button(summary(), '阅读讲解').click();
+  const releaseRead = Promise.withResolvers();
+  await page.route('**/api/document?path=*api.mjs.md', async route => {
+    await releaseRead.promise;
+    await route.continue();
+  }, { times: 1 });
+  const read = button(summary(), '阅读讲解');
+  try {
+    await read.click();
+    await read.and(summary().locator('[aria-busy="true"]:disabled')).waitFor();
+    await graph().getByRole('status').filter({ hasText: '正在读取' }).waitFor();
+  } finally { releaseRead.resolve(); }
   await upToDate(api);
   await view().locator('#apiwalk1').waitFor();
   await view().locator('#apiwalk1').evaluate(block => {
@@ -471,6 +685,35 @@ async function checkNarrow() {
   await file(api).waitFor();
   await file(api).focus();
   await page.keyboard.press('Enter');
+  await page.setViewportSize({ width: 390, height: 430 });
+  const help = tools().locator('summary');
+  await help.hover();
+  const labels = await tools().locator('.canvas-tool-label').evaluateAll(items => items.filter(item =>
+    getComputedStyle(item).visibility === 'visible' && getComputedStyle(item).opacity === '1').map(item => {
+    const bounds = item.getBoundingClientRect();
+    return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom };
+  }));
+  assert.equal(labels.length, 1, 'short narrow view shows one label only');
+  const readAction = button(summary(), '阅读讲解');
+  const cta = await readAction.boundingBox();
+  assert.ok(cta);
+  assert.ok(labels[0].right <= cta.x || labels[0].left >= cta.x + cta.width ||
+    labels[0].bottom <= cta.y || labels[0].top >= cta.y + cta.height, 'narrow label leaves the reading action accessible');
+  assert.equal(await readAction.evaluate(element => {
+    const bounds = element.getBoundingClientRect();
+    return element.contains(document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2));
+  }), true, 'reading button remains hit-testable');
+  const activeLabel = help.locator('.canvas-tool-label');
+  const helpBox = await help.boundingBox();
+  const labelBox = await activeLabel.boundingBox();
+  await page.mouse.move(labelBox.x - 2, helpBox.y + helpBox.height / 2, { steps: 8 });
+  await page.mouse.move(labelBox.x - 2, labelBox.y + labelBox.height / 2, { steps: 8 });
+  await page.mouse.move(labelBox.x + 8, labelBox.y + labelBox.height / 2, { steps: 6 });
+  assert.equal(await activeLabel.evaluate(element => element.matches(':hover') &&
+    getComputedStyle(element).visibility === 'visible'), true, 'short-window label stays visible on pointer transfer');
+  await shot('short-narrow-rail-label');
+  await page.mouse.move(8, 70);
+  await page.setViewportSize({ width: 390, height: 760 });
   await button(summary(), '查看关系').click();
   await details().getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
@@ -497,7 +740,47 @@ async function checkNarrow() {
   await upToDate(api);
   assert.equal(await arrow('back').isDisabled(), true);
   assert.equal(await arrow('forward').isDisabled(), true);
-  report.checks.push('narrow details, map, zoom, group, visible failed save, retry and empty history on reload');
+  report.checks.push('short narrow window shows one tool label that clears the reading action; narrow details, map, zoom, group, visible failed save, retry and empty history on reload');
+}
+
+async function checkTouch() {
+  const desktop = page;
+  const touch = await browser.newPage({ viewport: { width: 390, height: 760 }, hasTouch: true, reducedMotion: 'reduce' });
+  page = touch;
+  try {
+    page.setDefaultTimeout(7000);
+    page.on('pageerror', error => report.errors.push(error.message));
+    await page.goto(reader.url);
+    if (!await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) {
+      assert.equal(engine, 'firefox', 'touch emulation must activate coarse pointer');
+      report.checks.push('Firefox touch emulation kept the desktop pointer media feature');
+      return;
+    }
+    await open('canvas');
+    await file(api).waitFor();
+    await file(api).focus();
+    await page.keyboard.press('Enter');
+    await summary().waitFor();
+    const controls = await graph().locator('#dependency-tools :is(button, summary), .canvas-dock button, .canvas-summary-actions button')
+      .evaluateAll(elements => elements.map(el => {
+        const { width, height } = el.getBoundingClientRect();
+        return { label: el.getAttribute('aria-label') ?? el.textContent, width, height };
+      }));
+    assert.equal(controls.length, 12);
+    for (const item of controls) assert.ok(item.width >= 44 && item.height >= 44, JSON.stringify(item));
+    await button(summary(), '查看关系').tap();
+    await details().getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
+    await button(summary(), '关闭详情').tap();
+    await summary().locator('.canvas-clear-detail').tap();
+    await summary().waitFor({ state: 'hidden' });
+    report.checks.push('coarse-pointer emulation gives rail, dock and summary controls 44 CSS px hit targets; touch opens details and clears selection');
+  } catch (error) {
+    await shot('coarse-pointer-failure').catch(() => {});
+    throw error;
+  } finally {
+    await touch.close();
+    page = desktop;
+  }
 }
 
 try {
@@ -514,8 +797,11 @@ try {
     assert.equal(await arrow('forward').isDisabled(), true);
   }
   await desktopProbe();
-  if (!baseline) {
+  if (surfaceBefore) {
+    await captureGlass(false);
+  } else if (!baseline) {
     await checkCanvas();
+    await captureGlass(true);
     await checkHistory();
     await checkRecords();
     await checkDelayedHistory();
@@ -526,12 +812,19 @@ try {
     await checkHeader(850, 'en');
     await checkHeader(390, 'zh-CN');
     await checkNarrow();
+    await checkTouch();
   }
   assert.deepEqual(report.errors, []);
   console.log(JSON.stringify(report, null, 2));
 } catch (error) {
   report.failure = error.stack;
-  if (page) await shot('failure').catch(() => {});
+  if (page) {
+    report.motionFailure = await tools().evaluate(rail => ({
+      reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, classes: rail.className,
+      display: getComputedStyle(rail).display, transitions: rail.d028Transitions,
+    }), undefined, { timeout: 500 }).catch(() => undefined);
+    await shot('failure').catch(() => {});
+  }
   console.error(run);
   throw error;
 } finally {

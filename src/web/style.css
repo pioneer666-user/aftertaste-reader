@@ -62,6 +62,17 @@ a { color: var(--accent); text-underline-offset: .2em; }
 .sidebar-icon { display: grid; grid-template-columns: 5px 1fr; width: 17px; height: 14px; border: 1.5px solid currentColor; border-radius: 3px; overflow: hidden; }
 .sidebar-icon::before { content: ''; border-inline-end: 1.5px solid currentColor; }
 .reader-navigation-toggle[aria-expanded="true"] .sidebar-icon::before { background: #c9ded0; }
+@media (prefers-reduced-motion: no-preference) {
+  #app:has(> .canvas-active) .app-header button { transition: transform 80ms ease-out; }
+  #app:has(> .canvas-active) .app-header button:enabled:active { transform: scale(.98); }
+}
+@media (pointer: coarse) {
+  .app-header { --header-touch-target: 44px; }
+  .app-header :is(.history-arrow, .reader-navigation-toggle) {
+    flex-basis: var(--header-touch-target); min-height: var(--header-touch-target);
+  }
+  .app-header :is(.app-page-menu button, .app-page-menu-toggle, .language-control select) { min-height: var(--header-touch-target); }
+}
 .language-status { position: fixed; z-index: 2; right: 24px; bottom: 18px; max-width: min(460px, 90vw); margin: 0; padding: 10px 15px; border: 1px solid var(--line); border-radius: 6px; background: #f2faf4; font-size: 13px; color: #204c3b; pointer-events: none; }
 .position-notice { position: fixed; z-index: 5; top: 56px; right: 12px; width: min(420px, calc(100% - 24px)); padding: 10px 14px; border: 1px solid var(--line); border-radius: 6px; background: #fff8f1; color: #743b1e; overflow-wrap: anywhere; }
 .position-notice p { margin: 0 0 8px; }

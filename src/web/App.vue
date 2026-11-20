@@ -89,7 +89,7 @@ const pageTops: Partial<Record<Page, number>> = {};
 const positionNotice = ref('');
 let navigationSequence = 0;
 let restoring = false;
-let openingDocument = false;
+const openingDocument = ref('');
 const mainId = computed(() => ({ reader: 'reading', canvas: 'canvas-reading', loops: 'loop-navigation',
   bookmarks: 'bookmarks', marks: 'marks', notes: 'notes' })[view.value]);
 const pageMenu = ref<HTMLElement>();
@@ -459,7 +459,7 @@ function pushPosition(position: Position) {
 
 function startNavigation() {
   controller?.abort();
-  openingDocument = false;
+  openingDocument.value = '';
   positionNotice.value = '';
   visitingBookmark.value = false;
   return ++navigationSequence;
@@ -708,11 +708,11 @@ function setDocument(path: string, data: DocumentData, position?: ReaderPosition
 async function openDocument(path: string, block = '', bookmark = '', mark = ''): Promise<string | undefined> {
   const sequence = startNavigation();
   const origin = view.value;
-  openingDocument = true;
+  openingDocument.value = path;
   if (origin === 'bookmarks') visitingBookmark.value = true;
   const data = await readDocument(path);
   if (sequence !== navigationSequence) return;
-  openingDocument = false;
+  openingDocument.value = '';
   visitingBookmark.value = false;
   if (data.error || (block && (data.result.renderMode !== 'comparison' ||
       !data.result.blocks.some(item => item.id === block) ||
@@ -762,7 +762,7 @@ async function refresh() {
     projectRoot.value = data.projectRoot;
     documents.value = data.documents;
     problems.value = data.problems;
-    if (view.value === 'reader' && !restoring && !openingDocument &&
+    if (view.value === 'reader' && !restoring && !openingDocument.value &&
         (navigationAtRequest === navigationSequence || !selected.value)) await refreshReading();
   } catch (error) {
     if (sequence === listSequence) listError.value = failed(error);
@@ -897,7 +897,7 @@ onUnmounted(() => {
     :language="language" :quote="noteQuote"
     :visit="visitNoteBlock" @clear-quote="noteQuote = undefined" />
   <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" ref="canvas" :active="view === 'canvas'"
-    :tools-open="canvasToolsOpen" :language="language" @read="openDocument" />
+    :tools-open="canvasToolsOpen" :opening-document="openingDocument" :language="language" @read="openDocument" />
   <div v-show="view === 'loops'">
     <section id="loop-navigation" class="loop-navigation" :aria-label="t('loops')" tabindex="-1">
       <template v-if="loopEntries.length">

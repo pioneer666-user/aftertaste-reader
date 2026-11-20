@@ -24,7 +24,9 @@ import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import type { CanvasPosition } from './canvas-position.js';
 
-const props = withDefaults(defineProps<{ language: Language; active: boolean; loopId?: string; toolsOpen?: boolean }>(), {
+const props = withDefaults(defineProps<{
+  language: Language; active: boolean; loopId?: string; toolsOpen?: boolean; openingDocument?: string;
+}>(), {
   toolsOpen: true,
 });
 const emit = defineEmits<{ read: [documentPath: string] }>();
@@ -52,6 +54,8 @@ const readProblem = ref<ReaderProblem>();
 const saveProblem = ref<ReaderProblem>();
 const graphArea = ref<HTMLElement>();
 const toolsMenu = ref<HTMLDetailsElement>();
+const toolsRail = ref<HTMLElement>();
+const labelsDismissed = ref(false);
 const detailToggle = ref<HTMLButtonElement>();
 const detailHeading = ref<HTMLElement>();
 const inspector = ref<HTMLElement>();
@@ -108,6 +112,7 @@ const usedLibraries = computed(() => legends.value.flatMap(legend => {
 }));
 const hasNodes = computed(() => ids.value.length > 0);
 const documentPath = computed(() => dependency.value?.documents.find(entry => entry.sourcePath === selected.value)?.documentPath);
+const readingExplanation = computed(() => !!documentPath.value && props.openingDocument === documentPath.value);
 const dependencies = computed(() => dependency.value?.graph.edges.filter(edge => edge.dependent === selected.value) ?? []);
 const dependents = computed(() => dependency.value?.graph.edges.filter(edge => edge.dependency === selected.value) ?? []);
 interface RelationPreview {
@@ -550,12 +555,25 @@ watch(() => props.active, active => {
   mapDragging.value = false;
   clearSelection();
   closeTools();
+  labelsDismissed.value = false;
 }, { flush: 'sync' });
 
-watch(() => props.toolsOpen, open => { if (!open) closeTools(); });
+watch(() => props.toolsOpen, open => {
+  labelsDismissed.value = false;
+  if (!open) closeTools();
+});
 
 function trackControl(event: KeyboardEvent) {
-  if (event.key !== 'Control' || !props.active) return;
+  if (!props.active) return;
+  if (event.type === 'keydown' && event.key === 'Escape' && !event.defaultPrevented && props.toolsOpen) {
+    const rail = toolsRail.value;
+    if (toolsMenu.value?.open || rail?.matches(':hover, :has(:focus-visible)')) {
+      closeTools(true);
+      labelsDismissed.value = true;
+      event.preventDefault();
+    }
+  }
+  if (event.key !== 'Control') return;
   const editing = event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]');
   ctrlHeld.value = event.type === 'keydown' && !editing;
 }
@@ -678,7 +696,7 @@ onUnmounted(() => {
       </div>
     </header>
     <div class="canvas-notices">
-      <p v-if="loading" role="status" class="canvas-status">{{ t('loading') }}</p>
+      <p v-if="loading || readingExplanation" role="status" class="canvas-status">{{ t('loading') }}</p>
       <p v-else-if="reading" v-show="loopId || (statusKey !== 'canvasSaved' && statusKey !== 'canvasDefault')" role="status"
         class="canvas-status" data-testid="layout-status" :data-state="statusKey">{{ t(statusKey) }}</p>
       <p v-if="!loopId && savedGroupName && statusKey === 'canvasSaved'" class="canvas-group-saved" role="status">
@@ -697,29 +715,38 @@ onUnmounted(() => {
     </div>
 
     <div v-if="!loopId || reading" v-show="!loopId || hasNodes" class="canvas-workspace">
-      <div v-if="!loopId" v-show="toolsOpen" id="dependency-tools" class="canvas-rail" role="group" :aria-label="t('canvasTools')">
-        <button type="button" :aria-label="t('canvasRearrange')" :data-tooltip="t('canvasRearrange')"
-          :disabled="!hasNodes || !editable || !idle || !!box" @click="relayout">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h12M16 12h5M9 18h12M3 4h4v4H3zM3 10h11v4H3zM3 16h4v4H3z" /></svg>
-        </button>
-        <button type="button" :aria-label="t('canvasEditGroup')" :data-tooltip="t('canvasEditGroup')"
-          :disabled="!hasNodes || !editable || !idle || !!box" @click="openGroupEditor('', $event)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6m3 0h2v2m0 3v6m0 3v2h-2m-3 0H9m-3 0H4v-2m0-3V9m0-3V4h2m2 5h5v5H8zM13 11h3v5h-5v-2" /></svg>
-        </button>
-        <button type="button" :aria-label="t('canvasRefresh')" :data-tooltip="t('canvasRefresh')"
-          :disabled="loading || saving || dirty || !idle || !!box" @click="load()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5m-5 5a8 8 0 0 0 14 5l2-2m0 5v-5h-5" /></svg>
-        </button>
-        <details ref="toolsMenu" class="canvas-tools" @keydown.esc.stop="closeTools(true)">
-          <summary :aria-label="t('canvasControlsHelp')" :data-tooltip="t('canvasControlsHelp')">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5m0-8v.1" /></svg>
-          </summary>
-          <div class="canvas-tools-menu">
-            <p>{{ t('canvasGestures') }}</p>
-            <p>{{ t(legends.length ? 'canvasLibraryDirection' : 'canvasDirection') }}</p>
-          </div>
-        </details>
-      </div>
+      <Transition v-if="!loopId" name="canvas-rail">
+        <div v-show="toolsOpen" ref="toolsRail" :inert="!toolsOpen" id="dependency-tools" class="canvas-rail" role="group"
+          :aria-label="t('canvasTools')" :data-labels-dismissed="labelsDismissed || undefined"
+          @pointerenter="labelsDismissed = false" @focusin="labelsDismissed = false">
+          <button type="button" :aria-label="t('canvasRearrange')"
+            :disabled="!hasNodes || !editable || !idle || !!box" @click="relayout">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h12M16 12h5M9 18h12M3 4h4v4H3zM3 10h11v4H3zM3 16h4v4H3z" /></svg>
+            <span class="canvas-tool-label" aria-hidden="true" @click.stop.prevent>{{ t('canvasRearrange') }}</span>
+          </button>
+          <button type="button" :aria-label="t('canvasEditGroup')"
+            :disabled="!hasNodes || !editable || !idle || !!box" @click="openGroupEditor('', $event)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6m3 0h2v2m0 3v6m0 3v2h-2m-3 0H9m-3 0H4v-2m0-3V9m0-3V4h2m2 5h5v5H8zM13 11h3v5h-5v-2" /></svg>
+            <span class="canvas-tool-label" aria-hidden="true" @click.stop.prevent>{{ t('canvasEditGroup') }}</span>
+          </button>
+          <button type="button" :aria-label="t('canvasRefresh')"
+            :aria-busy="loading" :disabled="loading || saving || dirty || !idle || !!box" @click="load()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5m-5 5a8 8 0 0 0 14 5l2-2m0 5v-5h-5" /></svg>
+            <span class="canvas-tool-label" aria-hidden="true" @click.stop.prevent>{{ t('canvasRefresh') }}</span>
+          </button>
+          <details ref="toolsMenu" class="canvas-tools">
+            <summary :aria-label="t('canvasControlsHelp')">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5m0-8v.1" /></svg>
+              <span class="canvas-tool-label" aria-hidden="true" @click.stop.prevent>{{ t('canvasControlsHelp') }}</span>
+            </summary>
+            <div class="canvas-tools-menu">
+              <p>{{ t('canvasToolOrder') }}</p>
+              <p>{{ t('canvasGestures') }}</p>
+              <p>{{ t(legends.length ? 'canvasLibraryDirection' : 'canvasDirection') }}</p>
+            </div>
+          </details>
+        </div>
+      </Transition>
       <section ref="graphArea" class="graph-area" :aria-label="t(loopId ? 'loopGraph' : 'dependencyCanvas')"
         :data-tool="loopId ? undefined : effectiveTool"
         :tabindex="loopId ? undefined : 0" @keydown="selectionKeys"
@@ -837,7 +864,8 @@ onUnmounted(() => {
               <span v-if="selectedLegend.uses.length > 1"> +{{ selectedLegend.uses.length - 1 }}</span>
             </p>
             <div class="canvas-summary-actions">
-              <button v-if="documentPath" type="button" class="canvas-read" @click="emit('read', documentPath)">{{ t('canvasRead') }}</button>
+              <button v-if="documentPath" type="button" class="canvas-read" :aria-busy="readingExplanation"
+                :disabled="readingExplanation" @click="emit('read', documentPath)">{{ t('canvasRead') }}</button>
               <button ref="detailToggle" type="button" :aria-expanded="detailsOpen" :aria-controls="detailsOpen ? 'dependency-details' : undefined"
                 @click="toggleDetails">{{ t(detailsOpen ? 'canvasCloseDetails' : 'canvasExpandDetails') }}</button>
               <button type="button" class="canvas-clear-detail" :aria-label="t('canvasClearSelection')" :title="t('canvasClearSelection')" @click="clearDetail">
