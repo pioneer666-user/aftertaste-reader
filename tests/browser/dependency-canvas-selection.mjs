@@ -233,9 +233,9 @@ try {
   await button(header(page), '返回依赖图').click();
   await detail.getByRole('heading', { name: service, exact: true }).waitFor();
   assert.equal(await transform(dep(page)), originalView);
-  assert.ok((await bounds(area(page))).width < full.width);
+  assert.ok((await bounds(area(page))).height < full.height);
   await button(dep(page), '关闭详情').click();
-  assert.equal((await bounds(area(page))).width, full.width);
+  assert.equal((await bounds(area(page))).height, full.height);
   await library(page).click();
   await detail.getByText(standardLegend.description, { exact: true }).waitFor();
   await button(dep(page), '关闭详情').click();
