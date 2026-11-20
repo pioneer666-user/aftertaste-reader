@@ -216,6 +216,19 @@
 - [x] T057 冻结候选，交独立审查者按 `docs/roles/审查.md` 实走桌面、窄窗和非常规状态，归档 `docs/work/2026/11/D029-reader-continuous-corners/review.md`（SC-016）。
 - [x] T058 独审通过后用固定构建换版 4341，在 `docs/work/2026/11/D029-reader-continuous-corners/handoff.md` 提供原项目的待验入口与对照（SC-016）。
 
+## Phase 29 · D030 User Story 4 - 文件树切篇反馈 (P1)
+
+**Independent Test** 按 SC-017 从订单服务篇中段选另一篇，分别观察自然响应、受控等待和失败恢复。
+
+- [x] T059 [US4] 在 `tests/browser/reader-file-switch.mjs` 固定共用试读副本，记录实速时序、受控等待、覆盖、离开与失败恢复（SC-017）。
+- [x] T060 [US4] 在 `src/web/App.vue`、`src/web/ReaderFileTree.vue`、`src/web/i18n.ts` 和 `src/web/style.css` 加入目标反馈、阅读占位及导航收束（FR-018—019）。
+- [x] T061 [US4] 按 `specs/006-file-reader/quickstart.md` 验证 [SC-017](spec.md#measurable-outcomes)，串行回归文件树、其他阅读入口和读点。
+
+## Phase 30 · D030 Polish & Cross-Cutting Concerns
+
+- [ ] T062 固定构建及输入，交独审并归档 `docs/work/2026/11/D030-reader-file-switch/review.md`。
+- [ ] T063 独审通过后以固定构建换版 4341，在 `docs/work/2026/11/D030-reader-file-switch/handoff.md` 提供证据与作者验收入口。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。
@@ -233,6 +246,8 @@ D026 顶栏依次 T046 → T047 → T048，图往返在 007 的依赖图详情�
 D028 在 T049 固定同一输入。T050 → T051、T052 → T053 可按场景先准备检查，App.vue 由同一执行者集成。T054 依赖图的回访接口与浮层就绪，与 007 同候选串行联验。
 
 D029 先固定比较输入，再由 T055 实现、T056 串行验。T057 在固定候选上独立进行，随后 T058 用受审构建换版。
+
+D030 复用 US4 和 US11 的现有实现。T059 固定输入和重现路径，T060 集成反馈，T061 串行自测。T062 独审后以 T063 组织试读。
 
 ## Parallel Example
 

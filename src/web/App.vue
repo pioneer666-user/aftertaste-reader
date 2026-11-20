@@ -90,6 +90,10 @@ const positionNotice = ref('');
 let navigationSequence = 0;
 let restoring = false;
 const openingDocument = ref('');
+const fileSwitch = ref<{ source: string; placeholder: boolean }>();
+const fileSwitchStatus = computed(() => fileSwitch.value ? t('openingFile') + ' ' + fileSwitch.value.source : '');
+const fileSwitchName = computed(() => fileSwitch.value?.source.split('/').at(-1) ?? '');
+let fileSwitchTimer: number | undefined;
 const mainId = computed(() => ({ reader: 'reading', canvas: 'canvas-reading', loops: 'loop-navigation',
   bookmarks: 'bookmarks', marks: 'marks', notes: 'notes' })[view.value]);
 const pageMenu = ref<HTMLElement>();
@@ -334,13 +338,14 @@ async function jumpToBlock(id: string) {
   if (block.isConnected && view.value === 'reader') focusReadingTarget(block, id);
 }
 
-async function readFromTree(path: string) {
-  void openDocument(path);
+async function readFromTree(path: string, source: string) {
+  void openDocument(path, { treeSource: source });
   if (narrow.value || desktopPeek.value) {
+    const sequence = navigationSequence;
     narrowOpen.value = false;
     closeNavigationPreview();
     await nextTick();
-    readingPane.value?.focus({ preventScroll: true });
+    if (sequence === navigationSequence) readingPane.value?.focus({ preventScroll: true });
   }
 }
 
@@ -457,8 +462,14 @@ function pushPosition(position: Position) {
   historyIndex.value++;
 }
 
+function clearFileSwitch() {
+  window.clearTimeout(fileSwitchTimer);
+  fileSwitch.value = undefined;
+}
+
 function startNavigation() {
   controller?.abort();
+  clearFileSwitch();
   openingDocument.value = '';
   positionNotice.value = '';
   visitingBookmark.value = false;
@@ -580,7 +591,7 @@ async function restorePosition(position: Position, current: () => boolean) {
 async function visitBookmark(bookmark: Bookmark) {
   unavailableBookmark.value = undefined;
   bookmarkItem.value = bookmark.id;
-  const reason = await openDocument(bookmark.documentPath, bookmark.blockId, bookmark.id);
+  const reason = await openDocument(bookmark.documentPath, { block: bookmark.blockId, bookmark: bookmark.id });
   if (!reason || view.value !== 'bookmarks') return;
   unavailableBookmark.value = bookmark;
   await nextTick();
@@ -592,10 +603,10 @@ function addToNotes(quote: BlockQuote) {
   noteQuote.value = quote;
 }
 
-const visitNoteBlock = (target: BlockTarget) => openDocument(target.documentPath, target.blockId);
+const visitNoteBlock = (target: BlockTarget) => openDocument(target.documentPath, { block: target.blockId });
 function visitMark(target: UnderstandingMark) {
   markItem.value = markKey(target);
-  return openDocument(target.documentPath, target.blockId, '', target.blockId);
+  return openDocument(target.documentPath, { block: target.blockId, mark: target.blockId });
 }
 
 function positionPageMenu(event: ToggleEvent) {
@@ -705,13 +716,24 @@ function setDocument(path: string, data: DocumentData, position?: ReaderPosition
   activeMark.value = stillExists ? position?.mark ?? '' : '';
 }
 
-async function openDocument(path: string, block = '', bookmark = '', mark = ''): Promise<string | undefined> {
+async function openDocument(path: string, { block = '', bookmark = '', mark = '', treeSource = '' } = {}): Promise<string | undefined> {
+  const placeholder = fileSwitch.value?.placeholder ?? false;
   const sequence = startNavigation();
   const origin = view.value;
   openingDocument.value = path;
+  if (treeSource && selected.value && selected.value !== path) {
+    fileSwitch.value = { source: treeSource, placeholder };
+    if (!placeholder) {
+      fileSwitchTimer = window.setTimeout(() => {
+        if (sequence === navigationSequence && fileSwitch.value) fileSwitch.value.placeholder = true;
+      }, 120);
+    }
+  }
   if (origin === 'bookmarks') visitingBookmark.value = true;
   const data = await readDocument(path);
   if (sequence !== navigationSequence) return;
+  const switchSource = fileSwitch.value?.source;
+  clearFileSwitch();
   openingDocument.value = '';
   visitingBookmark.value = false;
   if (data.error || (block && (data.result.renderMode !== 'comparison' ||
@@ -725,7 +747,10 @@ async function openDocument(path: string, block = '', bookmark = '', mark = ''):
     else if (data.error) reason = problemText(language.value, data.error).message;
     else if (problem) reason += ' ' + problemText(language.value, problem).message;
     const message = `${reason} ${path}${block ? ' · ' + block : ''}`;
-    if (origin === 'reader' || origin === 'canvas') {
+    if (switchSource) {
+      const detail = problem ? problemText(language.value, problem).nextStep : '';
+      positionNotice.value = `${t('fileOpenFailed')} ${switchSource} · ${reason} ${detail}`.trimEnd();
+    } else if (origin === 'reader' || origin === 'canvas') {
       navigationProblem(message + (problem ? ' ' + problemText(language.value, problem).nextStep : ''));
     }
     restoring = false;
@@ -815,6 +840,7 @@ onUnmounted(() => {
   document.removeEventListener('keydown', dismissNavigationPreview);
   document.removeEventListener('pointerdown', dismissProjectInfoOutside);
   closeNavigationPreview();
+  startNavigation();
 });
 </script>
 
@@ -920,7 +946,8 @@ onUnmounted(() => {
       :active="view === 'loops' && selectedLoop === id" :language="language" />
   </div>
   <div v-show="view === 'reader'" class="workspace"
-    :class="{ 'workspace-active': view === 'reader', 'with-navigation': !narrow && desktopOpen }">
+    :class="{ 'workspace-active': view === 'reader', 'with-navigation': !narrow && desktopOpen, 'file-switch-wait': fileSwitch?.placeholder }">
+    <p class="file-switch-announcement" role="status">{{ fileSwitchStatus }}</p>
     <div v-if="!narrow && !desktopOpen" ref="navigationEdge" class="navigation-edge" data-testid="reader-navigation-edge" aria-hidden="true"
       @pointerenter="scheduleNavigationPreview" @pointerleave="schedulePreviewClose"></div>
     <aside v-show="navigationOpen" id="reader-navigation" ref="navigation" class="sidebar"
@@ -940,9 +967,9 @@ onUnmounted(() => {
           role="dialog" tabindex="-1" :aria-label="t('projectInfo')">
           <dl>
             <div><dt>{{ t('projectPath') }}</dt><dd>{{ projectRoot }}</dd></div>
-            <div v-if="result"><dt>{{ t('commit') }}</dt><dd class="commit">{{ result.commit ?? t('unknown') }}</dd></div>
+            <div v-if="result && !fileSwitch?.placeholder"><dt>{{ t('commit') }}</dt><dd class="commit">{{ result.commit ?? t('unknown') }}</dd></div>
           </dl>
-          <p v-if="result?.mechanicallyValid" class="check-status">{{ t('verified') }}</p>
+          <p v-if="result?.mechanicallyValid && !fileSwitch?.placeholder" class="check-status">{{ t('verified') }}</p>
         </div>
       </header>
       <nav id="reader-file-navigation" class="sidebar-section" :aria-label="t('files')">
@@ -955,7 +982,7 @@ onUnmounted(() => {
             <p>{{ problemText(language, listError).nextStep }}</p><code>{{ listError.code }}</code>
           </section>
           <ReaderFileTree :entries="fileTree" :expanded="expandedFolders" :selected="selected" :selected-source="selectedSource"
-            @toggle="toggleFolder" @select="readFromTree" />
+            :opening="fileSwitch ? openingDocument : ''" @toggle="toggleFolder" @select="readFromTree" />
           <section v-for="(problem, index) in problems" :key="index" class="list-problem" role="alert">
             <code>{{ problem.code }}</code><p>{{ problem.context.documentPath }}</p>
             <p>{{ problemText(language, problem).message }}</p><p>{{ problemText(language, problem).nextStep }}</p>
@@ -963,7 +990,7 @@ onUnmounted(() => {
         </div>
       </nav>
       <ReaderSidebarDivider v-if="outline.length" v-model="fileShare" :label="t('resizeNavigationSections')" />
-      <nav v-if="outline.length" class="sidebar-section" :aria-label="t('outline')">
+      <nav v-if="outline.length" class="sidebar-section reader-outline" :aria-label="t('outline')" :inert="fileSwitch?.placeholder">
         <h2>{{ t('outline') }}</h2>
         <div ref="outlineScroll" class="navigation-scroll">
           <ol class="outline-list"><li v-for="entry in outline" :key="entry.id">
@@ -975,19 +1002,38 @@ onUnmounted(() => {
       </nav>
     </aside>
     <div class="reading-workspace" :inert="narrow && navigationOpen">
-      <main id="reading" ref="readingPane" class="reading-pane" tabindex="-1" :aria-busy="readingLoading" @scroll.passive="trackReadingPosition">
-        <p v-if="readingLoading" class="reading-state" role="status">{{ t('loading') }}</p>
-        <ReaderDocument v-else-if="result || readingError" :key="selected"
-          v-bind="{ ...(result ? { result } : {}), ...(readingError ? { error: readingError } : {}) }"
-          :language="language" :active="view === 'reader'" :bookmarks="bookmarks" :active-bookmark="activeBookmark" :active-mark="activeMark"
-          :bookmarks-busy="bookmarksLoading || bookmarksSaving" :save-bookmark="saveBookmark"
-          :marks="marks" :marks-busy="marksBusy" :save-mark="saveMark" :mark-list-error="markListError"
-          @refresh-marks="refreshMarks" @add-to-notes="addToNotes" />
-        <section v-else-if="!listLoading && !listError && !documents.length && !problems.length" class="empty-state">
-          <h1>{{ t('empty') }}</h1><p>{{ t('emptyHelp') }}</p><code>docs/aftertaste/current/</code>
-        </section>
-        <p v-else-if="!listLoading" class="reading-state">{{ t('choose') }}</p>
+      <main id="reading" ref="readingPane" class="reading-pane" tabindex="-1" :aria-busy="readingLoading || !!fileSwitch"
+        @scroll.passive="trackReadingPosition">
+        <div class="reading-content" :inert="fileSwitch?.placeholder">
+          <p v-if="readingLoading" class="reading-state" role="status">{{ t('loading') }}</p>
+          <ReaderDocument v-else-if="result || readingError" :key="selected"
+            v-bind="{ ...(result ? { result } : {}), ...(readingError ? { error: readingError } : {}) }"
+            :language="language" :active="view === 'reader' && !fileSwitch?.placeholder"
+            :bookmarks="bookmarks" :active-bookmark="activeBookmark" :active-mark="activeMark"
+            :bookmarks-busy="bookmarksLoading || bookmarksSaving" :save-bookmark="saveBookmark"
+            :marks="marks" :marks-busy="marksBusy" :save-mark="saveMark" :mark-list-error="markListError"
+            @refresh-marks="refreshMarks" @add-to-notes="addToNotes" />
+          <section v-else-if="!listLoading && !listError && !documents.length && !problems.length" class="empty-state">
+            <h1>{{ t('empty') }}</h1><p>{{ t('emptyHelp') }}</p><code>docs/aftertaste/current/</code>
+          </section>
+          <p v-else-if="!listLoading" class="reading-state">{{ t('choose') }}</p>
+        </div>
       </main>
+      <div v-if="fileSwitch?.placeholder" class="file-switch-placeholder" aria-hidden="true">
+        <div class="document-header">
+          <h1><span class="file-directory">{{ fileSwitch.source.slice(0, -fileSwitchName.length) }}</span><span class="file-name">{{ fileSwitchName }}</span></h1>
+          <p class="document-path">{{ t('openingFile') }}</p>
+        </div>
+        <div class="document-blocks">
+          <div class="document-block comparison">
+            <div class="source-pane placeholder-lines"><i></i><i></i><i></i><i></i></div>
+            <div class="explanation-pane placeholder-lines"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+      </div>
+      <div v-else-if="fileSwitch" class="file-switch-immediate" aria-hidden="true">
+        <p>{{ fileSwitchStatus }}</p>
+      </div>
     </div>
   </div>
 </template>

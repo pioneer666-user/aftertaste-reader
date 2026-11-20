@@ -31,9 +31,9 @@ export function buildFileTree(documents: readonly DocumentEntry[]): FileTreeEntr
 
 <script setup lang="ts">
 defineProps<{
-  entries: readonly FileTreeEntry[]; expanded: ReadonlySet<string>; selected: string; selectedSource: string;
+  entries: readonly FileTreeEntry[]; expanded: ReadonlySet<string>; selected: string; selectedSource: string; opening: string;
 }>();
-const emit = defineEmits<{ toggle: [path: string]; select: [documentPath: string] }>();
+const emit = defineEmits<{ toggle: [path: string]; select: [documentPath: string, sourcePath: string] }>();
 </script>
 
 <template>
@@ -44,10 +44,12 @@ const emit = defineEmits<{ toggle: [path: string]; select: [documentPath: string
           :data-current-directory="!expanded.has(entry.path) && selectedSource.startsWith(entry.path + '/') || undefined"
           @click="emit('toggle', entry.path)">{{ entry.name }}</button>
         <ReaderFileTree v-if="expanded.has(entry.path)" :entries="entry.children" :expanded="expanded"
-          :selected="selected" :selected-source="selectedSource" @toggle="emit('toggle', $event)" @select="emit('select', $event)" />
+          :selected="selected" :selected-source="selectedSource" :opening="opening"
+          @toggle="emit('toggle', $event)" @select="(path, source) => emit('select', path, source)" />
       </template>
-      <button v-else type="button" :title="entry.path" :aria-current="selected === entry.documentPath ? 'page' : undefined"
-        @click="emit('select', entry.documentPath)">{{ entry.name }}</button>
+      <button v-else type="button" class="file-button" :class="{ 'file-opening': opening === entry.documentPath }"
+        :title="entry.path" :aria-current="selected === entry.documentPath ? 'page' : undefined"
+        @click="emit('select', entry.documentPath, entry.path)">{{ entry.name }}</button>
     </li>
   </ul>
 </template>
