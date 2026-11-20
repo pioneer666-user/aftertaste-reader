@@ -21,3 +21,11 @@ D014 构建后串行执行 `node --test tests/integration/dependency-legends.tes
 
 - 使用 `src/api.mjs` 的直接关系进入 `src/service.mjs` 的讲解并返回。在组背景起框，分别用浮钮和快捷键确认分组，再移动组和重开。用反向及缩放场景观察边缘可达性。
 - 依次核空选、取消、输入框焦点、切页、已分组成员转移和键盘分组管理。隔离副本触发真实布局保存失败后恢复写入并重试。用同项目独立闭环实点步骤，分别核布局文件及重开结果。
+
+## D027 订单图对照试读
+
+从 [4341 共用项目](../../tests/README.md#页面改版共用试读)复制当前资料到 `.local/D027/`，保留节点和组，核对显示 79% 后固定该输入。保存旧版实图，再以同一输入、同一窗口和已构建的候选逐项运行 [SC-014—016](spec.md#measurable-outcomes)。所有写入、截留响应、失败及重试均使用独立端口的副本。
+
+先在桌面 Edge 捕捉静止、划过空白、进入节点以及成功成组的实图或连续帧，同时记录实际 PUT 修订、成功或失败结果及重开布局。串行在 Chrome、Firefox 补查轮廓、工具和动效，记录浏览器、设备、缩放与拖动观感。原试读服务在候选通过独审后按任务批准切换。
+
+构建后先运行 `node tests/browser/dependency-canvas-polish.mjs` 检查读图和保存，再运行 `node tests/browser/dependency-canvas-tools.mjs` 检查工具、小地图及闭环。两者均从 `.local/D027/input` 或环境变量 `AFTERTASTE_D027_INPUT` 指定的项目创建新的测试副本。设置 `AFTERTASTE_BROWSER` 为 `edge`、`chrome` 或 `firefox` 可选择浏览器。

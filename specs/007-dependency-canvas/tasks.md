@@ -99,6 +99,23 @@ description: "文件依赖图与布局保存实施清单"
 - [x] T032 固定候选，按 `docs/roles/审查.md` 委派独审及实操，保存原文至 `docs/work/2026/11/D026-dependency-canvas-selection/review.md`（SC-010—013）。
 - [x] T033 独审通过后核 4341 服务归属，在原试读项目启动受审构建，核读者资料与排布，留 `docs/work/2026/11/D026-dependency-canvas-selection/handoff.md`（SC-010—013、006 SC-013）。
 
+## Phase 11: D027 User Story 6 - 在已有排布中追踪关系、定位和成组 (P1)
+
+**Goal** 在读者已有视野中追踪曲线、用两种工具整理图，并在成功落盘后认出刚建的组。
+
+**Independent Test** 在固定的订单图副本执行 [SC-014—016](spec.md#measurable-outcomes)，对照实际保存结果和同视野的画面。
+
+- [x] T034 [US6] 从 [共用试读项目](../../tests/README.md#页面改版共用试读)固定 79% 隔离输入和改前画面，在 `tests/browser/` 准备对应行为检查，覆盖新建时的延迟、失败、重试与切页（SC-014—016）。
+- [x] T035 [US6] 在 `src/web/DependencyCanvas.vue`、`DependencyEdge.vue`、`canvas.css` 和 `i18n.ts` 接入文件／库卡、连续圆角、选中／焦点与直接关系曲线（FR-014、015）。
+- [x] T036 [US6] 在 `src/web/` 的依赖图绘制层与 `DependencyCanvas.vue` 接通同相点阵、组范围色差、静止／收住／回弹和减少动态效果。将三种新建入口的组 ID 与保存尝试快照和确认修订对应，处理失败重试、切页清理及单次涟漪（FR-016、018）。
+- [x] T037 [US6] 在 `src/web/DependencyCanvas.vue` 与图内中英文控件接通工具固定、Ctrl 反转和拖动锁定。用小地图双向定位及窄窗收起，复用主图视野保存和 D026 选区操作（FR-011—013、017）。
+
+## Phase 12: D027 Polish & Cross-Cutting Concerns
+
+- [x] T038 按 `specs/007-dependency-canvas/quickstart.md` 串行验证 SC-014—016 和受影响的 `tests/browser/` 图与闭环用例。检查 `docs/usage/file-reader.md` 的实际操作，记录同输入画面、帧序列、浏览器及实际保存结果至 `.local/D027/`。
+- [ ] T039 固定候选，提交独审亲自验证 79% 读图、Ctrl 提前松开、小地图定位及保存延迟／失败／重试。将独审原文归档于 `docs/work/2026/11/D027-dependency-canvas-polish/review.md`（SC-014—016）。
+- [ ] T040 独审通过后核服务归属，切换 4341 到固定构建及原共用项目，核个人资料与排布，交 `docs/work/2026/11/D027-dependency-canvas-polish/handoff.md`（SC-014—016）。
+
 ## Dependencies & Execution Order
 
 T001 → T002 → US1 → US2 → US3 → T011—T012。每个故事先定义行为检查，再接通核心、服务和页面。US2 使用 US1 的项目图及页面，US3 使用 US2 的真实保存入口。测试与浏览器串行，无并行资源运行。
@@ -109,8 +126,12 @@ D014 复用 D013 已验证的布局和文件阅读；T023 → T024 → T025 串�
 
 D026 沿既有依赖和配置，T028 → T029 → T030 → T031 → T032 → T033。新增浏览器场景可与视觉方案准备并行，同一脚本与共用文件由双方协调，服务及浏览器验证串行。共用顶栏在 006 验收后合验图往返。
 
+D027 从 T034 的同输入取证开始。T035 的卡片与边、T036 的绘制层、T037 的小地图可在独立文件中并行准备，由画布入口整合，随后 T038 → T039 → T040。服务与浏览器检查按顺序运行。
+
 ## Implementation Strategy
 
 优先走通选中、关系及阅读返回，再接入保存恢复，最终验证更新与异常。使用同一隔离样例验证增量，另备试读原始项目。
 
 D026 先验证可阅读的首屏与详情，再以同一试读副本验证框选和保存。交付含本批完整 US5 及 006 的 US10。
+
+D027 先以同视野的 `service.mjs` 走通曲线阅读，再验证工具、定位和成组保存；本批交付完整 US6，并回归其承接的 US1、US2、US3、US5 路径。
