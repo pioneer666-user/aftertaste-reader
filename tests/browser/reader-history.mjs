@@ -82,6 +82,33 @@ async function geometry() {
   return { pane, map, transform: await transform(graph()) };
 }
 
+async function checkCanvasFrame() {
+  const frame = await graph().evaluate(root => {
+    const bounds = selector => root.querySelector(selector).getBoundingClientRect();
+    const headerBottom = document.querySelector('.app-header').getBoundingClientRect().bottom;
+    const pane = bounds('.graph-area');
+    const dock = bounds('.canvas-dock');
+    const rail = bounds('.canvas-rail');
+    const corners = [[1, headerBottom + 1], [innerWidth - 2, headerBottom + 1],
+      [1, innerHeight - 2], [innerWidth - 2, innerHeight - 2]];
+    return {
+      width: innerWidth, height: innerHeight, headerBottom,
+      edges: [pane, bounds('.dependency-dots'), bounds('.vue-flow__pane')].map(rect => [rect.left, rect.top, rect.right, rect.bottom]),
+      cornerHits: corners.map(([x, y]) => !!document.elementFromPoint(x, y)?.closest('#canvas-reading .vue-flow')),
+      mapOpen: !!root.querySelector('.dependency-minimap'),
+      railCenter: rail.y + rail.height / 2, railBottom: rail.bottom, dockTop: dock.top,
+    };
+  });
+  const expected = [0, frame.headerBottom, frame.width, frame.height];
+  for (const actual of frame.edges) {
+    assert.ok(actual.every((value, index) => Math.abs(value - expected[index]) <= 1), JSON.stringify(frame));
+  }
+  assert.ok(frame.cornerHits.every(Boolean), JSON.stringify(frame));
+  assert.ok(Math.abs(frame.railCenter - (frame.headerBottom + frame.dockTop) / 2) <= 1 &&
+    frame.railBottom < frame.dockTop, JSON.stringify(frame));
+  (report.canvasFrames ??= []).push(frame);
+}
+
 async function desktopProbe() {
   const heading = top().locator('[data-page="reader"]');
   await page.evaluate(() => document.fonts.ready);
@@ -232,7 +259,11 @@ async function checkGlassStyle() {
     });
     const glyph = element.querySelector('.canvas-clear-detail svg').getBoundingClientRect();
     return { color: panel.backgroundColor, image: panel.backgroundImage, backdrop: panel.backdropFilter,
-      shadow: panel.boxShadow, opacity: panel.opacity, actions, glyph: { width: glyph.width, height: glyph.height } };
+      shadow: panel.boxShadow, opacity: panel.opacity, radius: parseFloat(panel.borderTopLeftRadius),
+      height: element.closest('.canvas-panel').getBoundingClientRect().height,
+      corner: panel.getPropertyValue('corner-shape'),
+      railCorner: getComputedStyle(document.getElementById('dependency-tools')).getPropertyValue('corner-shape'),
+      actions, glyph: { width: glyph.width, height: glyph.height } };
   });
   assert.match(metrics.image, /linear-gradient/u);
   const alphas = [...metrics.image.matchAll(/rgba\([^)]*,\s*([\d.]+)\)/gu)].map(match => Number(match[1]));
@@ -244,6 +275,8 @@ async function checkGlassStyle() {
   assert.ok(blur > 0 && blur <= 7, metrics.backdrop);
   assert.ok(saturation > 1, metrics.backdrop);
   assert.equal(metrics.opacity, '1');
+  assert.ok(metrics.radius >= metrics.height / 2, 'compact horizontal summary has round ends');
+  assert.equal(metrics.corner, metrics.railCorner, 'compact summary uses the same corner curve as the rail');
   assert.match(metrics.shadow, /inset/u);
   assert.equal(metrics.actions.length, 3);
   for (const [index, action] of metrics.actions.entries()) {
@@ -335,10 +368,17 @@ async function captureGlass(restore) {
 async function checkCanvas() {
   const initial = await geometry();
   await checkRailMotion();
+  await checkCanvasFrame();
   const railPaint = await tools().evaluate(element => getComputedStyle(element).backgroundColor);
   assert.ok(railPaint.match(/\d+/gu).slice(0, 3).every(channel => Number(channel) > 190), 'floating rail uses a light surface');
-  const rail = await tools().boundingBox();
-  assert.ok(Math.abs((rail.y + rail.height / 2) - (initial.pane.y + initial.pane.height / 2)) < 2);
+  report.label = await tools().locator('.canvas-tool-label').first().evaluate(element => {
+    const style = getComputedStyle(element);
+    return { color: style.color, weight: style.fontWeight };
+  });
+  assert.deepEqual(report.label, { color: 'rgb(82, 100, 91)', weight: '400' });
+  await tools().hover();
+  await shot('desktop-light-rail');
+  await page.mouse.move(8, 70);
   await button(tools(), '重新布局').waitFor();
   await button(tools(), '刷新图和布局').waitFor();
   await tools().locator('summary').click();
@@ -691,6 +731,7 @@ async function checkNarrow() {
   await file(api).focus();
   await page.keyboard.press('Enter');
   await page.setViewportSize({ width: 390, height: 430 });
+  await checkCanvasFrame();
   const help = tools().locator('summary');
   await help.hover();
   const labels = await tools().locator('.canvas-tool-label').evaluateAll(items => items.filter(item =>
@@ -723,17 +764,16 @@ async function checkNarrow() {
   await page.keyboard.press('Escape');
   await pageMenu.waitFor({ state: 'hidden' });
   await page.mouse.move(8, 70);
+  await button(dock(), '小地图').click();
+  await graph().locator('.dependency-minimap').waitFor();
+  await checkCanvasFrame();
   await page.setViewportSize({ width: 390, height: 760 });
   await button(summary(), '查看关系').click();
   await details().getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await shot('narrow-file-details');
   await button(summary(), '关闭详情').click();
-  await button(dock(), '小地图').click();
-  await graph().locator('.dependency-minimap').waitFor();
-  const rail = await tools().boundingBox();
-  const minimap = await dock().boundingBox();
-  assert.ok(rail.y + rail.height < minimap.y, 'left rail clears the open minimap');
+  await checkCanvasFrame();
   await saveLayout(() => button(dock(), '放大画布').click());
   await button(tools(), '编辑分组').click();
   await graph().locator('#canvas-group-picker').waitFor();
@@ -768,6 +808,7 @@ async function checkTouch() {
     }
     await open('canvas');
     await file(api).waitFor();
+    await checkCanvasFrame();
     await file(api).focus();
     await page.keyboard.press('Enter');
     await summary().waitFor();
@@ -783,6 +824,10 @@ async function checkTouch() {
     await button(summary(), '关闭详情').tap();
     await summary().locator('.canvas-clear-detail').tap();
     await summary().waitFor({ state: 'hidden' });
+    await page.setViewportSize({ width: 390, height: 430 });
+    await button(dock(), '小地图').tap();
+    await graph().locator('.dependency-minimap').waitFor();
+    await checkCanvasFrame();
     report.checks.push('coarse-pointer emulation gives rail, dock and summary controls 44 CSS px hit targets; touch opens details and clears selection');
   } catch (error) {
     await shot('coarse-pointer-failure').catch(() => {});

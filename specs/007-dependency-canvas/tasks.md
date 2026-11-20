@@ -137,6 +137,11 @@ description: "文件依赖图与布局保存实施清单"
 - [x] T047 [US7] 按作者确认在 `src/web/DependencyCanvas.vue` 和 `src/web/canvas.css` 细化浮条、摘要及依赖图直接控件，处理动效、名称避让、触控和焦点（FR-019—020）。
 - [x] T048 按 `specs/007-dependency-canvas/quickstart.md` 串行复验桌面、短窗和减少动态效果，冻结候选交独审。复核通过后按 D028 授权换版并记录回执（SC-017—018）。
 
+## Phase 16: D028 画布贴边与浮层轮廓 - User Story 7
+
+- [x] T049 [US7] 在 `src/web/canvas.css` 和 `src/web/DependencyMiniMap.vue` 按作者反馈调整依赖图贴边、浮条与摘要，并按 `specs/007-dependency-canvas/quickstart.md` 完成桌面和窄窗复验（FR-010、019—020，SC-017—018）。
+- [ ] T050 固定候选提交独审。复核通过后按 D028 授权换版 4341，并在 `docs/work/2026/11/D028-reader-history-canvas-tools/handoff.md` 记录证据（SC-017—018）。
+
 ## Dependencies & Execution Order
 
 T001 → T002 → US1 → US2 → US3 → T011—T012。每个故事先定义行为检查，再接通核心、服务和页面。US2 使用 US1 的项目图及页面，US3 使用 US2 的真实保存入口。测试与浏览器串行，无并行资源运行。
@@ -152,6 +157,8 @@ D027 从 T034 的同输入取证开始。T035 的卡片与边、T036 的绘制�
 D028 复用 006 T049 的固定输入。T041 → T042 → T043，随后与 006 T054 在同候选串行完成 T044。完成独审 T045 才执行换版和交回 T046。
 
 试读细化从 T046 的实际版本接续。T047 → T048 复用原输入，按更新后的验收点串行验证。
+
+画布贴边和浮层轮廓从 T048 的受审候选接续。T049 → T050 沿用其输入，补跑受此调整影响的路径。
 
 ## Implementation Strategy
 

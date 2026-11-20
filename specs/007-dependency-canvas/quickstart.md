@@ -38,3 +38,4 @@ D014 构建后串行执行 `node --test tests/integration/dependency-legends.tes
 - 按 SC-018 验窄窗。依次回归 `node tests/browser/dependency-canvas-selection.mjs`、`node tests/browser/dependency-canvas-tools.mjs` 中受影响的工具、命中和保存路径。
 - 按 [009 SC-005](../009-loop-reader/spec.md#measurable-outcomes) 从订单闭环右侧查看步骤和源码，沿分支后切图并后退。站内往返及六页顶栏按 [006](../006-file-reader/quickstart.md#d028-站内往返与顶栏) 验证，使用同一候选及输入。
 - 试读细化从同一图分别选文件和库。用指针移向工具名称并按 Esc，再用 Tab 复验。收起及展开时观察浮条和名称的过渡，开启减少动态效果后重复。按[细化方案](plan.md#d028-试读细化) 在窄矮窗同时打开「操作说明」名称和文件摘要，核间距、粗指针目标、点击及坐标。以相同节点和背景对照 `a33aabf` 与细化候选的摘要材质和展开文字。
+- 画布贴边复验按 SC-017 比对顶栏底边、内容区三边和四角。分别在小地图展开、收起后测左浮条与可用高度的中点，核工具名称字重和颜色。选中 `node:path` 及 `src/api.mjs`，比对选中前后的小地图、视野、收起摘要两端和展开面板。按 SC-018 重走窄窗，并在闭环核右栏仍可读。

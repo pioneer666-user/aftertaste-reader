@@ -1,5 +1,5 @@
 /* Use the reader's typography and controls around the canvas. */
-.canvas-page { padding: 22px 28px; }
+.loop-canvas { padding: 22px 28px; }
 .canvas-header, .canvas-actions, .canvas-zoom { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .canvas-header { justify-content: space-between; }
 .canvas-header h1 { margin: 0; }
@@ -13,20 +13,32 @@
   --canvas-float-hover: #e2eee5;
   --canvas-float-focus: #338268;
   --canvas-float-radius: 12px;
+  --canvas-pill-radius: 28px;
   --canvas-action-radius: 8px;
   --canvas-action-hit: 34px;
   --canvas-dock-hit: 32px;
+  --canvas-dock-inset: 12px;
+  --canvas-dock-padding: 4px;
+  --canvas-map-height: 88px;
   --canvas-rail-hit: 38px;
   --canvas-ease-out: cubic-bezier(.2, .75, .25, 1);
   --canvas-enter: 180ms var(--canvas-ease-out);
   --canvas-leave: 120ms ease-in;
-  position: relative; display: flex; flex: 1; flex-direction: column; padding: 8px clamp(8px, 1.5vw, 24px) 12px;
+  position: relative; display: flex; flex: 1; flex-direction: column;
 }
 .dependency-canvas .canvas-workspace {
   --rail-half-height: calc(2 * var(--canvas-rail-hit) + 8px);
-  --dock-clearance: calc(var(--canvas-dock-hit) + 30px);
+  --dock-edge: 0px;
+  --dock-clearance: calc(var(--dock-edge) + 8px);
+  --rail-center: calc((100% - var(--dock-edge)) / 2);
+  position: relative; flex: 1; grid-template-columns: minmax(0, 1fr); border: 0; border-radius: 0;
 }
-.dependency-canvas .canvas-workspace:has(.dependency-minimap) { --dock-clearance: calc(var(--canvas-dock-hit) + 119px); }
+.dependency-canvas .canvas-workspace:has(.canvas-dock) {
+  --dock-edge: calc(var(--canvas-dock-inset) + var(--canvas-dock-hit) + 2 * var(--canvas-dock-padding) + 2px);
+}
+.dependency-canvas .canvas-workspace:has(.dependency-minimap) {
+  --dock-edge: calc(var(--canvas-dock-inset) + var(--canvas-dock-hit) + 2 * var(--canvas-dock-padding) + var(--canvas-map-height) + 3px);
+}
 .dependency-canvas .canvas-notices {
   position: absolute; z-index: 3; inset: 21px 24px auto max(68px, calc(56px + 1.5vw));
   display: grid; justify-items: start; gap: 6px; max-width: 35rem; pointer-events: none;
@@ -49,10 +61,10 @@
   --rail-label-duration: 130ms;
   --rail-label-visibility-delay: 130ms;
   position: absolute; z-index: 4; inset-inline-start: 12px;
-  top: min(50%, calc(100% - var(--dock-clearance) - var(--rail-half-height)));
+  top: var(--rail-center);
   transform: translateY(-50%);
   display: grid; gap: 2px; padding: 4px; background: #f8fcf8;
-  border: 1px solid var(--canvas-float-rim); border-radius: 28px;
+  border: 1px solid var(--canvas-float-rim); border-radius: var(--canvas-pill-radius);
   box-shadow: 0 3px 9px #29453218, inset 0 1px #fff;
 }
 .canvas-rail:not([data-labels-dismissed], [inert]):has(:focus-visible) {
@@ -92,8 +104,8 @@
   visibility: var(--rail-label-visibility); position: absolute; pointer-events: var(--rail-label-hit);
   inset-inline-start: calc(100% + 8px); top: 50%; transform: translateY(-50%);
   opacity: var(--rail-label-opacity); translate: var(--rail-label-offset);
-  padding: 4px 2px; color: var(--canvas-float-ink);
-  font-size: 13px; line-height: 18px; font-weight: 600;
+  padding: 4px 2px; color: var(--muted);
+  font-size: 13px; line-height: 18px; font-weight: 400;
   text-shadow: 0 1px 2px var(--canvas-float-surface), 0 0 6px var(--canvas-float-surface);
   width: max-content; max-width: min(13rem, calc(100vw - 88px)); text-align: start;
 }
@@ -118,11 +130,9 @@
 .canvas-problem p { margin: 0 0 4px; }
 .canvas-recovery { margin: 0 0 12px; }
 .canvas-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.dependency-canvas .canvas-workspace { position: relative; flex: 1; grid-template-columns: minmax(0, 1fr); }
 .graph-area { position: relative; min-height: 400px; height: calc(100dvh - 220px); background: #f2f6f2; }
-.dependency-canvas .graph-area { height: auto; min-height: min(280px, 60dvh); }
-@media (max-height: 430px) {
-  .dependency-canvas .graph-area { min-height: 360px; }
+.dependency-canvas .graph-area {
+  height: auto; min-height: calc(2 * var(--rail-half-height) + var(--dock-edge) + 16px);
 }
 .dependency-canvas .graph-area:focus-visible { outline-offset: -4px; }
 .graph-area .vue-flow { position: absolute; inset: 0; }
@@ -172,12 +182,12 @@
 .dependency-canvas [data-tool="select"] .vue-flow__pane { cursor: crosshair; }
 .dependency-canvas [data-tool="hand"] .vue-flow__pane.dragging { cursor: grabbing; }
 .canvas-dock {
-  position: absolute; z-index: 2; left: 12px; bottom: 12px; overflow: hidden;
+  position: absolute; z-index: 2; left: var(--canvas-dock-inset); bottom: var(--canvas-dock-inset); overflow: hidden;
   background: var(--canvas-float-surface); border: 1px solid var(--canvas-float-rim); border-radius: var(--canvas-float-radius);
   box-shadow: 0 2px 7px #29453212;
 }
 .canvas-dock .canvas-zoom {
-  position: static; padding: 4px; gap: 2px; flex-wrap: nowrap; border: 0; border-radius: 0; background: var(--canvas-float-surface);
+  position: static; padding: var(--canvas-dock-padding); gap: 2px; flex-wrap: nowrap; border: 0; border-radius: 0; background: var(--canvas-float-surface);
 }
 .canvas-dock:has(.dependency-minimap) .canvas-zoom { border-top: 1px solid #d5ded4; }
 .canvas-dock button {
@@ -203,6 +213,7 @@
 }
 .canvas-panel-compact {
   --canvas-summary-secondary: #40564a;
+  border-radius: var(--canvas-pill-radius);
   border-color: rgb(112 144 124 / .42);
   border-block-start-color: rgb(255 255 255 / .84);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .76), inset 0 -1px 0 rgb(255 255 255 / .42),
@@ -227,7 +238,8 @@
   .canvas-summary-actions button:enabled:active { scale: .98; }
 }
 @supports (corner-shape: squircle) {
-  .canvas-panel, .canvas-dock, .canvas-dock button, .canvas-summary-actions button, .canvas-group-panel .canvas-group-heading button {
+  .canvas-panel:not(.canvas-panel-compact), .canvas-dock, .canvas-dock button,
+  .canvas-summary-actions button, .canvas-group-panel .canvas-group-heading button {
     corner-shape: squircle;
   }
 }
@@ -268,7 +280,7 @@
 .canvas-summary-relations li { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .canvas-summary-relations strong, .canvas-summary-library strong { color: #202e29; font-weight: 600; }
 .canvas-summary .canvas-summary-library { flex-basis: 100%; margin: 0; color: var(--canvas-summary-secondary, var(--muted)); }
-.canvas-panel-compact .canvas-summary { gap: 4px 12px; padding: 4px 8px 4px 12px; }
+.canvas-panel-compact .canvas-summary { gap: 4px 12px; padding: 4px 12px 4px 16px; }
 .canvas-panel-compact .canvas-summary-heading { display: flex; flex: 0 1 auto; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
 .canvas-panel-compact .canvas-summary-heading p { margin: 0; }
 .canvas-panel-compact .canvas-summary-relations, .canvas-panel-compact .canvas-summary-library {
@@ -344,7 +356,6 @@
 .loop-step-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .loop-step .source-pane { border: 1px solid var(--line); }
 @media (max-width: 900px) {
-  .dependency-canvas .graph-area { min-height: max(360px, 60dvh); }
   .canvas-panel {
     bottom: var(--dock-clearance); max-width: min(40rem, calc(100% - 8rem));
     max-height: min(60%, calc(100% - var(--dock-clearance) - 12px));
@@ -354,8 +365,9 @@
   .dependency-canvas { --canvas-rail-hit: 42px; }
   .canvas-rail { inset-inline-start: 8px; }
   .canvas-panel { left: auto; right: 8px; transform: none; max-width: calc(100% - 72px); }
+  .canvas-panel-compact { border-radius: 20px; }
   .canvas-summary { gap: 8px; padding: 8px; }
-  .canvas-panel-compact .canvas-summary { padding: 8px; }
+  .canvas-panel-compact .canvas-summary { padding: 8px 14px; }
   .canvas-summary-heading, .canvas-panel-compact .canvas-summary-heading { flex-basis: 100%; }
   .canvas-panel-compact .canvas-summary-relations, .canvas-panel-compact .canvas-summary-library {
     flex-basis: 100%; padding-inline-start: 0; border: 0;
@@ -399,18 +411,14 @@
   }
   /* The current label sits by the top rail row, clear of the dock-anchored panel. */
   .canvas-panel {
-    max-height: min(60%, max(
-      calc(50% + var(--rail-half-height) - var(--dock-clearance) - 44px),
-      calc(2 * var(--rail-half-height) - 44px)
-    ));
+    max-height: min(60%, calc(100% - var(--dock-clearance) - var(--rail-center) + var(--rail-half-height) - 44px));
   }
 }
 @media (pointer: coarse) {
   .dependency-canvas { --canvas-action-hit: 44px; --canvas-dock-hit: 44px; --canvas-rail-hit: 44px; }
 }
 @media (max-width: 760px) {
-  .canvas-page { padding: 16px; }
-  .dependency-canvas { padding: 8px; }
+  .loop-canvas { padding: 16px; }
   .canvas-workspace { grid-template-columns: minmax(0, 1fr); }
   .graph-area { height: 55dvh; min-height: 280px; }
   .canvas-inspector { min-height: 0; max-height: none; border-left: 0; border-top: 1px solid var(--line); }
