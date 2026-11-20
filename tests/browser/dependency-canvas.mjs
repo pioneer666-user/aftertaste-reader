@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { chromium, firefox } from 'playwright';
 import { applyGraphUpdate, cli, createCanvasProject, repository } from '../fixtures/dependency-canvas.mjs';
+import { dependencyOptions, dependencySaved, openDependencyGroups, refreshDependency } from './dependency-controls.mjs';
 
 const name = process.env.AFTERTASTE_BROWSER ?? 'edge';
 const runRoot = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D012');
@@ -71,7 +72,7 @@ async function open(url) {
 const node = id => page.locator(`[data-file="${id}"]`);
 const status = () => page.getByTestId('layout-status');
 const disk = async () => JSON.parse(await readFile(fixture.layout, 'utf8'));
-const saved = async () => { await status().filter({ hasText: '布局已保存' }).waitFor(); return (await disk()).layout; };
+const saved = async () => { await dependencySaved(page); return (await disk()).layout; };
 const equalWithin = (actual, expected, epsilon = 0.015) => assert.ok(Math.abs(actual - expected) <= epsilon, `${actual} vs ${expected}`);
 
 async function drag(locator, dx, dy) {
@@ -87,6 +88,7 @@ async function drag(locator, dx, dy) {
 }
 
 async function addGroup(title, ids) {
+  await openDependencyGroups(page);
   await page.getByLabel('编辑分组').selectOption('');
   await page.getByLabel('组名').fill(title);
   for (const id of ids) await page.getByRole('checkbox', { name: id, exact: true }).check();
@@ -184,6 +186,7 @@ try {
   await saved();
   await addGroup('读服务', [rules, service]);
   await addGroup('看审计', [audit]);
+  await openDependencyGroups(page);
   await page.getByLabel('编辑分组').selectOption({ label: '读服务' });
   const beforeInvalid = await readFile(fixture.layout);
   await page.getByLabel('组名').fill('Bad\tName');
@@ -302,7 +305,7 @@ try {
   const stale = await browser.newPage();
   await stale.goto(url);
   await stale.getByRole('button', { name: '文件依赖图', exact: true }).click();
-  await stale.getByTestId('layout-status').filter({ hasText: '布局已保存' }).waitFor();
+  await dependencySaved(stale);
   await page.getByRole('button', { name: '缩小画布' }).click();
   const lastSaved = await saved();
   const staleRequest = stale.waitForResponse(response => response.url().endsWith('/api/dependency-layout'));
@@ -312,23 +315,23 @@ try {
   assert.deepEqual((await disk()).layout, lastSaved);
   stale.once('dialog', dialog => dialog.accept());
   await stale.getByRole('button', { name: '读取已保存布局' }).click();
-  await stale.getByTestId('layout-status').filter({ hasText: '布局已保存' }).waitFor();
+  await dependencySaved(stale);
   await stale.close();
   report.checks.staleTab = { conflict: 409, latestPreserved: true };
 
   const validGraph = await readFile(fixture.graph);
   const authoritative = await readFile(fixture.layout);
   await writeFile(fixture.graph, '{"nodes":[]}');
-  await page.getByRole('button', { name: '刷新图和布局' }).click();
+  await refreshDependency(page);
   await page.getByText(/GRAPH_INVALID/u).waitFor();
   assert.equal(await page.locator('[data-file]').count(), 3);
   assert.deepEqual(await readFile(fixture.layout), authoritative);
   await writeFile(fixture.graph, JSON.stringify(partialGraph, null, 2) + '\n');
-  await page.getByRole('button', { name: '刷新图和布局' }).click();
+  await refreshDependency(page);
   await page.getByText(/LAYOUT_GRAPH_UNCONFIRMED/u).waitFor();
   assert.deepEqual(await readFile(fixture.layout), authoritative);
   await writeFile(fixture.graph, validGraph);
-  await page.getByRole('button', { name: '刷新图和布局' }).click();
+  await refreshDependency(page);
   await node(audit).waitFor();
   assert.deepEqual(await saved(), lastSaved);
   compareVisible(await visibleLayout(), lastSaved);
@@ -336,7 +339,7 @@ try {
     { path: service, analysis: 'reviewed', dependencies: [{ path: rules, reason: 'updated' }, { path: service, reason: 'self' }] },
     { path: rules, analysis: 'reviewed', dependencies: [{ path: service, reason: 'cycle' }] },
   ] });
-  await page.getByRole('button', { name: '刷新图和布局' }).click();
+  await refreshDependency(page);
   await node(api).waitFor({ state: 'attached' });
   const updated = await saved();
   assert.deepEqual(updated.positions[rules], lastSaved.positions[rules]);
@@ -353,17 +356,18 @@ try {
 
   const validLayout = await readFile(fixture.layout);
   await writeFile(fixture.layout, '{"format":');
-  await page.getByRole('button', { name: '刷新图和布局' }).click();
+  await refreshDependency(page);
   await page.getByText(/LAYOUT_INVALID/u).waitFor();
   assert.equal(await readFile(fixture.layout, 'utf8'), '{"format":');
   assert.equal(await page.getByRole('button', { name: '重新布局' }).isDisabled(), true);
   await writeFile(fixture.layout, validLayout);
-  await page.getByRole('button', { name: '刷新图和布局' }).click();
+  await refreshDependency(page);
   assert.deepEqual(await saved(), updated);
 
   await page.getByRole('combobox', { name: '界面语言' }).selectOption('en');
-  await status().filter({ hasText: 'Layout saved' }).waitFor();
-  assert.equal(await page.getByRole('button', { name: 'Refresh graph and layout' }).isEnabled(), true);
+  await dependencySaved(page);
+  const options = await dependencyOptions(page, 'Graph tools');
+  assert.equal(await options.getByRole('button', { name: 'Refresh graph and layout' }).isEnabled(), true);
   await page.setViewportSize({ width: 680, height: 850 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.screenshot({ path: path.join(run, 'narrow-english.png'), fullPage: true });

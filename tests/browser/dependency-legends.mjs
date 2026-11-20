@@ -7,6 +7,7 @@ import { startReader } from '../../dist/server/reader.js';
 import { applyGraphUpdate, repository } from '../fixtures/dependency-canvas.mjs';
 import { audit, createLegendProject, legendId, readJSON, rules, standardLegend, thirdPartyLegend,
   updatedDescription, writeJSON } from '../fixtures/dependency-legends.mjs';
+import { dependencySaved as saved, openDependencyGroups, refreshDependency } from './dependency-controls.mjs';
 
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
 const root = path.join(repository, '.local/D014');
@@ -20,8 +21,6 @@ const member = (page, name) => page.getByRole('checkbox', { name, exact: true })
 const file = (page, name) => page.locator(`[data-file="${name}"]`);
 const legend = (page, id = standardLegend.id) => page.locator(`[data-legend="${id}"]`);
 const detail = page => page.locator('.canvas-selection');
-const status = page => page.getByTestId('layout-status');
-const saved = page => status(page).filter({ hasText: '布局已保存' }).waitFor();
 const disk = () => readJSON(project.layout);
 const responseForLayout = page => page.waitForResponse(response => response.url().endsWith('/api/dependency-layout'));
 
@@ -91,7 +90,7 @@ try {
     const thirdParty = { ...thirdPartyLegend, name: rules };
     await applyGraphUpdate(project, { legendUpserts: [standardLegend, thirdParty] });
     const graphBytes = await readFile(project.graph);
-    await savedAction(page, () => button(page, '刷新图和布局').click());
+    await savedAction(page, () => refreshDependency(page));
     const added = await disk();
     for (const [id, point] of Object.entries(initial.layout.positions)) assert.deepEqual(added.layout.positions[id], point);
     assert.deepEqual(added.layout.groups, initial.layout.groups);
@@ -121,10 +120,12 @@ try {
     await button(page, '返回依赖图').click();
     await saved(page);
 
+    await openDependencyGroups(page);
     await page.getByLabel('组名').fill('路径工具');
     await member(page, audit).check();
     await member(page, 'node:path · 标准库').check();
     await savedAction(page, () => button(page, '应用分组').click());
+    await openDependencyGroups(page);
     await page.getByLabel('编辑分组').selectOption('');
     await page.getByLabel('组名').fill('同名对象');
     await member(page, rules).check();
@@ -176,20 +177,21 @@ try {
     const layoutBytes = await readFile(project.layout);
     const graph = JSON.parse(graphBytes);
     await writeJSON(project.graph, { ...graph, legends: graph.legends.filter(item => item.id !== standardLegend.id) });
-    await button(page, '刷新图和布局').click();
+    await refreshDependency(page);
     await page.getByRole('alert').getByText(/LAYOUT_GRAPH_UNCONFIRMED/u).waitFor();
     assert.deepEqual(await readFile(project.layout), layoutBytes);
     await writeJSON(project.graph, { ...graph, legends: null });
-    await button(page, '刷新图和布局').click();
+    await refreshDependency(page);
     await page.getByRole('alert').getByText(/GRAPH_INVALID.*\.legends/u).waitFor();
     assert.deepEqual(await readFile(project.layout), layoutBytes);
     await writeFile(project.graph, graphBytes);
-    await button(page, '刷新图和布局').click();
+    await refreshDependency(page);
     await saved(page);
     await assertVisibleLayout(page, beforeUpdate.layout);
     assert.deepEqual(await readFile(project.layout), layoutBytes);
     report.reopenedAndRecovered = true;
 
+    await openDependencyGroups(page);
     await page.getByLabel('编辑分组').selectOption(beforeUpdate.layout.groups.find(group => group.name === '路径工具').id);
     await member(page, audit).uncheck();
     await savedAction(page, () => button(page, '应用分组').click());

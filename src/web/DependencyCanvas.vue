@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef } from 'vue';
+import { computed, nextTick, onMounted, ref, shallowRef, watch, watchPostEffect } from 'vue';
 import { Handle, MarkerType, Position, VueFlow, useVueFlow } from '@vue-flow/core';
 import type { Edge, Node, NodeDragEvent, ViewportTransform } from '@vue-flow/core';
 import '@vue-flow/core/dist/style.css';
@@ -16,6 +16,7 @@ import type { LayoutWrite } from '../application/canvas-layout.js';
 import type { LoopCanvasReading } from '../application/loop-reader.js';
 import type { ReaderProblem } from '../application/file-reader.js';
 import { failed, request } from './reader-api.js';
+import { fitFloatingAxis } from './floating-position.js';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 
@@ -43,6 +44,17 @@ const moving = ref(false);
 const dragging = ref(false);
 const readProblem = ref<ReaderProblem>();
 const saveProblem = ref<ReaderProblem>();
+const graphArea = ref<HTMLElement>();
+const toolsMenu = ref<HTMLDetailsElement>();
+const groupPicker = ref<HTMLSelectElement>();
+const groupEditor = ref(false);
+const selectionPanel = ref<HTMLElement>();
+const selectionInput = ref<HTMLInputElement>();
+const box = shallowRef<{ pointer: number; start: Point; end: Point }>();
+const boxAnchor = shallowRef<Point>();
+const boxMembers = ref<string[]>([]);
+const naming = ref(false);
+const selectionName = ref('');
 let revision: string | null = null;
 let pending: LayoutWrite | undefined;
 let dragGroup: { group: CanvasGroup; origin: Point; layout: CanvasLayout } | undefined;
@@ -82,6 +94,14 @@ const statusKey = computed(() => {
   if (saving.value || dirty.value) return 'canvasSaving';
   if (!idle.value) return 'canvasEditing';
   return revision ? 'canvasSaved' : 'canvasDefault';
+});
+const showDetails = computed(() => !!selectedNode.value || !!selectedLegend.value);
+const selectionRect = computed(() => box.value && rectangle(box.value.start, box.value.end));
+const picked = computed(() => new Set(boxMembers.value));
+const transfers = computed(() => {
+  const labels = new Map(legends.value.map(legend => [legendKey(legend.id), legend.name + ' · ' + legendKind(legend.kind)]));
+  return (layout.value?.groups ?? []).flatMap(group =>
+    group.members.filter(id => picked.value.has(id)).map(id => ({ id, label: labels.get(id) ?? id, group: group.name })));
 });
 
 function dimensions(id: string) {
@@ -128,7 +148,11 @@ function render() {
 }
 
 async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
-  if (loading.value || saving.value || !idle.value || (dirty.value && mode === 'normal')) return;
+  if (loading.value || saving.value || !idle.value || box.value || (dirty.value && mode === 'normal')) return;
+  if (!loopRoute) {
+    closeTools(true);
+    clearSelection();
+  }
   const carry = dirty.value && mode === 'refresh' ? layout.value : undefined;
   const beforeRevision = revision;
   loading.value = true;
@@ -220,12 +244,163 @@ function editGroup(id: string) {
 
 function applyGroup() {
   if (!layout.value || !editable.value || !idle.value) return;
-  if (members.value.length && !groupName.value.trim()) return;
+  if (members.value.length ? !groupName.value.trim() : !groupId.value) return;
   const group = { id: groupId.value || crypto.randomUUID(), name: groupName.value.trim(), members: [...members.value] };
-  changed({ ...layout.value, groups: updateGroup(layout.value.groups, group) });
+  commitGroup(group);
   editGroup(group.id);
+}
+
+function commitGroup(group: CanvasGroup) {
+  if (!layout.value) return;
+  changed({ ...layout.value, groups: updateGroup(layout.value.groups, group) });
   render();
 }
+
+function closeTools(restoreFocus = false) {
+  if (!toolsMenu.value?.open) return;
+  toolsMenu.value.open = false;
+  if (restoreFocus) toolsMenu.value.querySelector('summary')?.focus();
+}
+
+function outsideTools(event: PointerEvent) {
+  if (event.target instanceof Element && !toolsMenu.value?.contains(event.target)) closeTools();
+}
+
+function selectDetail(id: string) {
+  groupEditor.value = false;
+  selected.value = id;
+}
+
+async function openGroupEditor(id: string) {
+  editGroup(id);
+  if (loopRoute) return;
+  closeTools();
+  clearSelection();
+  groupEditor.value = true;
+  await nextTick();
+  groupPicker.value?.focus({ preventScroll: true });
+}
+
+function closeInspector() {
+  if (groupEditor.value) groupEditor.value = false;
+  else selected.value = '';
+  graphArea.value?.focus({ preventScroll: true });
+}
+
+function rectangle(start: Point, end: Point) {
+  return { x: Math.min(start.x, end.x), y: Math.min(start.y, end.y),
+    width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) };
+}
+
+function boxPoint(event: PointerEvent, pane: DOMRect): Point {
+  return { x: Math.max(0, Math.min(pane.width, event.clientX - pane.left)),
+    y: Math.max(0, Math.min(pane.height, event.clientY - pane.top)) };
+}
+
+function clearSelection(restoreFocus = false) {
+  const pointer = box.value?.pointer;
+  box.value = undefined;
+  if (pointer !== undefined && graphArea.value?.hasPointerCapture(pointer)) graphArea.value.releasePointerCapture(pointer);
+  boxMembers.value = [];
+  boxAnchor.value = undefined;
+  naming.value = false;
+  selectionName.value = '';
+  if (restoreFocus) graphArea.value?.focus({ preventScroll: true });
+}
+
+function startSelection(event: PointerEvent) {
+  const area = graphArea.value;
+  const target = event.target;
+  if (loopRoute || !area || !(target instanceof Element) || !target.closest('.vue-flow') || event.button !== 0 || box.value) return;
+  clearSelection();
+  if (!editable.value || !idle.value || !event.ctrlKey || event.pointerType !== 'mouse' ||
+      target.closest('.vue-flow__node:not(.vue-flow__node-canvasGroup), .group-handle')) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const start = boxPoint(event, area.getBoundingClientRect());
+  area.focus({ preventScroll: true });
+  area.setPointerCapture(event.pointerId);
+  box.value = { pointer: event.pointerId, start, end: start };
+}
+
+function moveSelection(event: PointerEvent) {
+  const area = graphArea.value;
+  if (!area || box.value?.pointer !== event.pointerId) return;
+  box.value = { ...box.value, end: boxPoint(event, area.getBoundingClientRect()) };
+}
+
+function finishSelection(event: PointerEvent) {
+  const area = graphArea.value;
+  if (!area || box.value?.pointer !== event.pointerId) return;
+  const pane = area.getBoundingClientRect();
+  const end = boxPoint(event, pane);
+  const bounds = rectangle(box.value.start, end);
+  box.value = undefined;
+  boxMembers.value = Array.from(area.querySelectorAll<HTMLButtonElement>('.file-node')).flatMap(node => {
+    const rect = node.getBoundingClientRect();
+    const id = node.dataset.file ?? (node.dataset.legend ? legendKey(node.dataset.legend) : undefined);
+    return id && rect.left >= pane.left + bounds.x && rect.top >= pane.top + bounds.y &&
+      rect.right <= pane.left + bounds.x + bounds.width && rect.bottom <= pane.top + bounds.y + bounds.height ? [id] : [];
+  });
+  if (boxMembers.value.length) boxAnchor.value = { x: pane.left + end.x, y: pane.top + end.y };
+}
+
+function cancelPointer(event: PointerEvent) {
+  if (box.value?.pointer === event.pointerId) clearSelection();
+}
+
+async function nameSelection() {
+  if (!editable.value || !idle.value || naming.value || !boxMembers.value.length) return;
+  naming.value = true;
+  await nextTick();
+  selectionInput.value?.focus({ preventScroll: true });
+}
+
+function applySelection() {
+  const name = selectionName.value.trim();
+  if (!layout.value || !editable.value || !idle.value || !boxMembers.value.length || !name) return;
+  commitGroup({ id: crypto.randomUUID(), name, members: [...boxMembers.value] });
+  clearSelection(true);
+}
+
+function selectionKeys(event: KeyboardEvent) {
+  if (loopRoute || !props.active || event.isComposing) return;
+  if (event.key === 'Escape' && (box.value || boxAnchor.value)) {
+    event.preventDefault();
+    event.stopPropagation();
+    clearSelection(true);
+  } else if (editable.value && idle.value && boxAnchor.value && !naming.value && event.ctrlKey && !event.altKey &&
+      !event.shiftKey && !event.metaKey && event.key.toLowerCase() === 'g' &&
+      !(event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable]'))) {
+    event.preventDefault();
+    event.stopPropagation();
+    void nameSelection();
+  }
+}
+
+watch(() => props.active, active => {
+  if (active || loopRoute) return;
+  clearSelection();
+  closeTools();
+});
+
+watchPostEffect(onCleanup => {
+  const panel = selectionPanel.value;
+  const anchor = boxAnchor.value;
+  if (!panel || !anchor) return;
+  const place = () => {
+    panel.style.left = fitFloatingAxis(anchor.x, panel.offsetWidth, window.innerWidth) + 'px';
+    panel.style.top = fitFloatingAxis(anchor.y, panel.offsetHeight, window.innerHeight) + 'px';
+  };
+  place();
+  const observer = new ResizeObserver(place);
+  observer.observe(panel);
+  window.addEventListener('resize', place);
+  onCleanup(() => {
+    observer.disconnect();
+    window.removeEventListener('resize', place);
+  });
+});
 
 function startDrag({ node }: NodeDragEvent) {
   if (!editable.value || !layout.value) return;
@@ -282,6 +457,7 @@ async function zoom(factor: number) {
 
 async function relayout() {
   if (!editable.value || !idle.value || !layout.value || !reading.value) return;
+  clearSelection();
   changed(rearrange(layout.value, ids.value));
   render();
   await setViewport(layout.value.viewport);
@@ -295,16 +471,28 @@ onMounted(() => void load());
 </script>
 
 <template>
-  <main :id="loopId ? flowId + '-reading' : 'canvas-reading'" class="canvas-page" :class="{ 'loop-canvas': loopId }" tabindex="-1">
+  <main :id="loopId ? flowId + '-reading' : 'canvas-reading'" class="canvas-page"
+    :class="loopId ? 'loop-canvas' : { 'dependency-canvas': true, 'canvas-active': active }"
+    :aria-label="loopId ? undefined : t('dependencyCanvas')" tabindex="-1" @pointerdown.capture="outsideTools">
     <header class="canvas-header">
-      <h1>{{ loopId ? loop?.loop.title ?? t('loops') : t('dependencyCanvas') }}</h1>
+      <h1 v-if="loopId">{{ loop?.loop.title ?? t('loops') }}</h1>
       <div class="canvas-actions">
-        <button type="button" :disabled="loading || saving || dirty || !idle" @click="load()">{{ t('canvasRefresh') }}</button>
-        <button v-if="hasNodes" type="button" :disabled="!editable || !idle" @click="relayout">{{ t('canvasRearrange') }}</button>
+        <button v-if="loopId" type="button" :disabled="loading || saving || dirty || !idle" @click="load()">{{ t('canvasRefresh') }}</button>
+        <button v-if="hasNodes" type="button" :disabled="!editable || !idle || !!box" @click="relayout">{{ t('canvasRearrange') }}</button>
+        <details v-if="!loopId" ref="toolsMenu" class="canvas-tools" @keydown.esc.stop="closeTools(true)">
+          <summary>{{ t('canvasTools') }}</summary>
+          <div class="canvas-tools-menu">
+            <button type="button" :disabled="loading || saving || dirty || !idle || !!box" @click="load()">{{ t('canvasRefresh') }}</button>
+            <button type="button" :disabled="!hasNodes || !editable || !idle || !!box" @click="openGroupEditor('')">{{ t('canvasEditGroup') }}</button>
+            <p class="canvas-hint">{{ t('canvasGestures') }}</p>
+            <p class="canvas-hint">{{ t(legends.length ? 'canvasLibraryDirection' : 'canvasDirection') }}</p>
+          </div>
+        </details>
       </div>
+      <p v-if="loading" role="status" class="canvas-status">{{ t('loading') }}</p>
+      <p v-else-if="reading" v-show="loopId || (statusKey !== 'canvasSaved' && statusKey !== 'canvasDefault')" role="status"
+        class="canvas-status" data-testid="layout-status" :data-state="statusKey">{{ t(statusKey) }}</p>
     </header>
-    <p v-if="loading" role="status" class="canvas-status">{{ t('loading') }}</p>
-    <p v-else-if="reading" role="status" class="canvas-status" data-testid="layout-status">{{ t(statusKey) }}</p>
     <section v-for="problem in problems" :key="problem.code" class="canvas-problem" role="alert">
       <p>{{ problemText(language, problem).message }} {{ problemText(language, problem).nextStep }}</p>
       <code>{{ problem.code }} {{ problem.context.field }} {{ problem.context.diagnostic }} {{ problem.context.reason }}</code>
@@ -317,10 +505,32 @@ onMounted(() => void load());
     <p v-if="reading && !hasNodes" class="canvas-empty">{{ t('canvasEmpty') }}</p>
 
     <div v-if="reading" v-show="hasNodes" class="canvas-workspace">
-      <section class="graph-area" :aria-label="t(loopId ? 'loopGraph' : 'dependencyCanvas')">
+      <section ref="graphArea" class="graph-area" :aria-label="t(loopId ? 'loopGraph' : 'dependencyCanvas')"
+        :tabindex="loopId ? undefined : 0" @keydown="selectionKeys"
+        @pointerdown.capture="startSelection" @pointermove="moveSelection" @pointerup="finishSelection"
+        @pointercancel="cancelPointer" @lostpointercapture="cancelPointer">
+        <div v-if="boxAnchor" ref="selectionPanel" class="selection-float canvas-group-float">
+          <button v-if="!naming" type="button" class="selection-float-action" aria-keyshortcuts="Control+G"
+            @click="nameSelection">{{ t('canvasGroups') }}</button>
+          <form v-else class="canvas-selection-form" @submit.prevent="applySelection">
+            <p>{{ t('canvasSelectionCount').replace('{count}', String(boxMembers.length)) }}</p>
+            <label for="canvas-selection-name">{{ t('canvasGroupName') }}</label>
+            <input id="canvas-selection-name" ref="selectionInput" v-model="selectionName" maxlength="160" />
+            <div v-if="transfers.length" class="canvas-transfers">
+              <p>{{ t('canvasTransferSelection') }}</p>
+              <ul tabindex="0">
+                <li v-for="item in transfers" :key="item.id">{{ item.label }} · {{ item.group }}</li>
+              </ul>
+            </div>
+            <div class="canvas-actions">
+              <button type="submit" :disabled="!editable || !idle || !selectionName.trim()">{{ t('canvasConfirmGroup') }}</button>
+              <button type="button" @click="clearSelection(true)">{{ t('canvasCancelGroup') }}</button>
+            </div>
+          </form>
+        </div>
         <VueFlow :id="flowId" :min-zoom="minZoom" :max-zoom="maxZoom" :nodes-connectable="false" :nodes-draggable="editable"
           :elements-selectable="false" :delete-key-code="null" :selection-key-code="null" :multi-selection-key-code="null"
-          :disable-keyboard-a11y="true" :pan-on-drag="editable" :zoom-on-scroll="editable" :zoom-on-pinch="editable"
+          :disable-keyboard-a11y="true" :pan-on-drag="editable" :zoom-on-scroll="editable && !box" :zoom-on-pinch="editable && !box"
           :zoom-on-double-click="false" :prevent-scrolling="editable"
           @init="init" @node-drag-start="startDrag" @node-drag="previewDrag" @node-drag-stop="endDrag"
           @move-start="moving = true" @move-end="moved">
@@ -328,7 +538,8 @@ onMounted(() => void load());
             <Handle id="in" type="target" :position="Position.Left" />
             <Handle id="self" class="self-handle" type="target" :position="Position.Top" />
             <button type="button" class="file-node" :data-file="loopId ? undefined : data.key" :data-step="loopId ? data.key : undefined"
-              :aria-pressed="selected === data.key" :title="data.label" @click="selected = data.key">
+              :aria-pressed="selected === data.key" :data-box-selected="picked.has(data.key) || undefined"
+              :title="data.label" @click="selectDetail(data.key)">
               <span>{{ data.label }}</span>
               <small v-if="!loopId || data.entry">{{ t(loopId ? 'loopEntry' : data.analysis === 'unreviewed' ? 'canvasUnreviewed' : 'canvasReviewed') }}</small>
             </button>
@@ -336,7 +547,8 @@ onMounted(() => void load());
           </template>
           <template #node-canvasLegend="{ data }">
             <button type="button" class="file-node library-node" :data-legend="data.id"
-              :aria-pressed="selected === data.key" :title="data.name" @click="selected = data.key">
+              :aria-pressed="selected === data.key" :data-box-selected="picked.has(data.key) || undefined"
+              :title="data.name" @click="selectDetail(data.key)">
               <span>{{ data.name }}</span>
               <small>{{ legendKind(data.kind) }}</small>
             </button>
@@ -344,21 +556,27 @@ onMounted(() => void load());
           </template>
           <template #node-canvasGroup="{ data, id }">
             <div class="group-frame" :data-group="id">
-              <button type="button" class="group-handle" :title="data.name" @click="editGroup(id.slice(6))">{{ data.name }}</button>
+              <button type="button" class="group-handle" :title="data.name" @click="openGroupEditor(id.slice(6))">{{ data.name }}</button>
             </div>
           </template>
           <template #edge-dependency="edge"><DependencyEdge v-bind="edge" /></template>
         </VueFlow>
+        <div v-if="selectionRect" class="canvas-selection-rect" aria-hidden="true" :style="{
+          left: selectionRect.x + 'px', top: selectionRect.y + 'px',
+          width: selectionRect.width + 'px', height: selectionRect.height + 'px',
+        }"></div>
         <div class="canvas-zoom">
           <button type="button" :disabled="!editable || !idle || viewport.zoom <= minZoom" :aria-label="t('canvasZoomOut')" @click="zoom(1 / 1.2)">−</button>
           <output>{{ Math.round(viewport.zoom * 100) }}%</output>
           <button type="button" :disabled="!editable || !idle || viewport.zoom >= maxZoom" :aria-label="t('canvasZoomIn')" @click="zoom(1.2)">+</button>
         </div>
       </section>
-      <aside class="canvas-inspector">
+      <aside v-if="loopId || showDetails || groupEditor" class="canvas-inspector">
+        <button v-if="!loopId" type="button" class="canvas-inspector-close" @click="closeInspector">
+          {{ t(groupEditor ? 'canvasCloseGroups' : 'canvasCloseDetails') }}
+        </button>
         <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" @select="selected = $event" />
-        <p v-else class="canvas-hint">{{ t(legends.length ? 'canvasLibraryDirection' : 'canvasDirection') }}</p>
-        <section v-if="selectedNode" class="canvas-selection" :aria-label="t('canvasSelected')">
+        <section v-if="selectedNode && !groupEditor" class="canvas-selection" :aria-label="t('canvasSelected')">
           <h2>{{ selectedNode.path }}</h2>
           <p>{{ t(selectedNode.analysis === 'unreviewed' ? 'canvasUnreviewed' : dependencies.length || usedLibraries.length ? 'canvasReviewed' : 'canvasNoDependencies') }}</p>
           <button v-if="documentPath" type="button" @click="emit('read', documentPath)">{{ t('canvasRead') }}</button>
@@ -385,7 +603,7 @@ onMounted(() => void load());
             </ul>
           </template>
         </section>
-        <section v-else-if="selectedLegend" class="canvas-selection" :aria-label="t('canvasSelectedLibrary')">
+        <section v-else-if="selectedLegend && !groupEditor" class="canvas-selection" :aria-label="t('canvasSelectedLibrary')">
           <h2>{{ selectedLegend.name }}</h2>
           <p class="canvas-hint">{{ legendKind(selectedLegend.kind) }}</p>
           <p class="library-description">{{ selectedLegend.description }}</p>
@@ -399,12 +617,10 @@ onMounted(() => void load());
           </ul>
           <p v-else>{{ t('canvasNoEdges') }}</p>
         </section>
-        <p v-else-if="!loopId" class="canvas-hint">{{ t(legends.length ? 'canvasChooseLibrary' : 'canvasChoose') }}</p>
-
-        <form class="canvas-groups" @submit.prevent="applyGroup">
+        <form v-if="loopId || groupEditor" class="canvas-groups" @submit.prevent="applyGroup">
           <h2>{{ t('canvasGroups') }}</h2>
           <label :for="groupControl + '-picker'">{{ t('canvasEditGroup') }}</label>
-          <select :id="groupControl + '-picker'" :value="groupId" :disabled="!editable || !idle"
+          <select :id="groupControl + '-picker'" ref="groupPicker" :value="groupId" :disabled="!editable || !idle"
             @change="editGroup(($event.target as HTMLSelectElement).value)">
             <option value="">{{ t('canvasNewGroup') }}</option>
             <option v-for="group in layout?.groups" :key="group.id" :value="group.id">{{ group.name }}</option>
@@ -421,7 +637,7 @@ onMounted(() => void load());
             </label>
           </fieldset>
           <button type="submit" :disabled="!editable || !idle || (members.length ? !groupName.trim() : !groupId)">{{ t('canvasApplyGroup') }}</button>
-          <p class="canvas-hint">{{ t('canvasGroupHelp') }}</p>
+          <p class="canvas-hint">{{ t(loopId ? 'canvasGroupHelp' : 'canvasGroupEditorHelp') }}</p>
         </form>
       </aside>
     </div>

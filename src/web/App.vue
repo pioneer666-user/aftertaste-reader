@@ -59,7 +59,18 @@ const outline = computed(() => result.value?.renderMode === 'comparison' ? resul
 })) : []);
 const activeBlock = ref('');
 const canvasOpened = ref(false);
-const view = ref<'reader' | 'canvas' | 'loops' | 'bookmarks' | 'notes' | 'marks'>('reader');
+const pages = {
+  reader: { label: 'files', open() { fromCanvas.value = false; view.value = 'reader'; } },
+  canvas: { label: 'dependencyCanvas', open: openCanvas },
+  loops: { label: 'loops', open: openLoops },
+  bookmarks: { label: 'bookmarks', open: openBookmarks },
+  marks: { label: 'marks', open() { view.value = 'marks'; void refreshMarks(); } },
+  notes: { label: 'notes', open() { view.value = 'notes'; } },
+};
+type Page = keyof typeof pages;
+const view = ref<Page>('reader');
+const pageMenu = ref<HTMLElement>();
+const pageMenuButton = ref<HTMLButtonElement>();
 const noteQuote = ref<BlockQuote>();
 const fromCanvas = ref(false);
 const loopEntries = ref<LoopEntry[]>([]);
@@ -256,6 +267,7 @@ async function setNavigation(open: boolean) {
 
 async function resizeNavigation(event: MediaQueryListEvent) {
   const focusInSidebar = navigation.value?.contains(document.activeElement);
+  const focusInPageMenu = pageMenu.value?.contains(document.activeElement) || document.activeElement === pageMenuButton.value;
   closeProjectInfo();
   narrow.value = event.matches;
   narrowOpen.value = false;
@@ -263,6 +275,10 @@ async function resizeNavigation(event: MediaQueryListEvent) {
   await nextTick();
   if (view.value === 'reader' && focusInSidebar && !navigationOpen.value) {
     navigationButton.value?.focus({ preventScroll: true });
+  }
+  if (focusInPageMenu) {
+    const control = narrow.value ? pageMenuButton.value : pageMenu.value?.querySelector<HTMLButtonElement>('[aria-current="page"]');
+    control?.focus({ preventScroll: true });
   }
 }
 
@@ -439,6 +455,20 @@ async function visitBlock(target: BlockTarget, from: 'notes' | 'marks'): Promise
 const visitNoteBlock = (target: BlockTarget) => visitBlock(target, 'notes');
 const visitMark = (target: UnderstandingMark) => visitBlock(target, 'marks');
 
+function positionPageMenu(event: ToggleEvent) {
+  if (event.newState !== 'open' || !pageMenu.value || !pageMenuButton.value) return;
+  closeProjectInfo();
+  const { left, bottom } = pageMenuButton.value.getBoundingClientRect();
+  pageMenu.value.style.setProperty('--page-menu-left', `${left}px`);
+  pageMenu.value.style.setProperty('--page-menu-top', `${bottom + 4}px`);
+}
+
+function openPage(page: Page) {
+  if (pageMenu.value?.matches(':popover-open')) pageMenu.value.hidePopover();
+  if (page === 'reader' && view.value === 'reader') return;
+  void pages[page].open();
+}
+
 function openCanvas() {
   canvasOpened.value = true;
   view.value = 'canvas';
@@ -569,22 +599,31 @@ onUnmounted(() => {
 <template>
   <a :href="view === 'canvas' ? '#canvas-reading' : view === 'loops' ? '#loop-navigation' : view === 'reader' ? '#reading' : '#' + view"
     class="skip-link" @click="skipToReading">{{ t('skip') }}</a>
-  <header class="app-header" :class="{ 'reader-header': view === 'reader' }">
-    <button v-if="view === 'reader'" ref="navigationButton" type="button" class="reader-navigation-toggle"
-      :class="{ 'navigation-pinned': narrow ? narrowOpen : desktopOpen }" :aria-label="t(navigationAction)"
-      :title="t(navigationAction)" :aria-expanded="navigationOpen" aria-controls="reader-navigation"
-      @click="setNavigation(desktopPeek || !navigationOpen)">
-      <span class="sidebar-icon" aria-hidden="true"></span>
-    </button>
-    <div v-else class="brand"><strong>{{ t('brand') }}</strong><span>{{ t('title') }}</span></div>
+  <header class="app-header">
+    <div class="app-header-start">
+      <button v-if="view === 'reader'" ref="navigationButton" type="button" class="reader-navigation-toggle"
+        :class="{ 'navigation-pinned': narrow ? narrowOpen : desktopOpen }" :aria-label="t(navigationAction)"
+        :title="t(navigationAction)" :aria-expanded="navigationOpen" aria-controls="reader-navigation"
+        @click="setNavigation(desktopPeek || !navigationOpen)">
+        <span class="sidebar-icon" aria-hidden="true"></span>
+      </button>
+      <nav class="app-page-navigation" :aria-label="t('pageNavigation')">
+        <button v-if="narrow" ref="pageMenuButton" type="button" class="app-page-menu-toggle" popovertarget="app-page-menu">
+          <span>{{ t(pages[view].label) }}</span>
+        </button>
+        <div id="app-page-menu" ref="pageMenu" class="app-page-menu" :popover="narrow ? 'auto' : undefined" @beforetoggle="positionPageMenu">
+          <button v-for="(entry, page) in pages" :key="page" type="button" :data-page="page"
+            :aria-current="view === page ? 'page' : undefined" @click="openPage(page)">
+            {{ t(page === 'canvas' && view === 'reader' && fromCanvas ? 'canvasBack' : entry.label) }}
+          </button>
+        </div>
+      </nav>
+    </div>
     <div class="toolbar">
-      <button v-if="view !== 'canvas'" type="button" @click="openCanvas">{{ t(view === 'reader' && fromCanvas ? 'canvasBack' : 'dependencyCanvas') }}</button>
-      <button v-if="view !== 'reader'" type="button" @click="view = 'reader'; fromCanvas = false">{{ t('files') }}</button>
-      <button type="button" :aria-pressed="view === 'loops'" @click="openLoops">{{ t('loops') }}</button>
-      <button type="button" :aria-pressed="view === 'bookmarks'" @click="openBookmarks">{{ t('bookmarks') }}</button>
-      <button type="button" :aria-pressed="view === 'marks'" @click="view = 'marks'; refreshMarks()">{{ t('marks') }}</button>
-      <button type="button" :aria-pressed="view === 'notes'" @click="view = 'notes'">{{ t('notes') }}</button>
-      <button v-if="view === 'reader'" type="button" :disabled="listLoading" @click="refresh(); refreshMarks()">{{ t('refresh') }}</button>
+      <button v-if="view === 'reader'" type="button" class="refresh-documents" :aria-label="t('refresh')"
+        :title="t('refresh')" :disabled="listLoading" @click="refresh(); refreshMarks()">
+        <span class="refresh-documents-label">{{ t('refresh') }}</span><span class="refresh-documents-icon" aria-hidden="true"></span>
+      </button>
       <label class="language-control"><span>{{ t('language') }}</span>
         <select :value="language" :aria-label="t('language')" @change="changeLanguage"><option value="zh-CN">简体中文</option><option value="en">English</option></select>
       </label>

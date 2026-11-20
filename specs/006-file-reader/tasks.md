@@ -167,6 +167,19 @@
 - [x] T044 同步 docs/usage/file-reader.md。用 tests/browser/reader-center.mjs 和 specs/006-file-reader/quickstart.md 复验题头、切篇、浮窗、窄屏及受影响的现有阅读行为（SC-010/011）。
 - [x] T045 冻结调整候选并由未参与实现的审查者复核，按 docs/work/2026/11/D023-reader-center/amendments.md 更新独审、回执及共用试读，在回执登记生效候选（SC-010/011）。
 
+## Phase 21 · D026 User Story 10 - 从左上切换页面 (P1)
+
+**Goal** 左上同序切页，知道当前所在页并可从讲解返回刚才的图。
+
+**Independent Test** 中文桌面及英文临界宽度实点导航，窄窗用键盘打开六页和讲解侧栏；从图打开讲解并返回。
+
+- [x] T046 [US10] 在 `tests/browser/dependency-canvas-selection.mjs` 定义六页顺序、当前项、英文收纳及窄窗键盘入口的检查，复用既有试读资料（FR-011、SC-013）。
+- [x] T047 [US10] 在 `src/web/App.vue`、`src/web/style.css` 与 `src/web/i18n.ts` 复用页态建立共用左上顶栏、侧栏开关、当前状态、窄窗收纳和明确的图返回入口（FR-011）。
+
+## Phase 22 · D026 Polish & Cross-Cutting Concerns
+
+- [x] T048 按 `specs/006-file-reader/quickstart.md` 实测顶栏视口、导航与受影响的既有回访。同步 `docs/usage/file-reader.md`，后续独审与交回见 `specs/007-dependency-canvas/tasks.md`（SC-013）。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。
@@ -179,6 +192,8 @@ D023 复用已有清单、单篇读取、侧栏、Markdown、选文和诊断。T
 
 D023 试读调整在已审版本上接续。T042 与 T043 完成后用 T044 复验组合呈现，再冻结为 T045 的复核候选。
 
+D026 顶栏依次 T046 → T047 → T048，图往返在 007 的依赖图详情工作完成后合验。复用已有配置和隔离试读，验证资源串行。
+
 ## Parallel Example
 
 US1 的 CLI 与页面文件理论可分工，本任务单执行实现，测试串行。US2 的安全 Markdown 与服务失败用例理论可独立阅读。US3 的字典与存储例子理论可并行编写，实际串行完成。独审发生在固定候选之后。
@@ -187,6 +202,8 @@ D022 可分别编写块内记录组件和文件树组件。汇合处 App.vue、s
 
 D023 可并行准备隔离用例与阅读端的实现草案。US7 的项目资料和 US8/US9 的正文可分开设计，style.css 和翻译表的修改应协调合入，真实服务与浏览器验证串行执行。
 
+D026 顶栏与依赖图可分别实现，共用测试脚本、App.vue 与翻译表的修改需协调。实窗验证使用同一候选串行执行。
+
 ## Implementation Strategy
 
 先接通服务和最小阅读路径，再补齐错误与双语，逐阶段验证。US1 是技术上的 MVP，本单交付包含全部 W01—W06。固定候选独审，作者体验待验后交回，不自动整合 dev。
@@ -194,3 +211,5 @@ D023 可并行准备隔离用例与阅读端的实现草案。US7 的项目资�
 D022 先验证开讲解与收栏的独立路径，再验证本篇定位及记录往返。全范围自测、独审后使用固定试读项目交回，作者体验待验。
 
 D023 最小可验的阅读核心为 US8，当前批准交付同时包含 US7 和 US9。使用同组实文逐项验证，独审通过后换版并交回作者体验。
+
+D026 先形成可切页的 US10，随后与 007 的首屏及分组在同一隔离项目验收并交回。

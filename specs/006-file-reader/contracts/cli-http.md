@@ -23,6 +23,8 @@ D022 的文件树和块目录使用现有清单及单篇讲解返回值。读取
 
 D023 的项目资料使用上述既有清单和单篇读取。当前文件阅读页向系统剪贴板提供 [U73](../../001-first-release/05-reading-feedback.md#u73--复制文档块定位-v1作者授权-ai-定稿) 定义的纯文本。浏览器拒绝写入时在当前页提供同文手动复制，文档缺少必填字段时走下方诊断。操作使用已加载的当前结果，无额外服务请求和资料写入。
 
+D026 共用顶栏的用户界面约定见 [FR-011](../spec.md#functional-requirements)。通过既有页态进入各页面，文件读取、回访与服务请求格式沿上述契约。
+
 ## 访问及缓存边界
 
 Host 必须为 127.0.0.1 或 localhost 且端口与实际监听一致。Origin 若存在须精确等于该 Host 的 http 来源，Sec-Fetch-Site 若存在须为 same-origin/none。跨源读取返回 ACCESS_DENIED，无 CORS 授权。所有响应 Cache-Control no-store，nosniff，禁止 frame，CSP 仅自身脚本/样式、连接自身、禁外部图片及对象。Markdown 原生 HTML 按文本处理，图片按替代文本，链接仅允许锚点或明确 http/https/mailto，点击外链使用安全 rel，普通磁盘相对链接按文本。

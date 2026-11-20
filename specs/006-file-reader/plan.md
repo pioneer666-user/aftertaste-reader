@@ -8,6 +8,8 @@
 
 **D023 增量** codex/feat-reader-center @3edd452，产品基线 dev @6458be2。依据 [FR-012—014](spec.md#functional-requirements)、[原任务](../../docs/work/2026/11/D023-reader-center/task.md)及[试读调整](../../docs/work/2026/11/D023-reader-center/amendments.md)，2026-11-19。
 
+**D026 增量** `codex/feat-dependency-canvas-selection` @`af08db4`，产品基线 dev @`6ca44d8`。[批准依据](../../docs/work/2026/11/D026-dependency-canvas-selection/task.md)。
+
 ## Summary
 
 单个 Node 本地服务提供预构建 Vue 页面和只读 JSON。DocumentService 在同次读取中完成解析、固定取源和覆盖检查，CLI 校验复用这条链。列表发现独立于 Git。页面仅在内存处理内容，以 code/params 翻译诊断。
@@ -15,6 +17,8 @@
 D022 从现有讲解条目构建文件树，从当前对照结果派生本篇目录。使用现有书签、标注、笔记的读取、编辑与草稿流程，在块正文后提供记录入口并按回访来源展开落点。
 
 D023 在同一阅读结果上呈现文件题头、块内源码停留和项目资料，并将有效块的 U73 定位交给剪贴板。当前文档、选文和反馈均沿阅读区生命周期管理。
+
+D026 用共用顶栏左侧的轻量文字导航取代旧入口位置，沿用 App 的页态和明确的依赖图往返入口。中文和英文共用排列约定。沿现有技术栈、客户端页态与服务接口，研究见 [research](research.md#d026-共用顶栏)，图内方案见 [007 plan](../007-dependency-canvas/plan.md)。
 
 ## Technical Context
 
@@ -50,6 +54,8 @@ D023 在同一阅读结果上呈现文件题头、块内源码停留和项目资
 
 D023 研究前与设计后复核同一原则。I 以 D023 批准场景和 U73 为界。II 由当前读到的文档提取身份与固定提交，用户记录与 Git 引用由原机制负责。III 沿 D022 的选文、侧栏和诊断，新增状态限定在当前页。IV 先取隔离试读的现版及候选实图，再以串行真实操作及独审核滚动、浮窗和粘贴。V 依生效模板增量维护 006，进入实现前检查 checklist 与跨文档覆盖。两次门禁无原则违例。
 
+D026 研究前与设计后复核 I—V。I 替换 FR-011 的入口位置，保持既定的六页与回访语义。II 页态留在前端，文件与记录读写沿原契约。III 使用共用顶栏与原侧栏、翻译、页态。IV 按 quickstart 实验英中文案、边界视口与图的阅读往返并交独审。V 使用原模板增量维护 006，与 007 各归主定义。未见原则冲突。
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -82,6 +88,8 @@ D022 页面涉及 src/web/ 的 App.vue、ReaderFileTree.vue、ReaderSidebarDivid
 
 D023 同在 src/web/ 的 App.vue、ReaderDocument.vue、BlockLocationControl.vue、style.css 和 i18n.ts 内调整呈现与交互，沿现有 Markdown 工具保留单一讲解渲染树。tests/browser/reader-center.mjs 覆盖新增路径，相关阅读回归及 docs/usage/file-reader.md 按实际变化维护。
 
+D026 顶栏位于 `src/web/App.vue`、`src/web/style.css` 与 `src/web/i18n.ts`，浏览器共用路径在 `tests/browser/dependency-canvas-selection.mjs`，受影响的导航与个人记录脚本按 quickstart 回归。面向读者更新 `docs/usage/file-reader.md`。
+
 ## 页面设计
 
 Read 模式。固定头部提供语言选择与刷新，主区呈现文件题头、题头下的讲解路径及影响阅读的问题，提交及正常校验见项目资料。对照块使用相邻双栏及水平分隔，源码浅绿灰底、等宽字和实际行号，正文白底、系统中文字体。纯讲解块独立居中。绿色用于当前选择与键盘焦点，错误和警告同时配文字。主内容独立滚动，长行在源码区域横向滚动，窄屏依次显示源码和讲解。
@@ -90,7 +98,7 @@ D011 已实际运行 Impeccable context。D022 按项目局部修改适配，沿
 
 ### D022 阅读工作区
 
-- 阅读页桌面布局在视口宽度超过 850 CSS px 时使用单行高 48 CSS px 的顶栏。左上角用一个有明确名称和状态的侧栏图标切换固定导航，右侧工具收紧控件和间距。较紧的宽度用语言选择器的当前值呈现语言设置，保留其可访问名称。Windows 标题栏设计给出标准 32 px、含搜索框 48 px，本页工具栏取 48 CSS px 作为带交互区域的参考尺寸。[Windows 标题栏设计](https://learn.microsoft.com/en-us/windows/apps/design/basics/titlebar-design)
+- D022 的阅读页桌面方案在视口宽度超过 850 CSS px 时使用单行高 48 CSS px 的顶栏，供侧栏验证复用。页面入口排列以 D026 段为准。右侧控件在较紧宽度使用语言选择器的当前值，保留其可访问名称。Windows 标题栏的含搜索框方案也是 48 px。[Windows 标题栏设计](https://learn.microsoft.com/en-us/windows/apps/design/basics/titlebar-design)
 - 侧栏顶部显示项目名称并可查完整路径。固定时参与桌面布局，收起让出宽度。桌面鼠标可从左缘触发覆盖显示，移入侧栏可操作，离开且焦点在外后收合。临时显示保持正文宽度与焦点，固定和收起保存当前阅读块。窄屏通过图标打开覆盖面板，选文件或跳块后关闭。键盘显式关闭回到图标，选文件回到阅读区，跳块聚焦目标块。
 - 文件树和本篇目录分别滚动。目录可用时显示水平分隔线并允许拖动。键盘以上下方向键调整，Home 和 End 移到两端。文件树份额限定在可分配空间的 20%—80%。矮窗口按每区至少一条完整可选项所需的空间收紧范围。调节值留在页面内存，收栏或暂时没有目录后再显示时复用。
 - 同时维护展开文件夹与当前文件。按选中的文档展开其祖先并标记叶项，使用完整路径定位。一般收栏与重开保留状态；布局变化维持读到的块。跳转与滚动共用当前项，只有显式跳转移动焦点。
@@ -103,6 +111,12 @@ D011 已实际运行 Impeccable context。D022 按项目局部修改适配，沿
 - 文件题头用真实源码相对路径拆目录和文件名，对长路径保留查阅完整值的方式。试读调整把同一读取结果的讲解项目相对路径移至主标题下，字号与断行见 SC-011。源码板使用块作为粘滞边界，以可读高度决定是否吸附，条件与分栏视口见 SC-011。用独立于横向内容的行号列及同节奏的文本行显示完整源码。调整 Markdown 行距与段距，以纯讲解及对照块的真实中文内容复核。保留同一 Markdown 正文和原有块尾记录流程。
 - 从正文两端节点、当前块身份及非空选文判断浮条资格，依据指针端或键盘选区焦点端放置并限制在视口内。块首直接入口只带块身份。两种复制以 [U73](../001-first-release/05-reading-feedback.md#u73--复制文档块定位-v1作者授权-ai-定稿)生成标题与 JSON 围栏的纯文本，拒绝写入时以同一文本做只读手动复制。按 [data-model](data-model.md#d023-项目资料与复制状态) 清除过期目标。
 - 复用 Impeccable 局部修改的 Read 与 Operate 参考，按 [quickstart](quickstart.md#d023-reader-center) 实看，按 [research](research.md#d023-增量研究) 的技术决定验证浏览器兼容。
+
+### D026 共用顶栏
+
+- 沿 [FR-011](spec.md#functional-requirements)排列固定的六页入口。讲解页侧栏开关独立于导航，位于同一顶栏左端；其他页按实际页面能力保留对应工具。当前位置随 App 接受的页态更新，并以语义状态及柔和底色表达。用独立焦点样式核键盘可达。
+- 预留右侧工具空间，英文标签及窄视口可用收纳入口。当前页名称在收纳时直接可读；以实际横排和实窗临界宽度验证，测试预期由 [SC-013](spec.md#measurable-outcomes)维护。
+- 从依赖图打开讲解时保留明确的返回路径，复用同一依赖图实例及其节点、视野。进入其他页面时清理图内临时框选，依赖图状态生命周期见 [007 data model](../007-dependency-canvas/data-model.md#d026-临时画布状态)。
 
 ## Complexity Tracking
 

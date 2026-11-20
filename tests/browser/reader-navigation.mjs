@@ -126,8 +126,9 @@ try {
   }
 
   await page.goto(reader.url);
-  const topActions = ['文件依赖图', '闭环阅读', '书签', '标注', '笔记'];
-  assert.deepEqual((await topMenu.getByRole('button').allTextContents()).filter(label => topActions.includes(label)), topActions);
+  const topActions = ['文件讲解', '文件依赖图', '闭环阅读', '书签', '标注', '笔记'];
+  assert.deepEqual(await topMenu.locator('[data-page]:visible').allTextContents().then(labels => labels.map(label => label.trim())), topActions);
+  assert.equal(await button('文件讲解', topMenu).getAttribute('aria-current'), 'page');
   assert.equal((await topMenu.boundingBox()).height, 48);
   assert.equal(await topMenu.getByText('回味', { exact: true }).isVisible(), false);
   assert.equal(await navigationToggle.count(), 1);
