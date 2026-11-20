@@ -327,6 +327,29 @@ async function checkRenameAndPan() {
   }, 'pan');
 }
 
+async function editBeforeCreationAck(newName) {
+  const original = '等待创建确认';
+  const held = await holdResponse(await nameNewGroup(original, rules, 'menu'));
+  const created = (await readJSON(disk)).layout.groups.find(group => group.name === original);
+  const nextResponse = page.waitForResponse(response => response.url().endsWith('/api/dependency-layout') &&
+    response.request().method() === 'PUT' && response.request().postDataJSON().expectedRevision === held.result.body.revision);
+  try {
+    assert.ok(created);
+    if (newName) await scope().locator('#canvas-group-name').fill(newName);
+    else await scope().getByRole('checkbox', { name: rules, exact: true }).uncheck();
+    await button(scope(), '应用分组').press('Enter');
+  } finally { held.release(); }
+  assert.equal((await held.delivered).status(), 200);
+  const final = await checkAck(await nextResponse, newName || '创建期间解散');
+  await dependencySaved(scope());
+  assert.equal(final.layout.groups.find(group => group.id === created.id)?.name, newName);
+  const announcement = scope().locator('.canvas-group-saved');
+  if (newName) {
+    assert.equal(await announcement.innerText(), '已保存分组「' + newName + '」');
+    assert.ok(await announcement.isVisible());
+  } else assert.equal(await announcement.count(), 0);
+}
+
 try {
   reader = await startReader(project, 0);
   browser = await (channel === 'firefox' ? firefox.launch() : chromium.launch({ channel: channel === 'edge' ? 'msedge' : channel }));
@@ -344,6 +367,8 @@ try {
   await checkRenameAndPan();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await createAndObserve('静态重试', service, 'menu', { fail: true, reduced: true });
+  await editBeforeCreationAck('确认后显示的组名');
+  await editBeforeCreationAck(undefined);
   const finalLayout = await readJSON(disk);
   await page.reload();
   await page.locator('[data-page="canvas"]:visible').click();

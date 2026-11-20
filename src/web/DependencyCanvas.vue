@@ -64,7 +64,8 @@ const mapOpen = ref(!window.matchMedia('(max-width: 760px)').matches);
 const mapDragging = ref(false);
 const dots = ref<InstanceType<typeof DependencyDots>>();
 const newGroups = new Set<string>();
-const savedGroupName = ref('');
+const savedGroupId = ref('');
+const savedGroupName = computed(() => layout.value?.groups.find(group => group.id === savedGroupId.value)?.name);
 let revision: string | null = null;
 let pending: LayoutWrite | undefined;
 let dragGroup: { group: CanvasGroup; origin: Point; layout: CanvasLayout } | undefined;
@@ -213,7 +214,7 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
     layout.value = carry ? reconcileLayout(carry, ids, renewed) : next.layout;
     if (!carry) {
       newGroups.clear();
-      savedGroupName.value = '';
+      savedGroupId.value = '';
     }
     reading.value = next;
     revision = next.revision;
@@ -253,7 +254,7 @@ async function save() {
         for (const group of attempt.layout.groups) {
           if (newGroups.delete(group.id) && props.active) {
             dots.value?.ripple(group.id);
-            savedGroupName.value = group.name;
+            savedGroupId.value = group.id;
           }
         }
         pending = undefined;
@@ -272,7 +273,7 @@ async function save() {
 }
 
 function changed(next: CanvasLayout) {
-  savedGroupName.value = '';
+  savedGroupId.value = '';
   layout.value = next;
   dirty.value = true;
   if (saveProblem.value?.code === 'LAYOUT_INVALID') saveProblem.value = undefined;
@@ -436,7 +437,7 @@ watch(() => props.active, active => {
   if (active || loopRoute) return;
   ctrlHeld.value = false;
   newGroups.clear();
-  savedGroupName.value = '';
+  savedGroupId.value = '';
   if (mapDragging.value && layout.value) void setViewport(layout.value.viewport);
   mapDragging.value = false;
   clearSelection();
