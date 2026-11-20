@@ -6,18 +6,14 @@
   --muted: #52645b;
   --accent: #21624d;
   --line: #d5dfd8;
-  --corner-inline: .15em;
-  --corner-control: 5px;
-  --corner-row: 8px;
-  --corner-panel: 12px;
+  --corner-inline: .24em;
+  --corner-control: 9px;
+  --corner-row: 14px;
+  --corner-panel: 21px;
+  --corner-radius-scale: .57;
 }
 @supports (corner-shape: squircle) {
-  :root {
-    --corner-inline: .24em;
-    --corner-control: 9px;
-    --corner-row: 14px;
-    --corner-panel: 21px;
-  }
+  :root { --corner-radius-scale: 1; }
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
@@ -362,39 +358,60 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
   .refresh-documents-icon::after { content: ''; position: absolute; inset: -1px -1px auto auto; width: 5px; height: 5px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; }
 }
 
+@property --corner-size {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
 .app-header :is(button, select),
 .skip-link,
 #reader-navigation .project-info-toggle,
 #reading :is(button, select, textarea, .location-copy-status:not(:empty)),
 #app:has(> .workspace-active) > .position-notice button {
-  border-radius: var(--corner-control);
+  --corner-size: var(--corner-control);
+  border-radius: calc(var(--corner-size) * var(--corner-radius-scale));
   corner-shape: squircle;
 }
 .app-page-menu[popover] button,
 #reader-navigation :is(.file-list button, .outline-list button, .sidebar-divider),
-#reading :is(.annotation-text, .block-bookmarks li, .block-mark:focus),
+#reading :is(.annotation-text, .block-bookmarks li, .block-mark),
 #app:has(> .workspace-active) > .language-status {
-  border-radius: var(--corner-row);
+  --corner-size: var(--corner-row);
+  border-radius: calc(var(--corner-size) * var(--corner-radius-scale));
   corner-shape: squircle;
 }
 .app-page-menu[popover],
 #reader-navigation .project-info,
 #reading :is(.source-pane, .markdown pre, .notice, .reading-error, .selection-copy-panel, .location-copy-manual),
 #app:has(> .workspace-active) > .position-notice {
-  border-radius: var(--corner-panel);
+  --corner-size: var(--corner-panel);
+  border-radius: calc(var(--corner-size) * var(--corner-radius-scale));
   corner-shape: squircle;
 }
 #reader-navigation.sidebar-overlay {
-  border-start-end-radius: var(--corner-panel);
-  border-end-end-radius: var(--corner-panel);
+  --corner-size: var(--corner-panel);
+  border-start-end-radius: calc(var(--corner-size) * var(--corner-radius-scale));
+  border-end-end-radius: calc(var(--corner-size) * var(--corner-radius-scale));
   corner-shape: squircle;
 }
 #reading .markdown :not(pre) > code {
-  border-radius: var(--corner-inline);
+  --corner-size: var(--corner-inline);
+  border-radius: calc(var(--corner-size) * var(--corner-radius-scale));
   corner-shape: squircle;
 }
 #reading .source-pane:has(.source-scroll:focus-visible) { outline: 3px solid #338268; outline-offset: 3px; }
 #reading .source-scroll:focus-visible { outline: none; }
 @media (forced-colors: active) {
   #reading .source-pane:has(.source-scroll:focus-visible) { outline-color: Highlight; }
+}
+@supports not (corner-shape: squircle) {
+  .reader-corner-surfaces { position: fixed; top: 0; left: -200vw; pointer-events: none; }
+  .reader-corner-surfaces svg { position: absolute; top: 0; left: 0; }
+  @media (forced-colors: none) {
+    [data-reader-corner] {
+      background-color: transparent !important;
+      border-image: var(--reader-corner-image) !important;
+      outline-color: transparent !important;
+    }
+  }
 }

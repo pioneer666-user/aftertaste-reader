@@ -401,11 +401,15 @@ try {
   await page.getByRole('button', { name: '文件讲解', exact: true }).click();
   report.checks.push('English control and rejection feedback, native selection and resized whole-block fallbacks round trip, actual mouse hit adds the entire wrapped passage to notes');
 
+  report.responsive = [];
   for (const width of [1051, 1050, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await first.waitFor();
-    const sourceBox = await box(sourcePane(first));
-    const proseBox = await box(prose(first));
+    const { sourceBox, proseBox } = await first.evaluate(block => ({
+      sourceBox: block.querySelector('.source-pane').getBoundingClientRect().toJSON(),
+      proseBox: block.querySelector('.explanation-text').getBoundingClientRect().toJSON(),
+    }));
+    report.responsive.push({ width, sourceBox, proseBox });
     if (width > 1050) assert.ok(sourceBox.x + sourceBox.width <= proseBox.x + 1);
     else assert.ok(sourceBox.y + sourceBox.height <= proseBox.y + 1);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

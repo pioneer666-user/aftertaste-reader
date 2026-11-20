@@ -208,7 +208,7 @@
 
 **Independent Test** 按 SC-016 在同一订单项目的 `src/service.mjs` 中复现小控件、整行和源码板，并操作有焦点的浮层与块后记录。
 
-- [x] T055 [US12] 在 `src/web/style.css` 按共用顶栏与文件讲解入口设置不同尺寸的连续转角及可见焦点（FR-017）。
+- [x] T055 [US12] 在 `src/web/style.css` 和 `src/web/reader-corners.ts` 按共用顶栏与文件讲解入口设置不同尺寸的连续转角、可见焦点与等效轮廓（FR-017）。
 - [x] T056 [US12] 按 `specs/006-file-reader/quickstart.md` 固定副本、做三引擎视窗对照，串行复用 `tests/browser/reader-center.mjs`、`tests/browser/reader-history.mjs` 和记录回访（SC-016）。
 
 ## Phase 28 · D029 Polish & Cross-Cutting Concerns
