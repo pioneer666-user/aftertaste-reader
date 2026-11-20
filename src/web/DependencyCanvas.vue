@@ -22,8 +22,11 @@ import { failed, request } from './reader-api.js';
 import { fitFloatingAxis } from './floating-position.js';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
+import type { CanvasPosition } from './canvas-position.js';
 
-const props = defineProps<{ language: Language; active: boolean; loopId?: string }>();
+const props = withDefaults(defineProps<{ language: Language; active: boolean; loopId?: string; toolsOpen?: boolean }>(), {
+  toolsOpen: true,
+});
 const emit = defineEmits<{ read: [documentPath: string] }>();
 const t = (key: string) => translate(props.language, key);
 // The parent keys each retained canvas by graph, including its in-flight requests and draft.
@@ -49,6 +52,11 @@ const readProblem = ref<ReaderProblem>();
 const saveProblem = ref<ReaderProblem>();
 const graphArea = ref<HTMLElement>();
 const toolsMenu = ref<HTMLDetailsElement>();
+const detailToggle = ref<HTMLButtonElement>();
+const detailHeading = ref<HTMLElement>();
+const inspector = ref<HTMLElement>();
+const groupTrigger = shallowRef<HTMLElement>();
+const detailsOpen = ref(false);
 const groupPicker = ref<HTMLSelectElement>();
 const groupEditor = ref(false);
 const selectionPanel = ref<HTMLElement>();
@@ -102,6 +110,18 @@ const hasNodes = computed(() => ids.value.length > 0);
 const documentPath = computed(() => dependency.value?.documents.find(entry => entry.sourcePath === selected.value)?.documentPath);
 const dependencies = computed(() => dependency.value?.graph.edges.filter(edge => edge.dependent === selected.value) ?? []);
 const dependents = computed(() => dependency.value?.graph.edges.filter(edge => edge.dependency === selected.value) ?? []);
+interface RelationPreview {
+  label: string;
+  summary: string;
+  items: { key: string; label: string; reason: string; kind?: LibraryLegend['kind'] }[];
+}
+const fileRelations = computed<RelationPreview[]>(() => [
+  { label: 'canvasDependencies', summary: 'canvasSummaryDependencies', items: dependencies.value.map(edge => ({ key: edge.dependency, label: edge.dependency, reason: edge.reason })) },
+  { label: 'canvasDependents', summary: 'canvasSummaryDependents', items: dependents.value.map(edge => ({ key: edge.dependent, label: edge.dependent, reason: edge.reason })) },
+  { label: 'canvasUsedLibraries', summary: 'canvasSummaryLibraries', items: usedLibraries.value.map(({ legend, reason }) => ({ key: legendKey(legend.id), label: legend.name, kind: legend.kind, reason })) },
+].filter(relation => relation.items.length > 0));
+const nodeStatus = computed(() => selectedNode.value?.analysis === 'unreviewed' ? 'canvasUnreviewed' :
+  dependencies.value.length || usedLibraries.value.length ? 'canvasReviewed' : 'canvasNoDependencies');
 const replaceDraft = computed(() => saveProblem.value?.code === 'LAYOUT_CONFLICT');
 const refreshDraft = computed(() => dirty.value && (readProblem.value || ['LAYOUT_GRAPH_CHANGED', 'LAYOUT_GRAPH_UNCONFIRMED', 'GRAPH_NOT_FOUND',
   'GRAPH_INVALID', 'GRAPH_READ_FAILED', 'GRAPH_PATH_UNSAFE', 'LOOP_NOT_FOUND', 'LOOP_INVALID', 'LOOP_READ_FAILED',
@@ -115,7 +135,7 @@ const statusKey = computed(() => {
   if (!idle.value) return 'canvasEditing';
   return revision ? 'canvasSaved' : 'canvasDefault';
 });
-const showDetails = computed(() => !!selectedNode.value || !!selectedLegend.value);
+const hasSelection = computed(() => !!selectedNode.value || !!selectedLegend.value);
 const selectionRect = computed(() => box.value && rectangle(box.value.start, box.value.end));
 const picked = computed(() => new Set(boxMembers.value));
 const transfers = computed(() => {
@@ -134,6 +154,62 @@ function readingIds(value: CanvasReading | LoopCanvasReading): string[] {
   const { reading_order, legends } = value.result.loop;
   return [...reading_order, ...legends.map(legend => legendKey(legend.id))];
 }
+
+function basename(path: string): string { return path.slice(path.lastIndexOf('/') + 1); }
+
+function capturePosition(): CanvasPosition {
+  const currentViewport = ready.value ? { ...viewport.value } : layout.value?.viewport;
+  return {
+    selected: selected.value,
+    ...(currentViewport && { viewport: currentViewport }),
+    detailsOpen: detailsOpen.value,
+    detailScroll: inspector.value?.scrollTop ?? 0,
+  };
+}
+
+async function restorePosition(position: CanvasPosition, isCurrent = () => true): Promise<boolean> {
+  const current = () => props.active && isCurrent();
+  const before = reading.value;
+  const beforeRevision = revision;
+  const beforeLayout = layout.value;
+  let latest: CanvasReading | LoopCanvasReading | undefined;
+  try {
+    latest = await request<CanvasReading | LoopCanvasReading>(readRoute);
+    if (!current()) return false;
+    // An unfinished edit keeps its original graph and revision for the existing recovery controls.
+    const keepLayout = dirty.value || saving.value || revision !== beforeRevision || layout.value !== beforeLayout;
+    if (loading.value || reading.value !== before) latest = reading.value;
+    else if (!keepLayout) {
+      reading.value = latest;
+      layout.value = latest.layout;
+      revision = latest.revision;
+      readProblem.value = undefined;
+      render();
+    } else if (latest.graphVersion === before?.graphVersion && !latest.layoutProblem) {
+      reading.value = latest;
+      readProblem.value = undefined;
+    } else {
+      readProblem.value = latest.layoutProblem ?? { code: 'LAYOUT_GRAPH_CHANGED', message: '', nextStep: '', context: {} };
+    }
+  } catch (error) {
+    if (!current()) return false;
+    readProblem.value = failed(error);
+  }
+  const available = !position.selected || (!!latest && readingIds(latest).includes(position.selected) && ids.value.includes(position.selected));
+  selected.value = available && position.selected ? position.selected : loop.value?.loop.entry ?? '';
+  detailsOpen.value = available && position.detailsOpen;
+  groupEditor.value = false;
+  await nextTick();
+  if (!current()) return false;
+  // Vue Flow's programmatic transform has no user move-end event; only gestures and dock tools save.
+  const targetViewport = (available ? position.viewport : undefined) ?? layout.value?.viewport;
+  if (targetViewport) await setViewport(targetViewport);
+  if (!current()) return false;
+  if (inspector.value) inspector.value.scrollTop = available ? position.detailScroll : 0;
+  return !!latest && available;
+}
+
+defineExpose({ capturePosition, restorePosition });
 
 function render() {
   if (!reading.value || !layout.value) return;
@@ -221,7 +297,10 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
     pending = undefined;
     dirty.value = !next.layoutProblem && (!!carry || next.reconciled);
     saveProblem.value = undefined;
-    if (!ids.includes(selected.value)) selected.value = loop.value?.loop.entry ?? '';
+    if (!ids.includes(selected.value)) {
+      selected.value = loop.value?.loop.entry ?? '';
+      detailsOpen.value = false;
+    }
     editGroup('');
     render();
     if (ready.value) await setViewport(layout.value.viewport);
@@ -314,22 +393,44 @@ function outsideTools(event: PointerEvent) {
 
 function selectDetail(id: string) {
   groupEditor.value = false;
+  if (id !== selected.value) detailsOpen.value = false;
   selected.value = id;
 }
 
-async function openGroupEditor(id: string) {
+async function focusRelationship(id: string) {
+  selected.value = id;
+  await nextTick();
+  if (inspector.value) inspector.value.scrollTop = 0;
+  detailHeading.value?.focus({ preventScroll: true });
+}
+
+async function toggleDetails() {
+  detailsOpen.value = !detailsOpen.value;
+  await nextTick();
+  if (inspector.value) inspector.value.scrollTop = 0;
+  if (detailsOpen.value) detailHeading.value?.focus({ preventScroll: true });
+  else detailToggle.value?.focus({ preventScroll: true });
+}
+
+async function openGroupEditor(id: string, event?: MouseEvent) {
   editGroup(id);
   if (loopRoute) return;
   closeTools();
   clearSelection();
+  groupTrigger.value = event?.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
   groupEditor.value = true;
   await nextTick();
   groupPicker.value?.focus({ preventScroll: true });
 }
 
-function closeInspector() {
-  if (groupEditor.value) groupEditor.value = false;
-  else selected.value = '';
+function closeGroupEditor() {
+  groupEditor.value = false;
+  (groupTrigger.value?.getClientRects().length ? groupTrigger.value : graphArea.value)?.focus({ preventScroll: true });
+}
+
+function clearDetail() {
+  selected.value = '';
+  detailsOpen.value = false;
   graphArea.value?.focus({ preventScroll: true });
 }
 
@@ -443,6 +544,8 @@ watch(() => props.active, active => {
   clearSelection();
   closeTools();
 }, { flush: 'sync' });
+
+watch(() => props.toolsOpen, open => { if (!open) closeTools(); });
 
 function trackControl(event: KeyboardEvent) {
   if (event.key !== 'Control' || !props.active) return;
@@ -560,40 +663,56 @@ onUnmounted(() => {
   <main :id="loopId ? flowId + '-reading' : 'canvas-reading'" class="canvas-page"
     :class="loopId ? 'loop-canvas' : { 'dependency-canvas': true, 'canvas-active': active }"
     :aria-label="loopId ? undefined : t('dependencyCanvas')" tabindex="-1" @pointerdown.capture="outsideTools">
-    <header class="canvas-header">
-      <h1 v-if="loopId">{{ loop?.loop.title ?? t('loops') }}</h1>
+    <header v-if="loopId" class="canvas-header">
+      <h1>{{ loop?.loop.title ?? t('loops') }}</h1>
       <div class="canvas-actions">
-        <button v-if="loopId" type="button" :disabled="loading || saving || dirty || !idle" @click="load()">{{ t('canvasRefresh') }}</button>
+        <button type="button" :disabled="loading || saving || dirty || !idle" @click="load()">{{ t('canvasRefresh') }}</button>
         <button v-if="hasNodes" type="button" :disabled="!editable || !idle || !!box" @click="relayout">{{ t('canvasRearrange') }}</button>
-        <details v-if="!loopId" ref="toolsMenu" class="canvas-tools" @keydown.esc.stop="closeTools(true)">
-          <summary>{{ t('canvasTools') }}</summary>
-          <div class="canvas-tools-menu">
-            <button type="button" :disabled="loading || saving || dirty || !idle || !!box" @click="load()">{{ t('canvasRefresh') }}</button>
-            <button type="button" :disabled="!hasNodes || !editable || !idle || !!box" @click="openGroupEditor('')">{{ t('canvasEditGroup') }}</button>
-            <p class="canvas-hint">{{ t('canvasGestures') }}</p>
-            <p class="canvas-hint">{{ t(legends.length ? 'canvasLibraryDirection' : 'canvasDirection') }}</p>
-          </div>
-        </details>
       </div>
+    </header>
+    <div class="canvas-notices">
       <p v-if="loading" role="status" class="canvas-status">{{ t('loading') }}</p>
       <p v-else-if="reading" v-show="loopId || (statusKey !== 'canvasSaved' && statusKey !== 'canvasDefault')" role="status"
         class="canvas-status" data-testid="layout-status" :data-state="statusKey">{{ t(statusKey) }}</p>
       <p v-if="!loopId && savedGroupName && statusKey === 'canvasSaved'" class="canvas-group-saved" role="status">
         {{ t('canvasGroupSaved').replace('{name}', savedGroupName) }}
       </p>
-    </header>
-    <section v-for="problem in problems" :key="problem.code" class="canvas-problem" role="alert">
-      <p>{{ problemText(language, problem).message }} {{ problemText(language, problem).nextStep }}</p>
-      <code>{{ problem.code }} {{ problem.context.field }} {{ problem.context.diagnostic }} {{ problem.context.reason }}</code>
-    </section>
-    <div v-if="dirty && (saveProblem || readProblem)" class="canvas-actions canvas-recovery">
-      <button v-if="refreshDraft && !replaceDraft" type="button" :disabled="loading || saving || !idle" @click="load('refresh')">{{ t('canvasRefreshDraft') }}</button>
-      <button v-else-if="!replaceDraft" type="button" :disabled="!canSave || saving" @click="save">{{ t('canvasRetrySave') }}</button>
-      <button v-if="replaceDraft" type="button" :disabled="loading || saving || !idle" @click="discardDraft">{{ t('canvasLoadSaved') }}</button>
+      <section v-for="problem in problems" :key="problem.code" class="canvas-problem" role="alert">
+        <p>{{ problemText(language, problem).message }} {{ problemText(language, problem).nextStep }}</p>
+        <code>{{ problem.code }} {{ problem.context.field }} {{ problem.context.diagnostic }} {{ problem.context.reason }}</code>
+      </section>
+      <div v-if="dirty && (saveProblem || readProblem)" class="canvas-actions canvas-recovery">
+        <button v-if="refreshDraft && !replaceDraft" type="button" :disabled="loading || saving || !idle" @click="load('refresh')">{{ t('canvasRefreshDraft') }}</button>
+        <button v-else-if="!replaceDraft" type="button" :disabled="!canSave || saving" @click="save">{{ t('canvasRetrySave') }}</button>
+        <button v-if="replaceDraft" type="button" :disabled="loading || saving || !idle" @click="discardDraft">{{ t('canvasLoadSaved') }}</button>
+      </div>
+      <p v-if="reading && !hasNodes" class="canvas-empty">{{ t('canvasEmpty') }}</p>
     </div>
-    <p v-if="reading && !hasNodes" class="canvas-empty">{{ t('canvasEmpty') }}</p>
 
-    <div v-if="reading" v-show="hasNodes" class="canvas-workspace" :class="{ 'file-detail-open': !loopId && showDetails && !groupEditor }">
+    <div v-if="!loopId || reading" v-show="!loopId || hasNodes" class="canvas-workspace">
+      <div v-if="!loopId" v-show="toolsOpen" id="dependency-tools" class="canvas-rail" role="group" :aria-label="t('canvasTools')">
+        <button type="button" :aria-label="t('canvasRearrange')" :data-tooltip="t('canvasRearrange')"
+          :disabled="!hasNodes || !editable || !idle || !!box" @click="relayout">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h12M16 12h5M9 18h12M3 4h4v4H3zM3 10h11v4H3zM3 16h4v4H3z" /></svg>
+        </button>
+        <button type="button" :aria-label="t('canvasEditGroup')" :data-tooltip="t('canvasEditGroup')"
+          :disabled="!hasNodes || !editable || !idle || !!box" @click="openGroupEditor('', $event)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6m3 0h2v2m0 3v6m0 3v2h-2m-3 0H9m-3 0H4v-2m0-3V9m0-3V4h2m2 5h5v5H8zM13 11h3v5h-5v-2" /></svg>
+        </button>
+        <button type="button" :aria-label="t('canvasRefresh')" :data-tooltip="t('canvasRefresh')"
+          :disabled="loading || saving || dirty || !idle || !!box" @click="load()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5m-5 5a8 8 0 0 0 14 5l2-2m0 5v-5h-5" /></svg>
+        </button>
+        <details ref="toolsMenu" class="canvas-tools" @keydown.esc.stop="closeTools(true)">
+          <summary :aria-label="t('canvasControlsHelp')" :data-tooltip="t('canvasControlsHelp')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5m0-8v.1" /></svg>
+          </summary>
+          <div class="canvas-tools-menu">
+            <p>{{ t('canvasGestures') }}</p>
+            <p>{{ t(legends.length ? 'canvasLibraryDirection' : 'canvasDirection') }}</p>
+          </div>
+        </details>
+      </div>
       <section ref="graphArea" class="graph-area" :aria-label="t(loopId ? 'loopGraph' : 'dependencyCanvas')"
         :data-tool="loopId ? undefined : effectiveTool"
         :tabindex="loopId ? undefined : 0" @keydown="selectionKeys"
@@ -620,7 +739,7 @@ onUnmounted(() => {
         </div>
         <DependencyDots v-if="!loopId" ref="dots" :active="active && hasNodes" :quiet="!idle || !!box"
           :viewport="viewport" :groups="dotGroups" />
-        <VueFlow :id="flowId" :min-zoom="minZoom" :max-zoom="maxZoom" :nodes-connectable="false" :nodes-draggable="editable"
+        <VueFlow v-if="reading" v-show="hasNodes" :id="flowId" :min-zoom="minZoom" :max-zoom="maxZoom" :nodes-connectable="false" :nodes-draggable="editable"
           :pan-activation-key-code="loopId ? 'Space' : fixedTool === 'select' && editable ? 'Control' : null"
           :elements-selectable="false" :delete-key-code="null" :selection-key-code="null" :multi-selection-key-code="null"
           :disable-keyboard-a11y="true" :pan-on-drag="editable" :zoom-on-scroll="editable && !box" :zoom-on-pinch="editable && !box"
@@ -652,7 +771,7 @@ onUnmounted(() => {
           </template>
           <template #node-canvasGroup="{ data, id }">
             <div class="group-frame" :data-group="id">
-              <button type="button" class="group-handle" :title="data.name" @click="openGroupEditor(id.slice(6))">{{ data.name }}</button>
+              <button type="button" class="group-handle" :title="data.name" @click="openGroupEditor(id.slice(6), $event)">{{ data.name }}</button>
             </div>
           </template>
           <template #edge-dependency="edge"><DependencyEdge v-bind="edge" /></template>
@@ -661,7 +780,7 @@ onUnmounted(() => {
           left: selectionRect.x + 'px', top: selectionRect.y + 'px',
           width: selectionRect.width + 'px', height: selectionRect.height + 'px',
         }"></div>
-        <div :class="{ 'canvas-dock': !loopId }">
+        <div v-if="hasNodes" :class="{ 'canvas-dock': !loopId }">
           <DependencyMiniMap v-if="!loopId && active && mapOpen" :nodes="mapNodes" :viewport="viewport" :size="paneSize"
             :label="t('canvasMap')" :hint="t('canvasMapHint')" :enabled="editable"
             @dragging="mapDragging = $event" @navigate="mapNavigate" />
@@ -685,60 +804,92 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
-      <aside v-if="loopId || showDetails || groupEditor" class="canvas-inspector">
-        <button v-if="!loopId" type="button" class="canvas-inspector-close" @click="closeInspector">
-          {{ t(groupEditor ? 'canvasCloseGroups' : 'canvasCloseDetails') }}
-        </button>
+      <component :is="loopId ? 'aside' : 'div'" v-if="loopId || hasSelection || groupEditor" ref="inspector"
+        :class="loopId ? 'canvas-inspector' : ['canvas-panel', { 'canvas-group-panel': groupEditor, 'canvas-panel-compact': !groupEditor && !detailsOpen }]">
         <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" @select="selected = $event" />
-        <section v-if="selectedNode && !groupEditor" class="canvas-selection" :aria-label="t('canvasSelected')">
-          <div class="detail-file">
-            <h2>{{ selectedNode.path }}</h2>
-            <p>{{ t(selectedNode.analysis === 'unreviewed' ? 'canvasUnreviewed' : dependencies.length || usedLibraries.length ? 'canvasReviewed' : 'canvasNoDependencies') }}</p>
-            <button v-if="documentPath" type="button" @click="emit('read', documentPath)">{{ t('canvasRead') }}</button>
-            <p v-else>{{ t(dependency?.documentsUnavailable ? 'canvasDocumentsUnavailable' : 'canvasNoDocument') }}</p>
-          </div>
-          <div v-for="[label, edges] in [['canvasDependencies', dependencies], ['canvasDependents', dependents]] as const" :key="label">
-            <h3>{{ t(label) }}</h3>
-            <ul v-if="edges.length" class="canvas-relations">
-              <li v-for="edge in edges" :key="edge.dependency + '→' + edge.dependent">
-                <button type="button" @click="selected = label === 'canvasDependencies' ? edge.dependency : edge.dependent">
-                  {{ label === 'canvasDependencies' ? edge.dependency : edge.dependent }}
-                </button>
-                <p>{{ edge.reason }}</p>
+        <template v-if="!loopId && hasSelection && !groupEditor">
+          <section class="canvas-summary" :aria-label="t(selectedNode ? 'canvasSelected' : 'canvasSelectedLibrary')"
+            @keydown.esc.stop="detailsOpen ? toggleDetails() : clearDetail()">
+            <div class="canvas-summary-heading">
+              <h2 ref="detailHeading" tabindex="-1" :title="selectedNode?.path">
+                {{ selectedNode ? detailsOpen ? selectedNode.path : basename(selectedNode.path) : selectedLegend?.name }}
+              </h2>
+              <p v-if="selectedNode">
+                {{ t(nodeStatus) }}<template v-if="!documentPath"> · {{ t(dependency?.documentsUnavailable ? 'canvasDocumentsUnavailable' : 'canvasNoDocument') }}</template>
+              </p>
+              <p v-else-if="selectedLegend">{{ legendKind(selectedLegend.kind) }}</p>
+            </div>
+            <ul v-if="!detailsOpen && fileRelations.length" class="canvas-summary-relations">
+              <li v-for="relation in fileRelations" :key="relation.label" :title="relation.items[0]?.label">
+                {{ t(relation.summary) }} <strong>{{ basename(relation.items[0]!.label) }}</strong>
+                <span v-if="relation.items.length > 1"> +{{ relation.items.length - 1 }}</span>
               </li>
             </ul>
-            <p v-else>{{ t('canvasNoEdges') }}</p>
-          </div>
-          <div v-if="usedLibraries.length">
-            <h3>{{ t('canvasUsedLibraries') }}</h3>
-            <ul class="canvas-relations">
-              <li v-for="{ legend, reason } in usedLibraries" :key="legend.id">
-                <button type="button" @click="selected = legendKey(legend.id)">{{ legend.name }} · {{ legendKind(legend.kind) }}</button>
-                <p>{{ reason }}</p>
-              </li>
-            </ul>
-          </div>
-        </section>
-        <section v-else-if="selectedLegend && !groupEditor" class="canvas-selection" :aria-label="t('canvasSelectedLibrary')">
+            <p v-else-if="!detailsOpen && selectedLegend && selectedLegend.uses.length" class="canvas-summary-library">
+              {{ t('canvasSummaryDependents') }} <strong>{{ basename(selectedLegend.uses[0]!.path) }}</strong>
+              <span v-if="selectedLegend.uses.length > 1"> +{{ selectedLegend.uses.length - 1 }}</span>
+            </p>
+            <div class="canvas-summary-actions">
+              <button v-if="documentPath" type="button" class="canvas-read" @click="emit('read', documentPath)">{{ t('canvasRead') }}</button>
+              <button ref="detailToggle" type="button" :aria-expanded="detailsOpen" :aria-controls="detailsOpen ? 'dependency-details' : undefined"
+                @click="toggleDetails">{{ t(detailsOpen ? 'canvasCloseDetails' : 'canvasExpandDetails') }}</button>
+              <button type="button" class="canvas-clear-detail" :aria-label="t('canvasClearSelection')" :title="t('canvasClearSelection')" @click="clearDetail">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+              </button>
+            </div>
+          </section>
+          <section v-if="detailsOpen" id="dependency-details" tabindex="0"
+            class="canvas-details canvas-selection" :aria-label="t('canvasRelationshipDetails')" @keydown.esc.stop="toggleDetails">
+            <template v-if="selectedNode">
+              <div v-for="relation in fileRelations" :key="relation.label">
+                <h3>{{ t(relation.label) }}</h3>
+                <ul class="canvas-relations">
+                  <li v-for="item in relation.items" :key="item.key">
+                    <button type="button" @click="focusRelationship(item.key)">
+                      {{ item.label }}<template v-if="item.kind"> · {{ legendKind(item.kind) }}</template>
+                    </button>
+                    <p>{{ item.reason }}</p>
+                  </li>
+                </ul>
+              </div>
+              <p v-if="!fileRelations.length" class="canvas-hint">{{ t('canvasNoEdges') }}</p>
+            </template>
+            <template v-else-if="selectedLegend">
+              <p class="library-description">{{ selectedLegend.description }}</p>
+              <h3>{{ t('canvasDependents') }}</h3>
+              <ul v-if="selectedLegend.uses.length" class="canvas-relations">
+                <li v-for="use in selectedLegend.uses" :key="use.path">
+                  <button type="button" @click="focusRelationship(use.path)">{{ use.path }}</button>
+                  <p>{{ use.reason }}</p>
+                </li>
+              </ul>
+              <p v-else class="canvas-hint">{{ t('canvasNoEdges') }}</p>
+            </template>
+          </section>
+        </template>
+        <section v-if="loopId && selectedLegend" class="canvas-selection" :aria-label="t('canvasSelectedLibrary')">
           <div class="detail-file">
             <h2>{{ selectedLegend.name }}</h2>
             <p class="canvas-hint">{{ legendKind(selectedLegend.kind) }}</p>
             <p class="library-description">{{ selectedLegend.description }}</p>
           </div>
           <div>
-            <h3>{{ t(loopId ? 'loopLibraryFiles' : 'canvasDependents') }}</h3>
+            <h3>{{ t('loopLibraryFiles') }}</h3>
             <ul v-if="selectedLegend.uses.length" class="canvas-relations">
               <li v-for="use in selectedLegend.uses" :key="use.path">
-                <code v-if="loopId">{{ use.path }}</code>
-                <button v-else type="button" @click="selected = use.path">{{ use.path }}</button>
+                <code>{{ use.path }}</code>
                 <p>{{ use.reason }}</p>
               </li>
             </ul>
             <p v-else>{{ t('canvasNoEdges') }}</p>
           </div>
         </section>
-        <form v-if="loopId || groupEditor" class="canvas-groups" @submit.prevent="applyGroup">
-          <h2>{{ t('canvasGroups') }}</h2>
+        <form v-if="loopId || groupEditor" class="canvas-groups" @submit.prevent="applyGroup"
+          @keydown.esc="groupEditor && closeGroupEditor()">
+          <div class="canvas-group-heading">
+            <h2>{{ t('canvasGroups') }}</h2>
+            <button v-if="groupEditor" type="button" @click="closeGroupEditor">{{ t('canvasCloseGroups') }}</button>
+          </div>
           <label :for="groupControl + '-picker'">{{ t('canvasEditGroup') }}</label>
           <select :id="groupControl + '-picker'" ref="groupPicker" :value="groupId" :disabled="!editable || !idle"
             @change="editGroup(($event.target as HTMLSelectElement).value)">
@@ -759,7 +910,7 @@ onUnmounted(() => {
           <button type="submit" :disabled="!editable || !idle || (members.length ? !groupName.trim() : !groupId)">{{ t('canvasApplyGroup') }}</button>
           <p class="canvas-hint">{{ t(loopId ? 'canvasGroupHelp' : 'canvasGroupEditorHelp') }}</p>
         </form>
-      </aside>
+      </component>
     </div>
   </main>
 </template>

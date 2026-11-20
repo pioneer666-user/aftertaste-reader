@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, provide, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, provide, reactive, ref, shallowReactive, useTemplateRef, watch } from 'vue';
 import type { DocumentEntry, ReaderProblem } from '../application/file-reader.js';
 import type { ReadingDocument } from '../application/document-blocks.js';
 import type { LoopEntry } from '../application/loop-reader.js';
@@ -20,6 +20,9 @@ import { failed, request } from './reader-api.js';
 import { problemText, readLanguage, saveLanguage, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { blockLabel } from './markdown.js';
+import { markKey } from '../core/understanding-marks.js';
+import type { CanvasPosition } from './canvas-position.js';
+import type { NotesPosition } from './notes-editor.js';
 
 const language = ref<Language>(readLanguage());
 const t = (key: string) => translate(language.value, key);
@@ -59,26 +62,44 @@ const outline = computed(() => result.value?.renderMode === 'comparison' ? resul
 })) : []);
 const activeBlock = ref('');
 const canvasOpened = ref(false);
+const canvasToolsOpen = ref(true);
+const notesListOpen = ref(true);
+const canvas = useTemplateRef<InstanceType<typeof DependencyCanvas>>('canvas');
+const loopCanvases = useTemplateRef<InstanceType<typeof DependencyCanvas>[]>('loop-canvases');
+const notes = useTemplateRef<InstanceType<typeof ProjectNotes>>('notes');
 const pages = {
-  reader: { label: 'files', open() { fromCanvas.value = false; view.value = 'reader'; } },
-  canvas: { label: 'dependencyCanvas', open: openCanvas },
-  loops: { label: 'loops', open: openLoops },
-  bookmarks: { label: 'bookmarks', open: openBookmarks },
-  marks: { label: 'marks', open() { view.value = 'marks'; void refreshMarks(); } },
-  notes: { label: 'notes', open() { view.value = 'notes'; } },
+  reader: { label: 'files' },
+  canvas: { label: 'dependencyCanvas' },
+  loops: { label: 'loops' },
+  bookmarks: { label: 'bookmarks' },
+  marks: { label: 'marks' },
+  notes: { label: 'notes' },
 };
 type Page = keyof typeof pages;
+type ReaderPosition = { page: 'reader'; path: string; block: string; top: number; offset: number; bookmark: string; mark: string };
+type Position = ReaderPosition | { page: 'canvas'; graph: CanvasPosition | undefined } |
+  { page: 'loops'; loop: string; graph: CanvasPosition | undefined; top: number } |
+  { page: 'notes'; note: NotesPosition | undefined; top: number } |
+  { page: 'bookmarks'; item: string; top: number } |
+  { page: 'marks'; item: string; filter: typeof markFilter.value; top: number };
 const view = ref<Page>('reader');
+const history = shallowReactive<Position[]>([{ page: 'reader', path: '', block: '', top: 0, offset: 0, bookmark: '', mark: '' }]);
+const historyIndex = ref(0);
+const pageTops: Partial<Record<Page, number>> = {};
+const positionNotice = ref('');
+let navigationSequence = 0;
+let restoring = false;
+let openingDocument = false;
+const mainId = computed(() => ({ reader: 'reading', canvas: 'canvas-reading', loops: 'loop-navigation',
+  bookmarks: 'bookmarks', marks: 'marks', notes: 'notes' })[view.value]);
 const pageMenu = ref<HTMLElement>();
 const pageMenuButton = ref<HTMLButtonElement>();
 const noteQuote = ref<BlockQuote>();
-const fromCanvas = ref(false);
 const loopEntries = ref<LoopEntry[]>([]);
 const loopsLoaded = ref(false);
 const loopsLoading = ref(false);
 const loopProblems = ref<ReaderProblem[]>([]);
 const loopListError = ref<ReaderProblem>();
-const loopNavigation = ref<HTMLElement>();
 const selectedLoop = ref('');
 const openedLoops = ref<string[]>([]);
 const bookmarks = ref<Bookmark[]>([]);
@@ -86,11 +107,12 @@ provide(bookmarkDraftsKey, reactive(new Map<string, BookmarkDraft>()));
 const bookmarksLoading = ref(false);
 const bookmarksSaving = ref(false);
 const bookmarkListError = ref<ReaderProblem>();
-const bookmarkPanel = ref<HTMLElement>();
 const unavailableMessage = ref<HTMLElement>();
 const unavailableBookmark = ref<Bookmark>();
 const activeBookmark = ref('');
 const activeMark = ref('');
+const bookmarkItem = ref('');
+const markItem = ref('');
 const visitingBookmark = ref(false);
 const markRoute = '/api/understanding-marks';
 const marks = ref<ReaderMark[]>([]);
@@ -99,11 +121,24 @@ const marksBusy = ref(false);
 const markListError = ref<ReaderProblem>();
 provide(markDraftsKey, reactive(new Map<string, MarkDraft>()));
 let listSequence = 0;
-let readSequence = 0;
-let bookmarkVisitSequence = 0;
 let controller: AbortController | undefined;
 let handledScrollTop = 0;
 let peekTimer: number | undefined;
+
+const auxiliary = computed(() => {
+  if (view.value === 'reader') return { id: 'reader-navigation', open: navigationOpen.value, action: navigationAction.value };
+  if (view.value === 'canvas') return { id: 'dependency-tools', open: canvasToolsOpen.value,
+    action: canvasToolsOpen.value ? 'closeCanvasTools' : 'openCanvasTools' };
+  if (view.value === 'notes' && notes.value?.canHideList) return { id: 'note-navigation', open: notesListOpen.value,
+    action: notesListOpen.value ? 'closeNoteList' : 'openNoteList' };
+  return { id: undefined, open: undefined, action: 'noAuxiliaryPanel' };
+});
+
+function toggleAuxiliary() {
+  if (view.value === 'reader') void setNavigation(desktopPeek.value || !navigationOpen.value);
+  if (view.value === 'canvas') canvasToolsOpen.value = !canvasToolsOpen.value;
+  if (view.value === 'notes') notesListOpen.value = !notesListOpen.value;
+}
 
 function expandAncestors(path: string) {
   let end = path.lastIndexOf('/');
@@ -222,6 +257,7 @@ function dismissNavigationPreview(event: KeyboardEvent) {
 }
 
 function blockElement(id: string) {
+  if (!id) return;
   return readingPane.value?.querySelector<HTMLElement>(`.document-block#${CSS.escape(id)}`);
 }
 
@@ -299,7 +335,7 @@ async function jumpToBlock(id: string) {
 }
 
 async function readFromTree(path: string) {
-  void selectDocument(path);
+  void openDocument(path);
   if (narrow.value || desktopPeek.value) {
     narrowOpen.value = false;
     closeNavigationPreview();
@@ -378,82 +414,181 @@ async function saveBookmark(action: BookmarkAction) {
   } finally { bookmarksSaving.value = false; }
 }
 
-async function openBookmarks() {
-  ++bookmarkVisitSequence;
-  view.value = 'bookmarks';
-  unavailableBookmark.value = undefined;
+function loopCanvas(id: string) {
+  return loopCanvases.value?.find(graph => graph.$props.loopId === id);
+}
+
+function capturePosition(): Position {
+  const top = window.scrollY;
+  switch (view.value) {
+    case 'canvas': return { page: 'canvas', graph: canvas.value?.capturePosition() };
+    case 'loops': return { page: 'loops', top, loop: selectedLoop.value, graph: loopCanvas(selectedLoop.value)?.capturePosition() };
+    case 'bookmarks': return { page: 'bookmarks', top, item: bookmarkItem.value };
+    case 'marks': return { page: 'marks', top, item: markItem.value, filter: markFilter.value };
+    case 'notes': return { page: 'notes', top, note: notes.value?.capturePosition() };
+    case 'reader': {
+      trackReadingPosition();
+      const pane = readingPane.value;
+      const block = blockElement(activeBlock.value);
+      return { page: 'reader', path: selected.value, block: activeBlock.value,
+        top: pane?.scrollTop ?? 0, offset: pane && block ? pane.getBoundingClientRect().top - block.getBoundingClientRect().top : 0,
+        bookmark: activeBookmark.value, mark: activeMark.value };
+    }
+  }
+}
+
+function rememberPosition() {
+  if (restoring) return;
+  const position = capturePosition();
+  history[historyIndex.value] = position;
+  if (position.page !== 'reader' && 'top' in position) pageTops[position.page] = position.top;
+}
+
+function pushPosition(position: Position) {
+  history.splice(historyIndex.value + 1, history.length, position);
+  historyIndex.value++;
+}
+
+function startNavigation() {
+  controller?.abort();
+  openingDocument = false;
+  positionNotice.value = '';
   visitingBookmark.value = false;
-  void refreshBookmarks();
+  return ++navigationSequence;
+}
+
+function navigationProblem(reason: string) {
+  positionNotice.value = t('positionUnavailable') + ' ' + reason;
+}
+
+function activatePage(page: Page) {
+  view.value = page;
+  if (page === 'canvas') canvasOpened.value = true;
+}
+
+async function stepHistory(step: -1 | 1) {
+  const index = historyIndex.value + step;
+  const position = history[index];
+  if (!position) return;
+  rememberPosition();
+  const sequence = startNavigation();
+  const current = () => sequence === navigationSequence;
+  historyIndex.value = index;
+  restoring = true;
+  readingLoading.value = false;
+  activatePage(position.page);
+  try { await restorePosition(position, current); }
+  finally { if (current()) restoring = false; }
+}
+
+async function restorePosition(position: Position, current: () => boolean) {
+  switch (position.page) {
+    case 'reader': {
+      const path = position.path || selected.value || documents.value[0]?.documentPath;
+      if (!path) break;
+      readingLoading.value = true;
+      let data = await readDocument(path);
+      if (!current()) return;
+      let destination = path;
+      if (data.error?.code === 'DOCUMENT_READ_FAILED' && data.error.context.reason === 'ENOENT') {
+        const fallback = documents.value.find(entry => entry.documentPath !== path);
+        if (fallback) {
+          const available = await readDocument(fallback.documentPath);
+          if (!current()) return;
+          if (!available.error) {
+            destination = fallback.documentPath;
+            data = available;
+            navigationProblem(t('noteDocumentMissing') + ' ' + path);
+          }
+        }
+      }
+      setDocument(destination, data, destination === path ? position : undefined);
+      await nextTick();
+      if (!current()) return;
+      const pane = readingPane.value;
+      const block = destination === path ? blockElement(position.block) : undefined;
+      if (destination !== path) {
+        resetReading();
+      } else if (block && pane) {
+        pane.scrollTop += block.getBoundingClientRect().top + position.offset - pane.getBoundingClientRect().top;
+        handledScrollTop = pane.scrollTop;
+      } else if (position.block && !data.error) {
+        navigationProblem(t('noteBlockMissing') + ' ' + position.block);
+        resetReading();
+      } else if (pane) {
+        pane.scrollTop = data.error ? 0 : position.top;
+        handledScrollTop = pane.scrollTop;
+      }
+      break;
+    }
+    case 'canvas': {
+      await nextTick();
+      if (current() && position.graph && !await canvas.value?.restorePosition(position.graph, current) && current()) {
+        navigationProblem(t('graphPositionUnavailable'));
+      }
+      break;
+    }
+    case 'loops': {
+      await refreshLoops();
+      if (!current()) return;
+      const exists = !!loopListError.value || !position.loop || loopEntries.value.some(loop => loop.id === position.loop);
+      showLoop(exists ? position.loop : loopEntries.value[0]?.id ?? '');
+      if (!exists) navigationProblem(t('loopPositionUnavailable'));
+      await nextTick();
+      if (!current()) return;
+      if (exists && position.graph && !await loopCanvas(position.loop)?.restorePosition(position.graph, current) && current()) {
+        navigationProblem(t('graphPositionUnavailable'));
+      }
+      break;
+    }
+    case 'notes':
+      if (position.note && !await notes.value?.restorePosition(position.note, current) && current()) {
+        navigationProblem(t('recordPositionUnavailable'));
+      }
+      break;
+    case 'bookmarks':
+      await refreshBookmarks();
+      if (!current()) return;
+      bookmarkItem.value = bookmarks.value.some(item => item.id === position.item) ? position.item : '';
+      if (position.item && !bookmarkItem.value) navigationProblem(t('recordPositionUnavailable'));
+      break;
+    case 'marks':
+      await refreshMarks();
+      if (!current()) return;
+      markFilter.value = position.filter;
+      markItem.value = marks.value.some(item => markKey(item) === position.item) ? position.item : '';
+      if (position.item && !markItem.value) navigationProblem(t('recordPositionUnavailable'));
+      break;
+  }
   await nextTick();
-  if (view.value === 'bookmarks') bookmarkPanel.value?.focus();
+  if (!current()) return;
+  window.scrollTo(0, 'top' in position && position.page !== 'reader' ? position.top : 0);
+  const focused = document.activeElement;
+  if (focused === document.body || (focused instanceof HTMLButtonElement && focused.disabled)) {
+    document.getElementById(mainId.value)?.focus({ preventScroll: true });
+  }
 }
 
 async function visitBookmark(bookmark: Bookmark) {
-  const visit = ++bookmarkVisitSequence;
-  visitingBookmark.value = true;
   unavailableBookmark.value = undefined;
-  const loading = selectDocument(bookmark.documentPath, false);
-  const reading = readSequence;
-  await loading;
-  if (visit !== bookmarkVisitSequence || view.value !== 'bookmarks') return;
-  visitingBookmark.value = false;
-  if (reading !== readSequence) return;
-  const canVisit = result.value?.renderMode === 'comparison' &&
-    result.value.blocks.some(block => block.id === bookmark.blockId) &&
-    bookmarks.value.some(record => record.id === bookmark.id);
-  if (canVisit) {
-    activeBookmark.value = bookmark.id;
-    fromCanvas.value = false;
-    view.value = 'reader';
-    await nextTick();
-    if (reading !== readSequence || view.value !== 'reader') return;
-    const record = document.getElementById(`bookmark-${bookmark.id}`);
-    if (record && readingPane.value?.contains(record)) {
-      focusReadingTarget(record, bookmark.blockId);
-      return;
-    }
-    view.value = 'bookmarks';
-  }
+  bookmarkItem.value = bookmark.id;
+  const reason = await openDocument(bookmark.documentPath, bookmark.blockId, bookmark.id);
+  if (!reason || view.value !== 'bookmarks') return;
   unavailableBookmark.value = bookmark;
   await nextTick();
-  if (visit === bookmarkVisitSequence && view.value === 'bookmarks') unavailableMessage.value?.focus();
+  if (view.value === 'bookmarks') unavailableMessage.value?.focus({ preventScroll: true });
 }
 
 function addToNotes(quote: BlockQuote) {
+  openPage('notes');
   noteQuote.value = quote;
-  view.value = 'notes';
 }
 
-async function visitBlock(target: BlockTarget, from: 'notes' | 'marks'): Promise<string | undefined> {
-  const loading = selectDocument(target.documentPath, false);
-  const reading = readSequence;
-  await loading;
-  if (reading !== readSequence || view.value !== from) return;
-  const location = `${target.documentPath} · ${target.blockId}`;
-  if (readingError.value) {
-    const message = readingError.value.code === 'DOCUMENT_READ_FAILED' && readingError.value.context.reason === 'ENOENT'
-      ? t('noteDocumentMissing') : problemText(language.value, readingError.value).message;
-    return `${message} ${location}`;
-  }
-  if (result.value?.renderMode !== 'comparison') {
-    const problem = result.value?.sourceError ?? result.value?.diagnostics.find(item => item.severity === 'error');
-    return `${t('noteDocumentInvalid')} ${problem ? problemText(language.value, problem).message + ' ' : ''}${location}`;
-  }
-  if (!result.value.blocks.some(block => block.id === target.blockId)) return `${t('noteBlockMissing')} ${location}`;
-
-  fromCanvas.value = false;
-  activeMark.value = from === 'marks' ? target.blockId : '';
-  view.value = 'reader';
-  await nextTick();
-  if (reading !== readSequence || view.value !== 'reader') return;
-  const block = blockElement(target.blockId);
-  const record = activeMark.value ? block?.querySelector<HTMLElement>(`#mark-${CSS.escape(target.blockId)}`) : undefined;
-  const destination = record ?? block;
-  if (destination) focusReadingTarget(destination, target.blockId);
+const visitNoteBlock = (target: BlockTarget) => openDocument(target.documentPath, target.blockId);
+function visitMark(target: UnderstandingMark) {
+  markItem.value = markKey(target);
+  return openDocument(target.documentPath, target.blockId, '', target.blockId);
 }
-
-const visitNoteBlock = (target: BlockTarget) => visitBlock(target, 'notes');
-const visitMark = (target: UnderstandingMark) => visitBlock(target, 'marks');
 
 function positionPageMenu(event: ToggleEvent) {
   if (event.newState !== 'open' || !pageMenu.value || !pageMenuButton.value) return;
@@ -465,24 +600,43 @@ function positionPageMenu(event: ToggleEvent) {
 
 function openPage(page: Page) {
   if (pageMenu.value?.matches(':popover-open')) pageMenu.value.hidePopover();
-  if (page === 'reader' && view.value === 'reader') return;
-  void pages[page].open();
+  if (page === view.value) {
+    if (page === 'bookmarks') void refreshBookmarks();
+    if (page === 'marks') void refreshMarks();
+    return;
+  }
+  rememberPosition();
+  const sequence = startNavigation();
+  restoring = false;
+  readingLoading.value = false;
+  activatePage(page);
+  const position = capturePosition();
+  if (position.page !== 'reader' && 'top' in position) position.top = pageTops[page] ?? 0;
+  pushPosition(position);
+  if (page === 'reader' && !selected.value && documents.value.length) void refreshReading();
+  if (page === 'bookmarks') {
+    unavailableBookmark.value = undefined;
+    void refreshBookmarks();
+  }
+  if (page === 'marks') void refreshMarks();
+  if (page === 'loops' && !loopsLoaded.value) void refreshLoops();
+  void nextTick(() => {
+    if (sequence !== navigationSequence) return;
+    window.scrollTo(0, pageTops[page] ?? 0);
+    if (page === 'bookmarks' || page === 'loops' || page === 'marks') {
+      document.getElementById(mainId.value)?.focus({ preventScroll: true });
+    } else if (narrow.value && (document.activeElement === document.body || pageMenu.value?.contains(document.activeElement))) {
+      pageMenuButton.value?.focus({ preventScroll: true });
+    }
+  });
 }
 
-function openCanvas() {
-  canvasOpened.value = true;
-  view.value = 'canvas';
+let loopsRequest: Promise<void> | undefined;
+function refreshLoops() {
+  return loopsRequest ??= loadLoops().finally(() => { loopsRequest = undefined; });
 }
 
-async function openLoops() {
-  view.value = 'loops';
-  await nextTick();
-  loopNavigation.value?.focus();
-  if (!loopsLoaded.value) void refreshLoops();
-}
-
-async function refreshLoops() {
-  if (loopsLoading.value) return;
+async function loadLoops() {
   loopsLoading.value = true;
   loopListError.value = undefined;
   try {
@@ -490,59 +644,110 @@ async function refreshLoops() {
     loopEntries.value = data.loops;
     loopProblems.value = data.problems;
     loopsLoaded.value = true;
-    if (!data.loops.some(loop => loop.id === selectedLoop.value)) selectedLoop.value = '';
   } catch (error) { loopListError.value = failed(error); }
   finally { loopsLoading.value = false; }
 }
 
-function selectLoop(event: Event) {
-  const id = (event.target as HTMLSelectElement).value;
+async function refreshLoopList() {
+  const sequence = navigationSequence;
+  await refreshLoops();
+  if (sequence === navigationSequence && !restoring && !loopListError.value &&
+      !loopEntries.value.some(loop => loop.id === selectedLoop.value)) showLoop('');
+}
+
+function showLoop(id: string) {
   if (id && !openedLoops.value.includes(id)) openedLoops.value.push(id);
   selectedLoop.value = id;
 }
 
-function readFromCanvas(documentPath: string) {
-  view.value = 'reader';
-  fromCanvas.value = true;
-  void selectDocument(documentPath);
-  expandAncestors(selectedSource.value);
+function selectLoop(event: Event) {
+  if (restoring) {
+    startNavigation();
+    restoring = false;
+  }
+  showLoop((event.target as HTMLSelectElement).value);
 }
 
-async function selectDocument(documentPath: string, resetScroll = true) {
-  const sequence = ++readSequence;
+type DocumentData = { result: ReadingDocument; error?: never } | { result?: never; error: ReaderProblem };
+async function readDocument(path: string): Promise<DocumentData> {
   controller?.abort();
   controller = new AbortController();
-  selected.value = documentPath;
-  if (!resetScroll) expandAncestors(selectedSource.value);
-  activeBookmark.value = '';
-  activeMark.value = '';
-  activeBlock.value = '';
-  readingLoading.value = true;
-  result.value = undefined;
-  readingError.value = undefined;
   try {
-    const data = await request<{ result: ReadingDocument }>(`/api/document?path=${encodeURIComponent(documentPath)}`, { signal: controller.signal });
-    if (sequence === readSequence) {
-      result.value = data.result;
-      activeBlock.value = outline.value[0]?.id ?? '';
-    }
+    return await request<{ result: ReadingDocument }>(`/api/document?path=${encodeURIComponent(path)}`, { signal: controller.signal });
   } catch (error) {
-    if (sequence === readSequence) readingError.value = { ...failed(error), context: { ...failed(error).context, documentPath } };
-  } finally {
-    if (sequence === readSequence) {
-      readingLoading.value = false;
-      await nextTick();
-      if (resetScroll && sequence === readSequence) {
-        readingPane.value?.scrollTo({ top: 0 });
-        handledScrollTop = 0;
-      }
+    const problem = failed(error);
+    return { error: { ...problem, context: { ...problem.context, documentPath: path } } };
+  }
+}
+
+function resetReading() {
+  if (readingPane.value) readingPane.value.scrollTop = 0;
+  handledScrollTop = 0;
+}
+
+function setDocument(path: string, data: DocumentData, position?: ReaderPosition) {
+  selected.value = path;
+  result.value = data.result;
+  readingError.value = data.error;
+  readingLoading.value = false;
+  const block = position?.block;
+  const stillExists = outline.value.some(item => item.id === block);
+  activeBlock.value = stillExists && block ? block : outline.value[0]?.id ?? '';
+  activeBookmark.value = stillExists ? position?.bookmark ?? '' : '';
+  activeMark.value = stillExists ? position?.mark ?? '' : '';
+}
+
+async function openDocument(path: string, block = '', bookmark = '', mark = ''): Promise<string | undefined> {
+  const sequence = startNavigation();
+  const origin = view.value;
+  if (origin === 'reader' && !restoring && selected.value === path && !block && result.value) {
+    readingLoading.value = false;
+    return;
+  }
+  openingDocument = true;
+  if (origin === 'bookmarks') visitingBookmark.value = true;
+  const data = await readDocument(path);
+  if (sequence !== navigationSequence) return;
+  openingDocument = false;
+  visitingBookmark.value = false;
+  if (data.error || (block && (data.result.renderMode !== 'comparison' ||
+      !data.result.blocks.some(item => item.id === block) ||
+      (bookmark && !bookmarks.value.some(item => item.id === bookmark))))) {
+    const problem = data.error ?? (data.result?.renderMode !== 'comparison'
+      ? data.result?.sourceError ?? data.result?.diagnostics.find(item => item.severity === 'error') : undefined);
+    const reason = data.error?.code === 'DOCUMENT_READ_FAILED' && data.error.context.reason === 'ENOENT'
+      ? t('noteDocumentMissing') : problem ? problemText(language.value, problem).message
+      : t(data.result?.renderMode === 'comparison' ? 'noteBlockMissing' : 'noteDocumentInvalid');
+    const message = `${reason} ${path}${block ? ' · ' + block : ''}`;
+    if (origin === 'reader' || origin === 'canvas') {
+      navigationProblem(message + (problem ? ' ' + problemText(language.value, problem).nextStep : ''));
     }
+    restoring = false;
+    readingLoading.value = false;
+    return message;
+  }
+  const duplicate = origin === 'reader' && selected.value === path && activeBlock.value === block;
+  rememberPosition();
+  restoring = false;
+  activatePage('reader');
+  setDocument(path, data);
+  activeBookmark.value = bookmark;
+  activeMark.value = mark;
+  if (!duplicate) pushPosition(capturePosition());
+  await nextTick();
+  if (sequence !== navigationSequence) return;
+  const target = bookmark ? document.getElementById(`bookmark-${bookmark}`) :
+    mark ? blockElement(block)?.querySelector<HTMLElement>(`#mark-${CSS.escape(mark)}`) : blockElement(block);
+  if (target) focusReadingTarget(target, block);
+  else {
+    resetReading();
+    if (origin !== 'reader' || narrow.value) readingPane.value?.focus({ preventScroll: true });
   }
 }
 
 async function refresh() {
   const sequence = ++listSequence;
-  const readingAtRequest = readSequence;
+  const navigationAtRequest = navigationSequence;
   listLoading.value = true;
   listError.value = undefined;
   try {
@@ -551,20 +756,31 @@ async function refresh() {
     projectRoot.value = data.projectRoot;
     documents.value = data.documents;
     problems.value = data.problems;
-    if (readingAtRequest !== readSequence) return;
-    const current = data.documents.find(entry => entry.documentPath === selected.value) ?? data.documents[0];
-    if (current) await selectDocument(current.documentPath);
-    else {
-      ++readSequence;
-      controller?.abort();
-      selected.value = '';
-      result.value = undefined;
-      readingError.value = undefined;
-      readingLoading.value = false;
-    }
+    if (view.value === 'reader' && !restoring && !openingDocument &&
+        (navigationAtRequest === navigationSequence || !selected.value)) await refreshReading();
   } catch (error) {
     if (sequence === listSequence) listError.value = failed(error);
   } finally { if (sequence === listSequence) listLoading.value = false; }
+}
+
+async function refreshReading() {
+  const current = documents.value.find(entry => entry.documentPath === selected.value) ?? documents.value[0];
+  if (!current) {
+    selected.value = '';
+    result.value = undefined;
+    readingError.value = undefined;
+    readingLoading.value = false;
+    return;
+  }
+  const sequence = navigationSequence;
+  readingLoading.value = true;
+  const loading = readDocument(current.documentPath);
+  const read = controller;
+  const data = await loading;
+  if (sequence !== navigationSequence || read !== controller || read?.signal.aborted) return;
+  setDocument(current.documentPath, data);
+  await nextTick();
+  if (sequence === navigationSequence) resetReading();
 }
 
 async function changeLanguage(event: Event) {
@@ -597,14 +813,23 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <a :href="view === 'canvas' ? '#canvas-reading' : view === 'loops' ? '#loop-navigation' : view === 'reader' ? '#reading' : '#' + view"
+  <a :href="'#' + mainId"
     class="skip-link" @click="skipToReading">{{ t('skip') }}</a>
   <header class="app-header">
     <div class="app-header-start">
-      <button v-if="view === 'reader'" ref="navigationButton" type="button" class="reader-navigation-toggle"
-        :class="{ 'navigation-pinned': narrow ? narrowOpen : desktopOpen }" :aria-label="t(navigationAction)"
-        :title="t(navigationAction)" :aria-expanded="navigationOpen" aria-controls="reader-navigation"
-        @click="setNavigation(desktopPeek || !navigationOpen)">
+      <button type="button" class="history-arrow" data-history="back"
+        :aria-label="t('historyBack')" :title="t('historyBack')" :disabled="historyIndex === 0" @click="stepHistory(-1)">
+        <span aria-hidden="true"></span>
+      </button>
+      <button type="button" class="history-arrow" data-history="forward"
+        :aria-label="t('historyForward')" :title="t('historyForward')" :disabled="historyIndex === history.length - 1" @click="stepHistory(1)">
+        <span aria-hidden="true"></span>
+      </button>
+      <button ref="navigationButton" type="button" class="reader-navigation-toggle"
+        :class="{ 'navigation-pinned': view === 'reader' ? (narrow ? narrowOpen : desktopOpen) : auxiliary.open }"
+        :aria-label="t(auxiliary.action)" :title="t(auxiliary.action)"
+        :aria-expanded="auxiliary.open" :aria-controls="auxiliary.id" :disabled="!auxiliary.id"
+        @click="toggleAuxiliary">
         <span class="sidebar-icon" aria-hidden="true"></span>
       </button>
       <nav class="app-page-navigation" :aria-label="t('pageNavigation')">
@@ -614,7 +839,7 @@ onUnmounted(() => {
         <div id="app-page-menu" ref="pageMenu" class="app-page-menu" :popover="narrow ? 'auto' : undefined" @beforetoggle="positionPageMenu">
           <button v-for="(entry, page) in pages" :key="page" type="button" :data-page="page"
             :aria-current="view === page ? 'page' : undefined" @click="openPage(page)">
-            {{ t(page === 'canvas' && view === 'reader' && fromCanvas ? 'canvasBack' : entry.label) }}
+            {{ t(entry.label) }}
           </button>
         </div>
       </nav>
@@ -630,7 +855,11 @@ onUnmounted(() => {
     </div>
   </header>
   <p v-if="languageStatus" class="language-status" role="status">{{ t(languageStatus) }}</p>
-  <main v-if="view === 'bookmarks'" id="bookmarks" ref="bookmarkPanel" class="bookmark-panel" tabindex="-1"
+  <div v-if="positionNotice" class="position-notice">
+    <p role="status">{{ positionNotice }}</p>
+    <button type="button" @click="positionNotice = ''">{{ t('closePositionNotice') }}</button>
+  </div>
+  <main v-show="view === 'bookmarks'" id="bookmarks" class="bookmark-panel" tabindex="-1"
     aria-labelledby="bookmarks-heading">
     <div class="bookmark-heading">
       <h1 id="bookmarks-heading">{{ t('bookmarks') }}</h1>
@@ -648,20 +877,23 @@ onUnmounted(() => {
     </div>
     <ul v-if="bookmarks.length" class="project-bookmarks">
       <li v-for="bookmark in bookmarks" :key="bookmark.id">
-        <button type="button" class="bookmark-entry" @click="visitBookmark(bookmark)">
+        <button type="button" class="bookmark-entry" :aria-current="bookmarkItem === bookmark.id ? 'true' : undefined" @click="visitBookmark(bookmark)">
           <span>{{ bookmark.documentPath }} · {{ t('block') }} <code>{{ bookmark.blockId }}</code></span>
           <span class="bookmark-note">{{ bookmark.note || t('bookmarkNoNote') }}</span>
         </button>
       </li>
     </ul>
   </main>
-  <ProjectMarks v-if="view === 'marks'" v-model:filter="markFilter" :language="language" :marks="marks"
+  <ProjectMarks v-show="view === 'marks'" v-model:filter="markFilter" :visible="view === 'marks'" :current-item="markItem"
+    :language="language" :marks="marks"
     :busy="marksBusy" v-bind="markListError ? { error: markListError } : {}" :visit="visitMark" @refresh="refreshMarks" />
-  <ProjectNotes v-show="view === 'notes'" :visible="view === 'notes'" :language="language" :quote="noteQuote"
+  <ProjectNotes v-show="view === 'notes'" ref="notes" :visible="view === 'notes'" :list-open="notesListOpen"
+    :language="language" :quote="noteQuote"
     :visit="visitNoteBlock" @clear-quote="noteQuote = undefined" />
-  <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" :active="view === 'canvas'" :language="language" @read="readFromCanvas" />
+  <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" ref="canvas" :active="view === 'canvas'"
+    :tools-open="canvasToolsOpen" :language="language" @read="openDocument" />
   <div v-show="view === 'loops'">
-    <section id="loop-navigation" ref="loopNavigation" class="loop-navigation" :aria-label="t('loops')" tabindex="-1">
+    <section id="loop-navigation" class="loop-navigation" :aria-label="t('loops')" tabindex="-1">
       <template v-if="loopEntries.length">
         <label for="saved-loop">{{ t('loopChoose') }}</label>
         <select id="saved-loop" :value="selectedLoop" @change="selectLoop">
@@ -669,7 +901,7 @@ onUnmounted(() => {
           <option v-for="loop in loopEntries" :key="loop.id" :value="loop.id">{{ loop.title }}</option>
         </select>
       </template>
-      <button type="button" :disabled="loopsLoading" @click="refreshLoops">{{ t('loopRefresh') }}</button>
+      <button type="button" :disabled="loopsLoading" @click="refreshLoopList">{{ t('loopRefresh') }}</button>
       <p v-if="loopsLoading" role="status">{{ t('loading') }}</p>
       <p v-else-if="loopsLoaded && !loopEntries.length && !loopListError">{{ t('loopEmpty') }}</p>
       <section v-for="problem in (loopListError ? [loopListError, ...loopProblems] : loopProblems)" :key="problem.context.loopId ?? problem.code"
@@ -678,7 +910,7 @@ onUnmounted(() => {
         <code>{{ problem.code }} {{ problem.context.loopId }} {{ problem.context.field }} {{ problem.context.reason }}</code>
       </section>
     </section>
-    <DependencyCanvas v-for="id in openedLoops" v-show="selectedLoop === id" :key="id" :loop-id="id"
+    <DependencyCanvas v-for="id in openedLoops" v-show="selectedLoop === id" :key="id" ref="loop-canvases" :loop-id="id"
       :active="view === 'loops' && selectedLoop === id" :language="language" />
   </div>
   <div v-show="view === 'reader'" class="workspace"

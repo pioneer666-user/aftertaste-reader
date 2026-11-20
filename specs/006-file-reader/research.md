@@ -65,3 +65,12 @@
 平台接口依据见 [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API)、[Selection](https://developer.mozilla.org/en-US/docs/Web/API/Selection) 与 [Clipboard.writeText](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText)。
 
 试读调整将现有讲解路径随题头显示，其余资料继续由浮窗提供。两个位置继续从同一读取结果取值，适用上述平台与验证依据。[作者调整](../../docs/work/2026/11/D023-reader-center/amendments.md)
+
+## D028 站内访问历史
+
+| 选择 | 依据 | 比较过的方案 |
+| --- | --- | --- |
+| 沿原 Vue 页态维护标签页内的一条访问顺序和游标 | [D026](../../docs/work/2026/11/D026-dependency-canvas-selection/handoff.md) 已验证共用顶栏和图往返。D028 需要六页统一且刷新重新起步，浏览器无需持久化访问记录 | 浏览器会话历史与路由需要同步前进分支、跳出站点以及刷新语义 |
+| 复用单篇读取的取消与序号检查，各页提供标识和滚动位置 | 当前 D027 的 App 已有单篇请求取消，D019、D020、D021 已验证个人记录各自的资料和草稿生命周期。只用位置恢复可继续用当前内容 | 页面快照会保存过期文档和记录，滚动像素单独使用会被块上方的内容调整影响 |
+
+继续使用现有 Vue、图组件、Fastify 接口和锁定版本。新增工作集中于同一阅读应用内部的交互，无外部集成或待定依赖。

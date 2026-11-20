@@ -4,6 +4,8 @@
 
 **D022 增量** [原任务 @46b0341](../../docs/work/2026/11/D022-reader-navigation/task.md)和[范围确认 @d93c9ee](../../docs/work/2026/11/D022-reader-navigation/amendments.md)，沿现有实现完成 FR-007—011、SC-006—008。其余页面优化沿后续派单。T001—017 保留 D011 实施记录。
 
+**D028 增量** [原任务 @f00becb](../../docs/work/2026/11/D028-reader-history-canvas-tools/task.md)。T049—054 覆盖 FR-011、015—016 和 SC-013—015，依赖图浮层与闭环的联验见 [007 tasks](../007-dependency-canvas/tasks.md)。
+
 **Prerequisites** spec、plan、research、data-model、contracts 和 quickstart 已形成，实施前 analyze。
 
 **Tests** D011 明确要求串行自测和真实浏览器。D022 按批准任务先核实际阅读操作，再做补充回归，沿 quickstart 串行验证。
@@ -180,6 +182,28 @@
 
 - [x] T048 按 `specs/006-file-reader/quickstart.md` 实测顶栏视口、导航与受影响的既有回访。同步 `docs/usage/file-reader.md`，后续独审与交回见 `specs/007-dependency-canvas/tasks.md`（SC-013）。
 
+## Phase 23 · D028 Setup & Foundational
+
+- [x] T049 核对 006、007 及 009 的现行需求与实现入口。沿 `specs/006-file-reader/quickstart.md` 固定 D027 与候选共用副本及测试命令（SC-013—015）。
+
+## Phase 24 · D028 User Story 10 - 从左上切换页面 (P1)
+
+**Independent Test** 按 SC-013 用同一视口切六页及中英文，量测顶栏位置并走键盘路径。
+
+- [x] T050 [US10] 在 `tests/browser/reader-history.mjs` 定义基线与候选的顶栏测量、窄窗和可达入口验证（SC-013）。
+- [x] T051 [US10] 在 `src/web/App.vue`、`src/web/style.css`、`src/web/i18n.ts` 建固定顶栏、侧栏映射与窄窗收纳，保留键盘跳过导航（FR-011）。
+
+## Phase 25 · D028 User Story 11 - 前进或后退到刚才的阅读位置 (P1)
+
+**Independent Test** 按 SC-014—015 经过图、讲解和记录，并用失败或延迟的读取核分支与最后落点。
+
+- [x] T052 [US11] 在 `tests/browser/reader-history.mjs` 覆盖讲解位置、全路径往返、记录筛选和草稿、失败或延迟后的结果（SC-014—015）。
+- [x] T053 [US11] 在 `src/web/App.vue` 接入内存历史及最新请求校验。用 `src/web/ProjectNotes.vue`、`src/web/notes-editor.ts`、`src/web/ProjectMarks.vue` 与 `src/web/DependencyCanvas.vue` 提供对应页的位置。恢复按当前资料和身份进行（FR-015—016）。
+
+## Phase 26 · D028 Polish & Cross-Cutting Concerns
+
+- [ ] T054 按 `specs/006-file-reader/quickstart.md` 串行验证，核受影响的旧阅读回访。同步 `docs/usage/file-reader.md`，并把证据交 007 的联合独审（SC-013—015）。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。
@@ -193,6 +217,8 @@ D023 复用已有清单、单篇读取、侧栏、Markdown、选文和诊断。T
 D023 试读调整在已审版本上接续。T042 与 T043 完成后用 T044 复验组合呈现，再冻结为 T045 的复核候选。
 
 D026 顶栏依次 T046 → T047 → T048，图往返在 007 的依赖图详情工作完成后合验。复用已有配置和隔离试读，验证资源串行。
+
+D028 在 T049 固定同一输入。T050 → T051、T052 → T053 可按场景先准备检查，App.vue 由同一执行者集成。T054 依赖图的回访接口与浮层就绪，与 007 同候选串行联验。
 
 ## Parallel Example
 
@@ -213,3 +239,5 @@ D022 先验证开讲解与收栏的独立路径，再验证本篇定位及记录
 D023 最小可验的阅读核心为 US8，当前批准交付同时包含 US7 和 US9。使用同组实文逐项验证，独审通过后换版并交回作者体验。
 
 D026 先形成可切页的 US10，随后与 007 的首屏及分组在同一隔离项目验收并交回。
+
+D028 先让六页顶栏位置一致，再核访问历史与各页落点。完整访问与回归证据提交 007 的冻结候选及独审。

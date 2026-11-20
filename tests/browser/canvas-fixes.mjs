@@ -375,7 +375,7 @@ async function lateList() {
       await refresh.and(page.locator(':enabled')).waitFor();
       assert.equal(await title.textContent(), service);
       assert.deepEqual(await body(), before);
-      await button(page, '返回依赖图').click();
+      await button(page, '后退').click();
       assert.equal(await viewport(page), view);
       await button(page, '文件讲解').click();
       await refresh.click();

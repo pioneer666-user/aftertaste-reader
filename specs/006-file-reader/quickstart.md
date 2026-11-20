@@ -42,3 +42,11 @@ D010 合成样例使用 tests/fixtures/reader-project.mjs 重建到全新隔离�
 ## D026 共用顶栏
 
 沿 [007 的共用副本与命令](../007-dependency-canvas/quickstart.md#d026-依赖图首屏与框选分组)验证 [SC-013](spec.md#measurable-outcomes)。从讲解依次切六页，用鼠标与键盘核当前状态，切英语后收窄至导航开始收纳，检查临界点两侧，再用窄窗走键盘路径。讲解侧栏开关、右侧工具和图到讲解的返回入口实际可用。依次运行 `node tests/browser/reader-navigation.mjs` 及受影响的个人记录回访脚本，证据归 D026。
+
+## D028 站内往返与顶栏
+
+从 [共用试读](../../tests/README.md#页面改版共用试读) 固定输入，沿 [007 同窗对照](../007-dependency-canvas/quickstart.md#d028-浮层与闭环联验) 在 `.local/D028/` 留 D027 和候选证据。依次执行 `npm run typecheck`、`npm run build`，在 PowerShell 设置 `$env:AFTERTASTE_D028_INPUT` 指向固定输入，再运行 `node tests/browser/reader-history.mjs`。其余直接受影响的脚本串行运行。
+
+- 按 [SC-013](spec.md#measurable-outcomes) 量测坐标并用键盘验证中英文入口。
+- 按 SC-014 走依赖图、讲解中段、书签的往返，并验证分支、重复入口及浏览器重新加载。
+- 按 SC-015 走标注和笔记跨文件回访，在副本模拟失效、读取延迟及保存失败，观察原位草稿和最后有效落点。闭环右栏跟 007 同轮核验。

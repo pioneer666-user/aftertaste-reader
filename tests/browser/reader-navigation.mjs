@@ -133,7 +133,9 @@ try {
   assert.equal(await topMenu.getByText('回味', { exact: true }).isVisible(), false);
   assert.equal(await navigationToggle.count(), 1);
   const toggleBounds = await navigationToggle.boundingBox();
-  assert.ok(toggleBounds && toggleBounds.x <= 24 && toggleBounds.width <= 40 && toggleBounds.height <= 40);
+  const forwardBounds = await topMenu.locator('[data-history="forward"]').boundingBox();
+  assert.ok(toggleBounds && forwardBounds && toggleBounds.x >= forwardBounds.x + forwardBounds.width &&
+    toggleBounds.width <= 40 && toggleBounds.height <= 40);
   assert.equal(await navigationToggle.innerText(), '');
   for (const [label, panel] of [['文件依赖图', '#canvas-reading'], ['闭环阅读', '#loop-navigation'], ['笔记', '#notes']]) {
     await button(label, topMenu).click();

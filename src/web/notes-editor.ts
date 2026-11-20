@@ -14,6 +14,7 @@ interface Draft {
   problem?: ReaderProblem;
   pending?: SaveNote;
 }
+export type NotesPosition = { selected: string; filter: string };
 
 function draftFor(id: string, body = '', tags: readonly string[] = [], revision: string | null = null): Draft {
   return { id, body, tags, revision, dirty: revision === null, busy: false, replacing: false };
@@ -42,13 +43,34 @@ export function useNotesEditor() {
     timers.delete(draft.id);
   }
 
-  async function load() {
-    if (loaded.value || loading.value) return;
+  let loadingRequest: Promise<void> | undefined;
+  function load(refresh = false) {
+    if (loadingRequest) return loadingRequest;
+    if (loaded.value && !refresh) return;
+    return loadingRequest = loadNotes().finally(() => { loadingRequest = undefined; });
+  }
+
+  async function loadNotes() {
+    const previous = new Map([...drafts].map(([id, draft]) => [id, { draft, revision: draft.revision }]));
+    const unchanged = (id: string, draft: Draft) => {
+      const before = previous.get(id);
+      return before?.draft === draft && before.revision === draft.revision && !draft.dirty && !draft.busy;
+    };
     loading.value = true;
     loadProblem.value = undefined;
     try {
       const { notes } = await request<{ notes: Note[] }>(endpoint);
-      for (const note of notes) drafts.set(note.id, draftFor(note.id, note.body, note.tags, note.revision));
+      for (const note of notes) {
+        const draft = drafts.get(note.id);
+        if (!draft && !previous.has(note.id) || draft && unchanged(note.id, draft) && draft.revision !== note.revision) {
+          drafts.set(note.id, draftFor(note.id, note.body, note.tags, note.revision));
+        }
+      }
+      const storedIds = new Set(notes.map(note => note.id));
+      for (const [id, draft] of drafts) {
+        if (!storedIds.has(id) && unchanged(id, draft)) drafts.delete(id);
+      }
+      if (selected.value && !drafts.has(selected.value)) selected.value = '';
       loaded.value = true;
     } catch (error) { loadProblem.value = failed(error); }
     finally { loading.value = false; }

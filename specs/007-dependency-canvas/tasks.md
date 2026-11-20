@@ -6,6 +6,8 @@ description: "文件依赖图与布局保存实施清单"
 
 **Input**: `specs/007-dependency-canvas/`
 
+**D028 增量** [原任务 @f00becb](../../docs/work/2026/11/D028-reader-history-canvas-tools/task.md)。T041—046 覆盖 FR-002、010、013、019—020 与 SC-010、012、017—018，联验 [006](../006-file-reader/tasks.md) 的共用导航和 009 SC-005。
+
 **Prerequisites**: spec、plan、research、data-model、contracts
 
 **Tests**: D012 要求核心性质、真实服务与浏览器检查
@@ -116,6 +118,20 @@ description: "文件依赖图与布局保存实施清单"
 - [x] T039 固定候选，提交独审亲自验证 79% 读图、Ctrl 提前松开、小地图定位及保存延迟／失败／重试。将独审原文归档于 `docs/work/2026/11/D027-dependency-canvas-polish/review.md`（SC-014—016）。
 - [x] T040 独审通过后核服务归属，切换 4341 到固定构建及原共用项目，核个人资料与排布，交 `docs/work/2026/11/D027-dependency-canvas-polish/handoff.md`（SC-014—016）。
 
+## Phase 13: D028 User Story 7 - 在同一视野内查关系并打开讲解 (P1)
+
+**Independent Test** 按 SC-017—018 选文件和库，操作浮条与详情，核画布、小地图、视野、焦点及窄窗恢复入口。
+
+- [x] T041 [US7] 在 `tests/browser/reader-history.mjs` 定义同窗量测、浮条、文件及库详情与闭环检查。复用 `tests/browser/dependency-canvas-selection.mjs` 和 `tests/browser/dependency-canvas-tools.mjs` 的受影响场景（SC-017—018）。
+- [x] T042 [US7] 在 `src/web/DependencyCanvas.vue`、`src/web/canvas.css` 和 `src/web/i18n.ts` 接通左浮条、居中限宽摘要、可关闭详情及组编辑。保留小地图、工具和保存失败提示（FR-010、013、019—020）。
+- [x] T043 [US7] 在 `src/web/DependencyCanvas.vue` 与 `src/web/canvas-position.ts` 将当前对象、视野与查看位置交给 006 的历史，按当前图恢复。保留闭环右侧读法与两图各自的布局（FR-002、020、009 FR-008）。
+
+## Phase 14: D028 Polish & Cross-Cutting Concerns
+
+- [ ] T044 沿 `specs/007-dependency-canvas/quickstart.md` 串行核 SC-010、012、017—018 及 009 SC-005，联验 006 的导航与回访。核 `docs/usage/file-reader.md` 的实际入口，证据放 `.local/D028/`。
+- [ ] T045 固定候选与输入，请独立审查者亲手验证历史、文件与库详情、闭环及小地图位置。原文归 `docs/work/2026/11/D028-reader-history-canvas-tools/review.md`（SC-017—018、006 SC-013—015、009 SC-005）。
+- [ ] T046 独审通过后在原共用项目用固定受审构建换版 4341，核原资料及个人布局，并交 `docs/work/2026/11/D028-reader-history-canvas-tools/handoff.md`。
+
 ## Dependencies & Execution Order
 
 T001 → T002 → US1 → US2 → US3 → T011—T012。每个故事先定义行为检查，再接通核心、服务和页面。US2 使用 US1 的项目图及页面，US3 使用 US2 的真实保存入口。测试与浏览器串行，无并行资源运行。
@@ -128,6 +144,8 @@ D026 沿既有依赖和配置，T028 → T029 → T030 → T031 → T032 → T03
 
 D027 从 T034 的同输入取证开始。T035 的卡片与边、T036 的绘制层、T037 的小地图可在独立文件中并行准备，由画布入口整合，随后 T038 → T039 → T040。服务与浏览器检查按顺序运行。
 
+D028 复用 006 T049 的固定输入。T041 → T042 → T043，随后与 006 T054 在同候选串行完成 T044。完成独审 T045 才执行换版和交回 T046。
+
 ## Implementation Strategy
 
 优先走通选中、关系及阅读返回，再接入保存恢复，最终验证更新与异常。使用同一隔离样例验证增量，另备试读原始项目。
@@ -135,3 +153,5 @@ D027 从 T034 的同输入取证开始。T035 的卡片与边、T036 的绘制�
 D026 先验证可阅读的首屏与详情，再以同一试读副本验证框选和保存。交付含本批完整 US5 及 006 的 US10。
 
 D027 先以同视野的 `service.mjs` 走通曲线阅读，再验证工具、定位和成组保存；本批交付完整 US6，并回归其承接的 US1、US2、US3、US5 路径。
+
+D028 先在依赖图验证浮层与真实内容，再与 006 的顶栏和历史往返，联验 009 的闭环读法、各图状态及异常处理。

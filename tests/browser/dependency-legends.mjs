@@ -20,7 +20,8 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
 const member = (page, name) => page.getByRole('checkbox', { name, exact: true });
 const file = (page, name) => page.locator(`[data-file="${name}"]`);
 const legend = (page, id = standardLegend.id) => page.locator(`[data-legend="${id}"]`);
-const detail = page => page.locator('.canvas-selection');
+const detail = page => page.locator('.canvas-details');
+const summary = page => page.locator('.canvas-summary');
 const disk = () => readJSON(project.layout);
 const responseForLayout = page => page.waitForResponse(response => response.url().endsWith('/api/dependency-layout'));
 
@@ -99,25 +100,26 @@ try {
 
     await legend(page).focus();
     await page.keyboard.press('Enter');
+    await button(summary(page), '查看关系').click();
     await detail(page).getByText(standardLegend.description, { exact: true }).waitFor();
     for (const use of standardLegend.uses) await detail(page).getByText(use.reason, { exact: true }).waitFor();
-    assert.equal(await detail(page).getByRole('button', { name: '阅读讲解' }).count(), 0);
+    assert.equal(await summary(page).getByRole('button', { name: '阅读讲解' }).count(), 0);
     await page.getByLabel('界面语言').selectOption('en');
-    await detail(page).getByText('Standard library', { exact: true }).waitFor();
+    await summary(page).getByText('Standard library', { exact: true }).waitFor();
     await detail(page).getByText(standardLegend.description, { exact: true }).waitFor();
     for (const use of standardLegend.uses) await detail(page).getByText(use.reason, { exact: true }).waitFor();
     await page.getByLabel('Interface language').selectOption('zh-CN');
 
     await legend(page, thirdParty.id).click();
-    await detail(page).getByRole('heading', { name: rules, exact: true }).waitFor();
-    await detail(page).getByText('第三方库', { exact: true }).waitFor();
+    await summary(page).getByRole('heading', { name: rules, exact: true }).waitFor();
+    await summary(page).getByText('第三方库', { exact: true }).waitFor();
     assert.equal(await file(page, rules).getAttribute('aria-pressed'), 'false');
-    assert.equal(await detail(page).getByRole('button', { name: '阅读讲解' }).count(), 0);
+    assert.equal(await summary(page).getByRole('button', { name: '阅读讲解' }).count(), 0);
     await file(page, rules).click();
     assert.equal(await legend(page, thirdParty.id).getAttribute('aria-pressed'), 'false');
     await button(page, '阅读讲解').click();
     await page.locator('.document-header h1').filter({ hasText: rules }).waitFor();
-    await button(page, '返回依赖图').click();
+    await button(page, '后退').click();
     await saved(page);
 
     await openDependencyGroups(page);
@@ -126,7 +128,7 @@ try {
     await member(page, 'node:path · 标准库').check();
     await savedAction(page, () => button(page, '应用分组').click());
     await openDependencyGroups(page);
-    await page.getByLabel('编辑分组').selectOption('');
+    await page.getByRole('combobox', { name: '编辑分组' }).selectOption('');
     await page.getByLabel('组名').fill('同名对象');
     await member(page, rules).check();
     await member(page, rules + ' · 第三方库').check();
@@ -137,6 +139,8 @@ try {
     await savedAction(page, () => button(page, '应用分组').click());
     const reassigned = await disk();
     assert.deepEqual(reassigned.layout.groups.find(group => group.name === '同名对象').members, [rules]);
+    await button(page, '关闭分组').click();
+    await button(page, '清除选择').click();
     await savedAction(page, () => button(page, '重新布局').click());
     const rearranged = await disk();
     assert.deepEqual(rearranged.layout.groups, reassigned.layout.groups);
@@ -169,6 +173,7 @@ try {
     await saved(page);
     await assertVisibleLayout(page, beforeUpdate.layout);
     await legend(page).click();
+    await button(summary(page), '查看关系').click();
     await detail(page).getByText(updatedDescription, { exact: true }).waitFor();
     for (const use of standardLegend.uses) await detail(page).getByText(use.reason, { exact: true }).waitFor();
     assert.deepEqual(await disk(), beforeUpdate);
@@ -192,7 +197,7 @@ try {
     report.reopenedAndRecovered = true;
 
     await openDependencyGroups(page);
-    await page.getByLabel('编辑分组').selectOption(beforeUpdate.layout.groups.find(group => group.name === '路径工具').id);
+    await page.getByRole('combobox', { name: '编辑分组' }).selectOption(beforeUpdate.layout.groups.find(group => group.name === '路径工具').id);
     await member(page, audit).uncheck();
     await savedAction(page, () => button(page, '应用分组').click());
     const beforeRemoval = await disk();

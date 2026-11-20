@@ -89,7 +89,7 @@ async function drag(locator, dx, dy) {
 
 async function addGroup(title, ids) {
   await openDependencyGroups(page);
-  await page.getByLabel('编辑分组').selectOption('');
+  await page.getByRole('combobox', { name: '编辑分组' }).selectOption('');
   await page.getByLabel('组名').fill(title);
   for (const id of ids) await page.getByRole('checkbox', { name: id, exact: true }).check();
   await page.getByRole('button', { name: '应用分组', exact: true }).click();
@@ -159,22 +159,22 @@ try {
   assert.equal(await page.locator('.vue-flow__edge-path[marker-end]').count(), 2);
   assert.deepEqual((await drawnEdges.locator('title').allTextContents()).sort(), rawGraph.edges.map(edge => edge.reason).sort());
   await node(service).click();
-  const selection = page.locator('.canvas-selection');
+  const selection = page.locator('.canvas-summary');
+  await selection.getByRole('button', { name: '查看关系' }).click();
   assert.equal(await selection.locator('h2').innerText(), service);
-  for (const { reason } of rawGraph.edges) await selection.getByText(reason, { exact: true }).waitFor();
+  for (const { reason } of rawGraph.edges) await page.locator('.canvas-details').getByText(reason, { exact: true }).waitFor();
   await page.getByRole('button', { name: '放大画布' }).click();
   const beforeReading = await saved();
   const atReading = (await visibleLayout()).viewport;
   await page.getByRole('button', { name: '阅读讲解' }).click();
   await page.locator('.document-header h1').filter({ hasText: service }).waitFor();
   assert.match(await page.locator('.source-scroll').first().innerText(), /parseQuantity/u);
-  await page.getByRole('button', { name: '返回依赖图' }).click();
+  await page.getByRole('button', { name: '后退', exact: true }).click();
   assert.deepEqual((await visibleLayout()).viewport, atReading);
   assert.equal((await disk()).layout.viewport.zoom, beforeReading.viewport.zoom);
   await node(audit).focus();
   await node(audit).press('Enter');
-  await selection.getByText('依赖尚未核对', { exact: true }).waitFor();
-  await selection.getByText('暂无讲解', { exact: true }).waitFor();
+  await selection.getByText('依赖尚未核对 · 暂无讲解', { exact: true }).waitFor();
   assert.equal(await selection.getByRole('button', { name: '阅读讲解' }).count(), 0);
   await node(rules).click();
   await selection.getByText('已核对，无直接依赖', { exact: true }).waitFor();
@@ -187,7 +187,7 @@ try {
   await addGroup('读服务', [rules, service]);
   await addGroup('看审计', [audit]);
   await openDependencyGroups(page);
-  await page.getByLabel('编辑分组').selectOption({ label: '读服务' });
+  await page.getByRole('combobox', { name: '编辑分组' }).selectOption({ label: '读服务' });
   const beforeInvalid = await readFile(fixture.layout);
   await page.getByLabel('组名').fill('Bad\tName');
   await page.getByRole('button', { name: '应用分组', exact: true }).click();
@@ -197,6 +197,8 @@ try {
   await page.getByRole('button', { name: '应用分组', exact: true }).click();
   assert.ok((await saved()).groups.some(group => group.name === '读服务'));
   assert.notDeepEqual(await readFile(fixture.layout), beforeInvalid);
+  await page.getByRole('button', { name: '关闭分组', exact: true }).click();
+  await page.getByRole('button', { name: '清除选择', exact: true }).click();
   report.checks.rejectedDraftCorrected = true;
   const beforeGroup = (await disk()).layout;
   const bounds = (await visibleLayout()).groups['读服务'];
