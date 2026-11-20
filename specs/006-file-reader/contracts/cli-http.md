@@ -25,6 +25,8 @@ D023 的项目资料使用上述既有清单和单篇读取。当前文件阅读
 
 D026 共用顶栏的用户界面约定见 [FR-011](../spec.md#functional-requirements)。通过既有页态进入各页面，文件读取、回访与服务请求格式沿上述契约。
 
+D028 的顶栏、站内访问与失效位置恢复见 [FR-011、015—016](../spec.md#functional-requirements)。返回使用已有文档、记录和图的读接口。页内位置留在内存，个人资料的保存沿各自契约。
+
 ## 访问及缓存边界
 
 Host 必须为 127.0.0.1 或 localhost 且端口与实际监听一致。Origin 若存在须精确等于该 Host 的 http 来源，Sec-Fetch-Site 若存在须为 same-origin/none。跨源读取返回 ACCESS_DENIED，无 CORS 授权。所有响应 Cache-Control no-store，nosniff，禁止 frame，CSP 仅自身脚本/样式、连接自身、禁外部图片及对象。Markdown 原生 HTML 按文本处理，图片按替代文本，链接仅允许锚点或明确 http/https/mailto，点击外链使用安全 rel，普通磁盘相对链接按文本。

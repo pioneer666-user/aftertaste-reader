@@ -97,7 +97,7 @@ function keyboard(event: KeyboardEvent) {
 </template>
 
 <style scoped>
-.dependency-minimap { display: block; width: 100%; height: 88px; background: #f9fbf8; cursor: crosshair; touch-action: none; }
+.dependency-minimap { display: block; width: 100%; height: var(--canvas-map-height); background: #f9fbf8; cursor: crosshair; touch-action: none; }
 .canvasGroup { fill: #e7eadb; stroke: #c9d0b8; stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .canvasFile { fill: #8eab9b; }
 .canvasLegend { fill: #a39ac4; }

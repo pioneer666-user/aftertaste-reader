@@ -19,11 +19,11 @@ button:disabled { cursor: wait; opacity: .55; }
 a { color: var(--accent); text-underline-offset: .2em; }
 .skip-link { position: fixed; top: -80px; left: 12px; z-index: 10; padding: 12px; background: white; }
 .skip-link:focus { top: 8px; }
-.app-header { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: #fff; }
+.app-header { position: sticky; top: 0; z-index: 5; min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: #fff; }
 .app-header-start { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .app-page-navigation { min-width: 0; }
 .app-page-menu { display: flex; align-items: center; gap: 2px; }
-.app-page-menu button, .app-page-menu-toggle { min-height: 32px; padding: 4px 5px; border-color: transparent; font-size: 13px; white-space: nowrap; }
+.app-page-menu button, .app-page-menu-toggle { min-height: 32px; padding: 4px 5px; border-color: transparent; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .app-page-menu button:hover { border-color: transparent; background: #f0f5f1; }
 .app-page-menu button[aria-current="page"], .app-page-menu-toggle { background: #e7efe9; color: var(--accent); font-weight: 600; }
 .app-page-menu button[aria-current="page"]:hover, .app-page-menu-toggle:hover { border-color: transparent; background: #dcebe0; }
@@ -52,13 +52,30 @@ a { color: var(--accent); text-underline-offset: .2em; }
 .language-control { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .toolbar :is(button, select) { min-height: 32px; padding: 4px 8px; font-size: 13px; }
 .refresh-documents-icon { display: none; }
-.reader-navigation-toggle { flex: 0 0 32px; display: grid; place-items: center; min-height: 32px; padding: 0; border-color: transparent; color: var(--muted); }
-.reader-navigation-toggle:hover { border-color: transparent; color: var(--accent); }
+.reader-navigation-toggle, .history-arrow { flex: 0 0 32px; display: grid; place-items: center; min-height: 32px; padding: 0; border-color: transparent; color: var(--muted); }
+:is(.reader-navigation-toggle, .history-arrow):not(:disabled):hover { border-color: transparent; color: var(--accent); }
+:is(.reader-navigation-toggle, .history-arrow):disabled { cursor: default; background: transparent; opacity: .4; }
+.history-arrow span { position: relative; width: 15px; height: 1.5px; background: currentColor; }
+.history-arrow span::before { content: ''; position: absolute; left: 0; top: 50%; width: 7px; height: 7px; border: solid currentColor; border-width: 0 0 1.5px 1.5px; transform: translateY(-50%) rotate(45deg); }
+.history-arrow[data-history="forward"] span { transform: rotate(180deg); }
 .reader-navigation-toggle.navigation-pinned { background: #e7efe9; color: var(--accent); }
 .sidebar-icon { display: grid; grid-template-columns: 5px 1fr; width: 17px; height: 14px; border: 1.5px solid currentColor; border-radius: 3px; overflow: hidden; }
 .sidebar-icon::before { content: ''; border-inline-end: 1.5px solid currentColor; }
 .reader-navigation-toggle[aria-expanded="true"] .sidebar-icon::before { background: #c9ded0; }
+@media (prefers-reduced-motion: no-preference) {
+  #app:has(> .canvas-active) .app-header button { transition: transform 80ms ease-out; }
+  #app:has(> .canvas-active) .app-header button:enabled:active { transform: scale(.98); }
+}
+@media (pointer: coarse) {
+  .app-header { --header-touch-target: 44px; }
+  .app-header :is(.history-arrow, .reader-navigation-toggle) {
+    flex-basis: var(--header-touch-target); min-height: var(--header-touch-target);
+  }
+  .app-header :is(.app-page-menu button, .app-page-menu-toggle, .language-control select) { min-height: var(--header-touch-target); }
+}
 .language-status { position: fixed; z-index: 2; right: 24px; bottom: 18px; max-width: min(460px, 90vw); margin: 0; padding: 10px 15px; border: 1px solid var(--line); border-radius: 6px; background: #f2faf4; font-size: 13px; color: #204c3b; pointer-events: none; }
+.position-notice { position: fixed; z-index: 5; top: 56px; right: 12px; width: min(420px, calc(100% - 24px)); padding: 10px 14px; border: 1px solid var(--line); border-radius: 6px; background: #fff8f1; color: #743b1e; overflow-wrap: anywhere; }
+.position-notice p { margin: 0 0 8px; }
 #app:has(> .workspace-active) { display: flex; flex-direction: column; height: 100dvh; }
 #app:has(> .workspace-active) > .app-header { flex: none; }
 .workspace { --sidebar-width: 264px; position: relative; display: grid; flex: 1; min-height: min(320px, 65dvh); grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
@@ -209,6 +226,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .project-bookmarks, .block-bookmarks { list-style: none; padding: 0; }
 .project-bookmarks { display: grid; gap: 10px; }
 .bookmark-entry { width: 100%; text-align: start; line-height: 1.5; }
+.bookmark-entry[aria-current="true"] { background: #e0eee4; border-color: #a9c4b1; }
 .bookmark-entry > span { display: block; overflow-wrap: anywhere; }
 .bookmark-entry > span:first-child { font-size: 13px; color: var(--muted); }
 .bookmark-note { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -232,6 +250,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .mark-read-error { padding: 0 24px 14px; border-bottom: 1px solid var(--line); }
 .notes-panel { max-width: 70rem; margin-inline: auto; padding: clamp(16px, 4vw, 42px); }
 .note-workspace { display: grid; grid-template-columns: minmax(0, 14rem) minmax(0, 1fr); gap: clamp(16px, 4vw, 36px); }
+.note-workspace.note-navigation-closed { grid-template-columns: minmax(0, 1fr); }
 .note-navigation { border-inline-end: 1px solid var(--line); padding-inline-end: 16px; }
 .note-navigation select { display: block; width: 100%; margin-top: 6px; }
 .note-list, .note-tags { padding: 0; list-style: none; }
@@ -312,6 +331,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
   .document-block .source-pane.is-sticky { position: static; }
 }
 @media (max-width: 850px) {
+  .app-page-menu:not([popover]) { display: none; }
   .sidebar.sidebar-overlay { width: min(100%, 360px); }
   .file-list button, .outline-list button { min-height: 44px; }
   .reader-navigation-toggle { flex-basis: 36px; min-height: 36px; }

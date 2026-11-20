@@ -10,6 +10,8 @@
 
 **D026 增量** `codex/feat-dependency-canvas-selection` @`af08db4`，产品基线 dev @`6ca44d8`。[批准依据](../../docs/work/2026/11/D026-dependency-canvas-selection/task.md)。
 
+**D028 增量** `codex/feat-reader-history-canvas-tools` @`f00becb`，产品基线 dev @`1be9d52`。[批准依据](../../docs/work/2026/11/D028-reader-history-canvas-tools/task.md)。
+
 ## Summary
 
 单个 Node 本地服务提供预构建 Vue 页面和只读 JSON。DocumentService 在同次读取中完成解析、固定取源和覆盖检查，CLI 校验复用这条链。列表发现独立于 Git。页面仅在内存处理内容，以 code/params 翻译诊断。
@@ -20,6 +22,8 @@ D023 在同一阅读结果上呈现文件题头、块内源码停留和项目资
 
 D026 用共用顶栏左侧的轻量文字导航取代旧入口位置，沿用 App 的页态和明确的依赖图往返入口。中文和英文共用排列约定。沿现有技术栈、客户端页态与服务接口，研究见 [research](research.md#d026-共用顶栏)，图内方案见 [007 plan](../007-dependency-canvas/plan.md)。
 
+D028 在共用顶栏接通两向访问历史。App 管理当次会话的访问顺序和恢复，调用现有的文档读取、记录与画布状态。依赖图浮层及闭环的布局独立性见 [007 plan](../007-dependency-canvas/plan.md#d028-浮层设计)。
+
 ## Technical Context
 
 **Language/Version** TypeScript 5.9.3，Node 24.11.1 开发验证。
@@ -27,6 +31,8 @@ D026 用共用顶栏左侧的轻量文字导航取代旧入口位置，沿用 Ap
 **Primary Dependencies** Fastify 5.12.8，Vue 3.5.45，Vite 8.3.8，@vitejs/plugin-vue 6.0.11，vue-tsc 3.3.14，markdown-it 15.0.3。沿单一 npm 锁文件，Playwright 1.65.1 仅验证。
 
 **Storage** 读取目标项目 current 与 Git 对象。浏览器仅保存 aftertaste.language，侧栏状态和目录标签均为页面内存状态。记录读写仍经各自已有的项目资料入口。
+
+D028 的访问顺序和位置留在标签页内存。继续使用现有依赖和接口。
 
 **Testing** Node test 串行，真实 CLI/HTTP，Playwright 串行 Edge 主验及 Chrome/Firefox 适用检查。
 
@@ -55,6 +61,8 @@ D026 用共用顶栏左侧的轻量文字导航取代旧入口位置，沿用 Ap
 D023 研究前与设计后复核同一原则。I 以 D023 批准场景和 U73 为界。II 由当前读到的文档提取身份与固定提交，用户记录与 Git 引用由原机制负责。III 沿 D022 的选文、侧栏和诊断，新增状态限定在当前页。IV 先取隔离试读的现版及候选实图，再以串行真实操作及独审核滚动、浮窗和粘贴。V 依生效模板增量维护 006，进入实现前检查 checklist 与跨文档覆盖。两次门禁无原则违例。
 
 D026 研究前与设计后复核 I—V。I 替换 FR-011 的入口位置，保持既定的六页与回访语义。II 页态留在前端，文件与记录读写沿原契约。III 使用共用顶栏与原侧栏、翻译、页态。IV 按 quickstart 实验英中文案、边界视口与图的阅读往返并交独审。V 使用原模板增量维护 006，与 007 各归主定义。未见原则冲突。
+
+D028 研究前及设计后核对 I—V。FR-011、015—016 与授权一致（I）。访问位置仅在内存，文档按固定提交读取，保存沿现有资料契约（II）。共用顶栏和页态管理历史，各页负责自身的位置（III）。用隔离副本验证、中英文量测和独立实操（IV）。006、007 按生效模板增量维护，009 给出闭环右侧阅读及回访验收（V）。
 
 ## Project Structure
 
@@ -90,6 +98,8 @@ D023 同在 src/web/ 的 App.vue、ReaderDocument.vue、BlockLocationControl.vue
 
 D026 顶栏位于 `src/web/App.vue`、`src/web/style.css` 与 `src/web/i18n.ts`，浏览器共用路径在 `tests/browser/dependency-canvas-selection.mjs`，受影响的导航与个人记录脚本按 quickstart 回归。面向读者更新 `docs/usage/file-reader.md`。
 
+D028 在 `src/web/App.vue`、`style.css` 和 `i18n.ts` 维护顶栏和历史。接入 `ProjectNotes.vue`、`notes-editor.ts`、`ProjectMarks.vue` 和 `DependencyCanvas.vue` 的位置。实操覆盖 `tests/browser/reader-history.mjs` 和既有回访脚本，读者入口更新 `docs/usage/file-reader.md`。
+
 ## 页面设计
 
 Read 模式。固定头部提供语言选择与刷新，主区呈现文件题头、题头下的讲解路径及影响阅读的问题，提交及正常校验见项目资料。对照块使用相邻双栏及水平分隔，源码浅绿灰底、等宽字和实际行号，正文白底、系统中文字体。纯讲解块独立居中。绿色用于当前选择与键盘焦点，错误和警告同时配文字。主内容独立滚动，长行在源码区域横向滚动，窄屏依次显示源码和讲解。
@@ -114,9 +124,18 @@ D011 已实际运行 Impeccable context。D022 按项目局部修改适配，沿
 
 ### D026 共用顶栏
 
+D026 的原设计记录。现行入口与历史按下节。
+
 - 沿 [FR-011](spec.md#functional-requirements)排列固定的六页入口。讲解页侧栏开关独立于导航，位于同一顶栏左端；其他页按实际页面能力保留对应工具。当前位置随 App 接受的页态更新，并以语义状态及柔和底色表达。用独立焦点样式核键盘可达。
 - 预留右侧工具空间，英文标签及窄视口可用收纳入口。当前页名称在收纳时直接可读；以实际横排和实窗临界宽度验证，测试预期由 [SC-013](spec.md#measurable-outcomes)维护。
 - 从依赖图打开讲解时保留明确的返回路径，复用同一依赖图实例及其节点、视野。进入其他页面时清理图内临时框选，依赖图状态生命周期见 [007 data model](../007-dependency-canvas/data-model.md#d026-临时画布状态)。
+
+### D028 顶栏与历史
+
+- 左侧三个控件使用同样的尺寸与顺序。窄窗收纳六个页签，保留当前页名、三个位置固定的控件、刷新和语言。侧栏开关按当前页派生名称、展开和禁用状态。笔记仅在编辑区或选文草稿仍可用时收起列表，闭环步骤阅读区保持可读。
+- 离开时把当前页的可恢复位置写入当前访问项。接受一次新导航后丢弃前进分支，成功的回退和前进仅移动当前项。文档请求与恢复步骤沿同一个最新意图判断，等当前目标渲染后恢复滚动或焦点。位置与有效性见 [data model](data-model.md#d028-站内访问位置)。
+- 直接点击页签时继续使用目的页留在界面中的最近状态，书签、标注等仍按各自已有入口读取记录。历史箭头使用相应访问项的具体落点。
+- 目标内容从原读接口和当前页面模型获得。覆盖失效文档／块、记录、节点和闭环的可用落点与提示，按 [quickstart](quickstart.md#d028-站内往返与顶栏) 执行。设计依据见 [research](research.md#d028-站内访问历史)。
 
 ## Complexity Tracking
 

@@ -6,9 +6,10 @@ import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { blockLinkInsertion, renderMarkdown } from './markdown.js';
 import { useNotesEditor } from './notes-editor.js';
+import type { NotesPosition } from './notes-editor.js';
 
 const props = defineProps<{
-  visible: boolean; language: Language; quote: BlockQuote | undefined;
+  visible: boolean; language: Language; quote: BlockQuote | undefined; listOpen: boolean;
   visit: (target: BlockTarget) => Promise<string | undefined>;
 }>();
 const emit = defineEmits<{ clearQuote: [] }>();
@@ -22,20 +23,33 @@ const textarea = ref<HTMLTextAreaElement>();
 const visitMessage = ref<HTMLElement>();
 const visitProblem = ref('');
 const visiting = ref(false);
+let visitSequence = 0;
 const active = computed(() => drafts.get(selected.value));
 const tags = computed(() => [...new Set([...drafts.values()].flatMap(draft => draft.tags))]);
 const entries = computed(() => [...drafts.values()].filter(draft => !filter.value || draft.tags.includes(filter.value)));
+const canHideList = computed(() => loaded.value && !!(active.value || props.quote));
+defineExpose({
+  canHideList,
+  capturePosition: (): NotesPosition => ({ selected: selected.value, filter: filter.value }),
+  async restorePosition(position: NotesPosition, current: () => boolean) {
+    await editor.load(true);
+    if (!current()) return false;
+    filter.value = tags.value.includes(position.filter) ? position.filter : '';
+    selected.value = drafts.has(position.selected) ? position.selected : '';
+    return (!position.selected || !!selected.value) && (!position.filter || !!filter.value);
+  },
+});
 
-watch(() => [props.visible, props.quote] as const, async ([visible, quote], [wasVisible]) => {
+watch(() => [props.visible, props.quote] as const, async ([visible, quote], [wasVisible, previousQuote]) => {
   if (!visible) return;
-  if (quote) {
+  if (quote && quote !== previousQuote) {
     filter.value = '';
     selected.value = '';
   }
   if (!wasVisible) {
     void editor.load();
     await nextTick();
-    panel.value?.focus();
+    if (props.visible && document.activeElement === document.body) panel.value?.focus({ preventScroll: true });
   }
 });
 watch(selected, () => { tag.value = ''; visitProblem.value = ''; });
@@ -92,16 +106,21 @@ async function follow(event: MouseEvent) {
   const href = anchor?.getAttribute('href');
   if (!href?.startsWith(blockLinkPrefix)) return;
   event.preventDefault();
-  if (visiting.value) return;
+  const sequence = ++visitSequence;
   visitProblem.value = '';
   const target = blockTarget(href);
   if (target) {
     visiting.value = true;
-    try { visitProblem.value = await props.visit(target) ?? ''; }
-    finally { visiting.value = false; }
-  } else visitProblem.value = t('noteInvalidLink');
+    const problem = await props.visit(target);
+    if (sequence !== visitSequence) return;
+    visitProblem.value = problem ?? '';
+    visiting.value = false;
+  } else {
+    visiting.value = false;
+    visitProblem.value = t('noteInvalidLink');
+  }
   await nextTick();
-  visitMessage.value?.focus();
+  if (props.visible && sequence === visitSequence) visitMessage.value?.focus({ preventScroll: true });
 }
 
 async function remove() {
@@ -125,7 +144,7 @@ function loadSaved() {
     <p v-if="loading" role="status">{{ t('loading') }}</p>
     <div v-if="loadProblem">
       <p class="bookmark-error" role="alert">{{ problemText(language, loadProblem).message }} {{ problemText(language, loadProblem).nextStep }}</p>
-      <button type="button" @click="editor.load">{{ t('retry') }}</button>
+      <button type="button" @click="editor.load(true)">{{ t('retry') }}</button>
     </div>
     <section v-if="quote" class="note-quote" aria-labelledby="note-quote-heading">
       <h2 id="note-quote-heading">{{ t('noteAddSelection') }}</h2>
@@ -136,8 +155,8 @@ function loadSaved() {
         <button type="button" @click="emit('clearQuote')">{{ t('bookmarkCancel') }}</button>
       </div>
     </section>
-    <div v-if="loaded" class="note-workspace">
-      <aside class="note-navigation" :aria-label="t('notes')">
+    <div v-if="loaded" class="note-workspace" :class="{ 'note-navigation-closed': canHideList && !listOpen }">
+      <aside v-show="!canHideList || listOpen" id="note-navigation" class="note-navigation" :aria-label="t('notes')">
         <label for="note-tag-filter">{{ t('noteFilter') }}</label>
         <select id="note-tag-filter" v-model="filter">
           <option value="">{{ t('noteAllTags') }}</option>

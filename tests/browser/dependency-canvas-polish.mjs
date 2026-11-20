@@ -111,10 +111,10 @@ async function readGraph() {
   const view = await transform();
   await button(scope(), '阅读讲解').click();
   await page.getByRole('heading', { level: 1, name: service }).waitFor();
-  await button(page, '返回依赖图').click();
+  await button(page, '后退').click();
   assert.equal(await transform(), view);
   assert.equal(await selectedFile.getAttribute('aria-pressed'), 'true');
-  await button(scope(), '关闭详情').click();
+  await button(scope(), '清除选择').click();
   report.checks.push({ read: '79%, actual hover/rest/entry pixels, 3 incident curves, arrow endpoints, library dashes, read and return', affected });
 }
 

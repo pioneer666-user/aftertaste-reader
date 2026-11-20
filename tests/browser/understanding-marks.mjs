@@ -253,6 +253,8 @@ try {
   await entry(rulesPath).click();
   await panel().getByText(/当前讲解中没有目标块/u).waitFor();
   await button('文件讲解').click();
+  await page.getByRole('heading', { name: 'src/service.mjs', exact: true }).waitFor();
+  await page.locator('#reader-navigation button[title="src/rules.mjs"]').click();
   await page.locator('#changed1').getByRole('combobox', { name: '理解状态' }).waitFor();
   assert.equal(await page.locator('#changed1').getByRole('combobox').inputValue(), 'unmarked');
   await rename(fixture.rules, fixture.rules + '.offline');

@@ -68,7 +68,7 @@ async function saveAction(page, scope, route, file, action) {
 }
 
 async function addGroup(scope, name, members) {
-  await scope.getByLabel('编辑分组').selectOption('');
+  await scope.getByRole('combobox', { name: '编辑分组' }).selectOption('');
   await scope.getByLabel('组名').fill(name);
   for (const member of members) await scope.getByRole('checkbox', { name: member, exact: true }).check();
   await button(scope, '应用分组').click();
@@ -225,6 +225,7 @@ try {
       await openDependencyGroups(page);
       await addGroup(dependency, '依赖图路径', [audit, 'node:path · 标准库']);
     });
+  await button(dependency, '关闭分组').click();
   const arranged = await saveAction(page, dependency, dependencyRoute, project.layout, () => button(dependency, '重新布局').click());
   const depLegend = await saveAction(page, dependency, dependencyRoute, project.layout, () => drag(page, legend(dependency), 57, 61));
   assert.notDeepEqual(depLegend.layout.positions[legendId], arranged.layout.positions[legendId]);

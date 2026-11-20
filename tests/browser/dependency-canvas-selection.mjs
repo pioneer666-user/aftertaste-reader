@@ -215,7 +215,7 @@ try {
   assert.equal(await dep(page).getByRole('heading').count(), 0);
   assert.equal(await dep(page).getByText('布局已保存', { exact: true }).isVisible(), false);
   assert.equal(await dep(page).locator('#canvas-group-picker').isVisible(), false);
-  assert.equal(await button(dep(page), '刷新图和布局').isVisible(), false);
+  assert.ok(await button(dep(page), '刷新图和布局').isVisible());
   assert.ok(await button(dep(page), '重新布局').isVisible());
   assert.ok(await button(dep(page), '缩小画布').isVisible());
   const full = await bounds(area(page));
@@ -223,22 +223,24 @@ try {
   const originalView = await transform(dep(page));
   await screenshot(page, 'graph-first-view');
   await file(page, api).click();
-  const detail = dep(page).locator('.canvas-selection');
+  const summary = dep(page).locator('.canvas-summary');
+  const detail = dep(page).locator('.canvas-details');
+  await button(summary, '查看关系').click();
   await detail.getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
   await screenshot(page, 'file-detail');
   await button(detail, service).click();
-  await button(detail, '阅读讲解').click();
+  await button(summary, '阅读讲解').click();
   await page.getByRole('heading', { level: 1, name: service }).waitFor();
-  await button(header(page), '文件讲解').click();
-  await button(header(page), '返回依赖图').click();
-  await detail.getByRole('heading', { name: service, exact: true }).waitFor();
+  await button(header(page), '后退').click();
+  await summary.getByRole('heading', { name: service, exact: true }).waitFor();
   assert.equal(await transform(dep(page)), originalView);
-  assert.ok((await bounds(area(page))).height < full.height);
+  assert.deepEqual(await bounds(area(page)), full);
   await button(dep(page), '关闭详情').click();
-  assert.equal((await bounds(area(page))).height, full.height);
+  assert.deepEqual(await bounds(area(page)), full);
   await library(page).click();
+  await button(summary, '查看关系').click();
   await detail.getByText(standardLegend.description, { exact: true }).waitFor();
-  await button(dep(page), '关闭详情').click();
+  await button(dep(page), '清除选择').click();
   report.checks.push('画布首屏、API 关系读到 service 讲解及原视野返回、文件和库详情按需关闭');
 
   const passiveDisk = await readFile(fixture.layout);
@@ -334,6 +336,9 @@ try {
     y: Math.ceil((await bounds(library(page))).y + (await bounds(library(page))).height + 10) };
   const nearEdge = { x: Math.floor(graph.x + graph.width - 2), y: Math.ceil(graph.y + 8) };
   assert.ok(page.viewportSize().width - nearEdge.x <= 24);
+  const railToggle = header(page).getByRole('button', { name: '收起依赖图工具', exact: true });
+  await railToggle.click();
+  await dep(page).locator('#dependency-tools').waitFor({ state: 'hidden' });
   await drag(page, reverseStart, nearEdge, { selecting: true });
   await assertSelected(page, [rules, service, api, legendId]);
   const edgeButton = await bounds(groupAction(page));
@@ -370,7 +375,7 @@ try {
   assert.deepEqual(retried.layout.viewport, panned.layout.viewport);
   report.checks.push('实际平移缩放后的逆向边缘命中、Ctrl+G、旧组移空、真实失败时保留草稿及可重试');
 
-  await dep(page).locator('summary').filter({ hasText: '图操作' }).press('Enter');
+  await button(header(page), '展开依赖图工具').click();
   await button(dep(page), '编辑分组').press('Enter');
   const picker = dep(page).locator('#canvas-group-picker');
   await picker.press('End');

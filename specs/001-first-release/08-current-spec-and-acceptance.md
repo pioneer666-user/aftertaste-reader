@@ -209,6 +209,8 @@ D026 批准的共用顶栏见 [006 FR-011、SC-013](../006-file-reader/spec.md)�
 
 D027 在已有 79% 订单图上验收文件卡、曲线、点阵、工具反转、小地图及新组保存后的单次反馈。限定范围、手势和时序见 [007 FR-011、014—018 与 SC-014—016](../007-dependency-canvas/spec.md#functional-requirements)。
 
+D028 的共用顶栏与站内历史按 [006 FR-011、015—016 与 SC-013—015](../006-file-reader/spec.md#functional-requirements) 验收，依赖图浮动工具与底部详情按 [007 FR-019—020 与 SC-017—018](../007-dependency-canvas/spec.md#functional-requirements) 验收，闭环右栏及回访沿 [009 FR-008 与 SC-005](../009-loop-reader/spec.md#functional-requirements)。
+
 验收需要三类证据：程序可重跑的正确性检查、实际页面的交互结果、作者对小批讲解和闭环是否有帮助的反馈。工具校验不能替代后两者。没有确认规模和环境前，不伪造性能达标数字。
 
 ## 8. 真正影响实现的缺口
