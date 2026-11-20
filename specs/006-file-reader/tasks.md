@@ -213,8 +213,8 @@
 
 ## Phase 28 · D029 Polish & Cross-Cutting Concerns
 
-- [ ] T057 冻结候选，交独立审查者按 `docs/roles/审查.md` 实走桌面、窄窗和非常规状态，归档 `docs/work/2026/11/D029-reader-continuous-corners/review.md`（SC-016）。
-- [ ] T058 独审通过后用固定构建换版 4341，在 `docs/work/2026/11/D029-reader-continuous-corners/handoff.md` 提供原项目的待验入口与对照（SC-016）。
+- [x] T057 冻结候选，交独立审查者按 `docs/roles/审查.md` 实走桌面、窄窗和非常规状态，归档 `docs/work/2026/11/D029-reader-continuous-corners/review.md`（SC-016）。
+- [x] T058 独审通过后用固定构建换版 4341，在 `docs/work/2026/11/D029-reader-continuous-corners/handoff.md` 提供原项目的待验入口与对照（SC-016）。
 
 ## Dependencies & Execution Order
 

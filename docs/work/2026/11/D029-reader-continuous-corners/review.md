@@ -9,3 +9,13 @@
 - **发现 1 · Firefox 回退仅改变普通圆弧的半径。** 在同一服务讲解块查看宽源码底板，Edge 候选的连续轮廓平滑转入直边。Firefox 159 不支持 `corner-shape`，该控件只剩 `12px` 的普通 `border-radius`。放大同位置的左上角能辨别两种转入方式。共用的回退还影响小按钮和整行选中。派单允许兼容引擎使用原生能力或等效轮廓，当前方案保留了尺寸分档和可见焦点，缺少等效连续曲线。建议按实际盒子尺寸绘制连续边线、填充和焦点，保留原生内容区域及交互。如果保留近似圆弧，由主脑明确收束这一兼容取舍后再按调整后的范围复核。 [回退尺寸](</D:/project/SpecDev Harness/aftertaste-reader/src/web/style.css:9>) · [实际绘制](</D:/project/SpecDev Harness/aftertaste-reader/src/web/style.css:380>) · [独立左上角对照](</D:/project/SpecDev Harness/aftertaste-reader/.local/D029/independent-r1/wide-source-corner-8x.png>)
 - **证据边界。** Chrome `157.0.8103.79` 的实图及三引擎源码吸附、长行横滚、选区实际复制和记录回访采用执行提供的同构建证据。执行的 Firefox 窄窗菜单配对中，底下的正文滚动位置不同，该配对仅支持比较菜单自身状态。独审未在实际触屏硬件上验证，未操作 4341 或原项目，也未代替作者验收。
 - **写入交还。** 结束时复核 HEAD 仍为受审候选，固定构建与输入资料逐文件哈希一致，输入 Git 提交仍为 `4be951b2bf9aae434e0acc3e1aeab3e4e0cf0734`。独审浏览器和回环服务均已关闭，已核监听端口退出。采集结束，可以恢复写入。
+
+## R2 · 2026-11-20
+
+**结论：通过。** R1 的 Firefox 连续轮廓问题已关闭，复核范围内未发现新问题。
+
+- **审查版本。** 批准依据 `703ea8c`，产品基线 `663c1e2`，上一候选 `c45f5db`，本轮固定候选 `138c4019be1d892c9e6d583bfdc197a0bd0bae04`。复核了 Firefox 绘制、强制色、受影响的样式作用域、测试与设计记录。使用固定构建 `build-r2` 和提交 `4be951b2` 的隔离订单项目副本。
+- **发现 1 已关闭。** Firefox 159 实际把按控件尺寸绘制的 SVG 用作原控件边框图像。小按钮、多行块目录与宽源码板均可见平滑转入直边。独立测得源码板图形为 `445×143`，聚焦时扩至 `457×155`，边线与焦点环沿同一曲线，控件内容区域无裁切。Edge 仍用原生连续角，强制色下 Firefox 菜单使用完整的原生描边。 [原失败位置对照](</D:/project/SpecDev Harness/aftertaste-reader/.local/D029/comparisons-r2/source-corner-8x.png>) · [Firefox 源码焦点](</D:/project/SpecDev Harness/aftertaste-reader/.local/D029/independent-r2/candidate-firefox/source-keyboard.png>) · [Firefox 强制色](</D:/project/SpecDev Harness/aftertaste-reader/.local/D029/independent-r2/candidate-firefox/forced-colors.png>)
+- **独立实操。** Windows 上串行使用 Firefox `159.0` 和 Edge `157.0.4341.60`，重走 `1440×900` 与 `390×844` 的 `src/service.mjs`、收起的当前目录、项目资料 Esc 回焦和书签编辑焦点。注入剪贴板拒绝后，两个引擎均可全选手动文本框中的 215 个字符，Esc 回到复制按钮。窄窗用 Tab、Enter 切到依赖图，经书签页回讲解。图节点和书签管理行没有继承 Firefox 绘制。独立对照也确认，窄窗闭合菜单只显示箭头、桌面项目短名省略均可在 D028 Firefox 同宽复现，展开菜单的当前项仍显示并可操作。实操无写入请求。 [Firefox 日志](</D:/project/SpecDev Harness/aftertaste-reader/.local/D029/independent-r2/candidate-firefox/report.json>) · [Edge 日志](</D:/project/SpecDev Harness/aftertaste-reader/.local/D029/independent-r2/candidate-edge/report.json>) · [Firefox 文字对照](</D:/project/SpecDev Harness/aftertaste-reader/.local/D029/independent-r2/firefox-labels-before-after.png>)
+- **证据边界。** 三引擎源码吸附、长行横滚、实际粘贴及剪贴板拒绝复用执行提供的同构建通过报告。Firefox 机构内记录回访及图浮条外观沿用执行的回归和同位置对照。独审未在实际触屏硬件验证，未操作共用试读或原项目。作者体验仍待验。
+- **写入交还。** 结束时 HEAD 为本轮受审候选，固定构建和输入资料逐个核对哈希一致，输入 Git 提交仍为 `4be951b2bf9aae434e0acc3e1aeab3e4e0cf0734`。独审浏览器及临时回环服务已关闭，确认端口 `63831` 与 `49981` 退出监听。采集结束，可以恢复写入。
