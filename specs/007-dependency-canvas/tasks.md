@@ -96,8 +96,8 @@ description: "文件依赖图与布局保存实施清单"
 ## Phase 10: D026 Polish & Cross-Cutting Concerns
 
 - [x] T031 按 `specs/007-dependency-canvas/quickstart.md` 串行验证类型、构建、隔离实操及受影响的 `tests/browser/` 旧图和闭环路径；按实际入口更新 `docs/usage/file-reader.md`（SC-010—013）。
-- [ ] T032 固定候选，按 `docs/roles/审查.md` 委派独审及实操，保存原文至 `docs/work/2026/11/D026-dependency-canvas-selection/review.md`（SC-010—013）。
-- [ ] T033 独审通过后核 4341 服务归属，在原试读项目启动受审构建，核读者资料与排布，留 `docs/work/2026/11/D026-dependency-canvas-selection/handoff.md`（SC-010—013、006 SC-013）。
+- [x] T032 固定候选，按 `docs/roles/审查.md` 委派独审及实操，保存原文至 `docs/work/2026/11/D026-dependency-canvas-selection/review.md`（SC-010—013）。
+- [x] T033 独审通过后核 4341 服务归属，在原试读项目启动受审构建，核读者资料与排布，留 `docs/work/2026/11/D026-dependency-canvas-selection/handoff.md`（SC-010—013、006 SC-013）。
 
 ## Dependencies & Execution Order
 
