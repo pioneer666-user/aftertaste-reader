@@ -232,6 +232,7 @@
 ## Phase 31 · D030 试读调整 - User Story 4 (P1)
 
 - [ ] T064 [US4] 按占位覆盖调整更新 `src/web/App.vue`、`src/web/style.css` 并用 `tests/browser/reader-file-switch.mjs` 核对桌面、增高和窄窗占位填充（FR-018、SC-017），交审查者复核受影响的视口及自然、受控切篇。
+- [ ] T065 [US4] 按块高调整在 `src/web/App.vue`、`src/web/style.css` 交错长短块，随视口补足组数。用 `tests/browser/reader-file-switch.mjs` 复验覆盖、不同块高与快慢交接，交审查者复核（FR-018、SC-017）。
 
 ## Dependencies & Execution Order
 

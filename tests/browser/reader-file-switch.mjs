@@ -204,16 +204,27 @@ async function frameGeometry() {
 }
 
 async function placeholderCoverage(screenshot, stacked = false) {
-  const gaps = await placeholder().evaluate(root => {
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const columns = await placeholder().evaluate(root => {
     const bottom = root.getBoundingClientRect().bottom;
-    return ['.placeholder-code i', '.explanation-pane i'].map(selector => {
-      const visible = Array.from(root.querySelectorAll(selector), line => line.getBoundingClientRect())
+    return ['.placeholder-code .source-pane', '.placeholder-paragraph'].map(selector => {
+      const visible = elements => Array.from(elements, element => element.getBoundingClientRect())
         .filter(rect => rect.height && rect.top < bottom);
-      return Math.max(0, bottom - Math.max(...visible.map(rect => rect.bottom)));
+      const blocks = visible(root.querySelectorAll(selector));
+      const lines = visible(root.querySelectorAll(selector + ' i'));
+      return {
+        gap: Math.max(0, bottom - Math.max(...lines.map(rect => rect.bottom))),
+        heights: blocks.map(rect => Math.round(rect.height)),
+      };
     });
   });
-  assert.ok(gaps[1] <= 48 && (stacked || gaps[0] <= 48), JSON.stringify({ screenshot, gaps }));
-  (report.placeholderCoverage ??= {})[screenshot] = gaps;
+  const [source, prose] = columns;
+  for (const column of stacked ? [prose] : columns) {
+    assert.ok(column.gap <= 64 && new Set(column.heights.slice(0, 4)).size >= 3,
+      JSON.stringify({ screenshot, columns }));
+  }
+  if (stacked) assert.equal(source.heights.length, 1);
+  (report.placeholderCoverage ??= {})[screenshot] = columns;
   await shot(screenshot);
 }
 
@@ -256,6 +267,8 @@ try {
     await placeholderCoverage('desktop-waiting');
     await page.setViewportSize({ width: 1440, height: 1200 });
     await placeholderCoverage('desktop-tall-waiting');
+    await page.setViewportSize({ width: 1440, height: 3000 });
+    await placeholderCoverage('desktop-portrait-waiting');
     await page.setViewportSize({ width: 1440, height: 900 });
     await toggle().click();
     await nav().waitFor({ state: 'hidden' });

@@ -93,7 +93,20 @@ const openingDocument = ref('');
 const fileSwitch = ref<{ source: string; placeholder: boolean }>();
 const fileSwitchStatus = computed(() => fileSwitch.value ? t('openingFile') + ' ' + fileSwitch.value.source : '');
 const fileSwitchName = computed(() => fileSwitch.value?.source.split('/').at(-1) ?? '');
+const fileSwitchFrame = useTemplateRef<HTMLElement>('file-switch-frame');
+const fileSwitchGroups = ref(1);
+const placeholderCodeLines = [4, 8, 3, 6, 5];
+const placeholderProseLines = [7, 5, 8, 4, 6];
 let fileSwitchTimer: number | undefined;
+watch(fileSwitchFrame, (frame, _, onCleanup) => {
+  if (!frame) return;
+  // Even the shortest block and its gap take at least 96 CSS px in either column.
+  const fill = () => { fileSwitchGroups.value = Math.ceil(frame.clientHeight / 96); };
+  fill();
+  const resize = new ResizeObserver(fill);
+  resize.observe(frame);
+  onCleanup(() => resize.disconnect());
+}, { flush: 'post' });
 const mainId = computed(() => ({ reader: 'reading', canvas: 'canvas-reading', loops: 'loop-navigation',
   bookmarks: 'bookmarks', marks: 'marks', notes: 'notes' })[view.value]);
 const pageMenu = ref<HTMLElement>();
@@ -1019,7 +1032,7 @@ onUnmounted(() => {
           <p v-else-if="!listLoading" class="reading-state">{{ t('choose') }}</p>
         </div>
       </main>
-      <div v-if="fileSwitch?.placeholder" class="file-switch-placeholder" aria-hidden="true">
+      <div v-if="fileSwitch?.placeholder" ref="file-switch-frame" class="file-switch-placeholder" aria-hidden="true">
         <div class="document-header">
           <h1><span class="file-directory">{{ fileSwitch.source.slice(0, -fileSwitchName.length) }}</span><span class="file-name">{{ fileSwitchName }}</span></h1>
           <p class="document-path">{{ t('openingFile') }}</p>
@@ -1027,13 +1040,13 @@ onUnmounted(() => {
         <div class="document-blocks">
           <div class="document-block comparison">
             <div class="placeholder-code">
-              <div v-for="group in 16" :key="group" class="source-pane placeholder-lines">
-                <i v-for="line in 5" :key="line"></i>
+              <div v-for="group in fileSwitchGroups" :key="group" class="source-pane placeholder-lines">
+                <i v-for="line in placeholderCodeLines[(group - 1) % placeholderCodeLines.length]" :key="line"></i>
               </div>
             </div>
             <div class="explanation-pane">
-              <div v-for="group in 16" :key="group" class="placeholder-lines placeholder-paragraph">
-                <i v-for="line in 6" :key="line"></i>
+              <div v-for="group in fileSwitchGroups" :key="group" class="placeholder-lines placeholder-paragraph">
+                <i v-for="line in placeholderProseLines[(group - 1) % placeholderProseLines.length]" :key="line"></i>
               </div>
             </div>
           </div>

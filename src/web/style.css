@@ -221,6 +221,9 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .placeholder-lines i:nth-child(3n + 1) { width: 52%; }
 .placeholder-lines i:nth-child(3n) { width: 71%; }
 .placeholder-paragraph i:first-child { height: 15px; margin-block-end: 6px; background: #dfe9e1; }
+.placeholder-lines:nth-child(2n) i:nth-child(3n + 1) { width: 63%; }
+.placeholder-lines:nth-child(3n) i:nth-child(3n + 1) { width: 41%; }
+.placeholder-lines:nth-child(4n) i:nth-child(3n + 2) { width: 89%; }
 .file-directory, .file-name { overflow: hidden; text-overflow: ellipsis; }
 .file-directory { min-width: 0; color: var(--muted); font-weight: 400; }
 .file-name { flex: 0 0 auto; max-width: 100%; font-weight: 650; }
