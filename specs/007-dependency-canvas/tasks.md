@@ -140,7 +140,7 @@ description: "文件依赖图与布局保存实施清单"
 ## Phase 16: D028 画布贴边与浮层轮廓 - User Story 7
 
 - [x] T049 [US7] 在 `src/web/canvas.css` 和 `src/web/DependencyMiniMap.vue` 按作者反馈调整依赖图贴边、浮条与摘要，并按 `specs/007-dependency-canvas/quickstart.md` 完成桌面和窄窗复验（FR-010、019—020，SC-017—018）。
-- [ ] T050 固定候选提交独审。复核通过后按 D028 授权换版 4341，并在 `docs/work/2026/11/D028-reader-history-canvas-tools/handoff.md` 记录证据（SC-017—018）。
+- [x] T050 固定候选提交独审。复核通过后按 D028 授权换版 4341，并在 `docs/work/2026/11/D028-reader-history-canvas-tools/handoff.md` 记录证据（SC-017—018）。
 
 ## Dependencies & Execution Order
 
