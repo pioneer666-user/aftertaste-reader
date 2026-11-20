@@ -15,7 +15,7 @@ const stage = process.env.AFTERTASTE_D028_STAGE;
 const baseline = stage === 'baseline';
 const surfaceBefore = stage === 'surface-before';
 assert.ok(['edge', 'chrome', 'firefox'].includes(engine));
-const root = path.join(repository, '.local/D028');
+const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D028');
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, (baseline ? 'baseline' : surfaceBefore ? 'surface-before' : 'history') + '-' + engine + '-'));
 const project = path.join(run, 'project');

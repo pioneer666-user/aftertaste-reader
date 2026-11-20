@@ -6,6 +6,14 @@
   --muted: #52645b;
   --accent: #21624d;
   --line: #d5dfd8;
+  --corner-inline: .24em;
+  --corner-control: 9px;
+  --corner-row: 14px;
+  --corner-panel: 21px;
+  --corner-radius-scale: .57;
+}
+@supports (corner-shape: squircle) {
+  :root { --corner-radius-scale: 1; }
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
@@ -25,6 +33,7 @@ a { color: var(--accent); text-underline-offset: .2em; }
 .app-page-menu { display: flex; align-items: center; gap: 2px; }
 .app-page-menu button, .app-page-menu-toggle { min-height: 32px; padding: 4px 5px; border-color: transparent; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .app-page-menu button:hover { border-color: transparent; background: #f0f5f1; }
+.app-header :is(button, select):focus-visible { outline-offset: -2px; }
 .app-page-menu button[aria-current="page"], .app-page-menu-toggle { background: #e7efe9; color: var(--accent); font-weight: 600; }
 .app-page-menu button[aria-current="page"]:hover, .app-page-menu-toggle:hover { border-color: transparent; background: #dcebe0; }
 .app-page-menu-toggle { display: flex; align-items: center; gap: 7px; min-height: 36px; max-width: 100%; padding-inline: 6px; }
@@ -40,14 +49,12 @@ a { color: var(--accent); text-underline-offset: .2em; }
   max-height: calc(100dvh - var(--page-menu-top) - 12px);
   padding: 4px;
   border: 1px solid var(--line);
-  border-radius: 8px;
   overflow: auto;
   background: #fff;
   color: inherit;
 }
 .app-page-menu:popover-open { display: flex; flex-direction: column; align-items: stretch; }
 .app-page-menu[popover] button { min-height: 36px; padding-inline: 10px; text-align: start; }
-.app-page-menu[popover] button:focus-visible { outline-offset: -2px; }
 .toolbar { display: flex; align-items: center; gap: 8px; flex: none; }
 .language-control { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .toolbar :is(button, select) { min-height: 32px; padding: 4px 8px; font-size: 13px; }
@@ -134,7 +141,6 @@ a { color: var(--accent); text-underline-offset: .2em; }
   overflow: auto;
   overscroll-behavior: contain;
   border: 0;
-  border-radius: 8px;
   background: #fff;
   box-shadow: 0 6px 26px #183d2b40;
   color: inherit;
@@ -150,6 +156,7 @@ a { color: var(--accent); text-underline-offset: .2em; }
 .file-list .file-list { margin-inline-start: 12px; padding-inline-start: 4px; border-inline-start: 1px solid var(--line); }
 .file-list button, .outline-list button { display: block; width: 100%; min-height: 36px; padding: 6px 8px; text-align: left; border: 1px solid transparent; background: transparent; font-size: 13px; overflow-wrap: anywhere; line-height: 1.5; }
 .file-list button:hover, .outline-list button:hover { background: #e7eee8; }
+.file-list button:focus-visible, .outline-list button:focus-visible { outline-offset: -2px; }
 .file-list [aria-current="page"], .file-list [data-current-directory], .outline-list [aria-current="location"] { background: #e0eee4; border-color: #c1d5c7; color: #164831; font-weight: 600; }
 .file-list .directory-button { display: flex; align-items: baseline; gap: 8px; }
 .directory-button::before { content: ''; flex: 0 0 6px; height: 6px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); }
@@ -198,7 +205,6 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
   min-width: 0;
   padding-block: 11px 6px;
   border: 1px solid #dae6dc;
-  border-radius: 6px;
   background: var(--source-sheet);
 }
 .document-block .source-pane.is-sticky { position: sticky; top: 16px; }
@@ -231,14 +237,14 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .bookmark-entry > span:first-child { font-size: 13px; color: var(--muted); }
 .bookmark-note { white-space: pre-wrap; overflow-wrap: anywhere; }
 .bookmark-unavailable { overflow-wrap: anywhere; }
-.block-bookmarks li { margin-block: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; }
+.block-bookmarks li { margin-block: 8px; padding: 10px 12px; border: 1px solid var(--line); }
 .block-bookmarks li.bookmark-visited { border-color: var(--accent); background: #edf4ee; }
 .block-bookmarks li:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
 .block-bookmarks .bookmark-note { margin: 0 0 8px; line-height: 1.5; }
 .bookmark-current { display: block; color: var(--accent); font-size: 13px; margin-bottom: 4px; }
 .bookmark-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .bookmark-editor { margin-block: 12px; }
-.bookmark-editor textarea { display: block; width: 100%; margin: 6px 0 8px; padding: 8px; resize: vertical; border: 1px solid #869b8c; border-radius: 6px; }
+.bookmark-editor textarea { display: block; width: 100%; margin: 6px 0 8px; padding: 8px; resize: vertical; border: 1px solid #869b8c; }
 .bookmark-error { color: #743b1e; }
 .bookmark-status { color: var(--accent); font-size: 13px; margin: 8px 0; }
 .bookmark-status:empty { margin: 0; }
@@ -319,7 +325,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .problem-location { color: var(--muted); display: flex; flex-wrap: wrap; gap: 14px; }
 .repair-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
 .repair-heading h3 { margin: 0; font-size: 16px; }
-.repair-text { width: 100%; padding: 14px; color: #273d31; background: #f4f7f4; border: 1px solid #a7b8ac; border-radius: 5px; font-size: 12px; line-height: 1.7; resize: vertical; }
+.repair-text { width: 100%; padding: 14px; color: #273d31; background: #f4f7f4; border: 1px solid #a7b8ac; font-size: 12px; line-height: 1.7; resize: vertical; }
 .reading-error, .empty-state { padding: 48px 38px; }
 .reading-error { background: #fff8f1; color: #743b1e; }
 .reading-error h2 { font-size: 23px; }
@@ -350,4 +356,62 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
   .refresh-documents-label { display: none; }
   .refresh-documents-icon { display: block; position: relative; width: 13px; height: 13px; border: 1.5px solid currentColor; border-right-color: transparent; border-radius: 50%; }
   .refresh-documents-icon::after { content: ''; position: absolute; inset: -1px -1px auto auto; width: 5px; height: 5px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; }
+}
+
+@property --corner-size {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+.app-header :is(button, select),
+.skip-link,
+#reader-navigation .project-info-toggle,
+#reading :is(button, select, textarea, .location-copy-status:not(:empty)),
+#app:has(> .workspace-active) > .position-notice button {
+  --corner-size: var(--corner-control);
+  border-radius: calc(var(--corner-size) * var(--corner-radius-scale));
+  corner-shape: squircle;
+}
+.app-page-menu[popover] button,
+#reader-navigation :is(.file-list button, .outline-list button, .sidebar-divider),
+#reading :is(.annotation-text, .block-bookmarks li, .block-mark),
+#app:has(> .workspace-active) > .language-status {
+  --corner-size: var(--corner-row);
+  border-radius: calc(var(--corner-size) * var(--corner-radius-scale));
+  corner-shape: squircle;
+}
+.app-page-menu[popover],
+#reader-navigation .project-info,
+#reading :is(.source-pane, .markdown pre, .notice, .reading-error, .selection-copy-panel, .location-copy-manual),
+#app:has(> .workspace-active) > .position-notice {
+  --corner-size: var(--corner-panel);
+  border-radius: calc(var(--corner-size) * var(--corner-radius-scale));
+  corner-shape: squircle;
+}
+#reader-navigation.sidebar-overlay {
+  --corner-size: var(--corner-panel);
+  border-start-end-radius: calc(var(--corner-size) * var(--corner-radius-scale));
+  border-end-end-radius: calc(var(--corner-size) * var(--corner-radius-scale));
+  corner-shape: squircle;
+}
+#reading .markdown :not(pre) > code {
+  --corner-size: var(--corner-inline);
+  border-radius: calc(var(--corner-size) * var(--corner-radius-scale));
+  corner-shape: squircle;
+}
+#reading .source-pane:has(.source-scroll:focus-visible) { outline: 3px solid #338268; outline-offset: 3px; }
+#reading .source-scroll:focus-visible { outline: none; }
+@media (forced-colors: active) {
+  #reading .source-pane:has(.source-scroll:focus-visible) { outline-color: Highlight; }
+}
+@supports not (corner-shape: squircle) {
+  .reader-corner-surfaces { position: fixed; top: 0; left: -200vw; pointer-events: none; }
+  .reader-corner-surfaces svg { position: absolute; top: 0; left: 0; }
+  @media (forced-colors: none) {
+    [data-reader-corner] {
+      background-color: transparent !important;
+      border-image: var(--reader-corner-image) !important;
+      outline-color: transparent !important;
+    }
+  }
 }

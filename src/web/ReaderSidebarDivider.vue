@@ -86,7 +86,6 @@ function resizeFromKeyboard(event: KeyboardEvent) {
   display: grid;
   place-items: center;
   height: 12px;
-  border-radius: 4px;
   cursor: row-resize;
   touch-action: none;
   user-select: none;
