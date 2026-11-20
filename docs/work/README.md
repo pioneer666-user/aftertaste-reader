@@ -39,5 +39,6 @@
 | D027 | [文件依赖图的连续圆角、曲线与点阵交互](2026/11/D027-dependency-canvas-polish/task.md) |
 | D028 | [站内前进后退与画布浮动工具](2026/11/D028-reader-history-canvas-tools/task.md) |
 | D029 | [文件讲解页与共用顶栏的连续圆角](2026/11/D029-reader-continuous-corners/task.md) |
+| D030 | [文件树切篇的即时反馈与阅读占位](2026/11/D030-reader-file-switch/task.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。
