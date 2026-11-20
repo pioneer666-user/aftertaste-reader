@@ -144,7 +144,7 @@ function loadSaved() {
     <p v-if="loading" role="status">{{ t('loading') }}</p>
     <div v-if="loadProblem">
       <p class="bookmark-error" role="alert">{{ problemText(language, loadProblem).message }} {{ problemText(language, loadProblem).nextStep }}</p>
-      <button type="button" @click="editor.load()">{{ t('retry') }}</button>
+      <button type="button" @click="editor.load(true)">{{ t('retry') }}</button>
     </div>
     <section v-if="quote" class="note-quote" aria-labelledby="note-quote-heading">
       <h2 id="note-quote-heading">{{ t('noteAddSelection') }}</h2>

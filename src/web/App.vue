@@ -361,11 +361,15 @@ async function loadMarks() {
   } catch (error) { markListError.value = failed(error); }
 }
 
-async function refreshMarks() {
+let marksRequest: Promise<void> | undefined;
+function refreshMarks() {
+  if (marksRequest) return marksRequest;
   if (marksBusy.value) return;
   marksBusy.value = true;
-  try { await loadMarks(); }
-  finally { marksBusy.value = false; }
+  return marksRequest = loadMarks().finally(() => {
+    marksBusy.value = false;
+    marksRequest = undefined;
+  });
 }
 
 async function saveMark(edit: MarkEdit) {
@@ -391,11 +395,15 @@ async function loadBookmarks() {
   } catch (error) { bookmarkListError.value = failed(error); }
 }
 
-async function refreshBookmarks() {
-  if (bookmarksLoading.value || bookmarksSaving.value) return;
+let bookmarksRequest: Promise<void> | undefined;
+function refreshBookmarks() {
+  if (bookmarksRequest) return bookmarksRequest;
+  if (bookmarksSaving.value) return;
   bookmarksLoading.value = true;
-  await loadBookmarks();
-  bookmarksLoading.value = false;
+  return bookmarksRequest = loadBookmarks().finally(() => {
+    bookmarksLoading.value = false;
+    bookmarksRequest = undefined;
+  });
 }
 
 async function saveBookmark(action: BookmarkAction) {
@@ -700,10 +708,6 @@ function setDocument(path: string, data: DocumentData, position?: ReaderPosition
 async function openDocument(path: string, block = '', bookmark = '', mark = ''): Promise<string | undefined> {
   const sequence = startNavigation();
   const origin = view.value;
-  if (origin === 'reader' && !restoring && selected.value === path && !block && result.value) {
-    readingLoading.value = false;
-    return;
-  }
   openingDocument = true;
   if (origin === 'bookmarks') visitingBookmark.value = true;
   const data = await readDocument(path);
@@ -713,11 +717,13 @@ async function openDocument(path: string, block = '', bookmark = '', mark = ''):
   if (data.error || (block && (data.result.renderMode !== 'comparison' ||
       !data.result.blocks.some(item => item.id === block) ||
       (bookmark && !bookmarks.value.some(item => item.id === bookmark))))) {
-    const problem = data.error ?? (data.result?.renderMode !== 'comparison'
-      ? data.result?.sourceError ?? data.result?.diagnostics.find(item => item.severity === 'error') : undefined);
-    const reason = data.error?.code === 'DOCUMENT_READ_FAILED' && data.error.context.reason === 'ENOENT'
-      ? t('noteDocumentMissing') : problem ? problemText(language.value, problem).message
-      : t(data.result?.renderMode === 'comparison' ? 'noteBlockMissing' : 'noteDocumentInvalid');
+    const invalidBlocks = data.result && data.result.renderMode !== 'comparison';
+    const problem = data.error ?? (invalidBlocks
+      ? data.result.sourceError ?? data.result.diagnostics.find(item => item.severity === 'error') : undefined);
+    let reason = t(invalidBlocks ? 'noteDocumentInvalid' : 'noteBlockMissing');
+    if (data.error?.code === 'DOCUMENT_READ_FAILED' && data.error.context.reason === 'ENOENT') reason = t('noteDocumentMissing');
+    else if (data.error) reason = problemText(language.value, data.error).message;
+    else if (problem) reason += ' ' + problemText(language.value, problem).message;
     const message = `${reason} ${path}${block ? ' · ' + block : ''}`;
     if (origin === 'reader' || origin === 'canvas') {
       navigationProblem(message + (problem ? ' ' + problemText(language.value, problem).nextStep : ''));
@@ -726,7 +732,7 @@ async function openDocument(path: string, block = '', bookmark = '', mark = ''):
     readingLoading.value = false;
     return message;
   }
-  const duplicate = origin === 'reader' && selected.value === path && activeBlock.value === block;
+  const duplicate = origin === 'reader' && selected.value === path && (!block || activeBlock.value === block);
   rememberPosition();
   restoring = false;
   activatePage('reader');

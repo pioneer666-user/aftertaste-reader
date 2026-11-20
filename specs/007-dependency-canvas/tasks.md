@@ -128,7 +128,7 @@ description: "文件依赖图与布局保存实施清单"
 
 ## Phase 14: D028 Polish & Cross-Cutting Concerns
 
-- [ ] T044 沿 `specs/007-dependency-canvas/quickstart.md` 串行核 SC-010、012、017—018 及 009 SC-005，联验 006 的导航与回访。核 `docs/usage/file-reader.md` 的实际入口，证据放 `.local/D028/`。
+- [x] T044 沿 `specs/007-dependency-canvas/quickstart.md` 串行核 SC-010、012、017—018 及 009 SC-005，联验 006 的导航与回访。核 `docs/usage/file-reader.md` 的实际入口，证据放 `.local/D028/`。
 - [ ] T045 固定候选与输入，请独立审查者亲手验证历史、文件与库详情、闭环及小地图位置。原文归 `docs/work/2026/11/D028-reader-history-canvas-tools/review.md`（SC-017—018、006 SC-013—015、009 SC-005）。
 - [ ] T046 独审通过后在原共用项目用固定受审构建换版 4341，核原资料及个人布局，并交 `docs/work/2026/11/D028-reader-history-canvas-tools/handoff.md`。
 

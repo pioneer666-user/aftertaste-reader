@@ -172,6 +172,10 @@ async function restorePosition(position: CanvasPosition, isCurrent = () => true)
   const before = reading.value;
   const beforeRevision = revision;
   const beforeLayout = layout.value;
+  const beforeSelection = selected.value;
+  const beforeDetails = detailsOpen.value;
+  const beforeGroupEditor = groupEditor.value;
+  const beforeViewport = { ...viewport.value };
   let latest: CanvasReading | LoopCanvasReading | undefined;
   try {
     latest = await request<CanvasReading | LoopCanvasReading>(readRoute);
@@ -195,17 +199,20 @@ async function restorePosition(position: CanvasPosition, isCurrent = () => true)
     if (!current()) return false;
     readProblem.value = failed(error);
   }
-  const available = !position.selected || (!!latest && readingIds(latest).includes(position.selected) && ids.value.includes(position.selected));
-  selected.value = available && position.selected ? position.selected : loop.value?.loop.entry ?? '';
-  detailsOpen.value = available && position.detailsOpen;
-  groupEditor.value = false;
+  const changedSelection = selected.value !== beforeSelection || detailsOpen.value !== beforeDetails;
+  const target = changedSelection ? selected.value : position.selected;
+  const available = !target || (ids.value.includes(target) && (!latest || readingIds(latest).includes(target)));
+  selected.value = available && target ? target : loop.value?.loop.entry ?? '';
+  detailsOpen.value = available && (changedSelection ? detailsOpen.value : position.detailsOpen);
+  if (groupEditor.value === beforeGroupEditor) groupEditor.value = false;
   await nextTick();
   if (!current()) return false;
   // Vue Flow's programmatic transform has no user move-end event; only gestures and dock tools save.
   const targetViewport = (available ? position.viewport : undefined) ?? layout.value?.viewport;
-  if (targetViewport) await setViewport(targetViewport);
+  if (targetViewport && viewport.value.x === beforeViewport.x && viewport.value.y === beforeViewport.y &&
+      viewport.value.zoom === beforeViewport.zoom) await setViewport(targetViewport);
   if (!current()) return false;
-  if (inspector.value) inspector.value.scrollTop = available ? position.detailScroll : 0;
+  if (inspector.value && !changedSelection) inspector.value.scrollTop = available ? position.detailScroll : 0;
   return !!latest && available;
 }
 

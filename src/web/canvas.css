@@ -22,34 +22,47 @@
   }
 }
 .canvas-rail {
-  position: absolute; z-index: 4; inset: 12px auto auto 12px;
-  display: grid; gap: 2px; padding: 4px; background: #fcfdfa;
-  border: 1px solid #bdcbc0; border-radius: 10px;
-  box-shadow: 0 2px 7px #29453212;
+  --rail-button: 38px;
+  --rail-half-height: calc(2 * var(--rail-button) + 8px);
+  --rail-dock-clearance: 62px;
+  --rail-label-visibility: hidden;
+  position: absolute; z-index: 4; inset-inline-start: 12px;
+  top: min(50%, calc(100% - var(--rail-dock-clearance) - var(--rail-half-height)));
+  transform: translateY(-50%);
+  display: grid; gap: 2px; padding: 4px; background: #29493c;
+  border: 1px solid #29493c; border-radius: 24px;
+  box-shadow: 0 3px 8px #29453230;
+}
+.canvas-workspace:has(.dependency-minimap) > .canvas-rail { --rail-dock-clearance: 151px; }
+.canvas-rail:has(:focus-visible) { --rail-label-visibility: visible; }
+@media (hover: hover) {
+  .canvas-rail:hover { --rail-label-visibility: visible; }
 }
 .canvas-rail button, .canvas-rail summary {
-  position: relative; display: grid; place-items: center; width: 38px; height: 38px;
-  min-height: 0; padding: 0; border: 1px solid transparent; border-radius: 6px;
-  background: transparent; color: #405b4b; cursor: pointer;
+  position: relative; display: grid; place-items: center; width: var(--rail-button); height: var(--rail-button);
+  min-height: 0; padding: 0; border: 1px solid transparent; border-radius: 50%;
+  background: transparent; color: #f2f9f4; cursor: pointer;
 }
-.canvas-rail button:enabled:hover, .canvas-rail summary:hover, .canvas-tools[open] summary { background: #e7efe9; color: var(--accent); }
+.canvas-rail button:enabled:hover, .canvas-rail summary:hover, .canvas-tools[open] summary { background: #3b6854; }
+.canvas-rail :is(button, summary):focus-visible { outline: 2px solid #d5efdd; outline-offset: -3px; background: #3b6854; }
 .canvas-rail button:disabled { opacity: .46; cursor: default; }
 .canvas-rail summary::-webkit-details-marker { display: none; }
 .canvas-rail svg, .canvas-clear-detail svg {
   width: 19px; height: 19px; fill: none; stroke: currentColor;
   stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round;
 }
-.canvas-rail [data-tooltip]:is(:hover, :focus-visible)::after {
-  content: attr(data-tooltip); position: absolute; pointer-events: none;
-  inset-inline-start: calc(100% + 8px); top: 50%; transform: translateY(-50%);
-  padding: 5px 8px; border-radius: 5px; background: #29483a; color: #fff;
+.canvas-rail [data-tooltip]::after {
+  content: attr(data-tooltip); visibility: var(--rail-label-visibility); position: absolute; pointer-events: none;
+  inset-inline-start: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+  padding: 5px 2px; color: #254a3b; font-weight: 600;
+  text-shadow: 0 1px 2px #fcfdfa, 0 0 6px #fcfdfa;
   width: max-content; max-width: min(13rem, calc(100vw - 88px)); font-size: 13px; text-align: start;
 }
 .canvas-tools { position: relative; }
 .canvas-tools[open] summary::after { content: none; }
 .canvas-tools-menu {
-  position: absolute; inset-inline-start: calc(100% + 8px); bottom: 0;
-  width: min(18rem, calc(100vw - 88px)); padding: 10px 12px;
+  position: absolute; z-index: 1; inset-inline-start: calc(100% + 10px); bottom: 0;
+  width: min(18rem, calc(100vw - 88px)); max-height: min(16rem, 42dvh); overflow: auto; padding: 10px 12px;
   border: 1px solid var(--line); border-radius: 8px; background: #fcfdfa;
   box-shadow: 0 4px 12px #2945321a; font-size: 13px; line-height: 1.5;
 }
@@ -66,6 +79,9 @@
 .dependency-canvas .canvas-workspace { position: relative; flex: 1; grid-template-columns: minmax(0, 1fr); }
 .graph-area { position: relative; min-height: 400px; height: calc(100dvh - 220px); background: #f2f6f2; }
 .dependency-canvas .graph-area { height: auto; min-height: min(280px, 60dvh); }
+@media (max-height: 430px) {
+  .dependency-canvas .graph-area { min-height: 344px; }
+}
 .dependency-canvas .graph-area:focus-visible { outline-offset: -4px; }
 .graph-area .vue-flow { position: absolute; inset: 0; }
 .graph-area .vue-flow__edge-path { stroke: #486357; stroke-width: 2; }
@@ -205,7 +221,7 @@
   background: #2b8c6720;
   pointer-events: none;
 }
-.canvas-group-float { position: fixed; z-index: 5; }
+.selection-float.canvas-group-float { position: fixed; z-index: 5; }
 .canvas-selection-form {
   display: grid;
   gap: 8px;
@@ -250,8 +266,7 @@
   .canvas-workspace:has(.dependency-minimap) > .canvas-panel { --panel-bottom: 151px; }
 }
 @media (max-width: 480px) {
-  .canvas-rail { inset-inline-start: 8px; }
-  .canvas-rail button, .canvas-rail summary { width: 42px; height: 42px; }
+  .canvas-rail { --rail-button: 42px; inset-inline-start: 8px; }
   .canvas-panel { left: auto; right: 8px; transform: none; max-width: calc(100% - 72px); }
   .canvas-summary { gap: 6px; padding: 8px; }
   .canvas-summary-heading, .canvas-panel-compact .canvas-summary-heading { flex-basis: 100%; }

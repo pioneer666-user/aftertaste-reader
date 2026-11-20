@@ -202,7 +202,7 @@
 
 ## Phase 26 · D028 Polish & Cross-Cutting Concerns
 
-- [ ] T054 按 `specs/006-file-reader/quickstart.md` 串行验证，核受影响的旧阅读回访。同步 `docs/usage/file-reader.md`，并把证据交 007 的联合独审（SC-013—015）。
+- [x] T054 按 `specs/006-file-reader/quickstart.md` 串行验证，核受影响的旧阅读回访。同步 `docs/usage/file-reader.md`，并把证据交 007 的联合独审（SC-013—015）。
 
 ## Dependencies & Execution Order
 

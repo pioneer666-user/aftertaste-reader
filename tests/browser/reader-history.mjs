@@ -118,6 +118,18 @@ async function checkCanvas() {
   await toggle().click();
   await tools().waitFor();
   assert.equal(await toggle().getAttribute('aria-expanded'), 'true');
+  const rail = await tools().boundingBox();
+  assert.ok(Math.abs((rail.y + rail.height / 2) - (initial.pane.y + initial.pane.height / 2)) < 2);
+  const labelStates = () => tools().locator('[data-tooltip]').evaluateAll(items =>
+    items.map(item => getComputedStyle(item, '::after').visibility));
+  await page.mouse.move(8, 70);
+  assert.deepEqual(await labelStates(), Array(4).fill('hidden'));
+  await shot('desktop-rail-icons');
+  await tools().hover();
+  assert.deepEqual(await labelStates(), Array(4).fill('visible'));
+  await shot('desktop-rail-labels');
+  await page.mouse.move(8, 70);
+  assert.deepEqual(await labelStates(), Array(4).fill('hidden'));
   await button(tools(), '重新布局').waitFor();
   await button(tools(), '刷新图和布局').waitFor();
   await tools().locator('summary').click();
@@ -466,6 +478,9 @@ async function checkNarrow() {
   await button(summary(), '关闭详情').click();
   await button(dock(), '小地图').click();
   await graph().locator('.dependency-minimap').waitFor();
+  const rail = await tools().boundingBox();
+  const minimap = await dock().boundingBox();
+  assert.ok(rail.y + rail.height < minimap.y, 'left rail clears the open minimap');
   await saveLayout(() => button(dock(), '放大画布').click());
   await button(tools(), '编辑分组').click();
   await graph().locator('#canvas-group-picker').waitFor();

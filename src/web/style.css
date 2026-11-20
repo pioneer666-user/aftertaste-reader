@@ -320,6 +320,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
   .document-block .source-pane.is-sticky { position: static; }
 }
 @media (max-width: 850px) {
+  .app-page-menu:not([popover]) { display: none; }
   .sidebar.sidebar-overlay { width: min(100%, 360px); }
   .file-list button, .outline-list button { min-height: 44px; }
   .reader-navigation-toggle { flex-basis: 36px; min-height: 36px; }

@@ -336,6 +336,9 @@ try {
     y: Math.ceil((await bounds(library(page))).y + (await bounds(library(page))).height + 10) };
   const nearEdge = { x: Math.floor(graph.x + graph.width - 2), y: Math.ceil(graph.y + 8) };
   assert.ok(page.viewportSize().width - nearEdge.x <= 24);
+  const railToggle = header(page).getByRole('button', { name: '收起依赖图工具', exact: true });
+  await railToggle.click();
+  await dep(page).locator('#dependency-tools').waitFor({ state: 'hidden' });
   await drag(page, reverseStart, nearEdge, { selecting: true });
   await assertSelected(page, [rules, service, api, legendId]);
   const edgeButton = await bounds(groupAction(page));
@@ -372,6 +375,7 @@ try {
   assert.deepEqual(retried.layout.viewport, panned.layout.viewport);
   report.checks.push('实际平移缩放后的逆向边缘命中、Ctrl+G、旧组移空、真实失败时保留草稿及可重试');
 
+  await button(header(page), '展开依赖图工具').click();
   await button(dep(page), '编辑分组').press('Enter');
   const picker = dep(page).locator('#canvas-group-picker');
   await picker.press('End');
