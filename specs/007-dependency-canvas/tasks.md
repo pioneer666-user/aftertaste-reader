@@ -113,8 +113,8 @@ description: "文件依赖图与布局保存实施清单"
 ## Phase 12: D027 Polish & Cross-Cutting Concerns
 
 - [x] T038 按 `specs/007-dependency-canvas/quickstart.md` 串行验证 SC-014—016 和受影响的 `tests/browser/` 图与闭环用例。检查 `docs/usage/file-reader.md` 的实际操作，记录同输入画面、帧序列、浏览器及实际保存结果至 `.local/D027/`。
-- [ ] T039 固定候选，提交独审亲自验证 79% 读图、Ctrl 提前松开、小地图定位及保存延迟／失败／重试。将独审原文归档于 `docs/work/2026/11/D027-dependency-canvas-polish/review.md`（SC-014—016）。
-- [ ] T040 独审通过后核服务归属，切换 4341 到固定构建及原共用项目，核个人资料与排布，交 `docs/work/2026/11/D027-dependency-canvas-polish/handoff.md`（SC-014—016）。
+- [x] T039 固定候选，提交独审亲自验证 79% 读图、Ctrl 提前松开、小地图定位及保存延迟／失败／重试。将独审原文归档于 `docs/work/2026/11/D027-dependency-canvas-polish/review.md`（SC-014—016）。
+- [x] T040 独审通过后核服务归属，切换 4341 到固定构建及原共用项目，核个人资料与排布，交 `docs/work/2026/11/D027-dependency-canvas-polish/handoff.md`（SC-014—016）。
 
 ## Dependencies & Execution Order
 
