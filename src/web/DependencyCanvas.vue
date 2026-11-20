@@ -360,6 +360,14 @@ function applySelection() {
   const name = selectionName.value.trim();
   if (!layout.value || !editable.value || !idle.value || !boxMembers.value.length || !name) return;
   commitGroup({ id: crypto.randomUUID(), name, members: [...boxMembers.value] });
+  if (groupEditor.value) {
+    if (groupId.value && !layout.value.groups.some(group => group.id === groupId.value)) {
+      groupEditor.value = false;
+      editGroup('');
+    } else {
+      members.value = members.value.filter(member => !picked.value.has(member));
+    }
+  }
   clearSelection(true);
 }
 

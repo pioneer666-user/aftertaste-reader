@@ -294,12 +294,24 @@ try {
   assert.equal(await transform(dep(page)), originalView);
   assert.equal(puts, 0);
   assert.deepEqual(await readFile(fixture.layout), passiveDisk);
+  await frame(page, '订单处理').locator('.group-handle').click();
+  const oldEditor = dep(page).locator('.canvas-groups');
+  const formerMember = oldEditor.getByRole('checkbox', { name: rules, exact: true });
+  const oldGroupName = oldEditor.getByLabel('组名', { exact: true });
+  assert.equal(await formerMember.isChecked(), true);
+  await oldGroupName.fill('订单处理（改名）');
   await firstSelection();
   await groupAction(page).click();
   await groupName(page).fill('鼠标创建');
   const grouped = await dependencyWrite(page, () => groupName(page).press('Enter'));
   assert.deepEqual(grouped.layout.groups.find(group => group.name === '订单处理').members, [service]);
   assert.deepEqual([...grouped.layout.groups.find(group => group.name === '鼠标创建').members].sort(), [rules, legendId].sort());
+  assert.equal(await formerMember.isChecked(), false);
+  assert.equal(await oldGroupName.inputValue(), '订单处理（改名）');
+  const renamed = await dependencyWrite(page, () => button(oldEditor, '应用分组').click());
+  assert.deepEqual(renamed.layout.groups.map(group => [group.name, group.members]),
+    grouped.layout.groups.map(group => [group.name === '订单处理' ? '订单处理（改名）' : group.name, group.members]));
+  await button(dep(page), '关闭分组').click();
   assert.ok(contains(await bounds(frame(page, '鼠标创建')), auditBox), 'unselected file lies fully inside the new frame');
   const handle = await bounds(frame(page, '鼠标创建').locator('.group-handle'));
   const handleCenter = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 };
@@ -310,7 +322,7 @@ try {
   assert.ok(delta(rules).every((value, index) => Math.abs(value - delta(legendId)[index]) < 0.015));
   assert.deepEqual(delta(audit), [0, 0]);
   assert.deepEqual(delta(service), [0, 0]);
-  report.checks.push('组框内起拖、部分命中排除、浮钮就近且 Tab 可达、输入时快捷键不接管、取消/空选/切页不写、仅显式成员随组移动');
+  report.checks.push('组框内起拖、部分命中排除、浮钮就近且 Tab 可达、输入时快捷键不接管、取消/空选/切页不写、旧组编辑同步、仅显式成员随组移动');
 
   await page.setViewportSize({ width: 920, height: 800 });
   const zoomed = await dependencyWrite(page, () => button(dep(page), '缩小画布').click());
