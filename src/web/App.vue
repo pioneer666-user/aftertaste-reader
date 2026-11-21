@@ -716,6 +716,14 @@ function closeCatalog() {
   navigationButton.value?.focus({ preventScroll: true });
 }
 
+function leaveCatalogOnTab(event: KeyboardEvent) {
+  if (event.shiftKey) return;
+  const buttons = catalog.value?.querySelectorAll('button:enabled');
+  if (event.target !== (buttons?.item(buttons.length - 1) ?? catalog.value)) return;
+  event.preventDefault();
+  navigationButton.value?.focus({ preventScroll: true });
+}
+
 function catalogEscape(event: KeyboardEvent) {
   if (event.key !== 'Escape' || view.value !== 'loops' || !catalogOpen.value || document.querySelector(':popover-open')) return;
   event.preventDefault();
@@ -980,7 +988,7 @@ onUnmounted(() => {
       </div>
     </div>
     <aside ref="catalog" id="loop-navigation" class="loop-catalog" :class="{ open: catalogOpen }" :inert="!catalogOpen"
-      :aria-label="t('loopCatalog')" tabindex="-1" @keydown.stop @keyup.stop @wheel.stop>
+      :aria-label="t('loopCatalog')" tabindex="-1" @keydown.stop @keydown.tab="leaveCatalogOnTab" @keyup.stop @wheel.stop>
       <header>
         <h2>{{ t('loopCatalog') }} <small v-if="loopsLoaded">{{ loopEntries.length }}</small></h2>
         <button type="button" :aria-label="t('loopRefresh')" :title="t('loopRefresh')" :disabled="loopsLoading" @click="refreshLoopList">
@@ -1006,7 +1014,7 @@ onUnmounted(() => {
       </div>
     </aside>
     <DependencyCanvas v-for="id in openedLoops" v-show="selectedLoop === id" :key="id" ref="loop-canvases" :loop-id="id"
-      :active="view === 'loops' && selectedLoop === id" :language="language" />
+      :tools-covered="catalogOpen" :active="view === 'loops' && selectedLoop === id" :language="language" />
   </div>
   <div v-show="view === 'reader'" class="workspace"
     :class="{ 'workspace-active': view === 'reader', 'with-navigation': !narrow && desktopOpen, 'file-switch-wait': fileSwitch?.placeholder }">

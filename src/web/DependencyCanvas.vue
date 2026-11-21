@@ -25,7 +25,7 @@ import type { Language } from './i18n.js';
 import type { CanvasPosition } from './canvas-position.js';
 
 const props = withDefaults(defineProps<{
-  language: Language; active: boolean; loopId?: string; toolsOpen?: boolean; openingDocument?: string;
+  language: Language; active: boolean; loopId?: string; toolsOpen?: boolean; toolsCovered?: boolean; openingDocument?: string;
 }>(), {
   toolsOpen: true,
 });
@@ -673,13 +673,13 @@ function discardDraft() {
 
 onMounted(() => {
   window.addEventListener('keydown', trackControl);
-  window.addEventListener('keyup', trackControl);
+  window.addEventListener('keyup', trackControl, true);
   window.addEventListener('blur', releaseControl);
   void load();
 });
 onUnmounted(() => {
   window.removeEventListener('keydown', trackControl);
-  window.removeEventListener('keyup', trackControl);
+  window.removeEventListener('keyup', trackControl, true);
   window.removeEventListener('blur', releaseControl);
 });
 </script>
@@ -712,7 +712,7 @@ onUnmounted(() => {
 
     <div v-if="!loopId || reading" v-show="!loopId || hasNodes" class="canvas-workspace">
       <Transition name="canvas-rail">
-        <div v-show="toolsOpen" ref="toolsRail" :inert="!toolsOpen" :id="loopId ? flowId + '-tools' : 'dependency-tools'" class="canvas-rail" role="group"
+        <div v-show="toolsOpen" ref="toolsRail" :inert="!toolsOpen || toolsCovered" :id="loopId ? flowId + '-tools' : 'dependency-tools'" class="canvas-rail" role="group"
           :aria-label="t('canvasTools')" :data-labels-dismissed="labelsDismissed || undefined"
           @pointerenter="labelsDismissed = false" @focusin="labelsDismissed = false">
           <button type="button" :aria-label="t('canvasRearrange')"

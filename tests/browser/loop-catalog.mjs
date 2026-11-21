@@ -73,6 +73,26 @@ try {
   await button('闭环阅读').click();
 
   const area = loop.locator('.graph-area');
+  const priorWrites = report.writes.length;
+  await page.keyboard.down('Control');
+  assert.equal(await area.getAttribute('data-tool'), 'select');
+  await openCatalog(page);
+  const lastEntry = drawer.locator('[data-loop]').last();
+  await lastEntry.focus();
+  await page.keyboard.up('Control');
+  await page.keyboard.press('Escape');
+  await waitClosed();
+  assert.equal(await area.getAttribute('data-tool'), 'hand');
+  await openCatalog(page);
+  await lastEntry.press('Tab');
+  assert.ok(await toggle.evaluate(el => {
+    const rect = el.getBoundingClientRect();
+    return el === document.activeElement && el.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+  }));
+  await page.keyboard.press('Enter');
+  await waitClosed();
+  assert.equal(report.writes.length, priorWrites);
+
   const pan = await area.boundingBox();
   await page.mouse.move(pan.x + pan.width * .55, pan.y + pan.height * .65);
   await page.mouse.down();
