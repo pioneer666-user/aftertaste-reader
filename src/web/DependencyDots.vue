@@ -56,7 +56,7 @@ function leave() {
 function track(event: PointerEvent) {
   const target = event.target;
   if (!props.active || props.quiet || reduced.matches || event.buttons || event.pointerType === 'touch' ||
-      !(target instanceof Element) || !target.closest('.vue-flow') ||
+      !(target instanceof Element) || !target.closest('.vue-flow, .loop-field') ||
       target.closest('.vue-flow__node:not(.vue-flow__node-canvasGroup), .group-handle, .vue-flow__edge')) {
     leave();
     return;

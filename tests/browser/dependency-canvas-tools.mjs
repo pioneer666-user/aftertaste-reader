@@ -1,3 +1,4 @@
+import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { release } from 'node:os';
 import path from 'node:path';
@@ -210,7 +211,7 @@ try {
 
   await page.setViewportSize(desktop);
   await page.locator('header [data-page="loops"]:visible').click();
-  await page.getByLabel('已保存闭环', { exact: true }).selectOption(orderId);
+  await chooseLoop(page, orderId);
   const loop = page.locator('#loop-canvas-' + orderId + '-reading');
   await loop.locator('[data-step="check"]').click();
   await loop.locator('[data-reading-step="check"]').waitFor();

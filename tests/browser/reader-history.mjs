@@ -1,3 +1,4 @@
+import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { appendFile, copyFile, cp, mkdir, mkdtemp, readFile, rename, writeFile } from 'node:fs/promises';
 import { release } from 'node:os';
@@ -650,12 +651,12 @@ async function checkDelayedHistory() {
 async function checkLoops() {
   const dependencyView = await transform(graph());
   await open('loops');
-  const picker = page.getByLabel('已保存闭环', { exact: true });
-  await picker.selectOption(orderId);
+  await chooseLoop(page, orderId);
   const loop = page.locator('#loop-canvas-' + orderId + '-reading');
   const panel = loop.locator('.canvas-inspector');
   const start = panel.locator('[data-reading-step="start"]');
   const check = panel.locator('[data-reading-step="check"]');
+  await loop.locator('.loop-overview .loop-entry').click();
   await start.waitFor();
   const graphBox = await loop.locator('.graph-area').boundingBox();
   assert.ok((await panel.boundingBox()).x >= graphBox.x + graphBox.width - 1);
@@ -672,7 +673,7 @@ async function checkLoops() {
   assert.equal(await transform(graph()), dependencyView);
   await back();
   await check.waitFor();
-  assert.equal(await picker.inputValue(), orderId);
+  assert.equal(await page.locator('#loop-navigation [aria-current=true]').getAttribute('data-loop'), orderId);
   assert.equal(await transform(loop), loopView);
   await page.locator('#loop-source-' + orderId).waitFor({ state: 'hidden' });
   await page.setViewportSize({ width: 390, height: 760 });
@@ -709,7 +710,7 @@ async function checkHeader(width, language) {
       assert.ok((await toggle().getAttribute('title'))?.trim(), 'disabled switch gives its reason');
     } else if (key === 'loops') {
       assert.equal(await toggle().isEnabled(), true);
-      assert.equal(await toggle().getAttribute('aria-controls'), 'loop-canvas-' + orderId + '-tools');
+      assert.equal(await toggle().getAttribute('aria-controls'), 'loop-navigation');
     }
     if (compact) {
       await nav.focus();

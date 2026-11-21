@@ -4,10 +4,12 @@
 
 | 请求 | 正常响应（含 `ok: true`） |
 | --- | --- |
-| `GET /api/loops` | `loops: [{ id, title }]` 和 `problems`。无成品返回空列表；坏成果不阻断正常条目 |
+| `GET /api/loops` | `loops: [{ id, title, goal, steps, edges, fileCount }]` 和 `problems`。无成品返回空列表；坏成果不阻断正常条目 |
 | `GET /api/loops/:id` | `result`（闭环和按步骤标记的运行时源码），`graphVersion`、`layout`、`revision`、`reconciled`、`layoutProblem` |
 | `PUT /api/loops/:id/layout` | JSON 请求体沿 007 保存结构，返回 `revision`。向其他 ID 提交原图版本会失败 |
 
 ID 按 D015 校验。服务启动时固定项目根。子目录和文件经过路径检查。缺失或无效成品禁止该图写入；一个源码对象失读时仍可阅读与保存布局。同图旧修订冲突返回 409，原文件保留；允许精确重试已提交的修订。依赖图继续使用原接口和磁盘路径。
 
 D031 的讲解直读、源码浮层和画布反馈使用现有 `GET /api/loops/:id` 的 `result.loop` 与按步骤标记的 `result.sources`，本机请求及响应契约不变。预览、固定、关闭、选择和文本滚动不调用 `PUT`，不新增布局字段。
+
+目录按推荐顺序给出步骤 ID 数组 `steps`；`edges` 只返回 `{from,to}`。步数取数组长度，`fileCount` 按步骤引用的源码路径去重。列表不读取个人布局或 Git 源码。

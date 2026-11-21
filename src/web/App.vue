@@ -16,6 +16,8 @@ import ReaderSidebarDivider from './ReaderSidebarDivider.vue';
 import ProjectNotes from './ProjectNotes.vue';
 import ProjectMarks from './ProjectMarks.vue';
 import DependencyCanvas from './DependencyCanvas.vue';
+import DependencyDots from './DependencyDots.vue';
+import LoopThumbnail from './LoopThumbnail.vue';
 import { failed, request } from './reader-api.js';
 import { problemText, readLanguage, saveLanguage, translate } from './i18n.js';
 import type { Language } from './i18n.js';
@@ -107,7 +109,8 @@ watch(fileSwitchFrame, (frame, _, onCleanup) => {
   resize.observe(frame);
   onCleanup(() => resize.disconnect());
 }, { flush: 'post' });
-const mainId = computed(() => ({ reader: 'reading', canvas: 'canvas-reading', loops: 'loop-navigation',
+const mainId = computed(() => ({ reader: 'reading', canvas: 'canvas-reading',
+  loops: selectedLoop.value ? 'loop-canvas-' + selectedLoop.value + '-reading' : catalogOpen.value ? 'loop-navigation' : 'loop-workspace',
   bookmarks: 'bookmarks', marks: 'marks', notes: 'notes' })[view.value]);
 const pageMenu = ref<HTMLElement>();
 const pageMenuButton = ref<HTMLButtonElement>();
@@ -142,18 +145,14 @@ let controller: AbortController | undefined;
 let handledScrollTop = 0;
 let peekTimer: number | undefined;
 
-const loopToolsOpen = ref<Record<string, boolean>>({});
-const loopToolsVisible = (id: string) => loopToolsOpen.value[id] ?? true;
+const catalogOpen = ref(true);
+const catalog = ref<HTMLElement>();
 const auxiliary = computed(() => {
   if (view.value === 'reader') return { id: 'reader-navigation', open: navigationOpen.value, action: navigationAction.value };
-  if (view.value === 'canvas' || (view.value === 'loops' && selectedLoop.value)) {
-    const open = view.value === 'loops' ? loopToolsVisible(selectedLoop.value) : canvasToolsOpen.value;
-    return {
-      id: view.value === 'loops' ? 'loop-canvas-' + selectedLoop.value + '-tools' : 'dependency-tools', open,
-      action: view.value === 'loops'
-        ? open ? 'closeLoopTools' : 'openLoopTools'
-        : open ? 'closeCanvasTools' : 'openCanvasTools' };
-  }
+  if (view.value === 'loops') return { id: 'loop-navigation', open: catalogOpen.value,
+    action: catalogOpen.value ? 'closeLoopCatalog' : 'openLoopCatalog' };
+  if (view.value === 'canvas') return { id: 'dependency-tools', open: canvasToolsOpen.value,
+    action: canvasToolsOpen.value ? 'closeCanvasTools' : 'openCanvasTools' };
   if (view.value === 'notes' && notes.value?.canHideList) return { id: 'note-navigation', open: notesListOpen.value,
     action: notesListOpen.value ? 'closeNoteList' : 'openNoteList' };
   return { id: undefined, open: undefined, action: 'noAuxiliaryPanel' };
@@ -162,7 +161,10 @@ const auxiliary = computed(() => {
 function toggleAuxiliary() {
   if (view.value === 'reader') void setNavigation(desktopPeek.value || !navigationOpen.value);
   if (view.value === 'canvas') canvasToolsOpen.value = !canvasToolsOpen.value;
-  if (view.value === 'loops' && selectedLoop.value) loopToolsOpen.value[selectedLoop.value] = !loopToolsVisible(selectedLoop.value);
+  if (view.value === 'loops') {
+    catalogOpen.value = !catalogOpen.value;
+    if (catalogOpen.value) nextTick(() => catalog.value?.focus({ preventScroll: true }));
+  }
   if (view.value === 'notes') notesListOpen.value = !notesListOpen.value;
 }
 
@@ -372,6 +374,13 @@ async function readFromTree(path: string, source: string) {
 }
 
 async function skipToReading(event: MouseEvent) {
+  if (view.value === 'loops') {
+    event.preventDefault();
+    catalogOpen.value = !selectedLoop.value;
+    await nextTick();
+    document.getElementById(mainId.value)?.focus({ preventScroll: true });
+    return;
+  }
   if (view.value !== 'reader' || (!narrowOpen.value && !desktopPeek.value)) return;
   event.preventDefault();
   narrowOpen.value = false;
@@ -699,14 +708,28 @@ async function refreshLoopList() {
 function showLoop(id: string) {
   if (id && !openedLoops.value.includes(id)) openedLoops.value.push(id);
   selectedLoop.value = id;
+  if (!id) catalogOpen.value = true;
 }
 
-function selectLoop(event: Event) {
+function closeCatalog() {
+  catalogOpen.value = false;
+  navigationButton.value?.focus({ preventScroll: true });
+}
+
+function catalogEscape(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || view.value !== 'loops' || !catalogOpen.value || document.querySelector(':popover-open')) return;
+  event.preventDefault();
+  event.stopPropagation();
+  closeCatalog();
+}
+
+function selectLoop(id: string) {
   if (restoring) {
     startNavigation();
     restoring = false;
   }
-  showLoop((event.target as HTMLSelectElement).value);
+  showLoop(id);
+  closeCatalog();
 }
 
 type DocumentData = { result: ReadingDocument; error?: never } | { result?: never; error: ReaderProblem };
@@ -849,6 +872,7 @@ async function changeLanguage(event: Event) {
 
 onMounted(() => {
   navigationMedia.addEventListener('change', resizeNavigation);
+  document.addEventListener('keydown', catalogEscape, true);
   document.addEventListener('keydown', dismissNavigationPreview);
   document.addEventListener('pointerdown', dismissProjectInfoOutside);
   document.documentElement.lang = language.value;
@@ -859,6 +883,7 @@ onMounted(() => {
 });
 onUnmounted(() => {
   navigationMedia.removeEventListener('change', resizeNavigation);
+  document.removeEventListener('keydown', catalogEscape, true);
   document.removeEventListener('keydown', dismissNavigationPreview);
   document.removeEventListener('pointerdown', dismissProjectInfoOutside);
   closeNavigationPreview();
@@ -946,26 +971,42 @@ onUnmounted(() => {
     :visit="visitNoteBlock" @clear-quote="noteQuote = undefined" />
   <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" ref="canvas" :active="view === 'canvas'"
     :tools-open="canvasToolsOpen" :opening-document="openingDocument" :language="language" @read="openDocument" />
-  <div v-show="view === 'loops'">
-    <section id="loop-navigation" class="loop-navigation" :aria-label="t('loops')" tabindex="-1">
-      <template v-if="loopEntries.length">
-        <label for="saved-loop">{{ t('loopChoose') }}</label>
-        <select id="saved-loop" :value="selectedLoop" @change="selectLoop">
-          <option value="">{{ t('loopSelect') }}</option>
-          <option v-for="loop in loopEntries" :key="loop.id" :value="loop.id">{{ loop.title }}</option>
-        </select>
-      </template>
-      <button type="button" :disabled="loopsLoading" @click="refreshLoopList">{{ t('loopRefresh') }}</button>
-      <p v-if="loopsLoading" role="status">{{ t('loading') }}</p>
-      <p v-else-if="loopsLoaded && !loopEntries.length && !loopListError">{{ t('loopEmpty') }}</p>
-      <section v-for="problem in (loopListError ? [loopListError, ...loopProblems] : loopProblems)" :key="problem.context.loopId ?? problem.code"
-        class="canvas-problem" role="alert">
-        <p>{{ problemText(language, problem).message }} {{ problemText(language, problem).nextStep }}</p>
-        <code>{{ problem.code }} {{ problem.context.loopId }} {{ problem.context.field }} {{ problem.context.reason }}</code>
-      </section>
-    </section>
+  <div id="loop-workspace" v-show="view === 'loops'" class="loop-workspace" :class="{ 'loops-active': view === 'loops' }" tabindex="-1">
+    <div v-if="!selectedLoop" class="loop-field">
+      <DependencyDots :active="view === 'loops'" :quiet="false" :groups="[]" :viewport="{ x: 0, y: 0, zoom: 1 }" />
+      <div class="loop-welcome" :class="{ 'beside-catalog': catalogOpen }">
+        <strong>{{ t('brand') }}</strong>
+        <p v-if="loopEntries.length || !catalogOpen">{{ t(catalogOpen ? 'loopStart' : 'loopStartClosed') }}</p>
+      </div>
+    </div>
+    <aside ref="catalog" id="loop-navigation" class="loop-catalog" :class="{ open: catalogOpen }" :inert="!catalogOpen"
+      :aria-label="t('loopCatalog')" tabindex="-1" @keydown.stop @keyup.stop @wheel.stop>
+      <header>
+        <h2>{{ t('loopCatalog') }} <small v-if="loopsLoaded">{{ loopEntries.length }}</small></h2>
+        <button type="button" :aria-label="t('loopRefresh')" :title="t('loopRefresh')" :disabled="loopsLoading" @click="refreshLoopList">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 5v5h-5M20 10a8 8 0 1 0-.8 6"/></svg>
+        </button>
+      </header>
+      <div class="loop-catalog-list">
+        <p v-if="loopsLoading" role="status">{{ t('loading') }}</p>
+        <p v-else-if="loopsLoaded && !loopEntries.length && !loopListError && !loopProblems.length">{{ t('loopEmpty') }}</p>
+        <section v-for="problem in (loopListError ? [loopListError, ...loopProblems] : loopProblems)" :key="problem.context.loopId ?? problem.code"
+          class="canvas-problem" role="alert">
+          <p>{{ problemText(language, problem).message }} {{ problemText(language, problem).nextStep }}</p>
+          <code>{{ problem.code }} {{ problem.context.loopId }} {{ problem.context.field }} {{ problem.context.reason }}</code>
+        </section>
+        <button v-for="entry in loopEntries" :key="entry.id" type="button" class="loop-catalog-item"
+          :data-loop="entry.id" :aria-current="entry.id === selectedLoop || undefined" @click="selectLoop(entry.id)">
+          <LoopThumbnail :entry="entry" />
+          <span class="loop-catalog-copy">
+            <strong>{{ entry.title }}</strong><span class="loop-catalog-goal">{{ entry.goal }}</span>
+            <small>{{ t('loopCounts').replace('{steps}', String(entry.steps.length)).replace('{files}', String(entry.fileCount)) }}</small>
+          </span>
+        </button>
+      </div>
+    </aside>
     <DependencyCanvas v-for="id in openedLoops" v-show="selectedLoop === id" :key="id" ref="loop-canvases" :loop-id="id"
-      :active="view === 'loops' && selectedLoop === id" :tools-open="loopToolsOpen[id] ?? true" :language="language" />
+      :active="view === 'loops' && selectedLoop === id" :language="language" />
   </div>
   <div v-show="view === 'reader'" class="workspace"
     :class="{ 'workspace-active': view === 'reader', 'with-navigation': !narrow && desktopOpen, 'file-switch-wait': fileSwitch?.placeholder }">

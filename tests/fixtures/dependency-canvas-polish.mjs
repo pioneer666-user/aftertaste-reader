@@ -7,11 +7,11 @@ import { createLoopReaderProject } from './loop-reader.mjs';
 
 export async function preparePolishProject(suite) {
   const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
-  const root = path.join(repository, '.local/D027');
+  const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D027');
   await mkdir(root, { recursive: true });
   const run = await mkdtemp(path.join(root, suite + '-' + channel + '-'));
   const project = path.join(run, 'project');
-  const source = process.env.AFTERTASTE_D027_INPUT ?? path.join(root, 'input');
+  const source = process.env.AFTERTASTE_D027_INPUT ?? path.join(repository, '.local/D027/input');
   const disk = path.join(project, 'docs/aftertaste/dependency-layout.json');
   if (existsSync(source) || process.env.AFTERTASTE_D027_INPUT) {
     await cp(source, project, { recursive: true, force: false, errorOnExist: true });

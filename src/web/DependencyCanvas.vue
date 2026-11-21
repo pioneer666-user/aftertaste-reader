@@ -311,7 +311,7 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
     dirty.value = !next.layoutProblem && (!!carry || next.reconciled);
     saveProblem.value = undefined;
     if (!ids.includes(selected.value)) {
-      selected.value = loop.value?.loop.entry ?? '';
+      selected.value = '';
       detailsOpen.value = false;
     }
     editGroup('');
@@ -688,13 +688,12 @@ onUnmounted(() => {
   <main :id="loopId ? flowId + '-reading' : 'canvas-reading'" class="canvas-page"
     :class="loopId ? 'loop-canvas' : { 'dependency-canvas': true, 'canvas-active': active }"
     :aria-label="loopId ? undefined : t('dependencyCanvas')" tabindex="-1" @pointerdown.capture="outsideTools">
-    <header v-if="loopId" class="canvas-header">
-      <h1>{{ loop?.loop.title ?? t('loops') }}</h1>
-      <button type="button" :disabled="!reading" @click="clearDetail">{{ t('loopOpenOverview') }}</button>
-    </header>
+    <div v-if="loopId && !reading" class="loop-field">
+      <DependencyDots :active="active" :quiet="false" :groups="[]" :viewport="{ x: 0, y: 0, zoom: 1 }" />
+    </div>
     <div class="canvas-notices">
       <p v-if="loading || readingExplanation" role="status" class="canvas-status">{{ t('loading') }}</p>
-      <p v-else-if="reading" v-show="loopId || (statusKey !== 'canvasSaved' && statusKey !== 'canvasDefault')" role="status"
+      <p v-else-if="reading" v-show="statusKey !== 'canvasSaved' && statusKey !== 'canvasDefault'" role="status"
         class="canvas-status" data-testid="layout-status" :data-state="statusKey">{{ t(statusKey) }}</p>
       <p v-if="!loopId && savedGroupName && statusKey === 'canvasSaved'" class="canvas-group-saved" role="status">
         {{ t('canvasGroupSaved').replace('{name}', savedGroupName) }}
@@ -835,6 +834,9 @@ onUnmounted(() => {
       </section>
       <component :is="loopId ? 'aside' : 'div'" v-if="loopId || hasSelection || groupEditor" ref="inspector"
         :class="loopId ? 'canvas-inspector' : ['canvas-panel', { 'canvas-group-panel': groupEditor, 'canvas-panel-compact': !groupEditor && !detailsOpen }]">
+        <button v-if="loop" type="button" class="loop-overview-link" :aria-label="t('loopOpenOverview')" @click="clearDetail">
+          <span>{{ loop.loop.title }}</span><span aria-hidden="true">↗</span>
+        </button>
         <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" :active="active" :legend-selected="!!selectedLegend" @select="selected = $event" />
         <template v-if="!loopId && hasSelection && !groupEditor">
           <section class="canvas-summary" :aria-label="t(selectedNode ? 'canvasSelected' : 'canvasSelectedLibrary')"

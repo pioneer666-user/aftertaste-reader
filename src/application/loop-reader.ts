@@ -7,7 +7,14 @@ import { checkLoopId } from './loops.js';
 import type { LoopService, LoopStore, ReadingLoop } from './loops.js';
 import type { ReaderProblem } from './file-reader.js';
 
-export interface LoopEntry { id: string; title: string }
+export interface LoopEntry {
+  id: string;
+  title: string;
+  goal: string;
+  steps: string[];
+  fileCount: number;
+  edges: { from: string; to: string }[];
+}
 
 export interface LoopCanvasReading extends LayoutReading {
   result: ReadingLoop;
@@ -27,7 +34,11 @@ export class LoopReaderService {
       try {
         const { raw } = await this.store.read(this.projectRoot, id);
         const loop = parseSavedLoop(raw, id);
-        loops.push({ id, title: loop.title });
+        loops.push({
+          id, title: loop.title, goal: loop.goal, steps: loop.reading_order,
+          fileCount: new Set(loop.nodes.map(node => node.path)).size,
+          edges: loop.edges.map(({ from, to }) => ({ from, to })),
+        });
       } catch (error) {
         // A directory without current/loop.json isn't a published result.
         if (!(error instanceof LoopError)) throw error;

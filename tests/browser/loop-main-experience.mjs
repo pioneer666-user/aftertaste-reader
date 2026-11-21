@@ -1,3 +1,4 @@
+import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { release } from 'node:os';
@@ -11,7 +12,7 @@ import { createLoopReaderProject, legendLoopId, loopLayout } from '../fixtures/l
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
-const root = path.join(repository, '.local/D031');
+const root = path.join(repository, '.local/' + (process.env.AFTERTASTE_TEST_TASK ?? 'D031'));
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'main-' + channel + '-'));
 const project = await createLoopReaderProject(path.join(run, 'project'));
@@ -44,7 +45,7 @@ try {
   page.on('request', request => { if (request.method() === 'PUT' && request.url().includes('/api/loops/')) writes.push(request.url()); });
   await page.goto(reader.url);
   await button(page, '闭环阅读').click();
-  await page.getByLabel('已保存闭环', { exact: true }).selectOption(orderId);
+  await chooseLoop(page, orderId);
   const loop = page.locator('#loop-canvas-' + orderId + '-reading');
   const panel = loop.locator('.canvas-inspector');
   const check = lesson(loop, 'check');
@@ -161,42 +162,28 @@ try {
   assert.equal(await loop.locator('.canvas-inspector').evaluate(element => element.scrollTop), 0);
   const toggle = page.locator('.reader-navigation-toggle');
   assert.equal(await toggle.isEnabled(), true);
-  const toolsId = await toggle.getAttribute('aria-controls');
-  assert.equal(toolsId, 'loop-canvas-' + orderId + '-tools');
-  assert.equal(await toggle.getAttribute('aria-label'), '收起闭环图工具');
-  const expanded = await toggle.getAttribute('aria-expanded');
-  const tools = page.locator('#' + toolsId);
+  assert.equal(await toggle.getAttribute('aria-controls'), 'loop-navigation');
+  assert.equal(await toggle.getAttribute('aria-label'), '展开闭环目录');
   await toggle.click();
-  await tools.waitFor({ state: expanded === 'true' ? 'hidden' : 'visible' });
-  await toggle.click();
-  await tools.waitFor({ state: expanded === 'true' ? 'visible' : 'hidden' });
+  await loop.locator('.canvas-rail').waitFor();
+  await page.keyboard.press('Escape');
   await loop.locator('.canvas-dock').waitFor();
   await loop.locator('.dependency-minimap').waitFor();
   assert.match(await loop.locator('.canvas-node-hint').innerText(), /点击节点查看详情，点击空白关闭/u);
   report.checks.push('blank restores overview; shared toolbar, minimap and canvas hint');
 
-  if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
-  await tools.waitFor({ state: 'hidden' });
-  await page.getByLabel('已保存闭环', { exact: true }).selectOption(legendLoopId);
+  await chooseLoop(page, legendLoopId);
   const pathLoop = page.locator('#loop-canvas-' + legendLoopId + '-reading');
-  await pathLoop.locator('[data-step="audit"]').waitFor();
-  assert.equal(await toggle.getAttribute('aria-controls'), 'loop-canvas-' + legendLoopId + '-tools');
-  assert.equal(await toggle.getAttribute('aria-expanded'), 'true', 'a newly opened loop keeps its own default');
-  await toggle.click();
-  await pathLoop.locator('.canvas-rail').waitFor({ state: 'hidden' });
-  await page.getByLabel('已保存闭环', { exact: true }).selectOption(orderId);
-  assert.equal(await toggle.getAttribute('aria-expanded'), 'false', 'order remains closed after hiding the path tools');
+  await pathLoop.locator('.canvas-rail').waitFor();
+  await chooseLoop(page, orderId);
   await button(page, '文件依赖图').click();
   assert.equal(await toggle.getAttribute('aria-controls'), 'dependency-tools');
-  assert.equal(await toggle.getAttribute('aria-expanded'), 'true', 'dependency tools do not inherit loop state');
   await toggle.click();
   await page.locator('#dependency-tools').waitFor({ state: 'hidden' });
   await button(page, '闭环阅读').click();
-  assert.equal(await toggle.getAttribute('aria-controls'), 'loop-canvas-' + orderId + '-tools');
-  assert.equal(await toggle.getAttribute('aria-expanded'), 'false', 'order remains closed after changing the dependency tools');
-  await toggle.click();
-  await tools.waitFor({ state: 'visible' });
-  report.checks.push('order, path and dependency graphs retain independent tool visibility');
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+  await loop.locator('.canvas-rail').waitFor();
+  report.checks.push('both loops retain tools independently of the dependency toggle');
 
   const readLift = target => target.evaluate(element => {
     const value = getComputedStyle(element).translate;
@@ -226,7 +213,7 @@ try {
   await page.getByLabel('界面语言', { exact: true }).selectOption('en');
   await loop.getByText('Click a node for details; click the canvas to close.', { exact: true }).waitFor();
   await page.getByLabel('Interface language', { exact: true }).selectOption('zh-CN');
-  await page.getByLabel('已保存闭环', { exact: true }).selectOption(legendLoopId);
+  await chooseLoop(page, legendLoopId);
   const paths = page.locator('#loop-canvas-' + legendLoopId + '-reading');
   const audit = lesson(paths, 'audit');
   await paths.locator('[data-step="audit"]').click();
@@ -237,7 +224,7 @@ try {
   assert.equal(await sourcePanel(page).count(), 0);
   report.checks.push('English controls with original content; pure lesson and legend have no stale source');
 
-  await page.getByLabel('已保存闭环', { exact: true }).selectOption(orderId);
+  await chooseLoop(page, orderId);
   await node(loop, 'check').click();
   await sourceTrigger(check).click();
   await sourcePanel(page).waitFor();
@@ -254,9 +241,8 @@ try {
   await sourcePanel(page).getByRole('button', { name: '关闭源码', exact: true }).click();
   report.checks.push('desktop pinned source clears floating styles when resized directly to 390px');
 
-  const mobileTitle = await loop.locator('.canvas-header h1').boundingBox();
-  const mobileStatus = await loop.locator('[data-testid="layout-status"]').boundingBox();
-  assert.ok(mobileStatus.y >= mobileTitle.y + mobileTitle.height, 'layout status stays below the narrow-screen title');
+  assert.ok(await loop.locator('.loop-overview-link').isVisible());
+  assert.equal(await loop.getByTestId('layout-status').isVisible(), false);
   await sourceTrigger(check).click();
   await sourcePanel(page).waitFor();
   assert.equal(await sourcePanel(page).evaluate(element => element.classList.contains('loop-source-inline')), true);
@@ -286,7 +272,7 @@ try {
   await mobile.goto(reader.url);
   await mobile.locator('.app-page-menu-toggle').click();
   await mobile.locator('[data-page="loops"]').click();
-  await mobile.getByLabel('已保存闭环', { exact: true }).selectOption(orderId);
+  await chooseLoop(mobile, orderId);
   await mobile.locator('[data-step="check"]').tap();
   await mobile.locator('.loop-source-trigger').tap();
   await mobile.locator('.loop-source-panel').waitFor();

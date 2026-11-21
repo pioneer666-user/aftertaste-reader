@@ -75,6 +75,16 @@ description: D016 已保存闭环的阅读与个人布局
 - [x] T017 更新 `docs/usage/file-reader.md` 与 [quickstart](quickstart.md)，串行验证构建、全量 Node 测试、受影响 Edge／Chrome／Firefox 回归、390 CSS px、English、键盘、减少动态及仿真触摸，完成局部实图检查（SC-001–005）。
 - [x] T018 固定候选、输入和证据，委派 Ponytail 独立审查并处理发现；通过后把 4341 换到受审构建和原共用项目，归档 D031 回执与未验项。
 
+## Phase 8: D032 闭环目录（US1）
+
+独立验收按 SC-006 从文件页首次进入、选图、读到一半查目录。
+
+- [x] T019 [US1] 在 `tests/integration/loop-reader.test.mjs` 对照真实成品检查列表投影，并在 `src/application/loop-reader.ts` 提供目录数据（FR-001）。
+- [x] T020 [US1] 在 `src/web/App.vue` 接入双语抽屉、刷新、焦点、快捷键和跳过导航，保留原切图回访（FR-001、007、008）。
+- [x] T021 [US1] 更新 `src/web/DependencyCanvas.vue`、`DependencyDots.vue` 和 `canvas.css`，未选及已选共享满幅工作区、保留右栏与保存故障恢复（FR-008）。
+- [x] T022 [US1] 更新 `tests/browser/` 旧入口，添加 `loop-catalog.mjs` 核对四边、连续帧、固定源码、刷新、键盘及窄窗，更新 `docs/usage/file-reader.md`（SC-005、006）。
+- [ ] T023 冻结构建与试读输入，独审并按结果换版，在 `docs/work/2026/11/D032-loop-catalog-drawer/handoff.md` 交回。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

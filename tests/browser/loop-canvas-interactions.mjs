@@ -1,3 +1,4 @@
+import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { copyFile, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import { release } from 'node:os';
@@ -11,7 +12,7 @@ import { createLoopReaderProject, loopLayout } from '../fixtures/loop-reader.mjs
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
-const root = path.join(repository, '.local/D031');
+const root = path.join(repository, '.local/' + (process.env.AFTERTASTE_TEST_TASK ?? 'D031'));
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'canvas-' + channel + '-'));
 const project = await createLoopReaderProject(path.join(run, 'project'));
@@ -40,7 +41,7 @@ try {
   page.on('pageerror', error => report.errors.push(error.message));
   await page.goto(reader.url);
   await button(page, '闭环阅读').click();
-  await page.getByLabel('已保存闭环', { exact: true }).selectOption(orderId);
+  await chooseLoop(page, orderId);
   const loop = page.locator('#loop-canvas-' + orderId + '-reading');
   const area = loop.locator('.graph-area');
   const hand = button(loop, '抓手工具');
