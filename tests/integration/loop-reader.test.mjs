@@ -10,7 +10,7 @@ import { orderId, orderInput } from '../fixtures/loop-authoring.mjs';
 import { artifact, createLoopReaderProject, explanationFile, git, legendLoopId, loopLayout } from '../fixtures/loop-reader.mjs';
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const root = path.join(repository, '.local/D016', 'integration');
+const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D016', 'integration');
 await mkdir(root, { recursive: true });
 const route = id => '/api/loops/' + id;
 const requestBody = (view, x) => ({
@@ -33,6 +33,12 @@ test('real reader lists both artifacts and publishes independent layouts with re
     finally { await rename(loopDirectory + '.off', loopDirectory); }
     const list = await get('/api/loops');
     assert.deepEqual(list.loops.map(item => item.id).sort(), [orderId, legendLoopId].sort());
+    const orderSummary = list.loops.find(item => item.id === orderId);
+    assert.deepEqual(orderSummary, {
+      id: orderId, title: orderInput.title, goal: orderInput.goal, steps: orderInput.reading_order,
+      fileCount: new Set(orderInput.nodes.map(node => node.path)).size,
+      edges: orderInput.edges.map(({ from, to }) => ({ from, to })),
+    });
     assert.deepEqual(list.problems, []);
     const originalFiles = [artifact(project, orderId), artifact(project, legendLoopId), project.graph, project.layout];
     const original = await Promise.all(originalFiles.map(file => readFile(file)));

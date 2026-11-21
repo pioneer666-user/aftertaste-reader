@@ -1,3 +1,4 @@
+import { chooseLoop, openCatalog } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, rename, writeFile } from 'node:fs/promises';
 import { release } from 'node:os';
@@ -12,7 +13,7 @@ import { dependencySaved as saved, openDependencyGroups } from './dependency-con
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
-const root = path.join(repository, '.local/D016');
+const root = path.join(repository, '.local/' + (process.env.AFTERTASTE_TEST_TASK ?? 'D016'));
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'browser-' + channel + '-'));
 const project = await createLoopReaderProject(path.join(run, 'project'));
@@ -23,7 +24,6 @@ const canvas = (page, id) => page.locator(id ? '#loop-canvas-' + id + '-reading'
 const step = (scope, id) => scope.locator(`[data-step="${id}"]`);
 const lesson = (scope, id) => scope.locator(`[data-reading-step="${id}"]`);
 const legend = scope => scope.locator(`[data-legend="${standardLegend.id}"]`);
-const picker = page => page.getByLabel('已保存闭环', { exact: true });
 const legendPath = loopLayout(project, legendLoopId);
 const orderPath = loopLayout(project, orderId);
 const orderRoute = '/api/loops/' + orderId;
@@ -36,12 +36,12 @@ async function openPage(context, url) {
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(url);
   await button(page, '闭环阅读').click();
-  await picker(page).waitFor();
+  await page.locator('#loop-navigation [data-loop]').first().waitFor();
   return page;
 }
 
 async function choose(page, id) {
-  await picker(page).selectOption(id);
+  await chooseLoop(page, id);
   return canvas(page, id);
 }
 
@@ -112,11 +112,11 @@ try {
   await readRequested;
   await readArrived.promise;
   const paths = await choose(page, legendLoopId);
-  await lesson(paths, 'upload').waitFor();
+  await paths.locator('.loop-overview').waitFor();
   const orderLoaded = page.waitForResponse(response => response.url().endsWith(orderRoute));
   releaseRead.resolve();
   await orderLoaded;
-  await lesson(paths, 'upload').waitFor();
+  await paths.locator('.loop-overview').waitFor();
   await order.waitFor({ state: 'hidden' });
   await legend(paths).focus();
   await page.keyboard.press('Enter');
@@ -130,7 +130,7 @@ try {
   report.checks.push('late A load stayed in A; saved legend uses files; English and keyboard selection');
 
   await choose(page, orderId);
-  await lesson(order, 'start').waitFor();
+  await order.locator('.loop-overview').waitFor();
   await button(order, '打开闭环概览').click();
   await order.getByText('串讲', { exact: true }).click();
   await order.getByText(/假设示例/).waitFor();
@@ -300,6 +300,7 @@ try {
   try {
     await choose(reopened, legendLoopId);
     await button(afterPaths, '刷新图和布局').click();
+    await step(afterPaths, 'upload').click();
     await lesson(afterPaths, 'upload').locator('.loop-source-trigger').click();
     await reopened.locator('#loop-source-' + legendLoopId).getByRole('alert').getByText('固定源码不可用', { exact: true }).waitFor();
     await lesson(afterPaths, 'upload').getByText('保存的原块讲解', { exact: true }).click();
@@ -322,6 +323,7 @@ try {
   invalidOrder.nodes[0].title = '';
   await writeFile(orderArtifact, JSON.stringify(invalidOrder));
   try {
+    await openCatalog(reopened);
     await button(reopened, '刷新闭环列表').click();
     const problem = reopened.locator('#loop-navigation').getByRole('alert').filter({ hasText: 'LOOP_INVALID' });
     await problem.getByText('LOOP_INVALID order-quantity $.nodes[0].title TEXT', { exact: true }).waitFor();

@@ -173,7 +173,7 @@ onUnmounted(() => window.clearTimeout(closeTimer));
       @click="toggleSource" @keydown="sourceKeys">
       <span>{{ t('loopCompareSource') }}</span><code>{{ step.path }}</code><span>{{ step.lines.start }}–{{ step.lines.end }} {{ t('loopSourceLines') }}</span>
     </button>
-    <Teleport to="body" :disabled="inlineSource">
+    <Teleport to="#loop-workspace" :disabled="inlineSource">
       <section v-if="sourceVisible && step.lines" :id="sourceId" ref="sourcePanel" class="loop-source-panel"
         :class="inlineSource ? 'loop-source-inline' : 'loop-source-floating'" :aria-label="t('loopCompareSource')"
         @mouseenter="openPreview" @mouseleave="schedulePreviewClose" @focusin="openPreview" @focusout="schedulePreviewClose" @keydown="sourceKeys">

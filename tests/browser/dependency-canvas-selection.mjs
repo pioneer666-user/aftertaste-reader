@@ -1,3 +1,4 @@
+import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -14,7 +15,7 @@ import { dependencySaved } from './dependency-controls.mjs';
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
-const root = path.join(repository, '.local/D026');
+const root = path.join(repository, '.local/' + (process.env.AFTERTASTE_TEST_TASK ?? 'D026'));
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'browser-' + channel + '-'));
 const fixture = await createLoopReaderProject(path.join(run, 'project'));
@@ -389,7 +390,7 @@ try {
   assert.deepEqual([...edited.layout.groups[0].members].sort(), [rules, service, audit, legendId].sort());
 
   await button(header(page), '闭环阅读').click();
-  await page.getByLabel('已保存闭环', { exact: true }).selectOption(orderId);
+  await chooseLoop(page, orderId);
   const loop = page.locator('#loop-canvas-' + orderId + '-reading');
   const check = loop.locator('[data-step="check"]');
   await check.click();
