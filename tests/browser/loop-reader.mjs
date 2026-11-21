@@ -131,37 +131,41 @@ try {
 
   await choose(page, orderId);
   await lesson(order, 'start').waitFor();
+  await button(order, '打开闭环概览').click();
   await order.getByText('串讲', { exact: true }).click();
   await order.getByText(/假设示例/).waitFor();
   await order.getByText('推荐阅读顺序', { exact: true }).click();
   assert.deepEqual(await order.locator('.loop-order button').allTextContents(), orderInput.reading_order.map(title));
   await order.getByText('推荐阅读顺序', { exact: true }).click();
   await order.getByText('串讲', { exact: true }).click();
+  await step(order, 'start').click();
   const readCode = async id => {
     const panel = lesson(order, id);
-    await panel.getByText('本步讲解', { exact: true }).click();
-    await panel.getByText('保存的原块讲解', { exact: true }).click();
-    await panel.locator('summary').filter({ hasText: '固定源码' }).click();
-    return { detail: await panel.locator('details').first().innerText(), code: await panel.locator('pre').innerText(),
-      range: await panel.locator('summary').filter({ hasText: '固定源码' }).innerText() };
+    await panel.locator('.loop-original summary').click();
+    const trigger = panel.locator('.loop-source-trigger');
+    if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
+    const source = page.locator('#loop-source-' + orderId);
+    await source.locator('pre').waitFor();
+    return { detail: await panel.locator('.loop-step-reading').innerText(), code: await source.locator('pre').innerText(),
+      range: await trigger.innerText() };
   };
   const start = await readCode('start');
-  await button(lesson(order, 'start'), title('check')).click();
+  await lesson(order, 'start').locator('[data-choice="check"]').click();
   const branching = lesson(order, 'check');
   assert.equal(await branching.getByRole('heading', { name: title('check'), exact: true }).evaluate(element => element === document.activeElement), true);
   for (const edge of orderInput.edges.filter(edge => edge.from === 'check')) {
     await branching.getByText(edge.reason, { exact: true }).waitFor();
   }
   if (channel === 'edge') await page.screenshot({ path: path.join(run, 'order-branch.png') });
-  await button(branching, title('resume')).click();
+  await branching.locator('[data-choice="resume"]').click();
   const resume = await readCode('resume');
   assert.equal(start.code, resume.code);
   assert.equal(start.range, resume.range);
   assert.notEqual(start.detail, resume.detail);
-  await button(lesson(order, 'resume'), title('store')).click();
+  await lesson(order, 'resume').locator('[data-choice="store"]').click();
   await lesson(order, 'store').waitFor();
   await step(order, 'check').click();
-  await button(lesson(order, 'check'), title('stop')).click();
+  await lesson(order, 'check').locator('[data-choice="stop"]').click();
   await lesson(order, 'stop').waitFor();
   report.checks.push('saved order and connection reasons; both order endings; distinct lessons share original code and line range');
 
@@ -296,13 +300,13 @@ try {
   try {
     await choose(reopened, legendLoopId);
     await button(afterPaths, '刷新图和布局').click();
-    await lesson(afterPaths, 'upload').getByRole('alert').getByText('固定源码不可用', { exact: true }).waitFor();
+    await lesson(afterPaths, 'upload').locator('.loop-source-trigger').click();
+    await reopened.locator('#loop-source-' + legendLoopId).getByRole('alert').getByText('固定源码不可用', { exact: true }).waitFor();
     await lesson(afterPaths, 'upload').getByText('保存的原块讲解', { exact: true }).click();
     await lesson(afterPaths, 'upload').getByText('入口提取上传文件名。', { exact: true }).waitFor();
-    await button(lesson(afterPaths, 'upload'), '日志路径').click();
-    await lesson(afterPaths, 'audit').getByText('本步讲解', { exact: true }).click();
+    await lesson(afterPaths, 'upload').locator('[data-choice="audit"]').click();
     await lesson(afterPaths, 'audit').getByText('这里有文件名，需要拼出日志路径。', { exact: true }).waitFor();
-    assert.equal(await lesson(afterPaths, 'audit').getByText('固定源码').count(), 0);
+    assert.equal(await lesson(afterPaths, 'audit').locator('.loop-source-trigger').count(), 0);
     await saveAction(reopened, afterPaths, legendRoute + '/layout', legendPath, () => button(afterPaths, '放大画布').click());
   } finally { await rename(object + '.off', object); }
   report.checks.push('old saved explanation, missing source diagnostic, pure explanation and usable layout');

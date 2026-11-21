@@ -659,11 +659,9 @@ async function checkLoops() {
   await start.waitFor();
   const graphBox = await loop.locator('.graph-area').boundingBox();
   assert.ok((await panel.boundingBox()).x >= graphBox.x + graphBox.width - 1);
-  await start.getByText('本步讲解', { exact: true }).click();
-  await start.locator('summary').filter({ hasText: '固定源码' }).click();
-  await start.locator('pre').waitFor();
-  const heading = orderInput.nodes.find(node => node.id === 'check').title;
-  await button(start, heading).click();
+  await start.locator('.loop-source-trigger').click();
+  await page.locator('#loop-source-' + orderId).locator('pre').waitFor();
+  await start.locator('[data-choice="check"]').click();
   await check.waitFor();
   for (const edge of orderInput.edges.filter(edge => edge.from === 'check')) {
     await check.getByText(edge.reason, { exact: true }).waitFor();
@@ -676,9 +674,10 @@ async function checkLoops() {
   await check.waitFor();
   assert.equal(await picker.inputValue(), orderId);
   assert.equal(await transform(loop), loopView);
+  await page.locator('#loop-source-' + orderId).waitFor({ state: 'hidden' });
   await page.setViewportSize({ width: 390, height: 760 });
-  await check.locator('summary').filter({ hasText: '固定源码' }).click();
-  await check.locator('pre').waitFor();
+  await check.locator('.loop-source-trigger').click();
+  await page.locator('#loop-source-' + orderId + '.loop-source-inline').locator('pre').waitFor();
   await page.setViewportSize({ width: 1600, height: 900 });
   report.checks.push('loop right reading pane, actual source and branch reasons, loop and graph independent across history, narrow loop source');
 }
@@ -705,9 +704,12 @@ async function checkHeader(width, language) {
     else fixed = positions;
     assert.ok(positions[0] < positions[1] && positions[1] < positions[2] && positions[2] < positions[3]);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    if (['bookmarks', 'marks', 'loops'].includes(key)) {
+    if (['bookmarks', 'marks'].includes(key)) {
       assert.ok(await toggle().isDisabled());
       assert.ok((await toggle().getAttribute('title'))?.trim(), 'disabled switch gives its reason');
+    } else if (key === 'loops') {
+      assert.equal(await toggle().isEnabled(), true);
+      assert.equal(await toggle().getAttribute('aria-controls'), 'loop-canvas-' + orderId + '-tools');
     }
     if (compact) {
       await nav.focus();

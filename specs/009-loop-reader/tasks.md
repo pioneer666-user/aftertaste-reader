@@ -62,6 +62,19 @@ description: D016 已保存闭环的阅读与个人布局
 - [x] T011 更新 `docs/usage/file-reader.md` 和 `specs/001-first-release/08-current-spec-and-acceptance.md` 导航。
 - [x] T012 运行串行自测和 [quickstart](quickstart.md) 的浏览器验收，完成 `docs/work/2026/11/D016-loop-reader/handoff.md` 及候选独审归档。
 
+## Phase 7: D031 主阅读与共用画布交接
+
+**Goal**：点步骤直接读讲解和分支理由，按需对照源码；两类图共用稳定工具和卡面反馈。
+
+**Independent Test**：在订单校验步固定第 1–7 行后选择失败分支，代码留在相同范围而讲解切换；窄窗、键盘和图例仍可读，原图视野与布局不变。
+
+- [x] T013 增量维护 009 规格、方案、研究、模型、契约、复验步骤和检查清单，记录 D031 的画布提示调整并运行只读分析（US1、FR-003、FR-005、FR-008、SC-005）。
+- [x] T014 [US1] 在 `tests/browser/loop-main-experience.mjs` 先记录旧构建的预期失败，再覆盖直读、同行分支、源码预览／固定／换步、空白关闭、提示、源码不写布局或历史（FR-003、FR-008、SC-005）。
+- [x] T015 [US1] 更新 `src/web/LoopReading.vue`、`DependencyCanvas.vue`、`App.vue`、`i18n.ts` 和 `canvas.css`，接入右栏直读、桌面浮层／窄窗内联源码、共用图工具与固定提示（US1–US3、FR-002–005、FR-007–008）。
+- [x] T016 [US3] 在共用卡面和聚焦浏览器回归中验证两类图的约 2 CSS px 轻抬、减少动态、键盘与拖动边界；节点／视口几何、图例、布局独立保存及冲突恢复不回退（US2–US3、FR-004–006、SC-002–003）。
+- [x] T017 更新 `docs/usage/file-reader.md` 与 [quickstart](quickstart.md)，串行验证构建、全量 Node 测试、受影响 Edge／Chrome／Firefox 回归、390 CSS px、English、键盘、减少动态及仿真触摸，完成局部实图检查（SC-001–005）。
+- [ ] T018 固定候选、输入和证据，委派 Ponytail 独立审查并处理发现；通过后把 4341 换到受审构建和原共用项目，归档 D031 回执与未验项。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
