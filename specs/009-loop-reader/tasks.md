@@ -73,7 +73,7 @@ description: D016 已保存闭环的阅读与个人布局
 - [x] T015 [US1] 更新 `src/web/LoopReading.vue`、`DependencyCanvas.vue`、`App.vue`、`i18n.ts` 和 `canvas.css`，接入右栏直读、桌面浮层／窄窗内联源码、共用图工具与固定提示（US1–US3、FR-002–005、FR-007–008）。
 - [x] T016 [US3] 在共用卡面和聚焦浏览器回归中验证两类图的约 2 CSS px 轻抬、减少动态、键盘与拖动边界；节点／视口几何、图例、布局独立保存及冲突恢复不回退（US2–US3、FR-004–006、SC-002–003）。
 - [x] T017 更新 `docs/usage/file-reader.md` 与 [quickstart](quickstart.md)，串行验证构建、全量 Node 测试、受影响 Edge／Chrome／Firefox 回归、390 CSS px、English、键盘、减少动态及仿真触摸，完成局部实图检查（SC-001–005）。
-- [ ] T018 固定候选、输入和证据，委派 Ponytail 独立审查并处理发现；通过后把 4341 换到受审构建和原共用项目，归档 D031 回执与未验项。
+- [x] T018 固定候选、输入和证据，委派 Ponytail 独立审查并处理发现；通过后把 4341 换到受审构建和原共用项目，归档 D031 回执与未验项。
 
 ## Dependencies & Execution Order
 
