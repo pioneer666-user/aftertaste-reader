@@ -32,3 +32,27 @@ node tests/browser/loop-reader.mjs
 浏览器脚本核对页面操作与磁盘结果。受控延迟覆盖切图时的晚到读取和保存响应，另验同图冲突、失败和重试。
 
 执行命令与试读入口见 [D016 回执](../../docs/work/2026/11/D016-loop-reader/handoff.md)。
+
+## D031 主阅读与源码对照
+
+沿用同一项目固定副本，在 1440 × 900 CSS px 窗口打开订单闭环：
+
+1. 选择「规则转换并检查边界」，本步讲解无需展开即可读；提示就近呈现，原块讲解默认折叠。
+2. 悬停或键盘聚焦「对照源码」，核贴右栏左缘的代码、路径、行号与提交；移入代码后选字、复制和横滚，画布视野不变。点击或 Enter 固定，Esc 或关闭按钮收起并归还焦点。
+3. 固定后点击「无效数量让创建提前结束」，左侧仍为 `src/rules.mjs` 第 1–7 行，右侧换成该步讲解。从校验点再走另一分支，核 `src/service.mjs` 第 4–6 行与第 7–10 行。
+4. 点空白看到闭环概览；图内工具条由共用顶栏按钮开合。鼠标掠过两类图的卡面仅内部轻抬约 2 CSS px，拖动时直接跟手，Vue Flow 节点与端口坐标不变。固定提示为「点击节点查看详情，点击空白关闭」。
+5. 390 CSS px 窄窗点按入口，在本步内展开并读到末行；关闭后选另一步。键盘、English、减少动态效果和触摸仿真分别复验。源码不可用显示既有诊断，纯讲解步骤无源码入口。
+
+先在旧构建运行 `node tests/browser/loop-main-experience.mjs` 记录新行为缺失，再对候选执行。候选构建后串行运行本页三浏览器闭环回归、`reader-history.mjs`、受影响画布与导航回归；每个脚本使用独立样例和服务。实图与详细结果归 `.local/D031/`，独立审查和共用试读换版按 D031 任务执行。
+
+### D031 实测记录（2026-11-21）
+
+以下 R1 修复后结果来自 `.local/D031/build-r1fix`，最终候选提交与受审固定副本另由 D031 回执绑定。所有浏览器脚本均串行运行，各自使用隔离项目和服务。
+
+- `npm run typecheck`、TypeScript 编译与 Vite 构建通过；全量 Node 测试 100／100 通过。[Node 日志](../../.local/D031/npm-test-r1fix.log)
+- `loop-main-experience.mjs` 在 Edge 157.0.4341.60、Chrome 157.0.8103.80、Firefox 159.0 各通过 12 组，覆盖两条分支、相同源码位置保持、键盘／窄窗开合、源码选字复制与横滚、390 CSS px 布局、English、减少动态及仿真触摸；另覆盖 R1 的桌面固定后直接缩窗、长文底部直接点节点和三图工具状态隔离。[Edge](../../.local/D031/main-edge-BK7qAl/report.json) · [Chrome](../../.local/D031/main-chrome-L4Vpih/report.json) · [Firefox](../../.local/D031/main-firefox-hwKKzx/report.json)
+- `loop-reader.mjs` 在修复后 Edge 通过 8 组旧行为回归；Chrome／Firefox 的 8 组记录来自 R1 前构建，受影响交互由上述修复后三浏览器 12 组主路径复验。Chrome 旧脚本补跑在隔离样例创建阶段遇到 EPERM，未进入页面，不计为通过或产品断言失败。[修复后 Edge](../../.local/D016/browser-edge-8xiwJx/report.json) · [此前 Chrome](../../.local/D016/browser-chrome-TKnjnq/report.json) · [此前 Firefox](../../.local/D016/browser-firefox-aBK5ii/report.json)
+- `loop-canvas-interactions.mjs`、`dependency-canvas-selection.mjs`、`dependency-canvas-tools.mjs` 和 `reader-history.mjs` 在修复后 Edge 分别通过 4、6、4、13 组，覆盖抓手、Ctrl、框选、分组、键盘顺序、小地图、两图独立状态、历史恢复及个人资料保护。[闭环画布](../../.local/D031/canvas-edge-kvQ9xI/report.json) · [依赖图选择](../../.local/D026/browser-edge-ZAX2Cf/report.json) · [工具](../../.local/D027/tools-edge-zQMI0k/report.json) · [历史](../../.local/D028/history-edge-0rGDiD/report.json)
+- 候选实图与连续帧记录零资料写入、零页面错误；悬停位移读数为 `0、0、-2、-2、0` CSS px，正常桌面与窄窗源码图已人工查看。R1 修复后 Impeccable `detect --json` 仍返回空数组。[实图报告](../../.local/D031/candidate-visual/report.json)
+
+作者体验、实体触屏和屏幕阅读器实读不在上述自动检查范围内，仍待验收。

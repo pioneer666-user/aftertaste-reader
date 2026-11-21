@@ -100,7 +100,8 @@ const dotGroups = computed(() => mapNodes.value.filter(node => node.type === 'ca
 const dependency = computed(() => reading.value && 'graph' in reading.value ? reading.value : undefined);
 const loop = computed(() => reading.value && 'result' in reading.value ? reading.value.result : undefined);
 const nodes = computed(() => loop.value ?
-  loop.value.loop.nodes.map(node => ({ key: node.id, label: node.title, entry: node.id === loop.value?.loop.entry })) :
+  loop.value.loop.nodes.map(node => ({ key: node.id, label: node.title, entry: node.id === loop.value?.loop.entry,
+    order: loop.value?.loop.reading_order.indexOf(node.id) ?? -1 })) :
   (dependency.value?.graph.nodes ?? []).map(node => ({ key: node.path, label: node.path, analysis: node.analysis })));
 const ids = computed(() => reading.value ? readingIds(reading.value) : []);
 const selectedNode = computed(() => dependency.value?.graph.nodes.find(node => node.path === selected.value));
@@ -207,7 +208,7 @@ async function restorePosition(position: CanvasPosition, isCurrent = () => true)
   const changedSelection = selected.value !== beforeSelection || detailsOpen.value !== beforeDetails;
   const target = changedSelection ? selected.value : position.selected;
   const available = !target || (ids.value.includes(target) && (!latest || readingIds(latest).includes(target)));
-  selected.value = available && target ? target : loop.value?.loop.entry ?? '';
+  selected.value = available ? target : loop.value?.loop.entry ?? '';
   detailsOpen.value = available && (changedSelection ? detailsOpen.value : position.detailsOpen);
   if (groupEditor.value === beforeGroupEditor) groupEditor.value = false;
   await nextTick();
@@ -426,12 +427,12 @@ async function toggleDetails() {
 
 async function openGroupEditor(id: string, event?: MouseEvent) {
   editGroup(id);
-  if (loopRoute) return;
   closeTools();
-  clearSelection();
+  if (!loopRoute) clearSelection();
   groupTrigger.value = event?.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
-  groupEditor.value = true;
+  groupEditor.value = !loopRoute;
   await nextTick();
+  groupPicker.value?.scrollIntoView({ block: 'nearest' });
   groupPicker.value?.focus({ preventScroll: true });
 }
 
@@ -470,7 +471,7 @@ function clearSelection(restoreFocus = false) {
 function startSelection(event: PointerEvent) {
   const area = graphArea.value;
   const target = event.target;
-  if (loopRoute || !area || !(target instanceof Element) || !target.closest('.vue-flow') || event.button !== 0 || box.value) return;
+  if (!area || !(target instanceof Element) || !target.closest('.vue-flow') || event.button !== 0 || box.value) return;
   clearSelection();
   ctrlHeld.value = event.ctrlKey;
   if (!editable.value || !idle.value || effectiveTool.value !== 'select' ||
@@ -498,7 +499,7 @@ function finishSelection(event: PointerEvent) {
   box.value = undefined;
   boxMembers.value = Array.from(area.querySelectorAll<HTMLButtonElement>('.file-node')).flatMap(node => {
     const rect = node.getBoundingClientRect();
-    const id = node.dataset.file ?? (node.dataset.legend ? legendKey(node.dataset.legend) : undefined);
+    const id = node.dataset.file ?? node.dataset.step ?? (node.dataset.legend ? legendKey(node.dataset.legend) : undefined);
     return id && rect.left >= pane.left + bounds.x && rect.top >= pane.top + bounds.y &&
       rect.right <= pane.left + bounds.x + bounds.width && rect.bottom <= pane.top + bounds.y + bounds.height ? [id] : [];
   });
@@ -532,7 +533,7 @@ function applySelection() {
 }
 
 function selectionKeys(event: KeyboardEvent) {
-  if (loopRoute || !props.active || event.isComposing) return;
+  if (!props.active || event.isComposing) return;
   if (event.key === 'Escape' && (box.value || boxAnchor.value)) {
     event.preventDefault();
     event.stopPropagation();
@@ -547,7 +548,7 @@ function selectionKeys(event: KeyboardEvent) {
 }
 
 watch(() => props.active, active => {
-  if (active || loopRoute) return;
+  if (active) return;
   ctrlHeld.value = false;
   newGroups.clear();
   savedGroupId.value = '';
@@ -671,11 +672,9 @@ function discardDraft() {
 }
 
 onMounted(() => {
-  if (!loopRoute) {
-    window.addEventListener('keydown', trackControl);
-    window.addEventListener('keyup', trackControl);
-    window.addEventListener('blur', releaseControl);
-  }
+  window.addEventListener('keydown', trackControl);
+  window.addEventListener('keyup', trackControl);
+  window.addEventListener('blur', releaseControl);
   void load();
 });
 onUnmounted(() => {
@@ -691,10 +690,7 @@ onUnmounted(() => {
     :aria-label="loopId ? undefined : t('dependencyCanvas')" tabindex="-1" @pointerdown.capture="outsideTools">
     <header v-if="loopId" class="canvas-header">
       <h1>{{ loop?.loop.title ?? t('loops') }}</h1>
-      <div class="canvas-actions">
-        <button type="button" :disabled="loading || saving || dirty || !idle" @click="load()">{{ t('canvasRefresh') }}</button>
-        <button v-if="hasNodes" type="button" :disabled="!editable || !idle || !!box" @click="relayout">{{ t('canvasRearrange') }}</button>
-      </div>
+      <button type="button" :disabled="!reading" @click="clearDetail">{{ t('loopOpenOverview') }}</button>
     </header>
     <div class="canvas-notices">
       <p v-if="loading || readingExplanation" role="status" class="canvas-status">{{ t('loading') }}</p>
@@ -716,8 +712,8 @@ onUnmounted(() => {
     </div>
 
     <div v-if="!loopId || reading" v-show="!loopId || hasNodes" class="canvas-workspace">
-      <Transition v-if="!loopId" name="canvas-rail">
-        <div v-show="toolsOpen" ref="toolsRail" :inert="!toolsOpen" id="dependency-tools" class="canvas-rail" role="group"
+      <Transition name="canvas-rail">
+        <div v-show="toolsOpen" ref="toolsRail" :inert="!toolsOpen" :id="loopId ? flowId + '-tools' : 'dependency-tools'" class="canvas-rail" role="group"
           :aria-label="t('canvasTools')" :data-labels-dismissed="labelsDismissed || undefined"
           @pointerenter="labelsDismissed = false" @focusin="labelsDismissed = false">
           <button type="button" :aria-label="t('canvasRearrange')"
@@ -749,10 +745,10 @@ onUnmounted(() => {
         </div>
       </Transition>
       <section ref="graphArea" class="graph-area" :aria-label="t(loopId ? 'loopGraph' : 'dependencyCanvas')"
-        :data-tool="loopId ? undefined : effectiveTool"
-        :tabindex="loopId ? undefined : 0" @keydown="selectionKeys"
+        :data-tool="effectiveTool" tabindex="0" @keydown="selectionKeys"
         @pointerdown.capture="startSelection" @pointermove="moveSelection" @pointerup="finishSelection"
         @pointercancel="cancelPointer" @lostpointercapture="cancelPointer">
+        <p class="canvas-node-hint">{{ t('canvasNodeHint') }}</p>
         <div v-if="boxAnchor" ref="selectionPanel" class="selection-float canvas-group-float">
           <button v-if="!naming" type="button" class="selection-float-action" aria-keyshortcuts="Control+G"
             @click="nameSelection">{{ t('canvasGroups') }}</button>
@@ -772,25 +768,25 @@ onUnmounted(() => {
             </div>
           </form>
         </div>
-        <DependencyDots v-if="!loopId" ref="dots" :active="active && hasNodes" :quiet="!idle || !!box"
+        <DependencyDots ref="dots" :active="active && hasNodes" :quiet="!idle || !!box"
           :viewport="viewport" :groups="dotGroups" />
         <VueFlow v-if="reading" v-show="hasNodes" :id="flowId" :min-zoom="minZoom" :max-zoom="maxZoom" :nodes-connectable="false" :nodes-draggable="editable"
-          :pan-activation-key-code="loopId ? 'Space' : fixedTool === 'select' && editable ? 'Control' : null"
+          :pan-activation-key-code="fixedTool === 'select' && editable ? 'Control' : null"
           :elements-selectable="false" :delete-key-code="null" :selection-key-code="null" :multi-selection-key-code="null"
           :disable-keyboard-a11y="true" :pan-on-drag="editable" :zoom-on-scroll="editable && !box" :zoom-on-pinch="editable && !box"
           :zoom-on-double-click="false" :prevent-scrolling="editable"
           @init="init" @node-drag-start="startDrag" @node-drag="previewDrag" @node-drag-stop="endDrag"
-          @move-start="moving = !paneDragging" @move-end="moved">
+          @move-start="moving = !paneDragging" @move-end="moved" @pane-click="clearDetail">
           <template #node-canvasFile="{ data }">
             <Handle id="in" type="target" :position="Position.Left" />
             <Handle id="self" class="self-handle" type="target" :position="Position.Top" />
             <DependencyCard v-if="!loopId" :label="data.key" :kind="data.analysis" :data-file="data.key"
               :status="t(data.analysis === 'unreviewed' ? 'canvasReviewPending' : 'canvasReviewed')"
               :aria-pressed="selected === data.key" :data-box-selected="picked.has(data.key) || undefined" @click="selectDetail(data.key)" />
-            <button v-else type="button" class="file-node" :data-step="data.key" :aria-pressed="selected === data.key"
-              :title="data.label" @click="selectDetail(data.key)">
+            <button v-else type="button" class="file-node loop-node" :data-step="data.key" :aria-pressed="selected === data.key"
+              :data-box-selected="picked.has(data.key) || undefined" :title="data.label" @click="selectDetail(data.key)">
+              <small class="loop-node-number">{{ String(data.order + 1).padStart(2, '0') }}<template v-if="data.entry"> · {{ t('loopEntry') }}</template></small>
               <span>{{ data.label }}</span>
-              <small v-if="data.entry">{{ t('loopEntry') }}</small>
             </button>
             <Handle id="out" type="source" :position="Position.Right" />
           </template>
@@ -798,7 +794,7 @@ onUnmounted(() => {
             <DependencyCard v-if="!loopId" :label="data.name" kind="library" :status="legendKind(data.kind)" :data-legend="data.id"
               :aria-pressed="selected === data.key" :data-box-selected="picked.has(data.key) || undefined" @click="selectDetail(data.key)" />
             <button v-else type="button" class="file-node library-node" :data-legend="data.id" :aria-pressed="selected === data.key"
-              :title="data.name" @click="selectDetail(data.key)">
+              :data-box-selected="picked.has(data.key) || undefined" :title="data.name" @click="selectDetail(data.key)">
               <span>{{ data.name }}</span>
               <small>{{ legendKind(data.kind) }}</small>
             </button>
@@ -815,24 +811,22 @@ onUnmounted(() => {
           left: selectionRect.x + 'px', top: selectionRect.y + 'px',
           width: selectionRect.width + 'px', height: selectionRect.height + 'px',
         }"></div>
-        <div v-if="hasNodes" :class="{ 'canvas-dock': !loopId }">
-          <DependencyMiniMap v-if="!loopId && active && mapOpen" :nodes="mapNodes" :viewport="viewport" :size="paneSize"
+        <div v-if="hasNodes" class="canvas-dock">
+          <DependencyMiniMap v-if="active && mapOpen" :nodes="mapNodes" :viewport="viewport" :size="paneSize"
             :label="t('canvasMap')" :hint="t('canvasMapHint')" :enabled="editable"
             @dragging="mapDragging = $event" @navigate="mapNavigate" />
           <div class="canvas-zoom">
-            <template v-if="!loopId">
-              <button type="button" :title="t('canvasMap')" :aria-label="t('canvasMap')" :aria-expanded="mapOpen" @click="mapOpen = !mapOpen">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 3 6-2v15l-6 2-6-3-6 2z M9 3v15m6-12v15" /></svg>
-              </button>
-              <button type="button" :disabled="!editable" :title="t('canvasHand')" :aria-label="t('canvasHand')"
-                :aria-pressed="effectiveTool === 'hand'" @click="fixedTool = 'hand'">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12V7.5a1.5 1.5 0 0 1 3 0V11 4.5a1.5 1.5 0 0 1 3 0V11 5.5a1.5 1.5 0 0 1 3 0V12 8a1.5 1.5 0 0 1 3 0v6c0 4.5-2.5 7-6.5 7-2.7 0-4.2-1.4-5.8-3.6l-3.1-4.2a1.6 1.6 0 0 1 2.3-2.1L7 12Z" /></svg>
-              </button>
-              <button type="button" :disabled="!editable" :title="t('canvasSelect')" :aria-label="t('canvasSelect')"
-                :aria-pressed="effectiveTool === 'select'" @click="fixedTool = 'select'">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5 19.5 13l-7 1.1-3.2 6.4z" /></svg>
-              </button>
-            </template>
+            <button type="button" :title="t('canvasMap')" :aria-label="t('canvasMap')" :aria-expanded="mapOpen" @click="mapOpen = !mapOpen">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 3 6-2v15l-6 2-6-3-6 2z M9 3v15m6-12v15" /></svg>
+            </button>
+            <button type="button" :disabled="!editable" :title="t('canvasHand')" :aria-label="t('canvasHand')"
+              :aria-pressed="effectiveTool === 'hand'" @click="fixedTool = 'hand'">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12V7.5a1.5 1.5 0 0 1 3 0V11 4.5a1.5 1.5 0 0 1 3 0V11 5.5a1.5 1.5 0 0 1 3 0V12 8a1.5 1.5 0 0 1 3 0v6c0 4.5-2.5 7-6.5 7-2.7 0-4.2-1.4-5.8-3.6l-3.1-4.2a1.6 1.6 0 0 1 2.3-2.1L7 12Z" /></svg>
+            </button>
+            <button type="button" :disabled="!editable" :title="t('canvasSelect')" :aria-label="t('canvasSelect')"
+              :aria-pressed="effectiveTool === 'select'" @click="fixedTool = 'select'">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5 19.5 13l-7 1.1-3.2 6.4z" /></svg>
+            </button>
             <button type="button" :disabled="!editable || !idle || viewport.zoom <= minZoom" :aria-label="t('canvasZoomOut')" @click="zoom(1 / 1.2)">−</button>
             <output>{{ Math.round(viewport.zoom * 100) }}%</output>
             <button type="button" :disabled="!editable || !idle || viewport.zoom >= maxZoom" :aria-label="t('canvasZoomIn')" @click="zoom(1.2)">+</button>
@@ -841,7 +835,7 @@ onUnmounted(() => {
       </section>
       <component :is="loopId ? 'aside' : 'div'" v-if="loopId || hasSelection || groupEditor" ref="inspector"
         :class="loopId ? 'canvas-inspector' : ['canvas-panel', { 'canvas-group-panel': groupEditor, 'canvas-panel-compact': !groupEditor && !detailsOpen }]">
-        <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" @select="selected = $event" />
+        <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" :active="active" :legend-selected="!!selectedLegend" @select="selected = $event" />
         <template v-if="!loopId && hasSelection && !groupEditor">
           <section class="canvas-summary" :aria-label="t(selectedNode ? 'canvasSelected' : 'canvasSelectedLibrary')"
             @keydown.esc.stop="detailsOpen ? toggleDetails() : clearDetail()">
