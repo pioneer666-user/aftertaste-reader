@@ -91,7 +91,7 @@ description: D016 已保存闭环的阅读与个人布局
 - [x] T025 [US1] 在 src/web/LoopRelations.vue 由实际出入边显示可展开、可选步的关系摘要（FR-002、008）。
 - [x] T026 [US3] 在 src/web/DependencyCanvas.vue 把分组表单移到画布，「⋯」可改名、调整成员、解散并恢复焦点（FR-005、006）。
 - [x] T027 [US1] 更新 docs/usage/file-reader.md 和 tests/browser/ 的阅读、分组及既有入口回归，按 quickstart.md 核原位与重开（SC-007）。
-- [ ] T028 冻结候选，独立审查并在 docs/work/2026/11/D033-loop-reading-panel/ 交回试读和证据。
+- [x] T028 冻结候选，独立审查并在 docs/work/2026/11/D033-loop-reading-panel/ 交回试读和证据。
 
 ## Dependencies & Execution Order
 
