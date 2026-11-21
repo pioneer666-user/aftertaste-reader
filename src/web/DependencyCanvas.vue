@@ -9,6 +9,7 @@ import DependencyEdge from './DependencyEdge.vue';
 import DependencyMiniMap from './DependencyMiniMap.vue';
 import DependencyDots from './DependencyDots.vue';
 import DependencyCard from './DependencyCard.vue';
+import LoopRelations from './LoopRelations.vue';
 import LoopReading from './LoopReading.vue';
 import { groupBounds, maxZoom, minZoom, moveMembers, nodeSize, rearrange, reconcileLayout, renewedPaths, updateGroup } from '../core/canvas-layout.js';
 import type { CanvasGroup, CanvasLayout, Point } from '../core/canvas-layout.js';
@@ -61,6 +62,11 @@ const detailHeading = ref<HTMLElement>();
 const inspector = ref<HTMLElement>();
 const groupTrigger = shallowRef<HTMLElement>();
 const detailsOpen = ref(false);
+const panelOpen = ref(true);
+const groupMenu = ref<HTMLElement>();
+const menuGroup = ref<CanvasGroup>();
+const groupNameInput = ref<HTMLInputElement>();
+const memberFields = ref<HTMLFieldSetElement>();
 const groupPicker = ref<HTMLSelectElement>();
 const groupEditor = ref(false);
 const selectionPanel = ref<HTMLElement>();
@@ -99,6 +105,17 @@ const dotGroups = computed(() => mapNodes.value.filter(node => node.type === 'ca
 })));
 const dependency = computed(() => reading.value && 'graph' in reading.value ? reading.value : undefined);
 const loop = computed(() => reading.value && 'result' in reading.value ? reading.value.result : undefined);
+const stepNavigation = computed(() => {
+  const graph = loop.value?.loop;
+  if (!graph) return [];
+  const index = graph.reading_order.indexOf(selected.value);
+  const actions = [{ key: 'entry', label: 'loopEntry', short: 'loopEntry', id: graph.entry }];
+  if (index >= 0) actions.push(
+    { key: 'previous', label: 'loopPrevious', short: 'loopPrevShort', id: graph.reading_order[index - 1] ?? '' },
+    { key: 'next', label: 'loopNext', short: 'loopNextShort', id: graph.reading_order[index + 1] ?? '' },
+  );
+  return actions.map(action => ({ ...action, title: [t(action.label), graph.nodes.find(node => node.id === action.id)?.title].filter(Boolean).join(' · ') }));
+});
 const nodes = computed(() => loop.value ?
   loop.value.loop.nodes.map(node => ({ key: node.id, label: node.title, entry: node.id === loop.value?.loop.entry,
     order: loop.value?.loop.reading_order.indexOf(node.id) ?? -1 })) :
@@ -385,6 +402,7 @@ function applyGroup() {
   const group = { id: groupId.value || crypto.randomUUID(), name: groupName.value.trim(), members: [...members.value] };
   commitGroup(group);
   editGroup(group.id);
+  if (loopRoute) closeGroupEditor();
 }
 
 function commitGroup(group: CanvasGroup) {
@@ -401,10 +419,12 @@ function closeTools(restoreFocus = false) {
 }
 
 function outsideTools(event: PointerEvent) {
+  if (menuGroup.value && event.target instanceof Element && !event.target.closest('.loop-group-menu, .group-more')) menuGroup.value = undefined;
   if (event.target instanceof Element && !toolsMenu.value?.contains(event.target)) closeTools();
 }
 
 function selectDetail(id: string) {
+  menuGroup.value = undefined;
   groupEditor.value = false;
   if (id !== selected.value) detailsOpen.value = false;
   selected.value = id;
@@ -425,24 +445,54 @@ async function toggleDetails() {
   else detailToggle.value?.focus({ preventScroll: true });
 }
 
-async function openGroupEditor(id: string, event?: MouseEvent) {
+async function openGroupEditor(id: string, event?: MouseEvent, field?: 'name' | 'members') {
   editGroup(id);
   closeTools();
-  if (!loopRoute) clearSelection();
-  groupTrigger.value = event?.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
-  groupEditor.value = !loopRoute;
+  clearSelection();
+  menuGroup.value = undefined;
+  if (event?.currentTarget instanceof HTMLElement) groupTrigger.value = event.currentTarget;
+  groupEditor.value = true;
   await nextTick();
-  groupPicker.value?.scrollIntoView({ block: 'nearest' });
-  groupPicker.value?.focus({ preventScroll: true });
+  const target = field === 'name' ? groupNameInput.value : field === 'members' ? memberFields.value?.querySelector('input') : groupPicker.value;
+  target?.focus({ preventScroll: true });
+}
+
+async function openGroupMenu(id: string, event: MouseEvent) {
+  if (!(event.currentTarget instanceof HTMLElement)) return;
+  groupTrigger.value = event.currentTarget;
+  groupEditor.value = false;
+  if (menuGroup.value?.id === id) { menuGroup.value = undefined; return; }
+  menuGroup.value = layout.value?.groups.find(group => group.id === id);
+  await nextTick();
+  const menu = groupMenu.value;
+  if (!menu || !graphArea.value) return;
+  const anchor = groupTrigger.value.getBoundingClientRect();
+  const area = graphArea.value.getBoundingClientRect();
+  menu.style.left = fitFloatingAxis(anchor.left - area.left, menu.offsetWidth, area.width) + 'px';
+  menu.style.top = fitFloatingAxis(anchor.bottom - area.top, menu.offsetHeight, area.height) + 'px';
+  menu.querySelector('button')?.focus({ preventScroll: true });
+}
+
+function leaveGroupMenu(event: FocusEvent) {
+  if (event.relatedTarget instanceof HTMLElement && !groupMenu.value?.contains(event.relatedTarget)) menuGroup.value = undefined;
+}
+
+function dissolveGroup() {
+  if (!menuGroup.value || !editable.value || !idle.value) return;
+  commitGroup({ ...menuGroup.value, members: [] });
+  menuGroup.value = undefined;
+  graphArea.value?.focus({ preventScroll: true });
 }
 
 function closeGroupEditor() {
+  menuGroup.value = undefined;
   groupEditor.value = false;
   (groupTrigger.value?.getClientRects().length ? groupTrigger.value : graphArea.value)?.focus({ preventScroll: true });
 }
 
 function clearDetail() {
   selected.value = '';
+  if (loopRoute && inspector.value) inspector.value.scrollTop = 0;
   detailsOpen.value = false;
   graphArea.value?.focus({ preventScroll: true });
 }
@@ -472,10 +522,11 @@ function startSelection(event: PointerEvent) {
   const area = graphArea.value;
   const target = event.target;
   if (!area || !(target instanceof Element) || !target.closest('.vue-flow') || event.button !== 0 || box.value) return;
+  if (target.closest('.group-more')) return;
   clearSelection();
   ctrlHeld.value = event.ctrlKey;
   if (!editable.value || !idle.value || effectiveTool.value !== 'select' ||
-      target.closest('.vue-flow__node:not(.vue-flow__node-canvasGroup), .group-handle')) return;
+      target.closest('.vue-flow__node:not(.vue-flow__node-canvasGroup), .group-handle, .group-more')) return;
   event.preventDefault();
   event.stopPropagation();
   const start = boxPoint(event, area.getBoundingClientRect());
@@ -559,6 +610,7 @@ watch(() => props.active, active => {
   labelsDismissed.value = false;
 }, { flush: 'sync' });
 
+watch(() => props.toolsCovered, covered => { if (covered) menuGroup.value = undefined; });
 watch(() => props.toolsOpen, open => {
   labelsDismissed.value = false;
   if (!open) closeTools();
@@ -710,7 +762,7 @@ onUnmounted(() => {
       <p v-if="reading && !hasNodes" class="canvas-empty">{{ t('canvasEmpty') }}</p>
     </div>
 
-    <div v-if="!loopId || reading" v-show="!loopId || hasNodes" class="canvas-workspace">
+    <div v-if="!loopId || reading" v-show="!loopId || hasNodes" class="canvas-workspace" :class="{ 'reader-stowed': loopId && !panelOpen }">
       <Transition name="canvas-rail">
         <div v-show="toolsOpen" ref="toolsRail" :inert="!toolsOpen || toolsCovered" :id="loopId ? flowId + '-tools' : 'dependency-tools'" class="canvas-rail" role="group"
           :aria-label="t('canvasTools')" :data-labels-dismissed="labelsDismissed || undefined"
@@ -747,7 +799,11 @@ onUnmounted(() => {
         :data-tool="effectiveTool" tabindex="0" @keydown="selectionKeys"
         @pointerdown.capture="startSelection" @pointermove="moveSelection" @pointerup="finishSelection"
         @pointercancel="cancelPointer" @lostpointercapture="cancelPointer">
-        <p class="canvas-node-hint">{{ t('canvasNodeHint') }}</p>
+        <div :class="{ 'loop-canvas-heading': loop }">
+          <button v-if="loop" type="button" class="loop-overview-link" :title="loop.loop.title" :inert="toolsCovered"
+            :aria-label="t('loopOpenOverview') + ' · ' + loop.loop.title" @click="panelOpen = true; clearDetail()">{{ loop.loop.title }}</button>
+          <p class="canvas-node-hint">{{ t('canvasNodeHint') }}</p>
+        </div>
         <div v-if="boxAnchor" ref="selectionPanel" class="selection-float canvas-group-float">
           <button v-if="!naming" type="button" class="selection-float-action" aria-keyshortcuts="Control+G"
             @click="nameSelection">{{ t('canvasGroups') }}</button>
@@ -801,11 +857,24 @@ onUnmounted(() => {
           </template>
           <template #node-canvasGroup="{ data, id }">
             <div class="group-frame" :data-group="id">
-              <button type="button" class="group-handle" :title="data.name" @click="openGroupEditor(id.slice(6), $event)">{{ data.name }}</button>
+              <div v-if="loopId" class="loop-group-bar">
+                <span class="group-handle" :title="data.name">{{ data.name }}</span>
+                <button type="button" class="group-more nodrag nopan" :aria-label="t('loopGroupActions') + ' · ' + data.name"
+                  :disabled="!editable || !idle" :aria-expanded="menuGroup?.id === id.slice(6)" @click.stop="openGroupMenu(id.slice(6), $event)">⋯</button>
+              </div>
+              <button v-else type="button" class="group-handle" :title="data.name" @click="openGroupEditor(id.slice(6), $event)">{{ data.name }}</button>
             </div>
           </template>
           <template #edge-dependency="edge"><DependencyEdge v-bind="edge" /></template>
         </VueFlow>
+        <div v-if="menuGroup" ref="groupMenu" class="loop-group-menu" @keydown.esc.stop.prevent="closeGroupEditor"
+          @focusout="leaveGroupMenu">
+          <button type="button" @click="openGroupEditor(menuGroup.id, undefined, 'name')">{{ t('loopRename') }}</button>
+          <button type="button" @click="openGroupEditor(menuGroup.id, undefined, 'members')">{{ t('loopMembers') }}</button>
+          <button type="button" @click="dissolveGroup">{{ t('loopDissolve') }}<small>{{ t('loopStay') }}</small></button>
+        </div>
+        <LoopRelations v-if="loop && selected && !selectedLegend && !groupEditor" :loop="loop.loop" :selected="selected"
+          :language="language" :inert="toolsCovered" @select="selectDetail" />
         <div v-if="selectionRect" class="canvas-selection-rect" aria-hidden="true" :style="{
           left: selectionRect.x + 'px', top: selectionRect.y + 'px',
           width: selectionRect.width + 'px', height: selectionRect.height + 'px',
@@ -832,12 +901,21 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
-      <component :is="loopId ? 'aside' : 'div'" v-if="loopId || hasSelection || groupEditor" ref="inspector"
-        :class="loopId ? 'canvas-inspector' : ['canvas-panel', { 'canvas-group-panel': groupEditor, 'canvas-panel-compact': !groupEditor && !detailsOpen }]">
-        <button v-if="loop" type="button" class="loop-overview-link" :aria-label="t('loopOpenOverview')" @click="clearDetail">
-          <span>{{ loop.loop.title }}</span><span aria-hidden="true">↗</span>
-        </button>
-        <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" :active="active" :legend-selected="!!selectedLegend" @select="selected = $event" />
+      <nav v-if="loop" class="loop-edge-controls" :aria-label="t('loopOrder')" :inert="toolsCovered">
+        <button type="button" class="loop-reader-toggle" :aria-expanded="panelOpen" :aria-controls="flowId + '-inspector'"
+          :aria-label="t(panelOpen ? 'loopCollapse' : 'loopExpand')" :title="t(panelOpen ? 'loopCollapse' : 'loopExpand')"
+          @click="panelOpen = !panelOpen"><span aria-hidden="true">{{ panelOpen ? '›' : '‹' }}</span></button>
+        <template v-if="panelOpen">
+          <button v-for="item in stepNavigation" :key="item.key" type="button" :data-step-nav="item.key" :class="{ 'loop-entry': item.key === 'entry' }"
+            :disabled="!item.id" :aria-label="item.title" :title="item.title" @click="selectDetail(item.id)">
+            {{ t(item.short) }}<span class="loop-nav-tip">{{ item.title }}</span>
+          </button>
+        </template>
+      </nav>
+      <component :is="loopId ? 'aside' : 'div'" v-if="loopId || (hasSelection && !groupEditor)" ref="inspector"
+        :id="loopId ? flowId + '-inspector' : undefined" :inert="loopId && !panelOpen"
+        :class="loopId ? 'canvas-inspector' : ['canvas-panel', { 'canvas-panel-compact': !detailsOpen }]">
+        <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" :active="active" :panel-open="panelOpen" :legend-selected="!!selectedLegend" @select="selectDetail" />
         <template v-if="!loopId && hasSelection && !groupEditor">
           <section class="canvas-summary" :aria-label="t(selectedNode ? 'canvasSelected' : 'canvasSelectedLibrary')"
             @keydown.esc.stop="detailsOpen ? toggleDetails() : clearDetail()">
@@ -916,11 +994,13 @@ onUnmounted(() => {
             <p v-else>{{ t('canvasNoEdges') }}</p>
           </div>
         </section>
-        <form v-if="loopId || groupEditor" class="canvas-groups" @submit.prevent="applyGroup"
-          @keydown.esc="groupEditor && closeGroupEditor()">
+      </component>
+      <div v-if="groupEditor" class="canvas-panel canvas-group-panel" :class="{ 'loop-edit-panel': loopId }">
+        <form class="canvas-groups" @submit.prevent="applyGroup"
+          @keydown.esc.stop.prevent="closeGroupEditor">
           <div class="canvas-group-heading">
             <h2>{{ t('canvasGroups') }}</h2>
-            <button v-if="groupEditor" type="button" @click="closeGroupEditor">{{ t('canvasCloseGroups') }}</button>
+            <button type="button" @click="closeGroupEditor">{{ t('canvasCloseGroups') }}</button>
           </div>
           <label :for="groupControl + '-picker'">{{ t('canvasEditGroup') }}</label>
           <select :id="groupControl + '-picker'" ref="groupPicker" :value="groupId" :disabled="!editable || !idle"
@@ -929,8 +1009,8 @@ onUnmounted(() => {
             <option v-for="group in layout?.groups" :key="group.id" :value="group.id">{{ group.name }}</option>
           </select>
           <label :for="groupControl + '-name'">{{ t('canvasGroupName') }}</label>
-          <input :id="groupControl + '-name'" v-model="groupName" maxlength="160" :disabled="!editable || !idle" />
-          <fieldset :disabled="!editable || !idle">
+          <input :id="groupControl + '-name'" ref="groupNameInput" v-model="groupName" maxlength="160" :disabled="!editable || !idle" />
+          <fieldset ref="memberFields" :disabled="!editable || !idle">
             <legend>{{ t('canvasMembers') }}</legend>
             <label v-for="node in nodes" :key="node.key" class="canvas-member">
               <input v-model="members" type="checkbox" :value="node.key" />{{ node.label }}
@@ -939,10 +1019,10 @@ onUnmounted(() => {
               <input v-model="members" type="checkbox" :value="legendKey(legend.id)" />{{ legend.name }} · {{ legendKind(legend.kind) }}
             </label>
           </fieldset>
-          <button type="submit" :disabled="!editable || !idle || (members.length ? !groupName.trim() : !groupId)">{{ t('canvasApplyGroup') }}</button>
-          <p class="canvas-hint">{{ t(loopId ? 'canvasGroupHelp' : 'canvasGroupEditorHelp') }}</p>
+          <button type="submit" :disabled="!editable || !idle || (members.length ? !groupName.trim() : (!!loopId || !groupId))">{{ t('canvasApplyGroup') }}</button>
+          <p class="canvas-hint">{{ t(loopId ? 'loopGroupEditorHelp' : 'canvasGroupEditorHelp') }}</p>
         </form>
-      </component>
+      </div>
     </div>
   </main>
 </template>

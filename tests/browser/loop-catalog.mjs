@@ -7,7 +7,7 @@ import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { chooseLoop, openCatalog } from './loop-controls.mjs';
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const root = path.join(repository, '.local/D032');
+const root = path.join(repository, '.local/' + (process.env.AFTERTASTE_TEST_TASK ?? 'D032'));
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'catalog-'));
 const project = path.join(run, 'project');

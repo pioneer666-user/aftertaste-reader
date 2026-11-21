@@ -656,7 +656,7 @@ async function checkLoops() {
   const panel = loop.locator('.canvas-inspector');
   const start = panel.locator('[data-reading-step="start"]');
   const check = panel.locator('[data-reading-step="check"]');
-  await loop.locator('.loop-overview .loop-entry').click();
+  await loop.locator('.loop-entry').click();
   await start.waitFor();
   const graphBox = await loop.locator('.graph-area').boundingBox();
   assert.ok((await panel.boundingBox()).x >= graphBox.x + graphBox.width - 1);

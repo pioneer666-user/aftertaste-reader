@@ -42,5 +42,6 @@
 | D030 | [文件树切篇的即时反馈与阅读占位](2026/11/D030-reader-file-switch/task.md) |
 | D031 | [闭环画布、步骤直读与按需源码对照](2026/11/D031-loop-reading-canvas/task.md) |
 | D032 | [闭环目录抽屉与满幅点阵画布](2026/11/D032-loop-catalog-drawer/task.md) |
+| D033 | [闭环阅读栏收展、步骤关系与画布内解散分组](2026/11/D033-loop-reading-panel/task.md) · [回执](2026/11/D033-loop-reading-panel/handoff.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。

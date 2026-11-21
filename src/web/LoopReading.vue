@@ -5,7 +5,7 @@ import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { renderMarkdown } from './markdown.js';
 
-const props = withDefaults(defineProps<{ reading: ReadingLoop; language: Language; selected: string; legendSelected?: boolean; active?: boolean }>(), {
+const props = withDefaults(defineProps<{ reading: ReadingLoop; language: Language; selected: string; legendSelected?: boolean; panelOpen: boolean; active?: boolean }>(), {
   legendSelected: false,
   active: true,
 });
@@ -16,7 +16,6 @@ const nodes = computed(() => new Map(loop.value.nodes.map(node => [node.id, node
 const step = computed(() => nodes.value.get(props.selected));
 const source = computed(() => props.reading.sources.find(item => item.node_id === props.selected));
 const choices = computed(() => loop.value.edges.filter(edge => edge.from === props.selected));
-const stepIndex = computed(() => loop.value.reading_order.indexOf(props.selected));
 const stepHeading = ref<HTMLElement>();
 const sourceTrigger = ref<HTMLButtonElement>();
 const sourcePanel = ref<HTMLElement>();
@@ -91,7 +90,10 @@ watch(() => props.selected, async () => {
   const inspector = heading?.closest('.canvas-inspector');
   if (!heading || !inspector) return;
   inspector.scrollTop = 0;
-  heading.focus({ preventScroll: true });
+  if (props.panelOpen) heading.focus({ preventScroll: true });
+});
+watch(() => props.panelOpen, open => {
+  if (!open) previewOpen.value = false;
 });
 watch(() => props.active, active => { if (!active) closeSource(); }, { flush: 'sync' });
 watch(sourceKey, async (current, previous) => {
@@ -103,7 +105,7 @@ watch(sourceKey, async (current, previous) => {
   }
 });
 watchPostEffect(onCleanup => {
-  if (!sourceVisible.value) return;
+  if (!sourceVisible.value || !props.panelOpen) return;
   const place = () => {
     const trigger = sourceTrigger.value;
     const inspector = trigger?.closest('.canvas-inspector');
@@ -123,8 +125,8 @@ watchPostEffect(onCleanup => {
     const triggerBox = trigger.getBoundingClientRect();
     const height = panel.offsetHeight;
     const preferred = triggerBox.top - 8;
-    panel.style.top = Math.max(8, Math.min(window.innerHeight - height - 8, preferred)) + 'px';
-    panel.style.maxHeight = Math.max(120, window.innerHeight - 16) + 'px';
+    panel.style.top = Math.max(anchor.top + 8, Math.min(anchor.bottom - height - 8, preferred)) + 'px';
+    panel.style.maxHeight = Math.max(120, anchor.height - 16) + 'px';
   };
   void nextTick(place);
   const frame = requestAnimationFrame(place);
@@ -145,9 +147,6 @@ onUnmounted(() => window.clearTimeout(closeTimer));
 <template>
   <div v-if="!step && !legendSelected" class="loop-overview">
     <div class="markdown loop-goal" v-html="renderMarkdown(loop.goal)"></div>
-    <button type="button" class="loop-entry" @click="selectStep(loop.entry)">
-      {{ t('loopEntry') }} · {{ nodes.get(loop.entry)?.title }}
-    </button>
     <details>
       <summary>{{ t('loopOverview') }}</summary>
       <div class="markdown" v-html="renderMarkdown(loop.explanation)"></div>
@@ -175,7 +174,7 @@ onUnmounted(() => window.clearTimeout(closeTimer));
     </button>
     <Teleport to="#loop-workspace" :disabled="inlineSource">
       <section v-if="sourceVisible && step.lines" :id="sourceId" ref="sourcePanel" class="loop-source-panel"
-        :class="inlineSource ? 'loop-source-inline' : 'loop-source-floating'" :aria-label="t('loopCompareSource')"
+        :class="[inlineSource ? 'loop-source-inline' : 'loop-source-floating', { 'source-stowed': !panelOpen }]" :inert="!panelOpen" :aria-label="t('loopCompareSource')"
         @mouseenter="openPreview" @mouseleave="schedulePreviewClose" @focusin="openPreview" @focusout="schedulePreviewClose" @keydown="sourceKeys">
         <header class="loop-source-header">
           <div><strong>{{ step.path }}</strong><p>{{ step.lines.start }}–{{ step.lines.end }} {{ t('loopSourceLines') }}</p></div>
@@ -213,15 +212,5 @@ onUnmounted(() => window.clearTimeout(closeTimer));
       </li>
     </ul>
     <p v-else class="canvas-hint loop-end">{{ t('loopEnd') }}</p>
-    <nav class="loop-step-controls" :aria-label="t('loopOrder')">
-      <button type="button" data-step-nav="previous" :disabled="stepIndex <= 0"
-        @click="selectStep(loop.reading_order[stepIndex - 1]!)">
-        {{ t('loopPrevious') }}<template v-if="stepIndex > 0"> · {{ nodes.get(loop.reading_order[stepIndex - 1]!)?.title }}</template>
-      </button>
-      <button type="button" data-step-nav="next" :disabled="stepIndex >= loop.reading_order.length - 1"
-        @click="selectStep(loop.reading_order[stepIndex + 1]!)">
-        {{ t('loopNext') }}<template v-if="stepIndex < loop.reading_order.length - 1"> · {{ nodes.get(loop.reading_order[stepIndex + 1]!)?.title }}</template>
-      </button>
-    </nav>
   </section>
 </template>

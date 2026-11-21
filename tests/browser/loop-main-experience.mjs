@@ -71,8 +71,8 @@ try {
     const reason = orderInput.edges.find(edge => edge.from === 'check' && edge.to === id).reason;
     assert.match(await check.locator(`[data-choice="${id}"]`).innerText(), new RegExp(reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'u'));
   }
-  assert.match(await check.locator('[data-step-nav="previous"]').innerText(), new RegExp(title('start'), 'u'));
-  assert.match(await check.locator('[data-step-nav="next"]').innerText(), new RegExp(title('resume'), 'u'));
+  assert.match(await loop.locator('[data-step-nav="previous"]').getAttribute('aria-label'), new RegExp(title('start'), 'u'));
+  assert.match(await loop.locator('[data-step-nav="next"]').getAttribute('aria-label'), new RegExp(title('resume'), 'u'));
   report.checks.push('branch target and reason share one row; ordered controls name their destinations');
 
   const before = await position(node(loop, 'check'));
@@ -144,6 +144,7 @@ try {
   await page.setViewportSize({ width: 1440, height: 600 });
   await node(loop, 'check').click();
   await check.waitFor();
+  await check.locator('.loop-original summary').click();
   const longScroll = await panel.evaluate(element => {
     element.scrollTop = element.scrollHeight;
     return element.scrollTop;
