@@ -83,7 +83,7 @@ description: D016 已保存闭环的阅读与个人布局
 - [x] T020 [US1] 在 `src/web/App.vue` 接入双语抽屉、刷新、焦点、快捷键和跳过导航，保留原切图回访（FR-001、007、008）。
 - [x] T021 [US1] 更新 `src/web/DependencyCanvas.vue`、`DependencyDots.vue` 和 `canvas.css`，未选及已选共享满幅工作区、保留右栏与保存故障恢复（FR-008）。
 - [x] T022 [US1] 更新 `tests/browser/` 旧入口，添加 `loop-catalog.mjs` 核对四边、连续帧、固定源码、刷新、键盘及窄窗，更新 `docs/usage/file-reader.md`（SC-005、006）。
-- [ ] T023 冻结构建与试读输入，独审并按结果换版，在 `docs/work/2026/11/D032-loop-catalog-drawer/handoff.md` 交回。
+- [x] T023 冻结构建与试读输入，独审并按结果换版，在 `docs/work/2026/11/D032-loop-catalog-drawer/handoff.md` 交回。
 
 ## Dependencies & Execution Order
 
