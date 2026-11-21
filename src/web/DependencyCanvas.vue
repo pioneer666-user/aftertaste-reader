@@ -799,9 +799,11 @@ onUnmounted(() => {
         :data-tool="effectiveTool" tabindex="0" @keydown="selectionKeys"
         @pointerdown.capture="startSelection" @pointermove="moveSelection" @pointerup="finishSelection"
         @pointercancel="cancelPointer" @lostpointercapture="cancelPointer">
-        <button v-if="loop" type="button" class="loop-overview-link" :title="loop.loop.title" :inert="toolsCovered"
-          :aria-label="t('loopOpenOverview') + ' · ' + loop.loop.title" @click="panelOpen = true; clearDetail()">{{ loop.loop.title }}</button>
-        <p class="canvas-node-hint">{{ t('canvasNodeHint') }}</p>
+        <div :class="{ 'loop-canvas-heading': loop }">
+          <button v-if="loop" type="button" class="loop-overview-link" :title="loop.loop.title" :inert="toolsCovered"
+            :aria-label="t('loopOpenOverview') + ' · ' + loop.loop.title" @click="panelOpen = true; clearDetail()">{{ loop.loop.title }}</button>
+          <p class="canvas-node-hint">{{ t('canvasNodeHint') }}</p>
+        </div>
         <div v-if="boxAnchor" ref="selectionPanel" class="selection-float canvas-group-float">
           <button v-if="!naming" type="button" class="selection-float-action" aria-keyshortcuts="Control+G"
             @click="nameSelection">{{ t('canvasGroups') }}</button>

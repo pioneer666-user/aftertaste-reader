@@ -54,6 +54,14 @@ try {
     await loop.locator('.loop-overview').waitFor();
   }
   await open();
+  await page.getByLabel('界面语言').selectOption('en');
+  for (const width of [780, 820, 1440]) {
+    await page.setViewportSize({ width, height: 780 });
+    const title = await loop.locator('.loop-overview-link').boundingBox();
+    const hint = await loop.locator('.canvas-node-hint').boundingBox();
+    assert.ok(title.x + title.width < hint.x && title.width > 80, 'title and hint at ' + width);
+  }
+  await page.getByLabel('Interface language').selectOption('zh-CN');
   await save(() => drag(560, 230, 15, 12));
   await save(() => press(loop, '放大画布'));
   await node('check').click();
