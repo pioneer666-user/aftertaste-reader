@@ -68,6 +68,7 @@ async function saveAction(page, scope, route, file, action) {
 }
 
 async function addGroup(scope, name, members) {
+  if (!await scope.locator('.canvas-groups').isVisible()) await button(scope, '编辑分组').click();
   await scope.getByRole('combobox', { name: '编辑分组' }).selectOption('');
   await scope.getByLabel('组名').fill(name);
   for (const member of members) await scope.getByRole('checkbox', { name: member, exact: true }).check();
@@ -131,7 +132,7 @@ try {
 
   await choose(page, orderId);
   await order.locator('.loop-overview').waitFor();
-  await button(order, '打开闭环概览').click();
+  await order.getByRole('button', { name: /^打开闭环概览/u }).click();
   await order.getByText('串讲', { exact: true }).click();
   await order.getByText(/假设示例/).waitFor();
   await order.getByText('推荐阅读顺序', { exact: true }).click();
@@ -189,6 +190,8 @@ try {
   const pathsGrouped = await saveAction(page, paths, legendRoute + '/layout', legendPath,
     () => addGroup(paths, '闭环路径', ['日志路径', 'node:path · 标准库']));
   const pathsEdited = await saveAction(page, paths, legendRoute + '/layout', legendPath, async () => {
+    await paths.getByRole('button', { name: '分组操作 · 闭环路径' }).click();
+    await button(paths, '调整成员').click();
     await paths.getByRole('checkbox', { name: '日志路径', exact: true }).uncheck();
     await button(paths, '应用分组').click();
   });
@@ -197,7 +200,7 @@ try {
   const reordered = await saveAction(page, paths, legendRoute + '/layout', legendPath, () => button(paths, '重新布局').click());
   assert.deepEqual(reordered.layout.groups, pathsEdited.layout.groups);
   const movedGroup = await saveAction(page, paths, legendRoute + '/layout', legendPath,
-    () => drag(page, button(paths.locator('.group-frame'), '闭环路径'), 80, 55));
+    () => drag(page, paths.locator('.group-handle').filter({ hasText: '闭环路径' }), 80, 55));
   assert.notDeepEqual(movedGroup.layout.positions[legendId], reordered.layout.positions[legendId]);
   for (const id of ['upload', 'audit']) assert.deepEqual(movedGroup.layout.positions[id], reordered.layout.positions[id]);
   await saveAction(page, paths, legendRoute + '/layout', legendPath, () => drag(page, legend(paths), 20, 37));
@@ -254,7 +257,7 @@ try {
   const afterPaths = await choose(reopened, legendLoopId);
   await saved(afterPaths);
   await assertLayout(legend(afterPaths), pathsFinal.layout.positions[legendId], pathsFinal.layout.viewport);
-  await afterPaths.locator('.group-frame').getByRole('button', { name: '闭环路径', exact: true }).waitFor();
+  await afterPaths.locator('.group-handle').filter({ hasText: '闭环路径' }).waitFor();
   await button(reopened, '文件依赖图').click();
   const afterDependency = canvas(reopened);
   await saved(afterDependency);

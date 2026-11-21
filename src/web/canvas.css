@@ -334,7 +334,23 @@
 .canvas-transfers { color: #694614; padding: 8px; border-radius: 6px; background: #fff8e9; }
 .canvas-transfers ul { max-height: min(8rem, 24dvh); overflow: auto; margin: 5px 0 0; padding-inline-start: 18px; overflow-wrap: anywhere; }
 .canvas-transfers li + li { margin-top: 3px; }
-.loop-canvas .canvas-workspace { grid-template-columns: minmax(0, 1fr) minmax(300px, 36%); }
+.loop-canvas .canvas-workspace {
+  --reader-width: max(300px, 36%);
+  --reader-edge: var(--reader-width);
+  grid-template-columns: minmax(0, 1fr);
+}
+.loop-canvas .reader-stowed { --reader-edge: 0px; }
+.loop-canvas .graph-area { margin-inline-end: var(--reader-edge); overflow: clip; }
+.loop-canvas .canvas-inspector {
+  position: absolute; inset: 0 0 0 auto; width: var(--reader-width); z-index: 3; padding-inline-start: 68px;
+  clip-path: inset(0); overscroll-behavior: contain;
+}
+.reader-stowed .canvas-inspector { clip-path: inset(0 0 0 100%); visibility: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .loop-canvas .canvas-inspector { transition: clip-path var(--canvas-enter), visibility 0s; }
+  .reader-stowed .canvas-inspector { transition: clip-path var(--canvas-enter), visibility 0s 180ms; }
+  .loop-edge-controls { transition: right var(--canvas-enter); }
+}
 .loop-canvas .canvas-inspector { min-height: 0; max-height: none; }
 .loop-overview, .loop-step { line-height: 1.55; }
 .loop-goal > :first-child { margin-top: 0; }
@@ -533,8 +549,79 @@
 .loop-catalog-copy strong { font-size: 15px; line-height: 1.5; }
 .loop-catalog-goal { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .loop-catalog-copy small { color: #476454; font-size: 12px; }
-.loop-overview-link { display: flex; align-items: baseline; gap: 6px; max-width: 100%; text-align: start; font-size: 13px; font-weight: 600; color: var(--accent); background: transparent; border: 0; min-height: 30px; padding: 2px 0; margin-bottom: 8px; overflow-wrap: anywhere; }
+.loop-overview-link {
+  position: absolute; top: 4px; left: 12px; z-index: 2; max-width: min(54%, 42rem); text-align: start;
+  min-height: 28px; padding: 2px 10px; color: var(--accent); background: #f9fcf7ec; border: 1px solid var(--canvas-float-rim);
+  font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.loop-canvas .canvas-notices { top: 54px; }
+.loop-edge-controls {
+  position: absolute; z-index: 4; right: calc(var(--reader-edge) - 54px); width: 54px; top: 48%; transform: translateY(-50%);
+  display: grid; gap: 2px; padding: 3px; background: var(--canvas-float-surface);
+  border: 1px solid var(--canvas-float-rim); border-right: 0; border-radius: 12px 0 0 12px;
+}
+.reader-stowed .loop-edge-controls { right: 0; width: auto; }
+.loop-edge-controls button {
+  position: relative; border: 0; background: transparent; min-height: 32px; padding: 3px 2px; white-space: nowrap;
+  text-align: center; font-size: 12px; color: var(--canvas-float-ink);
+}
+.loop-edge-controls button:disabled { opacity: .45; }
+.loop-edge-controls button:enabled:hover { background: var(--canvas-float-hover); }
+.loop-edge-controls .loop-reader-toggle { font-size: 23px; line-height: 1; min-width: 32px; }
+.loop-nav-tip {
+  display: none; position: absolute; right: calc(100% + 8px); top: 0; width: max-content;
+  max-width: min(22rem, 55vw); white-space: normal; padding: 6px 9px; overflow-wrap: anywhere;
+  background: var(--canvas-float-surface); border: 1px solid var(--canvas-float-rim); border-radius: 6px;
+}
+.loop-edge-controls button:is(:hover,:focus-visible) .loop-nav-tip { display: block; }
+.source-stowed { visibility: hidden; pointer-events: none; }
+.loop-group-bar { display: inline-flex; max-width: calc(100% - 12px); margin: 4px 6px; }
+.loop-group-bar .group-handle { margin: 0; max-width: none; border: 1px solid #ccd0b8; border-radius: 6px 0 0 6px; }
+.loop-group-bar .group-more { flex: none; pointer-events: auto; min-height: 28px; min-width: 30px; padding: 0; color: #4f5846; background: #f3f3e9; border: 1px solid #ccd0b8; border-left: 0; border-radius: 0 6px 6px 0; }
+.loop-group-menu {
+  position: absolute; z-index: 5; display: grid; padding: 4px; min-width: 10rem;
+  background: var(--canvas-float-surface); border: 1px solid var(--canvas-float-rim); border-radius: 10px;
+  box-shadow: 0 4px 14px #29453222;
+}
+.loop-group-menu button { display: grid; text-align: start; padding: 5px 9px; background: transparent; border: 0; }
+.loop-group-menu button:last-child { border-top: 1px solid var(--line); border-radius: 0; }
+.loop-group-menu button:is(:hover,:focus-visible) { background: var(--canvas-float-hover); }
+.loop-group-menu small { color: var(--muted); }
+.loop-edit-panel { left: calc((100% - var(--reader-edge)) / 2); right: auto; transform: translateX(-50%); z-index: 5; width: min(24rem, calc(100% - 24px)); max-width: calc(100% - 24px); bottom: var(--dock-clearance); }
+.loop-relations {
+  left: 50%; right: auto; transform: translateX(-50%); display: flex; flex-flow: row wrap; align-items: center;
+  justify-content: center; gap: 4px 10px; padding: 5px 10px; width: max-content;
+  max-width: min(49rem, calc(100% - 28px)); color: var(--canvas-float-ink); font-size: 12px;
+}
+.loop-relation-side { display: flex; min-width: 0; align-items: center; gap: 3px; }
+.loop-relation-side strong { flex: none; font-weight: 500; }
+.loop-relations button { min-width: 0; min-height: 28px; padding: 2px 6px; color: var(--accent); background: #f5faf5b8; border: 0; font-size: 12px; }
+.loop-relations button span { display: block; max-width: 16ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.loop-relations:has([aria-expanded="true"]) { display: grid; justify-content: stretch; width: min(36rem, calc(100% - 28px)); border-radius: 16px; padding: 10px 14px; background-color: #edf5eef2; }
+.loop-relations:has([aria-expanded="true"]) .loop-relation-side { display: grid; }
+.loop-relations:has([aria-expanded="true"]) .loop-relation-side button { text-align: start; padding: 5px 8px; }
+.loop-relations:has([aria-expanded="true"]) button span { max-width: none; white-space: normal; overflow-wrap: anywhere; }
+.loop-relation-side small { display: block; font-size: 12px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.loop-relations .loop-relation-details { background: transparent; text-decoration: underline; text-underline-offset: 2px; }
+.loop-canvas .graph-area { container-type: inline-size; }
+@container (max-width: 1380px) {
+  .loop-relations { bottom: var(--dock-clearance); max-width: min(48rem, calc(100% - 120px)); }
+}
 @media (max-width: 760px) {
-  .loop-canvas .canvas-workspace { grid-template-rows: auto minmax(0,1fr); }
   .loop-welcome.beside-catalog { visibility: hidden; }
+  .loop-canvas .canvas-workspace { --graph-height: max(45dvh, calc(2 * var(--rail-half-height) + var(--dock-edge) + 16px)); }
+  .loop-canvas .graph-area { margin: 0; height: var(--graph-height); }
+  .loop-canvas .reader-stowed .graph-area { height: 100%; }
+  .loop-canvas .canvas-inspector { inset: var(--graph-height) 0 0; width: 100%; padding: 50px 16px 16px; }
+  .loop-canvas .canvas-dock { bottom: auto; top: calc(var(--graph-height) - var(--dock-edge)); }
+  .loop-edge-controls { width: auto; inset: var(--graph-height) 0 auto; transform: none; display: flex; justify-content: flex-end; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+  .loop-edge-controls button { min-height: 36px; min-width: 42px; }
+  .reader-stowed .loop-edge-controls { left: auto; border: 1px solid var(--canvas-float-rim); border-radius: 10px 0 0 10px; }
+  .loop-edit-panel { left: 50%; top: 8px; bottom: auto; max-height: calc(var(--graph-height) - 16px); }
+  .loop-nav-tip { right: 0; top: 100%; }
+  .loop-overview-link { top: 6px; left: 8px; max-width: 48%; font-size: 13px; }
+  .loop-canvas .canvas-node-hint { max-width: 45%; }
+  .loop-relations { bottom: var(--dock-clearance); left: auto; right: 8px; transform: none; max-width: calc(100% - 72px); }
+  .reader-stowed .loop-relations { left: 50%; right: auto; transform: translateX(-50%); bottom: 12px; max-width: calc(100% - 20px); }
+  .loop-relations:has([aria-expanded="true"]) { max-height: calc(100% - var(--dock-clearance) - 48px); }
 }
