@@ -140,6 +140,21 @@ try {
   await sourcePanel(page).getByRole('button', { name: '关闭源码', exact: true }).click();
   report.checks.push('keyboard pin, Escape focus return and distinct service source ranges');
 
+  await page.setViewportSize({ width: 1440, height: 600 });
+  await node(loop, 'check').click();
+  await check.waitFor();
+  const longScroll = await panel.evaluate(element => {
+    element.scrollTop = element.scrollHeight;
+    return element.scrollTop;
+  });
+  assert.ok(longScroll > 0, 'the long step is actually scrolled before direct node selection');
+  await node(loop, 'stop').click();
+  await stop.waitFor();
+  await page.waitForFunction(() => document.querySelector('.loop-canvas .canvas-inspector')?.scrollTop === 0);
+  assert.equal(await stop.locator('.loop-step-heading').evaluate(element => element === document.activeElement), true);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  report.checks.push('direct node selection from a long step bottom returns to the new step heading');
+
   await loop.locator('.graph-area').click({ position: { x: 12, y: 12 } });
   await lesson(loop, 'store').waitFor({ state: 'hidden' });
   await loop.locator('.loop-overview').waitFor();
@@ -159,6 +174,29 @@ try {
   await loop.locator('.dependency-minimap').waitFor();
   assert.match(await loop.locator('.canvas-node-hint').innerText(), /点击节点查看详情，点击空白关闭/u);
   report.checks.push('blank restores overview; shared toolbar, minimap and canvas hint');
+
+  if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+  await tools.waitFor({ state: 'hidden' });
+  await page.getByLabel('已保存闭环', { exact: true }).selectOption(legendLoopId);
+  const pathLoop = page.locator('#loop-canvas-' + legendLoopId + '-reading');
+  await pathLoop.locator('[data-step="audit"]').waitFor();
+  assert.equal(await toggle.getAttribute('aria-controls'), 'loop-canvas-' + legendLoopId + '-tools');
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'true', 'a newly opened loop keeps its own default');
+  await toggle.click();
+  await pathLoop.locator('.canvas-rail').waitFor({ state: 'hidden' });
+  await page.getByLabel('已保存闭环', { exact: true }).selectOption(orderId);
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'false', 'order remains closed after hiding the path tools');
+  await button(page, '文件依赖图').click();
+  assert.equal(await toggle.getAttribute('aria-controls'), 'dependency-tools');
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'true', 'dependency tools do not inherit loop state');
+  await toggle.click();
+  await page.locator('#dependency-tools').waitFor({ state: 'hidden' });
+  await button(page, '闭环阅读').click();
+  assert.equal(await toggle.getAttribute('aria-controls'), 'loop-canvas-' + orderId + '-tools');
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'false', 'order remains closed after changing the dependency tools');
+  await toggle.click();
+  await tools.waitFor({ state: 'visible' });
+  report.checks.push('order, path and dependency graphs retain independent tool visibility');
 
   const readLift = target => target.evaluate(element => {
     const value = getComputedStyle(element).translate;
@@ -199,12 +237,26 @@ try {
   assert.equal(await sourcePanel(page).count(), 0);
   report.checks.push('English controls with original content; pure lesson and legend have no stale source');
 
-  await page.setViewportSize({ width: 390, height: 844 });
   await page.getByLabel('已保存闭环', { exact: true }).selectOption(orderId);
+  await node(loop, 'check').click();
+  await sourceTrigger(check).click();
+  await sourcePanel(page).waitFor();
+  assert.equal(await sourcePanel(page).evaluate(element => element.classList.contains('loop-source-floating')), true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => {
+    const panel = document.querySelector('.loop-source-panel');
+    return panel?.classList.contains('loop-source-inline') && !panel.style.width && !panel.style.left && !panel.style.top && !panel.style.maxHeight;
+  });
+  const resizedBox = await sourcePanel(page).boundingBox();
+  const resizedClose = await sourcePanel(page).getByRole('button', { name: '关闭源码', exact: true }).boundingBox();
+  assert.ok(resizedBox.x >= 0 && resizedBox.x + resizedBox.width <= 390, 'resized inline source fits the viewport');
+  assert.ok(resizedClose.x >= 0 && resizedClose.x + resizedClose.width <= 390, 'resized close button remains reachable');
+  await sourcePanel(page).getByRole('button', { name: '关闭源码', exact: true }).click();
+  report.checks.push('desktop pinned source clears floating styles when resized directly to 390px');
+
   const mobileTitle = await loop.locator('.canvas-header h1').boundingBox();
   const mobileStatus = await loop.locator('[data-testid="layout-status"]').boundingBox();
   assert.ok(mobileStatus.y >= mobileTitle.y + mobileTitle.height, 'layout status stays below the narrow-screen title');
-  await node(loop, 'check').click();
   await sourceTrigger(check).click();
   await sourcePanel(page).waitFor();
   assert.equal(await sourcePanel(page).evaluate(element => element.classList.contains('loop-source-inline')), true);

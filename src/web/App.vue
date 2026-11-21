@@ -142,13 +142,18 @@ let controller: AbortController | undefined;
 let handledScrollTop = 0;
 let peekTimer: number | undefined;
 
+const loopToolsOpen = ref<Record<string, boolean>>({});
+const loopToolsVisible = (id: string) => loopToolsOpen.value[id] ?? true;
 const auxiliary = computed(() => {
   if (view.value === 'reader') return { id: 'reader-navigation', open: navigationOpen.value, action: navigationAction.value };
-  if (view.value === 'canvas' || (view.value === 'loops' && selectedLoop.value)) return {
-    id: view.value === 'loops' ? 'loop-canvas-' + selectedLoop.value + '-tools' : 'dependency-tools', open: canvasToolsOpen.value,
-    action: view.value === 'loops'
-      ? canvasToolsOpen.value ? 'closeLoopTools' : 'openLoopTools'
-      : canvasToolsOpen.value ? 'closeCanvasTools' : 'openCanvasTools' };
+  if (view.value === 'canvas' || (view.value === 'loops' && selectedLoop.value)) {
+    const open = view.value === 'loops' ? loopToolsVisible(selectedLoop.value) : canvasToolsOpen.value;
+    return {
+      id: view.value === 'loops' ? 'loop-canvas-' + selectedLoop.value + '-tools' : 'dependency-tools', open,
+      action: view.value === 'loops'
+        ? open ? 'closeLoopTools' : 'openLoopTools'
+        : open ? 'closeCanvasTools' : 'openCanvasTools' };
+  }
   if (view.value === 'notes' && notes.value?.canHideList) return { id: 'note-navigation', open: notesListOpen.value,
     action: notesListOpen.value ? 'closeNoteList' : 'openNoteList' };
   return { id: undefined, open: undefined, action: 'noAuxiliaryPanel' };
@@ -156,7 +161,8 @@ const auxiliary = computed(() => {
 
 function toggleAuxiliary() {
   if (view.value === 'reader') void setNavigation(desktopPeek.value || !navigationOpen.value);
-  if (view.value === 'canvas' || view.value === 'loops') canvasToolsOpen.value = !canvasToolsOpen.value;
+  if (view.value === 'canvas') canvasToolsOpen.value = !canvasToolsOpen.value;
+  if (view.value === 'loops' && selectedLoop.value) loopToolsOpen.value[selectedLoop.value] = !loopToolsVisible(selectedLoop.value);
   if (view.value === 'notes') notesListOpen.value = !notesListOpen.value;
 }
 
@@ -959,7 +965,7 @@ onUnmounted(() => {
       </section>
     </section>
     <DependencyCanvas v-for="id in openedLoops" v-show="selectedLoop === id" :key="id" ref="loop-canvases" :loop-id="id"
-      :active="view === 'loops' && selectedLoop === id" :tools-open="canvasToolsOpen" :language="language" />
+      :active="view === 'loops' && selectedLoop === id" :tools-open="loopToolsOpen[id] ?? true" :language="language" />
   </div>
   <div v-show="view === 'reader'" class="workspace"
     :class="{ 'workspace-active': view === 'reader', 'with-navigation': !narrow && desktopOpen, 'file-switch-wait': fileSwitch?.placeholder }">

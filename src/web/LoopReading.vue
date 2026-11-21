@@ -30,12 +30,8 @@ const sourceKey = computed(() => step.value?.lines ? `${step.value.path}:${step.
 let closeTimer: number | undefined;
 let skipFocusPreview = false;
 
-async function selectStep(id: string) {
+function selectStep(id: string) {
   emit('select', id);
-  await nextTick();
-  const inspector = stepHeading.value?.closest('.canvas-inspector');
-  if (inspector) inspector.scrollTop = 0;
-  stepHeading.value?.focus({ preventScroll: true });
 }
 
 function schedulePreviewClose() {
@@ -87,9 +83,15 @@ function sourceKeys(event: KeyboardEvent) {
   }
 }
 
-watch(() => props.selected, () => {
+watch(() => props.selected, async () => {
   previewOpen.value = false;
   if (!step.value?.lines) pinned.value = false;
+  await nextTick();
+  const heading = stepHeading.value;
+  const inspector = heading?.closest('.canvas-inspector');
+  if (!heading || !inspector) return;
+  inspector.scrollTop = 0;
+  heading.focus({ preventScroll: true });
 });
 watch(() => props.active, active => { if (!active) closeSource(); }, { flush: 'sync' });
 watch(sourceKey, async (current, previous) => {
@@ -110,7 +112,11 @@ watchPostEffect(onCleanup => {
     const desiredWidth = Math.min(520, Math.max(320, window.innerWidth * .38));
     inlineSource.value = window.innerWidth <= 760 || anchor.left < desiredWidth + 16;
     const panel = sourcePanel.value;
-    if (!panel || inlineSource.value) return;
+    if (!panel) return;
+    if (inlineSource.value) {
+      for (const property of ['width', 'left', 'top', 'max-height']) panel.style.removeProperty(property);
+      return;
+    }
     const width = Math.min(desiredWidth, Math.max(0, anchor.left - 16));
     panel.style.width = width + 'px';
     panel.style.left = Math.max(8, anchor.left - width) + 'px';
