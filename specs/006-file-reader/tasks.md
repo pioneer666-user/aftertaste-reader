@@ -246,6 +246,11 @@
 
 - [x] T070 [US10] 在 `src/web/style.css` 和 `tests/browser/reader-history.mjs` 核英文粗指针顶栏，320px 菜单及 851px 笔记页签边缘可独立点按，右侧工具仍可用。
 
+## D037 · 浅色选区浮条与右上角随手记
+
+- [x] T071 [US9] 在 `src/web/BlockLocationControl.vue`、`src/web/style.css` 调整浮条材质与两类命中区，用 `tests/browser/reader-center.mjs` 实测。
+- [x] T072 [US10] 在 `src/web/App.vue` 共用顶栏挂载面板，在 `tests/browser/reader-history.mjs` 核六页、阅读现场、图与窄窗。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。

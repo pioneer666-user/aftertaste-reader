@@ -14,6 +14,8 @@
 
 **D029 增量** `codex/feat-reader-continuous-corners` @`703ea8c`，产品基线 dev @`663c1e2`。[批准依据](../../docs/work/2026/11/D029-reader-continuous-corners/task.md)。
 
+**D037 增量**　[浅色选区浮条与右上角随手记](../../docs/work/2026/11/D037-quick-note-overlay/task.md)，批准提交 `106e170`。
+
 **D036 增量**　在现有文件阅读与项目笔记场景内实施[文件讲解选文与新建笔记](../../docs/work/2026/11/D036-reader-note-actions/task.md)，批准提交 `d3e42c0`。
 
 ## Summary
@@ -34,7 +36,7 @@ D030 在文件树切篇时即刻显示目的地。沿用 App 的导航序号处�
 
 **D035 · 个人记录的侧栏与返回**　App.vue 管理各页的侧栏显隐和历史快照，RecordWorkbench.vue 提供两个独立滚动区。沿用现有页面序列保护过期的恢复。 个人资料格式、API 与写入方式沿用原契约。
 
-**D036 · 选文与起笔**　两个按钮共用 ReaderDocument 的选区和 BlockLocationControl 的固定浮层。App 的块跳转只给显式块目标短时标记；键盘焦点用持续的细线，具体记录继续取得焦点。六页共用顶栏沿现有访问历史进入笔记。工具逐步收为图标；极窄时将整组工具放到顶栏第二行，触控中宽窗收紧页签横向留白，让首尾的点击区域都与右侧工具分开。
+**D036 · 选文与起笔**　D037 的浮条使用独立的 CSS 白灰玻璃表面与 pointer 媒体查询，不进入 Firefox 的实色 SVG 面板绘制。两个按钮共用 ReaderDocument 的选区和 BlockLocationControl 的固定浮层。App 的块跳转只给显式块目标短时标记；键盘焦点用持续的细线，具体记录继续取得焦点。D037 顶栏在 header 内绝对定位右上角面板，开合独立于页面路由。工具逐步收为图标；极窄时将整组工具放到顶栏第二行，触控中宽窗收紧页签横向留白，让首尾的点击区域都与右侧工具分开。
 
 ## Technical Context
 

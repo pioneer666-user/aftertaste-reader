@@ -152,17 +152,39 @@ onUnmounted(() => {
 }
 .selection-copy-panel {
   position: fixed;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   margin: 0;
+  padding: 1px 3px;
+  border: 1px solid rgb(140 140 140 / .55);
+  border-radius: 10px;
+  background: #fafafa;
+  box-shadow: inset 0 1px rgb(255 255 255 / .95), 0 2px 7px rgb(0 0 0 / .12);
+}
+@supports (backdrop-filter: blur(4px)) {
+  .selection-copy-panel {
+    background: linear-gradient(145deg, rgb(255 255 255 / .52), transparent 65%), rgb(247 247 247 / .70);
+    backdrop-filter: blur(4px);
+  }
+}
+@media (forced-colors: active) {
+  .selection-copy-panel { background: Canvas; border-color: ButtonText; backdrop-filter: none; }
 }
 .selection-copy-panel .selection-float-action {
   display: inline-grid;
   place-items: center;
   vertical-align: middle;
-  width: 36px;
-  min-height: 36px;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  background: transparent;
+  color: #353535;
   padding: 0;
 }
-@media (max-width: 850px), (pointer: coarse) {
+.selection-float-action svg { width: 16px; height: 16px; }
+.selection-float-action:is(:hover, :focus-visible) { background: #ebebeb; border-color: #949494; }
+@media (pointer: coarse) {
   .selection-copy-panel .selection-float-action { width: 44px; min-height: 44px; }
 }
 .selection-label {
@@ -173,7 +195,7 @@ onUnmounted(() => {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #fff;
-  color: var(--accent);
+  color: #353535;
   font-size: 12px;
   line-height: 1.4;
   white-space: normal;
@@ -196,7 +218,7 @@ onUnmounted(() => {
   padding: 4px 9px;
   border: 1px solid var(--line);
   background: #f4faf5;
-  color: var(--accent);
+  color: #353535;
   font-size: 12px;
 }
 .selection-copy-panel .location-copy-status:not(:empty) {
@@ -221,7 +243,7 @@ onUnmounted(() => {
 .selection-copy-panel:has(.location-copy-manual) { width: min(26rem, calc(100vw - 16px)); }
 .selection-copy-panel .location-copy-manual {
   position: static;
-  width: auto;
+  width: 100%;
   max-height: max(5rem, calc(100dvh - 60px));
   box-shadow: none;
 }

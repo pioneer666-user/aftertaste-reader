@@ -2,21 +2,22 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { blockLink, blockLinkPrefix, blockTarget } from '../core/notes.js';
 import type { BlockQuote, BlockTarget } from '../core/notes.js';
+import NoteSaveStatus from './NoteSaveStatus.vue';
 import RecordWorkbench from './RecordWorkbench.vue';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { blockLinkInsertion, renderMarkdown } from './markdown.js';
-import { useNotesEditor } from './notes-editor.js';
-import type { NotesPosition } from './notes-editor.js';
+import type { NotesEditor, NotesPosition } from './notes-editor.js';
 
 const props = defineProps<{
-  visible: boolean; language: Language; quote: BlockQuote | undefined; listOpen: boolean;
+  editor: NotesEditor; visible: boolean; language: Language; quote: BlockQuote | undefined; listOpen: boolean;
   visit: (target: BlockTarget) => Promise<string | undefined>;
 }>();
 const emit = defineEmits<{ clearQuote: []; select: []; openList: [] }>();
 const t = (key: string) => translate(props.language, key);
-const editor = useNotesEditor();
-const { drafts, selected, loaded, loading, loadProblem } = editor;
+const { editor } = props;
+const { drafts, loaded, loading, loadProblem } = editor;
+const selected = ref('');
 const filter = ref('');
 const tag = ref('');
 const editing = ref(false);
@@ -66,10 +67,6 @@ function finishEdit() {
   nextTick(() => editButton.value?.focus());
 }
 defineExpose({
-  async createBlank(current: () => boolean) {
-    await editor.load(!!loadProblem.value);
-    if (current() && loaded.value && !loadProblem.value) create('');
-  },
   capturePosition: (): NotesPosition => ({ selected: selected.value, filter: filter.value, query: query.value,
     editing: editing.value, preview: previewOnly.value, link: refLink.value, linkOffset,
     href: rendered.value?.querySelectorAll('a')[refLink.value]?.getAttribute('href') ?? '' }),
@@ -118,7 +115,7 @@ function title(body: string) {
 }
 
 function create(body: string) {
-  editor.create(body);
+  selected.value = editor.create(body);
   clearFilter();
   emit('select');
   beginEdit();
@@ -193,9 +190,6 @@ async function remove() {
   if (!drafts.has(draft.id)) { editing.value = false; emit('select'); }
 }
 
-function loadSaved() {
-  if (active.value && window.confirm(t('noteLoadConfirm'))) void editor.loadSaved(active.value);
-}
 </script>
 
 <template>
@@ -251,14 +245,7 @@ function loadSaved() {
           <button type="button" :disabled="active.busy" @click="remove">{{ t('noteDelete') }}</button>
         </template>
       </div>
-      <div v-if="active.problem" class="note-save-problem">
-        <p role="alert" class="bookmark-error">{{ t('noteSaveFailed') }} {{ problemText(language, active.problem).message }}
-          {{ problemText(language, active.problem).nextStep }}</p>
-        <button v-if="active.problem.code === 'NOTE_CONFLICT'" type="button" :disabled="active.busy"
-          @click="loadSaved">{{ t('noteLoadSaved') }}</button>
-        <button v-else-if="active.dirty" type="button" :disabled="active.busy" @click="editor.save(active)">{{ t('noteRetry') }}</button>
-      </div>
-      <p v-else-if="editing || active.busy || active.dirty" class="bookmark-status" role="status">{{ t(active.busy || active.dirty ? 'noteSaving' : 'noteSaved') }}</p>
+      <NoteSaveStatus :draft="active" :editor="editor" :language="language" :show-saved="editing" />
 
       <div v-if="editing" class="note-view-switch">
         <button type="button" :aria-pressed="!previewOnly" @click="previewOnly = false">{{ t('editNote') }}</button>

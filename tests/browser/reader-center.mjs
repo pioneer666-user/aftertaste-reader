@@ -313,7 +313,12 @@ try {
   assert.deepEqual(await positions(), beforeSelection);
   assert.equal(await first.evaluate(el => getComputedStyle(el).outlineStyle), 'none');
   const addNote = first.getByRole('button', { name: '加入笔记', exact: true });
+  const strip = first.locator('.selection-copy-panel');
+  report.selectionBounds = await box(strip);
+  assert.equal(report.selectionBounds.height, 32);
   for (const action of [floatingCopy, addNote]) {
+    const { width, height } = await box(action);
+    assert.deepEqual([width, height], [28, 28]);
     await action.hover();
     await action.locator('.selection-label').waitFor();
     assert.deepEqual(await positions(), beforeSelection);
@@ -323,6 +328,18 @@ try {
   await floatingCopy.locator(':scope:focus .selection-label').waitFor();
   await page.keyboard.press('Tab');
   await addNote.locator(':scope:focus .selection-label').waitFor();
+  if (engine === 'edge') {
+    await page.emulateMedia({ forcedColors: 'active' });
+    await addNote.locator(':scope:focus .selection-label').waitFor();
+    await screenshot('selection-forced-colors');
+    const colors = await strip.evaluate(el => [
+      getComputedStyle(el).backgroundColor, getComputedStyle(el.querySelector('svg')).color,
+      getComputedStyle(el).backdropFilter,
+    ]);
+    assert.notEqual(colors[0], colors[1]);
+    assert.equal(colors[2], 'none');
+    await page.emulateMedia({ forcedColors: 'none' });
+  }
   assert.equal(await page.evaluate(() => getSelection().toString()), selectedPhrase);
   await page.keyboard.press('Escape');
   await addNote.waitFor({ state: 'hidden' });
@@ -456,7 +473,7 @@ try {
   const action = await box(floatingCopy);
   assert.ok(action.x >= 0 && action.x + action.width <= end.x + 1 && action.y >= 0 && action.y + action.height <= 844);
   const addBounds = await box(addNote);
-  assert.ok(addBounds.width >= 44 && addBounds.height >= 44 && addBounds.x + addBounds.width <= 390);
+  assert.ok(addBounds.width === 28 && addBounds.height === 28 && addBounds.x + addBounds.width <= 390);
   await screenshot('candidate-narrow-edge');
   await navigationToggle.click();
   await openFile(auditFile);

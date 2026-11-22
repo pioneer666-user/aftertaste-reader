@@ -97,6 +97,11 @@ description: "D020 项目内全局笔记与跨文件回访"
 - [x] T019 [US1] 通过 `src/web/ProjectNotes.vue` 将全局新建接入单一草稿队列，在 `tests/browser/notes.mjs` 验等待读取、空白焦点和已有草稿。
 - [x] T020 [US2] 在同一工作台和 `src/web/i18n.ts` 提供引文新建、选篇追加及取消，在 `tests/browser/notes.mjs` 核两条引用和原记录，更新 `docs/usage/file-reader.md`。
 
+## D037 · 浅色选区浮条与右上角随手记
+
+- [x] T021 [US1] 在 `src/web/notes-editor.ts`、`ProjectNotes.vue`、`QuickNote.vue` 共享保存队列，按首次输入建稿、原地预览与关闭回焦。
+- [x] T022 [US3] 用 `tests/browser/notes.mjs` 核空白、立即关闭、真失败恢复和后台引文隔离，更新 `docs/usage/file-reader.md`。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

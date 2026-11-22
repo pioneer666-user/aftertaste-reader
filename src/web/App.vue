@@ -25,7 +25,8 @@ import type { Language } from './i18n.js';
 import { blockLabel } from './markdown.js';
 import { markKey } from '../core/understanding-marks.js';
 import type { CanvasPosition } from './canvas-position.js';
-import NoteIcon from './NoteIcon.vue';
+import QuickNote from './QuickNote.vue';
+import { useNotesEditor } from './notes-editor.js';
 import type { NotesPosition } from './notes-editor.js';
 
 const language = ref<Language>(readLanguage());
@@ -708,19 +709,7 @@ function addToNotes(quote: BlockQuote) {
   void showDetail('notes');
 }
 
-const creatingNote = ref(false);
-async function newNote() {
-  if (creatingNote.value) return;
-  if (view.value === 'notes') {
-    startNavigation();
-    restoring = false;
-  } else openPage('notes');
-  const sequence = navigationSequence;
-  creatingNote.value = true;
-  try {
-    await notes.value?.createBlank(() => sequence === navigationSequence && view.value === 'notes');
-  } finally { creatingNote.value = false; }
-}
+const notesEditor = useNotesEditor();
 
 const visitNoteBlock = (target: BlockTarget) => openDocument(target.documentPath, { block: target.blockId });
 function visitMark(target: UnderstandingMark) {
@@ -813,6 +802,7 @@ function leaveCatalogOnTab(event: KeyboardEvent) {
 }
 
 function catalogEscape(event: KeyboardEvent) {
+  if (event.target instanceof Element && event.target.closest('#quick-note')) return;
   if (event.key !== 'Escape' || view.value !== 'loops' || !catalogOpen.value || document.querySelector(':popover-open')) return;
   event.preventDefault();
   event.stopPropagation();
@@ -1026,10 +1016,7 @@ onUnmounted(() => {
         :title="t('refresh')" :disabled="listLoading" @click="refresh(); refreshMarks()">
         <span class="refresh-documents-label">{{ t('refresh') }}</span><span class="refresh-documents-icon" aria-hidden="true"></span>
       </button>
-      <button type="button" class="new-note" :aria-label="t('noteNew')" :title="t('noteNew')"
-        :disabled="creatingNote" @click="newNote">
-        <NoteIcon /><span>{{ t('noteNew') }}</span>
-      </button>
+      <QuickNote :editor="notesEditor" :language="language" />
       <label class="language-control"><span>{{ t('language') }}</span>
         <select :value="language" :aria-label="t('language')" @change="changeLanguage"><option value="zh-CN">简体中文</option><option value="en">English</option></select>
       </label>
@@ -1074,7 +1061,7 @@ onUnmounted(() => {
   <ProjectMarks v-show="view === 'marks'" :class="{ 'record-active': view === 'marks' }" v-model:filter="markFilter" v-model:current-item="markItem" :visible="view === 'marks'"
     :list-open="recordLists.marks" :language="language" :marks="marks" @select="showDetail('marks')"
     :busy="marksBusy" v-bind="markListError ? { error: markListError } : {}" :visit="visitMark" @refresh="refreshMarks" />
-  <ProjectNotes v-show="view === 'notes'" :class="{ 'record-active': view === 'notes' }" ref="notes" :visible="view === 'notes'" :list-open="recordLists.notes"
+  <ProjectNotes :editor="notesEditor" v-show="view === 'notes'" :class="{ 'record-active': view === 'notes' }" ref="notes" :visible="view === 'notes'" :list-open="recordLists.notes"
     :language="language" :quote="noteQuote" @select="showDetail('notes')" @open-list="toggleAuxiliary"
     :visit="visitNoteBlock" @clear-quote="noteQuote = undefined" />
   <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" ref="canvas" :active="view === 'canvas'"

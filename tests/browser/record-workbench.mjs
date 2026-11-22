@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { chmod, cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
@@ -101,6 +101,50 @@ try {
   const left = await inputBox.boundingBox(), right = await markdown.boundingBox();
   assert.ok(left.x + left.width <= right.x);
   await page.screenshot({ path: path.join(run, 'edit.png') });
+  const originalBody = await inputBox.inputValue();
+  const originalFile = await readFile(file, 'utf8');
+  const trigger = page.locator('.new-note'), quick = page.locator('#quick-note'), quickBody = quick.locator('textarea');
+  await trigger.click();
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.imeSetComposition', { text: 'shou', selectionStart: 4, selectionEnd: 4 });
+  await page.waitForTimeout(450);
+  assert.equal(writes.length, 0);
+  const response = () => page.waitForResponse(res => res.request().method() === 'PUT' && res.url().endsWith('/api/notes'));
+  if (process.platform === 'win32') await chmod(file, 0o444);
+  try {
+    const attempt = response();
+    await cdp.send('Input.insertText', { text: '随手记' });
+    await quickBody.press('Escape');
+    const result = await attempt;
+    if (process.platform === 'win32') {
+      assert.equal(result.status(), 422);
+      assert.equal((await result.json()).error.code, 'NOTE_WRITE_FAILED');
+      assert.equal(await readFile(file, 'utf8'), originalFile);
+      await trigger.click();
+      await quick.getByRole('alert').waitFor();
+      assert.equal(await quickBody.inputValue(), '随手记');
+      await page.screenshot({ path: path.join(run, 'quick-note-failure.png') });
+    } else assert.equal(result.status(), 200);
+  } finally {
+    if (process.platform === 'win32') await chmod(file, 0o644);
+    await cdp.detach();
+  }
+  if (process.platform === 'win32') {
+    await button(quick, '重试保存').click();
+    await quick.getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
+    await quickBody.fill('');
+    await quick.getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
+    assert.equal(JSON.parse(await readFile(file, 'utf8')).notes.at(-1).body, '');
+    await quickBody.press('Control+z');
+    await quick.getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
+    await quickBody.press('Escape');
+  }
+  const written = JSON.parse(await readFile(file, 'utf8')).notes;
+  assert.deepEqual(written.slice(0, -1), JSON.parse(originalFile).notes);
+  assert.equal(written.at(-1).body, '随手记');
+  assert.equal(await inputBox.inputValue(), originalBody);
+  report.checks.push('组合输入未提交时零写入，提交立即关面板后原工作台仍在编辑；重读新笔记恰好一篇');
+
   await button(notes, '完成').click();
   await page.setViewportSize({ width: 390, height: 844 });
   await toggle.press('Enter');

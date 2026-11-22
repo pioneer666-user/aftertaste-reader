@@ -3,7 +3,7 @@ import type { ReaderProblem } from '../application/file-reader.js';
 import type { Note, NoteAction, SaveNote } from '../core/notes.js';
 import { failed, request } from './reader-api.js';
 
-interface Draft {
+export interface Draft {
   id: string;
   revision: string | null;
   body: string;
@@ -32,7 +32,6 @@ function submit(action: NoteAction) {
 
 export function useNotesEditor() {
   const drafts = reactive(new Map<string, Draft>());
-  const selected = ref('');
   const loaded = ref(false);
   const loading = ref(false);
   const loadProblem = ref<ReaderProblem>();
@@ -70,7 +69,6 @@ export function useNotesEditor() {
       for (const [id, draft] of drafts) {
         if (!storedIds.has(id) && unchanged(id, draft)) drafts.delete(id);
       }
-      if (selected.value && !drafts.has(selected.value)) selected.value = '';
       loaded.value = true;
     } catch (error) { loadProblem.value = failed(error); }
     finally { loading.value = false; }
@@ -86,11 +84,11 @@ export function useNotesEditor() {
     if (!draft.problem && !draft.busy) schedule(draft);
   }
 
-  function create(body = '') {
+  function create(body: string) {
     const id = crypto.randomUUID();
     drafts.set(id, draftFor(id, body));
-    selected.value = id;
     schedule(drafts.get(id)!);
+    return id;
   }
 
   async function save(draft: Draft) {
@@ -138,7 +136,6 @@ export function useNotesEditor() {
         }
       }
       drafts.delete(draft.id);
-      if (selected.value === draft.id) selected.value = '';
     } catch (error) { draft.problem = failed(error); }
     finally { draft.busy = false; draft.replacing = false; }
   }
@@ -154,7 +151,6 @@ export function useNotesEditor() {
         drafts.set(draft.id, draftFor(note.id, note.body, note.tags, note.revision));
       } else {
         drafts.delete(draft.id);
-        if (selected.value === draft.id) selected.value = '';
       }
       delete draft.problem;
     } catch (error) { draft.problem = failed(error); }
@@ -173,5 +169,7 @@ export function useNotesEditor() {
     timers.forEach(timer => clearTimeout(timer));
   });
 
-  return { drafts, selected, loaded, loading, loadProblem, load, create, changed, save, remove, loadSaved };
+  return { drafts, loaded, loading, loadProblem, load, create, changed, save, remove, loadSaved };
 }
+
+export type NotesEditor = ReturnType<typeof useNotesEditor>;
