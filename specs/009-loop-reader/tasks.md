@@ -98,7 +98,7 @@ description: D016 已保存闭环的阅读与个人布局
 - [x] T029 [US1] 在 src/web/DependencyCanvas.vue、canvas.css 将两态绘图区固定为满幅，默认收栏，栏边淡把手与栏内顶部导航支持键盘和触屏（FR-002、008）。
 - [x] T030 [US1] 在 src/web/LoopReading.vue、i18n.ts 由本步讲解、提示、一行源码、真实出口读到折叠原块，更新 docs/usage/file-reader.md（FR-002、003）。
 - [x] T031 [US1] 在 tests/browser/ 验证开合逐帧几何、浮层命中、两条订单路线、长文导航、窄窗源码与跨图回访（SC-005—007）。
-- [ ] T032 冻结候选与输入，独审后按 docs/work/2026/11/D034-loop-step-reading/task.md 核资料、换版并交回。
+- [x] T032 冻结候选与输入，独审后按 docs/work/2026/11/D034-loop-step-reading/task.md 核资料、换版并交回。
 
 ## Dependencies & Execution Order
 
