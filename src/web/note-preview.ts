@@ -1,8 +1,12 @@
 import { blockLinkPrefix } from '../core/notes.js';
-import { renderMarkdown } from './markdown.js';
+import { renderNoteMarkdown } from './markdown.js';
 import { noteReferences } from './note-references.js';
 
 export function renderNote(body: string, title: string) {
+  return noteParts(body, title, false).html;
+}
+
+export function noteParts(body: string, title: string, liftTitle: boolean) {
   const references = noteReferences(body);
   const byMarker = new Map<string, (typeof references)[number]>();
   const parts: string[] = [];
@@ -17,7 +21,7 @@ export function renderNote(body: string, title: string) {
     offset = reference.to;
   }
   parts.push(body.slice(offset));
-  return renderMarkdown(parts.join(''), { prefix: blockLinkPrefix, title, byMarker });
+  return renderNoteMarkdown(parts.join(''), { prefix: blockLinkPrefix, title, byMarker }, liftTitle);
 }
 
 export function copyNotePreview(event: ClipboardEvent) {

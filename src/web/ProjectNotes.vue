@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { blockLinkPrefix, blockTarget } from '../core/notes.js';
 import type { BlockTarget } from '../core/notes.js';
 import NoteBody from './NoteBody.vue';
@@ -7,7 +7,7 @@ import NoteSaveStatus from './NoteSaveStatus.vue';
 import RecordWorkbench from './RecordWorkbench.vue';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
-import { copyNotePreview, renderNote } from './note-preview.js';
+import { copyNotePreview, noteParts } from './note-preview.js';
 import { noteName } from './markdown.js';
 import type { NotesEditor, NotesPosition } from './notes-editor.js';
 
@@ -22,6 +22,16 @@ const { drafts, loaded, loading, loadProblem } = editor;
 const selected = ref('');
 const filter = ref('');
 const tag = ref('');
+const titleOpen = ref(false);
+const addingTag = ref(false);
+const titleInput = ref<HTMLInputElement>();
+const tagInput = ref<HTMLInputElement>();
+const tagButton = ref<HTMLButtonElement>();
+const popup = ref<'filter' | 'more'>();
+const filterButton = ref<HTMLButtonElement>();
+const moreButton = ref<HTMLButtonElement>();
+const search = ref<HTMLInputElement>();
+const deleteButton = ref<HTMLButtonElement>();
 const editing = ref(false);
 const previewOnly = ref(false);
 const query = ref('');
@@ -37,11 +47,46 @@ let visitSequence = 0;
 const active = computed(() => drafts.get(selected.value));
 const tags = computed(() => [...new Set([...drafts.values()].flatMap(draft => draft.tags))]);
 const matchingTags = computed(() => tags.value.filter(item => item.toLocaleLowerCase().includes(query.value.trim().toLocaleLowerCase())));
-const missingTags = computed(() => !!query.value.trim() && !matchingTags.value.length);
-const entries = computed(() => missingTags.value ? [] : [...drafts.values()].filter(draft => !filter.value || draft.tags.includes(filter.value)));
-function clearFilter() {
+const entries = computed(() => [...drafts.values()].filter(draft => !filter.value || draft.tags.includes(filter.value)));
+const preview = computed(() => noteParts(active.value?.body ?? '', t('noteBlockLink'), !active.value?.title.trim()));
+const heading = computed(() => active.value?.title.trim() ? active.value.title : preview.value.heading
+  || (!active.value?.body.trim() ? t('noteUntitled') : ''));
+
+function closePopup(restoreFocus = false) {
+  const trigger = popup.value === 'filter' ? filterButton.value : moreButton.value;
+  popup.value = undefined;
   query.value = '';
-  filter.value = '';
+  if (restoreFocus) nextTick(() => trigger?.focus({ preventScroll: true }));
+}
+function togglePopup(which: 'filter' | 'more') {
+  if (popup.value === which) return closePopup(true);
+  popup.value = which;
+  nextTick(() => (which === 'filter' ? search.value : deleteButton.value)?.focus());
+}
+function dismissOutside(event: Event) {
+  const trigger = popup.value === 'filter' ? filterButton.value : moreButton.value;
+  if (event.target instanceof Node && !trigger?.parentElement?.contains(event.target)) closePopup();
+}
+watch(popup, open => {
+  for (const type of ['pointerdown', 'focusin']) {
+    if (open) document.addEventListener(type, dismissOutside);
+    else document.removeEventListener(type, dismissOutside);
+  }
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', dismissOutside);
+  document.removeEventListener('focusin', dismissOutside);
+});
+watch([() => props.visible, () => props.listOpen], () => closePopup());
+function chooseFilter(value: string) {
+  filter.value = value;
+  closePopup(true);
+}
+function resetFields() {
+  titleOpen.value = false;
+  addingTag.value = false;
+  tag.value = '';
+  closePopup();
 }
 watch([entries, selected], () => {
   if (!entries.value.some(draft => draft.id === selected.value)) {
@@ -57,11 +102,14 @@ function select(id: string) {
   emit('select');
 }
 function beginEdit() {
+  resetFields();
+  titleOpen.value = !!active.value?.title.trim();
   editing.value = true;
   previewOnly.value = false;
   nextTick(() => textarea.value?.focus());
 }
 function finishEdit() {
+  resetFields();
   editing.value = false;
   previewOnly.value = false;
   nextTick(() => editButton.value?.focus());
@@ -73,11 +121,12 @@ defineExpose({
   async restorePosition(position: NotesPosition, current: () => boolean) {
     await editor.load(true);
     if (!current()) return false;
-    query.value = position.query;
+    resetFields();
     filter.value = tags.value.includes(position.filter) ? position.filter : '';
     const found = entries.value.find(entry => entry.id === position.selected);
     selected.value = found?.id ?? entries.value[0]?.id ?? '';
     editing.value = !!found && position.editing;
+    titleOpen.value = !!found?.title.trim();
     previewOnly.value = position.preview;
     return (!position.selected || !!found) && (!position.filter || !!filter.value);
   },
@@ -94,7 +143,7 @@ defineExpose({
   },
 });
 watch(() => props.visible, visible => { if (visible) void editor.load(); });
-watch(selected, () => { tag.value = ''; visitProblem.value = ''; refLink.value = -1; });
+watch(selected, () => { addingTag.value = false; tag.value = ''; visitProblem.value = ''; refLink.value = -1; });
 watch(tags, list => { if (!list.includes(filter.value)) filter.value = ''; });
 
 function addTag() {
@@ -102,12 +151,14 @@ function addTag() {
   if (!draft || !tag.value.trim() || draft.tags.includes(tag.value)) return;
   draft.tags = [...draft.tags, tag.value];
   tag.value = '';
+  addingTag.value = false;
+  nextTick(() => tagButton.value?.focus());
   editor.changed(draft);
 }
 
 function removeTag(value: string) {
   const draft = active.value!;
-  if (filter.value === value) clearFilter();
+  if (filter.value === value) filter.value = '';
   draft.tags = draft.tags.filter(item => item !== value);
   editor.changed(draft);
 }
@@ -142,6 +193,7 @@ async function follow(event: MouseEvent) {
 
 async function remove() {
   const draft = active.value;
+  closePopup(true);
   if (!draft || !window.confirm(t('noteDeleteConfirm'))) return;
   await editor.remove(draft);
   if (!drafts.has(draft.id)) { editing.value = false; emit('select'); }
@@ -150,7 +202,7 @@ async function remove() {
 </script>
 
 <template>
-  <RecordWorkbench page="notes" :heading="t('notes')" list-id="note-navigation" :list-open="listOpen">
+  <RecordWorkbench page="notes" compact-heading :heading="t('notes')" list-id="note-navigation" :list-open="listOpen">
     <template #status>
       <p v-if="loading" role="status">{{ t('loading') }}</p>
       <div v-if="loadProblem">
@@ -159,18 +211,18 @@ async function remove() {
       </div>
     </template>
     <template #list>
-      <label class="record-filter">{{ t('searchTags') }}
-        <input v-model="query" type="search" @input="filter = ''">
-      </label>
-      <label class="record-filter" for="note-tag-filter">{{ t('noteFilter') }}
-        <select id="note-tag-filter" v-model="filter">
-          <option value="">{{ t('noteAllTags') }}</option>
-          <option v-for="item in matchingTags" :key="item" :value="item">{{ item }}</option>
-        </select>
-      </label>
-      <p v-if="missingTags">{{ t('noTagsFound') }}</p>
-      <button v-if="filter || query" type="button" @click="clearFilter">{{ t('clearFilter') }}</button>
-      <p v-if="loaded && !entries.length && !missingTags" class="narrow-list-empty">{{ t(filter ? 'noteNoMatches' : 'noteEmpty') }}</p>
+      <div class="note-filter-control" @keydown.esc.stop.prevent="closePopup(true)">
+        <button id="note-tag-filter" ref="filterButton" type="button" :aria-expanded="popup === 'filter'"
+          @click="togglePopup('filter')">{{ filter || t('noteAllTags') }} <span aria-hidden="true">▾</span></button>
+        <div v-if="popup === 'filter'" class="note-menu filter-menu">
+          <input ref="search" v-model="query" type="search" :aria-label="t('searchTags')" :placeholder="t('searchTags')">
+          <button type="button" :aria-pressed="!filter" @click="chooseFilter('')">{{ t('noteAllTags') }}</button>
+          <button v-for="item in matchingTags" :key="item" type="button" :aria-pressed="filter === item"
+            @click="chooseFilter(item)">{{ item }}</button>
+          <p v-if="query && !matchingTags.length" role="status">{{ t('noTagsFound') }}</p>
+        </div>
+      </div>
+      <p v-if="loaded && !entries.length" class="narrow-list-empty">{{ t(filter ? 'noteNoMatches' : 'noteEmpty') }}</p>
       <ul class="note-list">
         <li v-for="entry in entries" :key="entry.id">
           <button type="button" :aria-current="selected === entry.id || undefined" @click="select(entry.id)">
@@ -182,19 +234,47 @@ async function remove() {
         </li>
       </ul>
     </template>
-    <p v-if="loaded && !active">{{ t(missingTags ? 'noTagsFound' : filter ? 'noteNoMatches' : 'noteEmpty') }}</p>
+    <p v-if="loaded && !active">{{ t(filter ? 'noteNoMatches' : 'noteEmpty') }}</p>
     <article v-if="active" :key="active.id" class="note-detail" :class="{ editing, 'preview-only': previewOnly }">
-      <input v-if="editing" class="workbench-note-title" v-model="active.title" :aria-label="t('noteTitle')"
-        :placeholder="t('noteTitle')" :readonly="active.replacing" @input="editor.changed(active)" />
-      <h2 v-else-if="active.title">{{ active.title }}</h2>
-      <div class="note-actions">
-        <button v-if="!editing" ref="editButton" type="button" @click="beginEdit">{{ t('editNote') }}</button>
-        <template v-else>
-          <button type="button" @click="finishEdit">{{ t('doneNote') }}</button>
-          <button type="button" :disabled="active.busy" @click="remove">{{ t('noteDelete') }}</button>
-        </template>
-      </div>
-      <NoteSaveStatus :draft="active" :editor="editor" :language="language" :show-saved="editing" />
+      <header class="note-front">
+        <div class="note-front-title">
+          <template v-if="editing">
+            <input v-if="titleOpen || active.title.trim()" ref="titleInput" class="workbench-note-title" v-model="active.title"
+              :aria-label="t('noteTitle')" :placeholder="t('noteTitle')" :readonly="active.replacing" @input="editor.changed(active)">
+            <button v-else type="button" class="note-secondary" @click="titleOpen = true; nextTick(() => titleInput?.focus())">{{ t('setNoteTitle') }}</button>
+          </template>
+          <h2 v-else-if="heading">{{ heading }}</h2>
+        </div>
+        <div class="note-actions">
+          <NoteSaveStatus :draft="active" :editor="editor" :language="language" :show-saved="editing" />
+          <button v-if="!editing" ref="editButton" type="button" @click="beginEdit">{{ t('editNote') }}</button>
+          <template v-else>
+            <button type="button" @click="finishEdit">{{ t('doneNote') }}</button>
+            <div class="note-more" @keydown.esc.stop.prevent="closePopup(true)">
+              <button ref="moreButton" type="button" :aria-expanded="popup === 'more'" @click="togglePopup('more')">{{ t('noteMore') }}</button>
+              <div v-if="popup === 'more'" class="note-menu">
+                <button ref="deleteButton" type="button" :disabled="active.busy" @click="remove">{{ t('noteDelete') }}</button>
+              </div>
+            </div>
+          </template>
+        </div>
+        <div v-if="editing || active.tags.length" class="note-tags" :aria-label="t('noteTags')">
+          <template v-for="item in active.tags" :key="item">
+            <button v-if="editing" type="button" :disabled="active.replacing" :aria-label="t('noteRemoveTag') + ' ' + item"
+              @click="removeTag(item)">{{ item }} <span aria-hidden="true">×</span></button>
+            <span v-else class="note-tag">{{ item }}</span>
+          </template>
+          <template v-if="editing">
+            <form v-if="addingTag" class="note-tag-form" @submit.prevent="addTag"
+              @keydown.esc.stop.prevent="addingTag = false; tag = ''; nextTick(() => tagButton?.focus())">
+              <input id="note-tag" ref="tagInput" v-model="tag" type="text" :aria-label="t('noteTag')" :placeholder="t('noteTag')" :disabled="active.replacing">
+              <button type="submit" :disabled="active.replacing || !tag.trim() || active.tags.includes(tag)">{{ t('noteAddTag') }}</button>
+            </form>
+            <button v-else ref="tagButton" type="button" class="note-secondary" :disabled="active.replacing"
+              @click="addingTag = true; nextTick(() => tagInput?.focus())">＋ {{ t('noteTags') }}</button>
+          </template>
+        </div>
+      </header>
 
       <div v-if="editing" class="note-view-switch">
         <button type="button" :aria-pressed="!previewOnly" @click="previewOnly = false">{{ t('editNote') }}</button>
@@ -211,25 +291,10 @@ async function remove() {
           <h2 v-if="editing">{{ t('notePreview') }}</h2>
           <p v-if="visiting" role="status">{{ t('loading') }}</p>
           <p v-if="visitProblem" ref="visitMessage" class="notice note-visit-problem" role="alert" tabindex="-1">{{ visitProblem }}</p>
-          <div v-if="active.body.trim()" ref="rendered" class="markdown" :class="{ 'note-with-title': /^[^\n]{1,100}\n\s*\n/u.test(active.body.trimStart()) }"
-            v-html="renderNote(active.body, t('noteBlockLink'))" @click="follow" @copy="copyNotePreview"></div>
-          <p v-else>{{ t('noteUntitled') }}</p>
+          <h2 v-if="editing && heading" class="note-preview-title">{{ heading }}</h2>
+          <div ref="rendered" class="markdown" v-html="preview.html" @click="follow" @copy="copyNotePreview"></div>
         </section>
       </div>
-      <form v-if="editing" class="note-tag-form" @submit.prevent="addTag">
-        <label for="note-tag">{{ t('noteTag') }}</label>
-        <div class="bookmark-actions">
-          <input id="note-tag" v-model="tag" type="text" :disabled="active.replacing">
-          <button type="submit" :disabled="active.replacing || !tag.trim() || active.tags.includes(tag)">{{ t('noteAddTag') }}</button>
-        </div>
-      </form>
-      <ul v-if="active.tags.length" class="note-tags" :aria-label="t('noteTags')">
-        <li v-for="item in active.tags" :key="item">
-          <span v-if="!editing">{{ item }}</span>
-          <button v-else type="button" :disabled="active.replacing" :aria-label="t('noteRemoveTag') + ' ' + item"
-            @click="removeTag(item)">{{ item }} <span aria-hidden="true">×</span></button>
-        </li>
-      </ul>
     </article>
   </RecordWorkbench>
 </template>

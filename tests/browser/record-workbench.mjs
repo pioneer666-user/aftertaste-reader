@@ -1,4 +1,4 @@
-import { editorText, newQuickNote } from './note-controls.mjs';
+import { chooseNoteFilter, editorText, newQuickNote } from './note-controls.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { chmod, cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
@@ -48,21 +48,26 @@ try {
   const link = markdown.getByRole('link');
   await page.goto(reader.url);
   await page.locator('[data-page=notes]').click();
-  await markdown.getByText('数量无效时，订单去哪了？', { exact: true }).waitFor();
+  await notes.locator('.note-front').getByText('数量无效时，订单去哪了？', { exact: true }).waitFor();
   assert.equal(await notes.locator('#note-body').count(), 0);
   const search = aside.getByRole('searchbox');
+  const filterButton = aside.locator('#note-tag-filter');
+  await filterButton.press('Enter');
   await search.fill('绝无此签');
   await aside.getByText('没有匹配的标签。').waitFor();
-  await button(aside, '清除筛选').click();
+  assert.equal(await aside.locator('.note-list button[aria-current=true]').count(), 1);
+  await search.press('Escape');
+  await filterButton.locator(':scope:focus').waitFor();
+  await filterButton.click();
   await search.fill('回');
-  await aside.locator('select').selectOption('回访');
+  await button(aside.locator('.filter-menu'), '回访').click();
   await page.screenshot({ path: path.join(run, 'read.png') });
   for (const [i, name] of ['src/rules.mjs', 'src/service.mjs'].entries()) {
     await link.nth(i).press('Enter');
     await page.locator('#reading').getByRole('heading', { name, exact: true }).waitFor();
     await back();
     await link.nth(i).locator(':scope:focus').waitFor();
-    assert.equal(await aside.locator('select').inputValue(), '回访');
+    assert.match(await filterButton.innerText(), /回访/u);
   }
   report.checks.push('两处引用分别打开规则、服务文件，后退恢复回访标签和原引用焦点');
   const longNote = aside.locator('button').filter({ hasText: '订单长笔记' });
@@ -147,7 +152,101 @@ try {
   assert.equal(await editorText(inputBox), originalBody);
   report.checks.push('组合输入未提交时零写入，提交立即关面板后原工作台仍在编辑；重读新笔记恰好一篇');
 
-  await button(notes, '完成').click();
+  const front = notes.locator('.note-front');
+  const title = front.getByRole('textbox', { name: '笔记标题（可选）' });
+  const selectedName = aside.locator('.note-list [aria-current=true] strong');
+  const saved = () => notes.getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
+  const onDisk = async () => JSON.parse(await readFile(file, 'utf8')).notes.find(item => item.id === order.id);
+  const countBefore = writes.length;
+  await button(front, '另设标题').click();
+  await title.locator(':scope:focus').waitFor();
+  await button(front, '更多').click();
+  page.once('dialog', dialog => dialog.dismiss());
+  await button(front, '删除笔记').click();
+  await button(front, '完成').click();
+  await page.waitForTimeout(450);
+  assert.equal(writes.length, countBefore);
+  assert.equal((await onDisk()).body, originalBody);
+  await button(front, '编辑').click();
+  await inputBox.locator(':scope:focus').waitFor();
+
+  const firstLine = '为什么数量无效？'.repeat(22);
+  const editedBody = firstLine + originalBody.slice(originalBody.indexOf('\n'));
+  await inputBox.press('Control+Home');
+  await inputBox.press('Shift+End');
+  await page.keyboard.insertText(firstLine);
+  await saved();
+  assert.equal((await onDisk()).body, editedBody);
+  assert.equal(await selectedName.innerText(), firstLine.slice(0, 100) + '…');
+  await markdown.getByRole('heading', { name: firstLine, exact: true }).waitFor();
+  await button(front, '另设标题').click();
+  await title.fill('订单校验复读');
+  await saved();
+  assert.equal((await onDisk()).title, '订单校验复读');
+  assert.equal(await selectedName.innerText(), '订单校验复读');
+  await markdown.getByRole('heading', { name: '订单校验复读' }).waitFor();
+  await markdown.locator('p').filter({ hasText: firstLine }).waitFor();
+  await button(front, '完成').click();
+  await front.getByRole('heading', { name: '订单校验复读' }).waitFor();
+  await button(front, '编辑').click();
+  await title.fill('');
+  const longTag = '订单边界和来源'.repeat(18);
+  await button(front, '＋ 标签').click();
+  await notes.getByRole('textbox', { name: '新标签' }).fill(longTag);
+  await button(front, '添加标签').click();
+  await saved();
+  assert.deepEqual((await onDisk()).tags, [...order.tags, longTag]);
+  await button(front, '完成').click();
+  await page.reload();
+  await page.locator('[data-page=notes]').click();
+  await front.getByRole('heading', { name: firstLine, exact: true }).waitFor();
+  assert.equal(await notes.locator('.note-detail').getByText(firstLine, { exact: true }).count(), 1);
+  assert.equal((await onDisk()).title ?? '', '');
+  await trigger.click();
+  await quick.getByRole('searchbox').fill(firstLine.slice(0, 10));
+  await quick.locator('.quick-list button').click();
+  assert.equal(await editorText(quickBody), editedBody);
+  await button(quick, '移除标签 ' + longTag).waitFor();
+  await quickBody.press('Escape');
+  await page.setViewportSize({ width: 390, height: 844 });
+  const wrappedTag = front.getByText(longTag, { exact: true });
+  await wrappedTag.waitFor();
+  const tagBox = await wrappedTag.boundingBox();
+  assert.ok(tagBox.height > 32 && tagBox.x + tagBox.width <= 390);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await button(front, '编辑').click();
+  await button(front, '移除标签 ' + longTag).click();
+  await saved();
+  assert.deepEqual((await onDisk()).tags, order.tags);
+  const sampleLink = originalBody.match(/\[[^\]]+\]\(<#aftertaste-block[^>]+>\)/u)[0];
+  const structures = [
+    ['# Markdown 标题', 'h1', 'Markdown 标题'],
+    ['- 第一项\n- 第二项', 'ul li', '第一项'],
+    ['~~~text\n数量校验\n~~~', 'pre code', '数量校验'],
+    ['> 原段引用', 'blockquote p', '原段引用'],
+    ['普通首段\n同段续行', 'p', '同段续行'],
+    [sampleLink, 'a[data-note-raw]', '数量规则'],
+  ];
+  for (const [raw, selector, text] of structures) {
+    await inputBox.fill(raw);
+    await markdown.locator(selector).filter({ hasText: text }).first().waitFor();
+    assert.equal(await markdown.locator('.note-preview-title').count(), 0);
+  }
+  await saved();
+  assert.equal((await onDisk()).body, sampleLink);
+  await button(front, '完成').click();
+  await link.first().waitFor();
+  assert.equal(await link.first().getAttribute('data-note-raw'), sampleLink);
+  await button(front, '编辑').click();
+  await inputBox.fill('');
+  await saved();
+  assert.equal(await selectedName.innerText(), '空白笔记');
+  await button(front, '完成').click();
+  await front.getByRole('heading', { name: '空白笔记' }).waitFor();
+  await chooseNoteFilter(notes, '回访');
+  await chooseNoteFilter(notes, '');
+  assert.match(await filterButton.innerText(), /全部笔记/u);
+  report.checks.push('完整长首行、自定义标题设置与清空、长标签折行与增删、刷新及浮层读回、空篇、六种 Markdown 首块；开合和取消删除零写入');
   await page.setViewportSize({ width: 390, height: 844 });
   await toggle.press('Enter');
   await longNote.press('Enter');
@@ -160,7 +259,7 @@ try {
   assert.equal(await editorText(inputBox), '窄窗写入并预览');
   await notes.getByRole('status').filter({ hasText: /^已保存$/ }).waitFor();
   await button(notes, '完成').click();
-  await markdown.getByText('窄窗写入并预览').waitFor();
+  await notes.locator('.note-front').getByText('窄窗写入并预览').waitFor();
   assert.ok(JSON.parse(await readFile(file, 'utf8')).notes.some(note => note.body === '窄窗写入并预览'));
   await page.screenshot({ path: path.join(run, 'narrow.png') });
   report.checks.push('桌面左右并排，窄窗键盘选择整宽详情、编辑预览切换、完成并读回落盘内容');

@@ -107,6 +107,13 @@ description: "D020 项目内全局笔记与跨文件回访"
 - [x] T025 [US2] 两个编辑入口共用正文引用组件，串行验证跨篇复制、删除、撤销和失败恢复。
 - [x] T026 [US2] 浮层支持指针和键盘调宽高，在宽窄视口验证两轴限值、正文空间和会话内切篇。
 
+## D038 · 篇首、查签与连续角
+
+- [x] T027 [US1] 在 `src/web/ProjectNotes.vue`、`src/web/markdown.ts` 和 `src/web/note-preview.ts` 呈现完整独立首行、可选自定义标题和篇首标签，保住 Markdown、自动保存和错误恢复。
+- [x] T028 [US2] 在 `src/web/ProjectNotes.vue` 和 `src/web/RecordWorkbench.vue` 合并查签与选择入口，沿用可访问名称、选篇及引用返回。
+- [x] T029 [US1] 在 `src/web/style.css` 按工作台表面接入连续角、键盘焦点及强制色，在 `docs/usage/file-reader.md` 更新操作。
+- [x] T030 在 `tests/browser/record-workbench.mjs`、`notes.mjs`、`note-references.mjs`、`reader-history.mjs` 串行核验副本读写与历史，桌面及窄窗实图对照并核 Firefox 回退。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

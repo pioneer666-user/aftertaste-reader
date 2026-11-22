@@ -1,9 +1,9 @@
 <script setup lang="ts">
-defineProps<{ page: string; heading: string; listId: string; listOpen: boolean }>();
+defineProps<{ page: string; heading: string; compactHeading?: boolean; listId: string; listOpen: boolean }>();
 </script>
 
 <template>
-  <main :id="page" class="record-workbench" :class="{ 'list-open': listOpen }" tabindex="-1" :aria-labelledby="page + '-heading'">
+  <main :id="page" class="record-workbench" :class="{ 'list-open': listOpen, 'compact-heading': compactHeading }" tabindex="-1" :aria-labelledby="page + '-heading'">
     <header class="record-heading">
       <h1 :id="page + '-heading'">{{ heading }}</h1>
       <slot name="action" />
