@@ -26,7 +26,8 @@ const filler = Array.from({ length: 30 }, (_, i) => `第 ${i + 1} 段。回看�
 for (let i = 1; i <= 24; i++) {
   records.notes.push({ id: randomUUID(), revision: randomUUID(), body: '复习问题 ' + i, tags: ['回访'] });
 }
-records.notes.push({ ...order, id: randomUUID(), revision: randomUUID(), body: '# 订单长笔记\n\n' + filler + '\n\n' + order.body + '\n\n' + filler });
+const missing = '[失效的数量引用](<#aftertaste-block/docs%2Faftertaste%2Fcurrent%2Fsrc%2Frules.mjs.md/review01>)';
+records.notes.push({ ...order, id: randomUUID(), revision: randomUUID(), body: '# 订单长笔记\n\n' + filler + '\n\n' + order.body + '\n\n' + missing + '\n\n' + filler });
 await writeFile(file, JSON.stringify(records));
 const report = { run, input, build, checks: [] };
 const reader = await startReader(project, 0);
@@ -79,6 +80,19 @@ try {
   await page.keyboard.press('Tab');
   await link.nth(1).locator(':scope:focus').waitFor();
   report.longReturn = { before: before.y, after: after.y, listTop };
+  const broken = markdown.getByRole('link', { name: '失效的数量引用' });
+  await broken.evaluate(a => a.scrollIntoView({ block: 'center' }));
+  await broken.press('Enter');
+  const alert = notes.locator('.note-visit-problem:focus');
+  await alert.waitFor();
+  const box = await alert.boundingBox(), pane = await notes.locator('.record-detail').boundingBox();
+  assert.ok(box.y >= pane.y && box.y + box.height <= pane.y + pane.height, 'failure reason is visible inside the reading pane');
+  assert.match(await alert.innerText(), /review01/u);
+  await link.first().press('Enter');
+  await page.locator('#x4y6az2y:focus').waitFor();
+  await back();
+  await link.first().locator(':scope:focus').waitFor();
+  report.invalidLink = { top: box.y, bottom: box.y + box.height, paneTop: pane.y };
   assert.deepEqual(writes, []);
   report.checks.push('长文中段返回后原句、非零列表位置及 Tab 续读，浏览期间零 PUT');
   await aside.locator('.note-list button').filter({ hasText: '数量无效时，订单去哪了？' }).click();

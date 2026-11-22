@@ -90,6 +90,7 @@ description: "D020 项目内全局笔记与跨文件回访"
 ## D035 · 查标签、读原句和编辑
 
 - [x] T017 [US1] src/web/ProjectNotes.vue、src/web/i18n.ts 与 tests/browser/notes.mjs 实现查签、只读正文、双栏编辑、窄窗预览、选文及失败草稿恢复。
+- [x] T018 [US2] 在 `src/web/ProjectNotes.vue`、`src/web/style.css` 和 `tests/browser/record-workbench.mjs` 核对长笔记中段的失效引用，错误原因可见、取得焦点且能继续访问有效引用。
 
 ## Dependencies & Execution Order
 

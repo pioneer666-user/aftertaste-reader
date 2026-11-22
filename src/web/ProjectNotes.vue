@@ -176,7 +176,10 @@ async function follow(event: MouseEvent) {
     visitProblem.value = t('noteInvalidLink');
   }
   await nextTick();
-  if (props.visible && sequence === visitSequence) visitMessage.value?.focus({ preventScroll: true });
+  if (props.visible && sequence === visitSequence && visitMessage.value) {
+    visitMessage.value.focus({ preventScroll: true });
+    visitMessage.value.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
 }
 
 async function remove() {

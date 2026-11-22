@@ -377,7 +377,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .note-quote blockquote { margin-inline: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .note-quote h2, .note-preview h2 { font-size: 16px; margin-top: 0; }
 .note-preview .note-block-link { color: #21624d; text-decoration-style: double; white-space: pre-wrap; }
-.note-visit-problem { margin-block: 0 12px; overflow-wrap: anywhere; }
+.note-visit-problem { position: sticky; top: 8px; z-index: 1; margin-block: 0 12px; overflow-wrap: anywhere; }
 .note-selection-action { margin-top: 12px; }
 .selection-float {
   z-index: 2;
