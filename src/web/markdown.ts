@@ -37,6 +37,20 @@ export function renderMarkdown(raw: string, internalLinks?: InternalLinks): stri
   return markdown.render(raw, { internalLinks });
 }
 
+// Only lift an entire, standalone plain line. Parse the full note so lists, links,
+// reference definitions and code keep their original Markdown context.
+export function renderNoteMarkdown(raw: string, internalLinks: InternalLinks, liftTitle: boolean) {
+  if (!liftTitle) return { heading: '', html: renderMarkdown(raw, internalLinks) };
+  const env = { internalLinks };
+  const tokens = markdown.parse(raw, env);
+  const [opening, inline, closing] = tokens;
+  const firstLine = raw.split(/\r\n?|\n/u).findIndex(line => line.trim());
+  const plain = opening?.type === 'paragraph_open' && opening.map?.[0] === firstLine && opening.map[1] === firstLine + 1
+    && inline?.children?.length === 1 && inline.children[0]?.type === 'text' && closing?.type === 'paragraph_close';
+  const heading = plain ? inline.children![0]!.content : '';
+  return { heading, html: markdown.renderer.render(heading ? tokens.slice(3) : tokens, markdown.options, env) };
+}
+
 type InlineToken = { type: string; content: string; children?: InlineToken[] | null };
 const sentences = new Intl.Segmenter(undefined, { granularity: 'sentence' });
 

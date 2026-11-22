@@ -70,7 +70,11 @@ async function checkGeometry(page) {
         assert.match(await scope.locator('.record-excerpt').innerText(), /^先转换，再检查是否为整数及是否越界。/u);
         await scope.getByText('src/rules.mjs · 第 1–7 行', { exact: true }).waitFor();
         await nav.getByText('rules.mjs · 第 1–7 行', { exact: true }).waitFor();
-      } else await prose.getByText(orders, { exact: true }).waitFor();
+      } else {
+        const heading = detail(scope).getByRole('heading', { name: orders, exact: true });
+        await heading.waitFor();
+        assert.ok(Math.abs((await heading.boundingBox()).x - (await prose.boundingBox()).x) <= 1);
+      }
       const list = await nav.boundingBox();
       const body = await prose.boundingBox();
       const gap = body.x - list.x - list.width;
@@ -212,7 +216,7 @@ async function checkTouch(browser) {
       if (name === 'notes') {
         await button(scope, '编辑').tap();
         await button(scope, '预览').tap();
-        await scope.locator('.note-preview .markdown').getByText(orders, { exact: true }).waitFor();
+        await scope.locator('.note-preview').getByRole('heading', { name: orders, exact: true }).waitFor();
       } else await scope.getByRole('heading', { name: title, exact: true }).waitFor();
       await shot(page, name + '-390-detail');
       await toggle.tap();

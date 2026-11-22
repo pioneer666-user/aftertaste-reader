@@ -107,9 +107,16 @@ description: "D020 项目内全局笔记与跨文件回访"
 - [x] T025 [US2] 两个编辑入口共用正文引用组件，串行验证跨篇复制、删除、撤销和失败恢复。
 - [x] T026 [US2] 浮层支持指针和键盘调宽高，在宽窄视口验证两轴限值、正文空间和会话内切篇。
 
+## D038 · 篇首、查签与连续角
+
+- [x] T027 [US1] 在 `src/web/ProjectNotes.vue`、`src/web/markdown.ts` 和 `src/web/note-preview.ts` 呈现完整独立首行、可选自定义标题和篇首标签，保住 Markdown、自动保存和错误恢复。
+- [x] T028 [US2] 在 `src/web/ProjectNotes.vue` 和 `src/web/RecordWorkbench.vue` 合并查签与选择入口，沿用可访问名称、选篇及引用返回。
+- [x] T029 [US1] 在 `src/web/style.css` 按工作台表面接入连续角、键盘焦点及强制色，在 `docs/usage/file-reader.md` 更新操作。
+- [x] T030 在 `tests/browser/record-workbench.mjs`、`notes.mjs`、`note-references.mjs`、`reader-history.mjs` 串行核验副本读写与历史，桌面及窄窗实图对照并核 Firefox 回退。
+
 ## D041 增量 · 管理页回读
 
-- [x] T027 [US2] 以 `tests/browser/record-workbench.mjs` 验共用起线下的长文、编辑、两处引用和回读；在 D038 固定构建隔离页验证 CSS 组合（FR-009、SC-005）。
+- [x] T031 [US2] 以 `tests/browser/record-workbench.mjs` 验共用起线下的长文、编辑、两处引用和回读；在 D038 固定构建隔离页验证 CSS 组合（FR-009、SC-005）。
 
 ## Dependencies & Execution Order
 
@@ -147,4 +154,4 @@ US1 的列表验收可独立于选文编解码单测设计。US2 的链接测试
 
 本批重用正式双文件样例。正式更新的确认删除信号随对应更新任务测试。
 
-D041 T027 复用已实现的两处引用与回访路径，依赖 006 T082；D038 联验使用隔离输入。
+D041 T031（整合前为 T027） 复用已实现的两处引用与回访路径，依赖 006 T082；D038 联验使用隔离输入。
