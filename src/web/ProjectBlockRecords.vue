@@ -159,7 +159,7 @@ function clearVisit() {
 }
 function select(record: BlockRecord) {
   clearVisit();
-  if (currentItem.value === recordId(record)) load(record.documentPath, true);
+  load(record.documentPath, true);
   currentItem.value = recordId(record);
   emit('select');
 }

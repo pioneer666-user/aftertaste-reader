@@ -272,7 +272,14 @@ async function checkChangedDocuments(page) {
   } finally { release.resolve(); }
   await page.unroute('**/api/document?*');
 
+  const currentTitle = '同篇换条前的讲解';
+  const editedTitle = '同篇换条后的讲解';
+  await writeFile(path.join(project, rules), original.replace(title, currentTitle));
+  await row(saved, ownBookmark.note).click();
+  await saved.getByRole('heading', { name: currentTitle, exact: true }).waitFor();
+  await writeFile(path.join(project, rules), original.replace(title, editedTitle));
   await row(saved, second.note.split('\n')[0]).click();
+  await saved.getByRole('heading', { name: editedTitle, exact: true }).waitFor();
   assert.equal(await saved.locator('.record-prose').textContent(), second.note);
   const visit = button(detail(saved), '回原文');
   await visit.scrollIntoViewIfNeeded();
@@ -302,7 +309,7 @@ async function checkChangedDocuments(page) {
   assert.match(await saved.locator('.record-excerpt').innerText(), /当前讲解的摘录已经改写/u);
   await problem.waitFor({ state: 'hidden' });
   assert.deepEqual(await readFile(data('bookmarks.json')), initial);
-  report.checks.push('同名同 ID 异文件、缺源码显示讲解、晚到响应不串位、当前改写、缺块重试、书签双区滚动归位');
+  report.checks.push('同名同 ID 异文件、缺源码显示讲解、晚到响应不串位、同篇首次换条读改写、缺块重试、书签双区滚动归位');
 }
 
 async function checkMarkScrollAndEmpty(page) {
