@@ -84,3 +84,7 @@ tests/
 **Structure Decision**：沿现有 TypeScript 分层与 Vue 阅读页。用法归 `docs/usage/file-reader.md`，AI 读取与权限归产品 Skill 的 `references/feedback.md`。
 
 草稿在打开的页面内按文档路径和块 ID 保存，块重新渲染后可继续编辑。成功保存或读者取消时清除该草稿。
+
+## D041 · 三页详情对齐
+
+`src/web/ProjectBlockRecords.vue` 从当前文档读取并按文档路径＋块 ID 派生摘录和来源。列表、详情及失败重试共用只读结果；导航经 App 继续按书签 ID 聚焦原条。新读取复用 [006 文档接口](../006-file-reader/contracts/cli-http.md)，原保存契约沿用。按宪法 I–V 核批准范围、隔离资料、接口复用和独审，无新依赖。

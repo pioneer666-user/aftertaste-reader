@@ -1,0 +1,44 @@
+# D041 · 书签与标注回读，三页详情对齐
+
+## 当前结论与入口
+
+[4342 作者试读](http://127.0.0.1:4342/) 运行受审候选 **`b4f347c`**，沿用原订单试读项目。左栏点一条书签或标注即可读回完整原话及该块的当前讲解。细线箭头与详情「回原文」分别可直接到原书签或已展开的批注。笔记、书签、标注从同一条正文起线开始，窄窗选中后用整宽阅读。按作者[原型及追加调整](amendments.md)对照了箭头、图标、短来源、侧栏密度和摘录面板。
+
+- 批准任务为 `b4a319e` 的[任务单](task.md)，产品比较基线为 `dev@dda1564`，换版基线为 D040 `4653421`。实现为 `1597308`，原型还原为 `d85e9a8`。独审发现同 ID 改写后同篇首次换条会保留旧摘录，`b4f347c` 修复，已添加回归。自测通过，[独审 R2](review.md#r2--2026-11-22)复核通过并交还写入。
+- 作者确认了布局和原型方向，最终界面手感待亲验。回到已有浏览器页签时请刷新。可先从书签和「不理解」对读同一个数量规则块，分别试行尾箭头与详情回访，再切笔记看正文起线和引用续读。
+- 执行分支 `codex/feat-record-management-details` 保留候选和回执，待作者验收、交回主脑及后续整合决定。dev 仍为 `dda1564`。Git 合并、推送、发布均待另行授权。
+
+## 设计对照与尺寸
+
+所有数值均为 CSS px，从桌面侧栏右缘量到详情首行左缘。同屏三页差均为 **0**，各页详情最大宽度实测约 747。960 × 500 的原型对照使用 270 宽侧栏和 40 间距，短来源 12 px，细线箭头 12 × 12 居中，命中区保留 44 × 44。截图裁在通用顶栏下方用于与作者原型对照。
+
+| 窗口 | 侧栏右缘 | 三页正文左缘 | 间距 | 实图 |
+| --- | ---: | ---: | ---: | --- |
+| 1705 × 919 | 340 | 391.140625 | 51.140625 | [书签](evidence/bookmarks-1705.png) · [标注](evidence/marks-1705.png) · [笔记](evidence/notes-1705.png) |
+| 1440 × 900 | 331.1875 | 374.375 | 43.1875 | [书签](evidence/bookmarks-1440.png) · [标注](evidence/marks-1440.png) · [笔记](evidence/notes-1440.png) |
+| 960 × 500 | 270 | 310（书签） | 40 | [原型尺度候选](evidence/bookmarks-prototype-scale.png) |
+| 390 × 844 | 列表或详情分别显示 | 整宽 390 | 独立行尾 44 × 44 | [书签详情](evidence/bookmarks-390-detail.png) · [标注列表](evidence/marks-390-list.png) · [笔记预览](evidence/notes-390-detail.png) |
+
+## 自测与独审
+
+**原话与回访。** 在 `src/rules.mjs` 的 `x4y6az2y`，从书签读「这个边界例子讲得巧」，从「不理解」读「为什么要先校验数量？」。两页都显示「数量规则承担转换与边界检查」的当前三句和第 1–7 行。分别通过两处入口核同块两条书签 ID，标注核状态和展开的批注。后退恢复筛选、选中和两区滚动，书签的列表／详情为 1347／1316，标注为 1069／1888，回前回后相同。覆盖空理由、空批注、仅批注的未标记、无行号纯讲解、无记录、无匹配、列表读取失败重试和完整定位可选取。
+
+**错配与失效。** 两个同名文件使用同一块 ID，故意延迟第一条真实响应，第二条的标题、摘录和行范围仍对应实际文件。同一个文档的可见多条记录共用正在进行的读取。检查了缺源码仍能读已有讲解、同 ID 改写、缺块恢复后重试、缺文档和解析失败。个人原话及路径可读，独立的直接回访仍可尝试已恢复的原块。浏览、筛选、展开定位、预读、回访、后退期间零写请求。
+
+**笔记与轮廓。** 《数量无效时，订单去哪了？》第一处引用返回后仍聚焦原句，Tab 到第二处。隔离长笔记返回时原引用纵坐标保持 447.4375，侧栏滚动为 1301。桌面双栏、收展和窄窗编辑／预览通过。D038 `da10bbc` 固定构建在隔离副本中仅叠加候选的两条详情布局规则，标题和正文均从 374.375 开始，核两处引用及零写。Firefox 实际绘制选中行 14 px、摘录与失效提示 21 px、控件 9 px 的 SVG 连续角，强制色焦点轮廓为 3 px。[Firefox 摘录与聚焦](evidence/firefox-excerpt.png) · [失效提示](evidence/firefox-unavailable.png) · [强制色](evidence/firefox-forced-colors.png) · [D038 组合](evidence/d038-layout.png)
+
+**复跑与范围。** Windows 11、Node 24.11.1、Edge 158.0.4370.33、Firefox 159.0。执行 `npm run typecheck`、`npm run build`，固定构建至 `.local/D041/run1/build-reviewed`。设置 `AFTERTASTE_BUILD`、`AFTERTASTE_READER_INPUT`、`AFTERTASTE_D035_INPUT` 和新 `AFTERTASTE_TEST_TASK`，顺序运行 `tests/browser/record-details.mjs`（Edge 与 Firefox）、`record-workbench.mjs`、`reader-history.mjs`、`bookmarks.mjs`、`understanding-marks.mjs`；D038 使用同目录的隔离组合脚本。真实触屏设备和读屏器播报待验，触屏点击使用浏览器模拟。测试范围为本单及直接受影响的回归。[执行记录及输入](../../../../../.local/D041/run1/self/) · [独审隔离输入与运行](../../../../../.local/D041/run1/review/) · [修复记录](../../../../../.local/D041/run1/rounds.md)
+
+**规格增量。** 使用仓内 Spec Kit v1.4.0 的 specify、plan、tasks 及生效模板维护 006／010／011／012。分析核对 FR-020／SC-018 和各分册 FR-009／SC-005，对应布局、只读预览、历史、持久化边界和验证任务均有落点。implement 前置文件齐全，四分册需求清单各 16/16，无扩展钩子。沿用现有文档 API、个人格式及保存契约。[使用说明](../../../../usage/file-reader.md#收藏讲解块与回访)
+
+## 资源与交回
+
+4342 当前进程为 **26876**，使用固定构建 `.local/D041/run1/build-reviewed` 和原项目 `.local/D039/run1/preview/project`。换版前、换版后及在线试读后逐份比对 15 个项目资料文件的 SHA-256，包含个人记录、讲解、图和布局，结果相同。核首页、6 个静态资源及 12 个只读 API。Edge 在 4342 实走书签、标注、笔记及回访，三页正文同在 374.375，写请求为零。[换版前](../../../../../.local/D041/run1/pre.json) · [换版后](../../../../../.local/D041/run1/post.json) · [在线试读](../../../../../.local/D041/run1/live.json) · [试读后清单](../../../../../.local/D041/run1/after-smoke.json)
+
+4341 仍由进程 **3588** 提供 D038 独立试读。D040 的固定构建仍在 `.local/D040/run1/build-final`。本次自测与独审各自的临时服务和浏览器已收束。保留 4342、输入副本和固定构建至作者验收和后续处置。[固定构建清单](../../../../../.local/D041/run1/build-reviewed-sha256.json) · [隔离输入清单](../../../../../.local/D041/run1/input-sha256.json)
+
+如需重启 4342，确认端口空闲后从本仓根目录运行，输出 `"status":"ready"` 后可以刷新试读页。
+
+```powershell
+& .local/D009/runtime/node.exe .local/D041/run1/build-reviewed/cli/main.js serve --project (Resolve-Path -LiteralPath '.local/D039/run1/preview/project').Path --port 4342
+```

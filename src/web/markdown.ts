@@ -48,21 +48,56 @@ function inlineText(tokens: readonly InlineToken[], includeCode: boolean): strin
   }).join('').replace(/\s+/gu, ' ').trim();
 }
 
-export function blockLabel(body: string): string {
-  const tokens: InlineToken[] = markdown.parse(body, {});
-  if (tokens[0]?.type === 'heading_open') {
-    const title = inlineText(tokens[1]?.children ?? [], true);
-    if (title) return title;
-  }
+function openingHeading(tokens: readonly InlineToken[]): string {
+  return tokens[0]?.type === 'heading_open' ? inlineText(tokens[1]?.children ?? [], true) : '';
+}
+
+function* blockProse(tokens: readonly InlineToken[]) {
   for (const [index, token] of tokens.entries()) {
     if (token.type !== 'inline' || tokens[index - 1]?.type === 'heading_open') continue;
     const children = token.children ?? [];
-    if (!inlineText(children, false)) continue;
-    const first = sentences.segment(inlineText(children, true))[Symbol.iterator]().next().value?.segment.trim() ?? '';
-    const characters = [...first];
-    return characters.length > 48 ? `${characters.slice(0, 48).join('')}…` : first;
+    if (inlineText(children, false)) yield inlineText(children, true);
   }
-  return '';
+}
+
+function shortLabel(first: string): string {
+  const characters = [...first];
+  return characters.length > 48 ? `${characters.slice(0, 48).join('')}…` : first;
+}
+
+export function blockLabel(body: string): string {
+  const tokens: InlineToken[] = markdown.parse(body, {});
+  const heading = openingHeading(tokens);
+  if (heading) return heading;
+  const prose = blockProse(tokens).next().value;
+  const first = prose ? sentences.segment(prose)[Symbol.iterator]().next().value?.segment.trim() : '';
+  return shortLabel(first ?? '');
+}
+
+export function blockPreview(body: string): { title: string; excerpt: string } {
+  const tokens: InlineToken[] = markdown.parse(body, {});
+  let title = openingHeading(tokens);
+  let paragraphs = [...blockProse(tokens)];
+  // The source range is already shown below the excerpt.
+  if (title && paragraphs.length > 1 && /^对照 .+? 第\s*\d+(?:[–—-]\d+)?\s*行。/u.test(paragraphs[0]!)) {
+    paragraphs = paragraphs.slice(1);
+  }
+  const excerpt: string[] = [];
+  let remaining = 3;
+  for (const paragraph of paragraphs) {
+    let passage = '';
+    for (const { segment } of sentences.segment(paragraph)) {
+      const sentence = segment.trim();
+      if (!title) title = sentence;
+      else if (sentence && sentence !== title) {
+        passage += segment;
+        if (--remaining === 0) break;
+      }
+    }
+    if (passage) excerpt.push(passage.trim());
+    if (remaining === 0) break;
+  }
+  return { title, excerpt: excerpt.join(' ') };
 }
 
 export function blockLinkInsertion(body: string, link: string): string {

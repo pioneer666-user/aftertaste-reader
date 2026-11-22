@@ -293,7 +293,6 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .bookmark-entry > span { display: block; overflow-wrap: anywhere; }
 .bookmark-entry > span:first-child { font-size: 13px; color: var(--muted); }
 .bookmark-note { white-space: pre-wrap; overflow-wrap: anywhere; }
-.bookmark-unavailable { overflow-wrap: anywhere; }
 .block-bookmarks li { margin-block: 8px; padding: 10px 12px; border: 1px solid var(--line); }
 .block-bookmarks li.bookmark-visited { border-color: var(--accent); background: #edf4ee; }
 .block-bookmarks li:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -315,44 +314,112 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
   flex: 1; min-height: 0; background: white;
 }
 .record-workbench.list-open {
-  grid-template: "heading detail" auto "list detail" minmax(0,1fr) / clamp(258px, 23vw, 340px) minmax(0,1fr);
+  grid-template: "heading detail" auto "list detail" minmax(0,1fr) / clamp(270px, 23vw, 340px) minmax(0,1fr);
 }
 .record-workbench > .record-detail { min-width: 0; }
 .record-heading, .record-navigation { background: #f5f7f5; }
 .record-heading { grid-area: heading; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 18px; }
+.record-heading-title { display: flex; align-items: baseline; gap: 8px; }
+.record-count { color: var(--muted); font-size: .78rem; }
 .record-status { flex-basis: 100%; font-size: .88rem; overflow-wrap: anywhere; }
 .record-status:empty, .narrow-list-empty { display: none; }
 .record-heading h1 { font-size: 20px; margin: 0; }
 .record-navigation { grid-area: list; overflow: auto; overscroll-behavior: contain; padding: 0 14px 24px; }
+:is(#bookmarks, #marks) :is(.record-heading, .record-navigation) { background: #f5f7f4; }
+:is(#bookmarks, #marks) .record-heading { padding-block: 14px 8px; }
+:is(#bookmarks, #marks) .record-navigation { padding-inline: 10px; }
+.record-heading .record-refresh {
+  display: grid; place-items: center; width: 32px; min-height: 32px; padding: 0; border-color: transparent; background: transparent;
+}
+.record-refresh svg { width: 16px; height: 16px; }
+.record-heading .record-refresh:hover { background: #e1ece3; color: var(--accent); }
 .list-open :is(.record-navigation, .record-heading) { border-inline-end: 1px solid var(--line); }
 .record-detail { grid-area: detail; overflow: auto; padding: clamp(20px, 4vw, 64px); overflow-wrap: anywhere; }
 .record-detail:focus-visible, .record-navigation:focus-visible { outline-offset: -3px; }
 .record-sheet { max-width: 74ch; margin-inline: auto; }
+.record-workbench.list-open .record-detail { padding: clamp(32px, 3vw, 48px) clamp(40px, 3vw, 56px); }
+.record-workbench.list-open .record-sheet { margin-inline: 0; }
 .record-sheet:has(.editing) { max-width: 84rem; }
 .record-sheet h2 { margin-top: 0; }
-.record-prose { white-space: pre-wrap; font-size: 1.2rem; line-height: 1.8; }
+.record-label { margin: 0 0 10px; color: var(--accent); font-size: .85rem; font-weight: 600; }
+.record-prose { margin: 0; white-space: pre-wrap; font-size: clamp(1.25rem, 1.7vw, 1.625rem); line-height: 1.5; }
+.record-no-text { margin: 6px 0 0; }
 .record-location, .record-filter, .record-heading button { color: var(--muted); font-size: .83rem; }
 .record-filter { display: grid; gap: 5px; margin-bottom: 10px; }
 .record-filter :is(select,input) { width: 100%; min-width: 0; }
 .record-workbench :is(input,textarea) { font: inherit; color: inherit; border: 1px solid #a6b8ac; padding: 8px 10px; }
-.record-workbench :is(button, select, input, textarea) {
+.record-workbench :is(button, select, input, textarea, summary) {
   --corner-size: var(--corner-control); border-radius: calc(var(--corner-size) * var(--corner-radius-scale)); corner-shape: squircle;
 }
+.record-segments { display: flex; gap: 4px; margin: 0 0 12px; }
+.record-segments button { padding: 5px 10px; min-height: 36px; background: transparent; border-color: transparent; font-size: .85rem; }
+.record-segments button[aria-pressed="true"] { background: #e1ede4; border-color: #c4d8cb; color: var(--accent); font-weight: 600; }
 .note-list, .note-tags { padding: 0; list-style: none; }
 .record-navigation :is(.project-bookmarks,.note-list) { display: grid; gap: 6px; }
+.record-navigation .project-bookmarks { margin: 0; }
 .record-navigation li { min-width: 0; position: relative; }
+.record-navigation .note-list button, .record-navigation .project-bookmarks li {
+  --corner-size: var(--corner-row); border-radius: calc(var(--corner-size) * var(--corner-radius-scale)); corner-shape: squircle;
+}
 .record-navigation :is(.bookmark-entry,.note-list button) {
-  --corner-size: var(--corner-row); width: 100%; display: grid; gap: 4px; text-align: start; background: transparent;
+  width: 100%; display: grid; gap: 4px; text-align: start; background: transparent;
   border-color: transparent; overflow-wrap: anywhere; line-height: 1.5;
 }
-.record-navigation button[aria-current="true"] { background: #e1ede4; border-color: #c4d8cb; }
-.record-navigation :is(.bookmark-entry,.note-list button):hover { background: #eaf1eb; }
-.record-navigation .bookmark-entry { padding-bottom: 38px; }
+.record-navigation .project-bookmarks li {
+  display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; border: 1px solid transparent;
+}
+.record-navigation .project-bookmarks li:has(.bookmark-entry:hover), .record-navigation .note-list button:hover { background: #eaf1eb; }
+.record-navigation .project-bookmarks li:has(.bookmark-entry[aria-current="true"]) { background: #e1ece3; border-color: #dbe8de; }
+.record-navigation .note-list button[aria-current="true"] { background: #e1ede4; border-color: #c4d8cb; }
+.record-navigation .bookmark-entry { min-width: 0; gap: 5px; padding: 10px 8px 10px 9px; }
 .record-navigation .bookmark-note, .note-list strong {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: .93rem; color: inherit;
 }
+.record-navigation .bookmark-entry > .bookmark-note { color: inherit; font-size: .875rem; font-weight: 600; }
+.record-mark > .state-symbol { font-size: inherit; line-height: inherit; }
+.record-mark[data-status="unmarked"] > .state-symbol { color: var(--muted); }
+.bookmark-note .record-mark { margin-inline-end: .32em; }
+.bookmark-note:not(:has(.record-mark)):has(> span:empty) { display: none; }
 .record-navigation small, .note-list-tags { color: var(--muted); font-size: .78rem; }
-.record-navigation .record-visit { position: absolute; left: 12px; bottom: 5px; min-height: 28px; padding: 2px 6px; color: var(--accent); font-size: .8rem; }
+.record-navigation .record-list-location { font-size: .75rem; line-height: 1.35; }
+.record-visit, .record-visit-text { background: transparent; border-color: transparent; color: var(--accent); }
+.record-visit { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; }
+.record-visit svg, .record-visit-text svg { width: 12px; height: 12px; }
+.record-icon-label { display: flex; align-items: center; gap: 7px; }
+.record-icon-label svg { flex: none; width: 16px; height: 16px; }
+#bookmarks .record-prose { font-weight: 600; }
+.record-visit:is(:hover, :focus-visible) { z-index: 1; }
+.record-visit:is(:hover, :focus-visible)::after {
+  content: attr(data-tooltip); position: absolute; inset-inline-end: calc(100% + 6px); top: 50%; translate: 0 -50%;
+  width: max-content; padding: 4px 8px; border: 1px solid var(--line); border-radius: var(--corner-control);
+  background: white; color: var(--accent); font-size: .78rem; pointer-events: none;
+}
+.record-context {
+  margin-block: 24px 0; padding: 16px 20px 12px; border: 1px solid var(--line); background: #f6f8f5;
+  --corner-size: var(--corner-panel); border-radius: calc(var(--corner-size) * var(--corner-radius-scale)); corner-shape: squircle;
+}
+.record-context > :first-child { margin-top: 0; }
+.record-context > .record-icon-label { margin-bottom: 10px; }
+.record-context h3 { margin: 8px 0; font-size: 1.05rem; }
+.record-excerpt { margin: 4px 0 0; font-size: .95rem; line-height: 1.7; }
+.record-context-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; border-top: 1px solid #e1e7e1;
+}
+.record-visit-text { display: inline-flex; align-items: center; gap: 8px; flex: none; padding-inline: 8px; font-size: .85rem; font-weight: 600; }
+.record-unavailable { background: #fff8ed; color: #624322; font-size: .9rem; }
+.record-unavailable p { margin-block: 6px 12px; }
+.record-full-location { margin-top: 12px; color: var(--muted); font-size: .83rem; }
+.record-full-location summary { width: fit-content; padding: 4px; cursor: pointer; }
+.record-full-location p { margin: 6px 0; user-select: text; }
+@media (pointer: coarse) {
+  .record-heading .record-refresh { width: 44px; min-height: 44px; }
+  .record-segments button, .record-visit-text { min-height: 44px; }
+}
+@media (forced-colors: active) {
+  .record-navigation .project-bookmarks li:has(.bookmark-entry[aria-current="true"]),
+  .record-navigation .note-list button[aria-current="true"],
+  .record-segments button[aria-pressed="true"] { border-color: Highlight; }
+}
 .note-actions, .note-view-switch { display: flex; gap: 8px; align-items: center; }
 .note-actions { justify-content: flex-end; }
 .note-view-switch { display: none; margin-block: 18px; }

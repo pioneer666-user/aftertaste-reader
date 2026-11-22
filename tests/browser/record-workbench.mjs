@@ -170,7 +170,8 @@ try {
     await page.locator('[data-page=' + key + ']').click();
     const panel = page.locator('#' + key);
     await toggle.press('Enter');
-    if (key === 'marks') await panel.locator('select').selectOption('not-understood');
+    const difficult = panel.getByRole('button', { name: 'Not understood', exact: true });
+    if (key === 'marks') await difficult.click();
     const entry = panel.locator('.bookmark-entry').filter({ hasText: reason });
     await entry.press('Enter');
     assert.equal(await panel.locator('.record-navigation').isVisible(), false);
@@ -183,7 +184,7 @@ try {
     await page.locator(sourceTarget).waitFor();
     await back();
     await entry.and(panel.locator('[aria-current="true"]')).waitFor();
-    if (key === 'marks') assert.equal(await panel.locator('select').inputValue(), 'not-understood');
+    if (key === 'marks') assert.equal(await difficult.getAttribute('aria-pressed'), 'true');
   }
   report.checks.push('英文窄窗用键盘在书签和不理解标注里读原话，列表一步回原块后返回所选条目');
   console.log(JSON.stringify(report));

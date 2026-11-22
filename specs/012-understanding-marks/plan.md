@@ -58,10 +58,14 @@ specs/012-understanding-marks/
 ```text
 src/{core,application,adapters}/understanding-marks*.ts
 src/server/reader.ts
-src/web/{App.vue,ReaderDocument.vue,BlockUnderstandingMark.vue,ProjectMarks.vue,mark-drafts.ts,i18n.ts,style.css}
+src/web/{App.vue,ReaderDocument.vue,BlockUnderstandingMark.vue,ProjectBlockRecords.vue,mark-drafts.ts,i18n.ts,style.css}
 tests/{unit,integration}/understanding-marks.test.mjs
 tests/browser/understanding-marks.mjs
 tests/skills/understanding-marks.test.mjs
 ```
 
 **Structure Decision**: 保留现有分层和阅读界面。块内控件及项目列表各有清晰入口，文件加载与焦点由 App 延用已有块回访。全局现行规则、阅读说明、Skill 只读参考各维护对应正文。
+
+## D041 · 三页详情对齐
+
+`src/web/ProjectBlockRecords.vue` 共用书签的只读摘录、短来源、失败和定位表面。标注筛选使用实际状态，记录身份仍为文档路径与块 ID；导航沿用 App 的批注展开，三态沿 D040 的颜色、符号和文字。按宪法 I–V 核隔离验证、接口复用与独审，保存契约沿用。

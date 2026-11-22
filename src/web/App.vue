@@ -13,13 +13,12 @@ import type { MarkDraft } from './mark-drafts.js';
 import ReaderDocument from './ReaderDocument.vue';
 import ReaderFileTree, { buildFileTree } from './ReaderFileTree.vue';
 import ReaderSidebarDivider from './ReaderSidebarDivider.vue';
-import RecordWorkbench from './RecordWorkbench.vue';
+import ProjectBlockRecords from './ProjectBlockRecords.vue';
 import ProjectNotes from './ProjectNotes.vue';
-import ProjectMarks from './ProjectMarks.vue';
 import DependencyCanvas from './DependencyCanvas.vue';
 import DependencyDots from './DependencyDots.vue';
 import LoopThumbnail from './LoopThumbnail.vue';
-import { failed, request } from './reader-api.js';
+import { failed, request, requestDocument } from './reader-api.js';
 import { problemText, readLanguage, saveLanguage, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { blockLabel } from './markdown.js';
@@ -155,23 +154,11 @@ provide(bookmarkDraftsKey, bookmarkDrafts);
 const bookmarksLoading = ref(false);
 const bookmarksSaving = ref(false);
 const bookmarkListError = ref<ReaderProblem>();
-const unavailableMessage = ref<HTMLElement>();
-const unavailableBookmark = ref<Bookmark>();
 const readerDocument = ref<InstanceType<typeof ReaderDocument>>();
 const activeBookmark = ref('');
 const activeMark = ref('');
 const bookmarkItem = ref('');
 const markItem = ref('');
-const currentBookmark = computed(() => bookmarks.value.find(entry => entry.id === bookmarkItem.value));
-watch([bookmarks, bookmarkItem], () => {
-  if (!currentBookmark.value) bookmarkItem.value = bookmarks.value[0]?.id ?? '';
-});
-function selectBookmark(bookmark: Bookmark) {
-  bookmarkItem.value = bookmark.id;
-  unavailableBookmark.value = undefined;
-  void showDetail('bookmarks');
-}
-const visitingBookmark = ref(false);
 const markRoute = '/api/understanding-marks';
 const marks = ref<ReaderMark[]>([]);
 const markFilter = ref<'all' | 'not-understood'>('all');
@@ -572,7 +559,6 @@ function startNavigation() {
   clearFileSwitch();
   openingDocument.value = '';
   positionNotice.value = '';
-  visitingBookmark.value = false;
   return ++navigationSequence;
 }
 
@@ -694,23 +680,12 @@ async function restorePosition(position: Position, current: () => boolean) {
   }
 }
 
-async function visitBookmark(bookmark: Bookmark) {
-  unavailableBookmark.value = undefined;
-  bookmarkItem.value = bookmark.id;
-  const reason = await openDocument(bookmark.documentPath, { block: bookmark.blockId, bookmark: bookmark.id });
-  if (!reason || view.value !== 'bookmarks') return;
-  unavailableBookmark.value = bookmark;
-  await nextTick();
-  if (view.value === 'bookmarks' && narrow.value) { recordLists.bookmarks = false; await nextTick(); }
-  if (view.value === 'bookmarks') unavailableMessage.value?.focus({ preventScroll: true });
-}
-
 const notesEditor = useNotesEditor();
 
 const visitNoteBlock = (target: BlockTarget) => openDocument(target.documentPath, { block: target.blockId });
-function visitMark(target: UnderstandingMark) {
-  markItem.value = markKey(target);
-  return openDocument(target.documentPath, { block: target.blockId, mark: target.blockId });
+function visitRecord(target: Bookmark | UnderstandingMark) {
+  return openDocument(target.documentPath, { block: target.blockId,
+    ...('id' in target ? { bookmark: target.id } : { mark: target.blockId }) });
 }
 
 function positionPageMenu(event: ToggleEvent) {
@@ -737,10 +712,7 @@ function openPage(page: Page) {
   if (position.page !== 'reader' && 'top' in position) position.top = pageTops[page] ?? 0;
   pushPosition(position);
   if (page === 'reader' && !selected.value && documents.value.length) void refreshReading();
-  if (page === 'bookmarks') {
-    unavailableBookmark.value = undefined;
-    void refreshBookmarks();
-  }
+  if (page === 'bookmarks') void refreshBookmarks();
   if (page === 'marks') void refreshMarks();
   if (page === 'loops' && !loopsLoaded.value) void refreshLoops();
   void nextTick(() => {
@@ -819,7 +791,7 @@ async function readDocument(path: string): Promise<DocumentData> {
   controller?.abort();
   controller = new AbortController();
   try {
-    return await request<{ result: ReadingDocument }>(`/api/document?path=${encodeURIComponent(path)}`, { signal: controller.signal });
+    return await requestDocument(path, controller.signal);
   } catch (error) {
     const problem = failed(error);
     return { error: { ...problem, context: { ...problem.context, documentPath: path } } };
@@ -857,13 +829,11 @@ async function openDocument(path: string, { block = '', bookmark = '', mark = ''
       }, 120);
     }
   }
-  if (origin === 'bookmarks') visitingBookmark.value = true;
   const data = await readDocument(path);
   if (sequence !== navigationSequence) return;
   const switchSource = fileSwitch.value?.source;
   clearFileSwitch();
   openingDocument.value = '';
-  visitingBookmark.value = false;
   if (data.error || (block && (data.result.renderMode !== 'comparison' ||
       !data.result.blocks.some(item => item.id === block) ||
       (bookmark && !bookmarks.value.some(item => item.id === bookmark))))) {
@@ -1037,40 +1007,16 @@ onUnmounted(() => {
     <p role="status">{{ positionNotice }}</p>
     <button type="button" @click="positionNotice = ''">{{ t('closePositionNotice') }}</button>
   </div>
-  <RecordWorkbench v-show="view === 'bookmarks'" :class="{ 'record-active': view === 'bookmarks' }" page="bookmarks" :heading="t('bookmarks')" :list-id="listIds.bookmarks" :list-open="recordLists.bookmarks">
-    <template #action><button type="button" :disabled="bookmarksLoading || bookmarksSaving" @click="refreshBookmarks">{{ t('bookmarkRefresh') }}</button></template>
-    <template #status>
-      <p v-if="bookmarksLoading || visitingBookmark" role="status">{{ t('loading') }}</p>
-      <p v-if="bookmarkListError" role="alert">{{ problemText(language, bookmarkListError).message }} {{ problemText(language, bookmarkListError).nextStep }}</p>
-    </template>
-    <template #list>
-      <p v-if="!bookmarks.length && !bookmarksLoading && !bookmarkListError" class="narrow-list-empty">{{ t('bookmarkEmpty') }}</p>
-      <ul class="project-bookmarks">
-        <li v-for="bookmark in bookmarks" :key="bookmark.id">
-          <button type="button" class="bookmark-entry" :aria-current="bookmarkItem === bookmark.id || undefined" @click="selectBookmark(bookmark)">
-            <span class="bookmark-note">{{ bookmark.note || t('bookmarkNoNote') }}</span>
-            <small>{{ bookmark.documentPath }} · {{ bookmark.blockId }}</small>
-          </button>
-          <button type="button" class="record-visit" @click="visitBookmark(bookmark)">{{ t('recordVisit') }}</button>
-        </li>
-      </ul>
-    </template>
-    <div v-if="unavailableBookmark" ref="unavailableMessage" class="notice bookmark-unavailable" role="status" tabindex="-1">
-      <p>{{ t('bookmarkUnavailable') }}</p>
-      <p>{{ unavailableBookmark.documentPath }} · {{ unavailableBookmark.blockId }}</p>
-      <p>{{ unavailableBookmark.note || t('bookmarkNoNote') }}</p>
-    </div>
-    <template v-if="currentBookmark">
-      <h2>{{ t('bookmarkReason') }}</h2>
-      <p class="record-prose">{{ currentBookmark.note || t('bookmarkNoNote') }}</p>
-      <p class="record-location">{{ currentBookmark.documentPath }} · {{ t('block') }} <code>{{ currentBookmark.blockId }}</code></p>
-      <button type="button" @click="visitBookmark(currentBookmark)">{{ t('recordVisit') }}</button>
-    </template>
-    <p v-else-if="!bookmarksLoading && !bookmarkListError">{{ t('bookmarkEmpty') }}</p>
-  </RecordWorkbench>
-  <ProjectMarks v-show="view === 'marks'" :class="{ 'record-active': view === 'marks' }" v-model:filter="markFilter" v-model:current-item="markItem" :visible="view === 'marks'"
-    :list-open="recordLists.marks" :language="language" :marks="marks" @select="showDetail('marks')"
-    :busy="marksBusy" v-bind="markListError ? { error: markListError } : {}" :visit="visitMark" @refresh="refreshMarks" />
+  <ProjectBlockRecords v-show="view === 'bookmarks'" :class="{ 'record-active': view === 'bookmarks' }"
+    page="bookmarks" v-model:current-item="bookmarkItem" :visible="view === 'bookmarks'" :list-open="recordLists.bookmarks"
+    :language="language" :records="bookmarks" :busy="bookmarksLoading || bookmarksSaving"
+    v-bind="bookmarkListError ? { error: bookmarkListError } : {}"
+    :visit="visitRecord" :refresh="refreshBookmarks" @select="showDetail('bookmarks')" />
+  <ProjectBlockRecords v-show="view === 'marks'" :class="{ 'record-active': view === 'marks' }"
+    page="marks" v-model:filter="markFilter" v-model:current-item="markItem" :visible="view === 'marks'"
+    :list-open="recordLists.marks" :language="language" :records="marks" :busy="marksBusy"
+    v-bind="markListError ? { error: markListError } : {}"
+    :visit="visitRecord" :refresh="refreshMarks" @select="showDetail('marks')" @filter-change="startNavigation" />
   <ProjectNotes :editor="notesEditor" v-show="view === 'notes'" :class="{ 'record-active': view === 'notes' }" ref="notes" :visible="view === 'notes'" :list-open="recordLists.notes"
     :language="language" @select="showDetail('notes')" :visit="visitNoteBlock" />
   <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" ref="canvas" :active="view === 'canvas'"

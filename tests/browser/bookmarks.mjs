@@ -80,13 +80,14 @@ function assertFocused(element) {
 }
 
 function listEntry(bookmark) {
-  return page.locator('#bookmarks button.bookmark-entry').filter({ hasText: bookmark.documentPath })
-    .filter({ hasText: bookmark.note.trim() ? bookmark.note.trim().split('\n')[0] : '无备注' });
+  return page.locator(`#bookmarks [data-record-path="${bookmark.documentPath}"] .bookmark-entry`)
+    .filter({ hasText: bookmark.note.trim() ? bookmark.note.trim().split('\n')[0] : '数量超出范围时' });
 }
 
 async function visit(bookmark, file, keyboard = false) {
   await listEntry(bookmark).click();
-  assert.equal(await page.locator('#bookmarks .record-prose').textContent(), bookmark.note || '无备注');
+  if (bookmark.note) assert.equal(await page.locator('#bookmarks .record-prose').textContent(), bookmark.note);
+  else await page.locator('#bookmarks .record-no-text').getByText('无备注', { exact: true }).waitFor();
   const entry = listEntry(bookmark).locator('..').locator('.record-visit');
   if (keyboard) {
     await entry.focus();
@@ -177,11 +178,14 @@ try {
     try {
       await openBookmarks();
       await listEntry(pure).locator('..').locator('.record-visit').click();
-      const unavailable = page.getByRole('status').filter({ hasText: '暂时无法定位这个块' });
+      const unavailable = page.locator('#bookmarks .record-unavailable [role=status]:focus');
       await unavailable.waitFor();
       await unavailable.evaluate(assertFocused);
-      assert.match(await unavailable.innerText(), /service\.mjs\.md.*visit001/s);
-      assert.match(await unavailable.innerText(), /订单说明中的相同块 ID/);
+      const details = page.locator('#bookmarks .record-full-location');
+      if (await details.getAttribute('open') === null) await details.locator('summary').click();
+      await details.getByText(pure.documentPath, { exact: true }).waitFor();
+      assert.match(await details.innerText(), /service\.mjs\.md.*visit001/s);
+      assert.match(await page.locator('#bookmarks .record-prose').innerText(), /订单说明中的相同块 ID/);
       assert.equal(await raw(), beforeUnavailable);
       await page.screenshot({ path: path.join(run, 'unavailable.png') });
     } finally { await restore(); }
