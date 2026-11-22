@@ -300,8 +300,6 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .block-bookmarks .bookmark-note { margin: 0 0 8px; line-height: 1.5; }
 .bookmark-current { display: block; color: var(--accent); font-size: 13px; margin-bottom: 4px; }
 .bookmark-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.bookmark-editor { margin-block: 12px; }
-.bookmark-editor textarea { display: block; width: 100%; margin: 6px 0 8px; padding: 8px; resize: vertical; border: 1px solid #869b8c; }
 .bookmark-error { color: #743b1e; }
 .bookmark-status { color: var(--accent); font-size: 13px; margin: 8px 0; }
 .bookmark-status:empty { margin: 0; }
@@ -480,6 +478,63 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
   .refresh-documents-icon::after { content: ''; position: absolute; inset: -1px -1px auto auto; width: 5px; height: 5px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; }
 }
 
+/* Inline record editing stays inside the scrolling body of the margin panel. */
+.margin-panel { --record-target: 32px; }
+.margin-panel button {
+  min-height: var(--record-target); min-width: var(--record-target); padding: 4px 9px;
+  font-size: 13px; line-height: 1.25; background: transparent; border-color: transparent;
+}
+.margin-panel .record-icon {
+  position: relative; display: inline-grid; place-items: center; flex: none;
+  width: var(--record-target); height: var(--record-target); padding: 0; color: var(--muted); font-size: 19px;
+}
+.record-icon svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linejoin: round; }
+.record-icon:not([aria-expanded="true"]):is(:hover,:focus-visible)::after {
+  content: attr(aria-label); position: absolute; z-index: 1; right: calc(100% + 3px);
+  width: max-content; padding: 4px 7px; background: #283c31; color: white;
+  font-size: 12px; border-radius: 4px; pointer-events: none;
+}
+.margin-panel button:hover { background: #e8efe9; }
+.margin-panel button:focus-visible { outline-offset: -2px; }
+.margin-body .block-bookmarks { margin: 0; display: grid; gap: 6px; }
+.margin-body .block-bookmarks li { margin: 0; padding: 0; border: 0; }
+.margin-body .block-bookmarks li.bookmark-visited { padding: 4px; }
+.bookmark-line { display: flex; align-items: start; gap: 2px; }
+.bookmark-copy { flex: 1; min-width: 0; align-self: center; padding: 3px 4px; }
+.block-bookmarks .bookmark-copy p { margin: 0; }
+.bookmark-copy small, .editor-footer small { color: var(--muted); font-size: 12px; }
+.bookmark-more { position: relative; display: flex; flex: none; }
+.margin-panel .record-menu {
+  position: absolute; z-index: 1; inset-inline-end: calc(100% + var(--record-target) + 4px); top: 0;
+  width: max-content; height: var(--record-target); color: #87372c; background: white;
+  border-color: var(--line); box-shadow: 0 2px 6px #23352b24;
+}
+.margin-panel .record-menu:disabled { opacity: 1; color: var(--muted); cursor: default; }
+.margin-panel .record-menu:not(:disabled):hover { background: #fcf1ef; }
+.record-editor { padding: 6px; background: white; border: 1px solid #9aaa9e; }
+.record-editor:has(textarea:focus) { outline: 2px solid var(--accent); outline-offset: 0; }
+.record-editor textarea {
+  display: block; width: 100%; padding: 3px 5px; min-height: 48px; resize: vertical;
+  color: inherit; background: transparent; border: 0; outline: none; line-height: 1.45;
+}
+.editor-footer { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 3px; }
+.editor-footer small { margin-right: auto; }
+.editor-footer button[type="submit"] { color: white; background: var(--accent); }
+.editor-footer button[type="submit"]:hover { background: #174937; }
+.editor-footer button[type="submit"]:focus-visible { outline-color: white; }
+.margin-body .mark-controls {
+  display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 2px;
+  background: #eff3ef; padding: 3px;
+}
+.mark-controls button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding-inline: 2px; }
+.mark-controls [aria-pressed="true"] { background: white; color: #243a2e; border-color: #bacbbf; font-weight: 600; }
+@media (pointer: coarse) { .margin-panel { --record-target: 44px; } }
+@media (forced-colors: active) {
+  .mark-controls [aria-pressed="true"] { border-color: Highlight; }
+  .margin-panel .record-editor:has(textarea:focus) { outline-color: Highlight; }
+  .margin-panel button:focus-visible { outline-color: Highlight; }
+}
+
 @property --corner-size {
   syntax: '<length>';
   inherits: false;
@@ -488,7 +543,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .app-header :is(button, select),
 .skip-link,
 #reader-navigation .project-info-toggle,
-#reading :is(button, select, textarea, .location-copy-status:not(:empty)),
+#reading :is(button, select, textarea:not(.record-editor textarea), .location-copy-status:not(:empty)),
 #app:has(> .workspace-active) > .position-notice button {
   --corner-size: var(--corner-control);
   border-radius: calc(var(--corner-size) * var(--corner-radius-scale));
@@ -496,7 +551,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 }
 .app-page-menu[popover] button,
 #reader-navigation :is(.file-list button, .outline-list button, .sidebar-divider),
-#reading :is(.annotation-text, .block-bookmarks li, .block-mark),
+#reading :is(.annotation-text, .block-bookmarks li, .block-mark, .record-editor, .record-menu, .mark-controls),
 .file-switch-immediate p,
 #app:has(> .workspace-active) > .language-status {
   --corner-size: var(--corner-row);
@@ -505,7 +560,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 }
 .app-page-menu[popover],
 #reader-navigation .project-info,
-#reading :is(.source-pane, .markdown pre, .notice, .reading-error, .location-copy-manual),
+#reading :is(.source-pane, .markdown pre, .notice, .reading-error, .location-copy-manual, .margin-panel),
 .file-switch-placeholder .source-pane,
 #app:has(> .workspace-active) > .position-notice {
   --corner-size: var(--corner-panel);

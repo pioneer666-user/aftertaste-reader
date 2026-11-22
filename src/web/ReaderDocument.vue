@@ -15,7 +15,7 @@ const props = defineProps<{
   result?: ReadingDocument; error?: ReaderProblem; language: Language; active: boolean;
   bookmarks: readonly Bookmark[]; activeBookmark: string; bookmarksBusy: boolean;
   saveBookmark: (action: BookmarkAction) => Promise<void>;
-  marks: readonly ReaderMark[]; activeMark: string; marksBusy: boolean; markListError: ReaderProblem | undefined;
+  marks: readonly ReaderMark[]; marksBusy: boolean; markListError: ReaderProblem | undefined;
   saveMark: (edit: MarkEdit) => Promise<void>;
 }>();
 const emit = defineEmits<{ addToNotes: [quote: BlockQuote]; refreshMarks: [] }>();
@@ -236,7 +236,7 @@ onUnmounted(() => {
           :kind="openRecord?.id === block.id ? openRecord.kind : undefined" :language="language"
           :bookmarks="bookmarks.filter(entry => entry.documentPath === result?.documentPath && entry.blockId === block.id)"
           :active-bookmark="activeBookmark" :bookmarks-busy="bookmarksBusy" :save-bookmark="saveBookmark"
-          :mark="blockMarks.get(block.id)" :active-mark="activeMark === block.id" :marks-busy="marksBusy"
+          :mark="blockMarks.get(block.id)" :marks-busy="marksBusy"
           :unavailable="!!markListError" :save-mark="saveMark" @open="showRecord(block.id, $event)" @close="openRecord = undefined" />
       </section>
     </div>

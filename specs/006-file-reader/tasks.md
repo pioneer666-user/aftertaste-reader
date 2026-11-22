@@ -262,6 +262,12 @@
 - [x] T077 [US6] 在 `src/web/App.vue` 接通 FR-015、016 的显式回访与返回，核同块多条的焦点。
 - [x] T078 [US6] 更新 `docs/usage/file-reader.md`，在 `tests/browser/` 串行验证 SC-008、草稿、并发、写失败与正文选文。
 
+## D040 · User Story 6 书签与批注原位编辑（P1）
+
+- [x] T079 [US6] 在 `src/web/BlockBookmarks.vue` 与 `BlockMarginRecords.vue` 实现逐条编辑、菜单、草稿切换与回焦（FR-010）。
+- [x] T080 [US6] 在 `src/web/BlockUnderstandingMark.vue` 和 `style.css` 完成三态分段、共用原位输入区及连续角回退（FR-010、017）。
+- [x] T081 [US6] 更新 `docs/usage/file-reader.md`，串行运行 `tests/browser/` 的记录、写失败、冲突与回访回归，并在同一服务首块测尺寸、触屏及阅读位置（SC-008、016）。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。

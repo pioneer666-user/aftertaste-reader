@@ -13,7 +13,7 @@ const props = defineProps<{
   documentPath: string; blockId: string; label: string; kind: Kind | undefined; language: Language;
   bookmarks: readonly Bookmark[]; activeBookmark: string; bookmarksBusy: boolean;
   saveBookmark: (action: BookmarkAction) => Promise<void>;
-  mark: ReaderMark | undefined; activeMark: boolean; marksBusy: boolean; unavailable: boolean;
+  mark: ReaderMark | undefined; marksBusy: boolean; unavailable: boolean;
   saveMark: (edit: MarkEdit) => Promise<void>;
 }>();
 const emit = defineEmits<{ open: [kind: Kind]; close: [] }>();
@@ -28,6 +28,7 @@ const failedBookmark = computed(() => Array.from(bookmarkDrafts.get(key)?.entrie
 const failedMark = computed(() => markDrafts.get(key)?.annotation?.problem || markDrafts.get(key)?.status?.problem);
 const rail = ref<HTMLElement>();
 const panel = ref<HTMLElement>();
+const bookmarkEditor = ref<InstanceType<typeof BlockBookmarks>>();
 const left = ref(0);
 const top = ref(0);
 const panelId = 'records-' + props.blockId;
@@ -113,13 +114,15 @@ watch(() => props.kind, (kind, _, cleanup) => {
     <header class="margin-heading">
       <div><strong :id="panelId + '-title'">{{ t(kind === 'bookmarks' ? 'bookmarks' : 'marginMark') }}</strong>
         <span :title="label">{{ label }}</span></div>
-      <button type="button" :aria-label="t('closeBlockLocation')" @click="close(true)">×</button>
+      <button v-if="kind === 'bookmarks'" type="button" class="record-icon bookmark-add" :disabled="bookmarksBusy"
+        :aria-label="t('bookmarkAnother')" @click="bookmarkEditor?.start()">＋</button>
+      <button type="button" class="record-icon" :aria-label="t('closeBlockLocation')" @click="close(true)">×</button>
     </header>
     <div class="margin-body">
-      <BlockBookmarks v-show="kind === 'bookmarks'" :opened="kind === 'bookmarks'" :document-path="documentPath" :block-id="blockId"
+      <BlockBookmarks ref="bookmarkEditor" v-show="kind === 'bookmarks'" :opened="kind === 'bookmarks'" :document-path="documentPath" :block-id="blockId"
         :bookmarks="bookmarks" :active-bookmark="activeBookmark" :busy="bookmarksBusy" :language="language" :save-bookmark="saveBookmark" />
       <BlockUnderstandingMark v-show="kind === 'mark'" :opened="kind === 'mark'" :document-path="documentPath" :block-id="blockId"
-        :mark="mark" :active="activeMark" :language="language" :busy="marksBusy" :unavailable="unavailable" :save-mark="saveMark" />
+        :mark="mark" :language="language" :busy="marksBusy" :unavailable="unavailable" :save-mark="saveMark" />
     </div>
   </section>
 </template>
@@ -158,16 +161,13 @@ watch(() => props.kind, (kind, _, cleanup) => {
   .document-block:not(:hover) .margin-entry:not(.recorded,:focus-visible,[aria-expanded="true"]) { opacity: 0; }
 }
 .margin-panel { position: fixed; z-index: 3; left: var(--panel-left); top: var(--panel-top); display: flex; flex-direction: column; width: min(350px,calc(100vw - 16px)); max-height: min(62dvh,560px); overflow: hidden; background: white; border: 1px solid var(--line); box-shadow: 0 8px 28px #23352b26; border-radius: calc(var(--corner-panel) * var(--corner-radius-scale)); corner-shape: squircle; }
-.margin-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
-.margin-heading div { min-width: 0; }
+.margin-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; padding: 10px 12px 8px; border-bottom: 1px solid var(--line); }
+.margin-heading div { min-width: 0; flex: 1; }
 .margin-heading strong, .margin-heading span { display: block; }
 .margin-heading span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; margin-top: 3px; }
 .margin-heading button { font-size: 19px; min-width: 32px; padding: 0; }
-.margin-body { padding: 12px 16px; overflow: auto; overscroll-behavior: contain; }
+.margin-body { padding: 10px 12px; overflow: auto; overscroll-behavior: contain; }
 .margin-body .block-mark { padding: 0; border: 0; }
-.margin-body .mark-controls { display: flex; flex-wrap: wrap; gap: 4px; }
-.mark-controls button { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; }
-.mark-controls [aria-pressed="true"] { background: #edf4ee; border-color: #6a8172; font-weight: 600; }
 .margin-body .bookmark-status:empty { display: none; }
 @media (pointer: coarse) { .document-block { --rail-width: 44px; } }
 @media (max-width: 650px) {

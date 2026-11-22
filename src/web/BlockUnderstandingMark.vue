@@ -5,13 +5,13 @@ import type { MarkEdit, MarkStatus, ReaderMark } from '../core/understanding-mar
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { markDraftsKey } from './mark-drafts.js';
+import RecordEditor from './RecordEditor.vue';
 import { failed } from './reader-api.js';
 
 const props = defineProps<{
   documentPath: string;
   blockId: string;
   mark: ReaderMark | undefined;
-  active: boolean;
   opened: boolean;
   language: Language;
   busy: boolean;
@@ -24,7 +24,7 @@ const drafts = inject(markDraftsKey)!;
 const identity = { documentPath: props.documentPath, blockId: props.blockId };
 const key = markKey(identity);
 const draft = computed(() => drafts.get(key));
-const annotationInput = ref<HTMLTextAreaElement>();
+const annotationDetails = ref<HTMLElement>();
 const annotationButton = ref<HTMLButtonElement>();
 const feedback = ref('');
 const savedStatus = computed(() => props.mark?.status ?? 'unmarked');
@@ -48,15 +48,17 @@ function clear(field: 'status' | 'annotation') {
 
 async function openAnnotation() {
   feedback.value = '';
-  getDraft().annotation ??= { previous: savedAnnotationRevision.value, value: savedAnnotation.value };
+  const entry = getDraft();
+  entry.annotation ??= { previous: savedAnnotationRevision.value, value: savedAnnotation.value };
+  entry.annotation.showSaved = false;
   await nextTick();
-  annotationInput.value?.focus({ preventScroll: true });
+  annotationDetails.value?.querySelector('textarea')?.focus({ preventScroll: true });
 }
 
 async function closeAnnotation() {
   clear('annotation');
   await nextTick();
-  if (props.opened && document.activeElement?.closest('.block-mark')) annotationButton.value?.focus({ preventScroll: true });
+  if (props.opened && (document.activeElement === document.body || document.activeElement?.closest('.block-mark'))) annotationButton.value?.focus({ preventScroll: true });
 }
 
 function changeStatus(value: MarkStatus) {
@@ -117,20 +119,14 @@ async function persist(edit: MarkEdit) {
         <p class="bookmark-note">{{ savedAnnotation || t('annotationEmpty') }}</p>
       </template>
     </div>
-    <div class="annotation-details">
-      <p v-if="savedAnnotation && (!draft?.annotation || (active && !annotationConflict))" class="bookmark-note annotation-text">{{ savedAnnotation }}</p>
-      <button v-if="!draft?.annotation" ref="annotationButton" type="button" :disabled="busy || unavailable"
+    <div ref="annotationDetails" class="annotation-details">
+      <p v-if="savedAnnotation && (!draft?.annotation || draft.annotation.showSaved)" class="bookmark-note annotation-text">{{ savedAnnotation }}</p>
+      <button v-if="!draft?.annotation || draft.annotation.showSaved" ref="annotationButton" type="button" :disabled="busy || unavailable"
         @click="openAnnotation">{{ t('editAnnotation') }}</button>
-      <form v-else class="bookmark-editor" @submit.prevent="saveAnnotation">
-        <label>
-          <span>{{ t('annotationOptional') }}</span>
-          <textarea ref="annotationInput" v-model="draft.annotation.value" :readonly="busy" rows="3" />
-        </label>
-        <div class="bookmark-actions">
-          <button type="submit" :disabled="busy || unavailable">{{ t(annotationConflict ? 'applyMyAnnotation' : 'saveAnnotation') }}</button>
-          <button type="button" :disabled="busy" @click="closeAnnotation">{{ t('cancelMark') }}</button>
-        </div>
-      </form>
+      <RecordEditor v-else v-model="draft.annotation.value" :language="language" :label="t('annotationOptional')"
+        :save-label="t(annotationConflict ? 'applyMyAnnotation' : 'saveAnnotation')" :confirm="annotationConflict"
+        :busy="busy" :disabled="unavailable"
+        @cancel="closeAnnotation" @save="saveAnnotation" />
     </div>
     <p class="bookmark-status" role="status">{{ feedback ? t(feedback) : '' }}</p>
   </div>
