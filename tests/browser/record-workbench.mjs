@@ -107,6 +107,33 @@ try {
   const left = await inputBox.boundingBox(), right = await markdown.boundingBox();
   assert.ok(left.x + left.width <= right.x);
   await page.screenshot({ path: path.join(run, 'edit.png') });
+  await filterButton.press('Enter');
+  await search.press('Escape');
+  await filterButton.locator(':scope:focus').waitFor();
+  await page.keyboard.press('Escape');
+  assert.ok(await filterButton.evaluate(el => el === document.activeElement));
+
+  const frontHeading = notes.locator('.note-front-title h2');
+  const previewHeading = markdown.locator('.note-preview-title');
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  for (const state of ['editing', 'reading']) {
+    if (state === 'reading') await button(notes, '完成').click();
+    const heading = state === 'reading' ? frontHeading : previewHeading;
+    const raw = await link.first().getAttribute('data-note-raw');
+    await heading.evaluate(el => {
+      const quote = el.closest('article').querySelector('.markdown a');
+      const range = document.createRange();
+      range.setStart(el.firstChild, 0);
+      range.setEnd(quote.firstChild, 1);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+    await page.keyboard.press('Control+c');
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    assert.equal(copied.replace(/\s+/gu, ''), '数量无效时，订单去哪了？从' + raw);
+  }
+  await button(notes, '编辑').click();
   const originalBody = await editorText(inputBox);
   const originalFile = await readFile(file, 'utf8');
   const trigger = page.locator('.new-note'), quick = page.locator('#quick-note'), quickBody = quick.getByRole('textbox', {name:'笔记正文'});
@@ -232,6 +259,12 @@ try {
     await markdown.locator(selector).filter({ hasText: text }).first().waitFor();
     assert.equal(await markdown.locator('.note-preview-title').count(), 0);
   }
+  const definition = '[出处]: https://example.org\n\n这里是普通说明。\n\n参见[出处]。';
+  await inputBox.fill(definition);
+  await markdown.locator('.markdown p').filter({ hasText: '这里是普通说明。' }).waitFor();
+  assert.equal(await previewHeading.count(), 0);
+  assert.equal(await markdown.getByRole('link', { name: '出处' }).getAttribute('href'), 'https://example.org');
+  await inputBox.fill(sampleLink);
   await saved();
   assert.equal((await onDisk()).body, sampleLink);
   await button(front, '完成').click();

@@ -36,6 +36,8 @@ const editing = ref(false);
 const previewOnly = ref(false);
 const query = ref('');
 const rendered = ref<HTMLElement>();
+const readTitle = ref<HTMLElement>();
+const previewTitle = ref<HTMLElement>();
 const refLink = ref(-1);
 let linkOffset = 0;
 const editButton = ref<HTMLButtonElement>();
@@ -57,6 +59,12 @@ function closePopup(restoreFocus = false) {
   popup.value = undefined;
   query.value = '';
   if (restoreFocus) nextTick(() => trigger?.focus({ preventScroll: true }));
+}
+function escapePopup(event: KeyboardEvent) {
+  if (!popup.value || event.isComposing) return;
+  event.preventDefault();
+  event.stopPropagation();
+  closePopup(true);
 }
 function togglePopup(which: 'filter' | 'more') {
   if (popup.value === which) return closePopup(true);
@@ -211,7 +219,7 @@ async function remove() {
       </div>
     </template>
     <template #list>
-      <div class="note-filter-control" @keydown.esc.stop.prevent="closePopup(true)">
+      <div class="note-filter-control" @keydown.esc="escapePopup">
         <button id="note-tag-filter" ref="filterButton" type="button" :aria-expanded="popup === 'filter'"
           @click="togglePopup('filter')">{{ filter || t('noteAllTags') }} <span aria-hidden="true">▾</span></button>
         <div v-if="popup === 'filter'" class="note-menu filter-menu">
@@ -235,7 +243,7 @@ async function remove() {
       </ul>
     </template>
     <p v-if="loaded && !active">{{ t(filter ? 'noteNoMatches' : 'noteEmpty') }}</p>
-    <article v-if="active" :key="active.id" class="note-detail" :class="{ editing, 'preview-only': previewOnly }">
+    <article v-if="active" :key="active.id" class="note-detail" @copy="copyNotePreview($event, rendered, editing ? previewTitle : readTitle)" :class="{ editing, 'preview-only': previewOnly }">
       <header class="note-front">
         <div class="note-front-title">
           <template v-if="editing">
@@ -243,14 +251,14 @@ async function remove() {
               :aria-label="t('noteTitle')" :placeholder="t('noteTitle')" :readonly="active.replacing" @input="editor.changed(active)">
             <button v-else type="button" class="note-secondary" @click="titleOpen = true; nextTick(() => titleInput?.focus())">{{ t('setNoteTitle') }}</button>
           </template>
-          <h2 v-else-if="heading">{{ heading }}</h2>
+          <h2 v-else-if="heading" ref="readTitle">{{ heading }}</h2>
         </div>
         <div class="note-actions">
           <NoteSaveStatus :draft="active" :editor="editor" :language="language" :show-saved="editing" />
           <button v-if="!editing" ref="editButton" type="button" @click="beginEdit">{{ t('editNote') }}</button>
           <template v-else>
             <button type="button" @click="finishEdit">{{ t('doneNote') }}</button>
-            <div class="note-more" @keydown.esc.stop.prevent="closePopup(true)">
+            <div class="note-more" @keydown.esc="escapePopup">
               <button ref="moreButton" type="button" :aria-expanded="popup === 'more'" @click="togglePopup('more')">{{ t('noteMore') }}</button>
               <div v-if="popup === 'more'" class="note-menu">
                 <button ref="deleteButton" type="button" :disabled="active.busy" @click="remove">{{ t('noteDelete') }}</button>
@@ -291,8 +299,8 @@ async function remove() {
           <h2 v-if="editing">{{ t('notePreview') }}</h2>
           <p v-if="visiting" role="status">{{ t('loading') }}</p>
           <p v-if="visitProblem" ref="visitMessage" class="notice note-visit-problem" role="alert" tabindex="-1">{{ visitProblem }}</p>
-          <h2 v-if="editing && heading" class="note-preview-title">{{ heading }}</h2>
-          <div ref="rendered" class="markdown" v-html="preview.html" @click="follow" @copy="copyNotePreview"></div>
+          <h2 v-if="editing && heading" ref="previewTitle" class="note-preview-title">{{ heading }}</h2>
+          <div ref="rendered" class="markdown" v-html="preview.html" @click="follow"></div>
         </section>
       </div>
     </article>

@@ -44,7 +44,8 @@ export function renderNoteMarkdown(raw: string, internalLinks: InternalLinks, li
   const env = { internalLinks };
   const tokens = markdown.parse(raw, env);
   const [opening, inline, closing] = tokens;
-  const plain = opening?.type === 'paragraph_open' && opening.map && opening.map[1] - opening.map[0] === 1
+  const firstLine = raw.split(/\r\n?|\n/u).findIndex(line => line.trim());
+  const plain = opening?.type === 'paragraph_open' && opening.map?.[0] === firstLine && opening.map[1] === firstLine + 1
     && inline?.children?.length === 1 && inline.children[0]?.type === 'text' && closing?.type === 'paragraph_close';
   const heading = plain ? inline.children![0]!.content : '';
   return { heading, html: markdown.renderer.render(heading ? tokens.slice(3) : tokens, markdown.options, env) };
