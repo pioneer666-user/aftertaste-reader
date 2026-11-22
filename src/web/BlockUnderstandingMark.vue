@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, ref, watch } from 'vue';
-import { emptyAnnotationRevision, isMarkStatus, markKey, markStatuses } from '../core/understanding-marks.js';
-import type { MarkEdit, ReaderMark } from '../core/understanding-marks.js';
+import { computed, inject, nextTick, ref } from 'vue';
+import { emptyAnnotationRevision, markKey, markStatuses } from '../core/understanding-marks.js';
+import type { MarkEdit, MarkStatus, ReaderMark } from '../core/understanding-marks.js';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { markDraftsKey } from './mark-drafts.js';
@@ -12,6 +12,7 @@ const props = defineProps<{
   blockId: string;
   mark: ReaderMark | undefined;
   active: boolean;
+  opened: boolean;
   language: Language;
   busy: boolean;
   unavailable: boolean;
@@ -23,8 +24,6 @@ const drafts = inject(markDraftsKey)!;
 const identity = { documentPath: props.documentPath, blockId: props.blockId };
 const key = markKey(identity);
 const draft = computed(() => drafts.get(key));
-const expanded = ref(!!draft.value?.annotation);
-const detailsId = `annotation-${props.blockId}`;
 const annotationInput = ref<HTMLTextAreaElement>();
 const annotationButton = ref<HTMLButtonElement>();
 const feedback = ref('');
@@ -34,10 +33,6 @@ const savedAnnotationRevision = computed(() => props.mark?.annotationRevision ??
 const shownStatus = computed(() => draft.value?.status?.value ?? savedStatus.value);
 const statusConflict = computed(() => draft.value?.status?.problem?.code === 'MARK_CONFLICT');
 const annotationConflict = computed(() => draft.value?.annotation?.problem?.code === 'MARK_CONFLICT');
-
-watch(() => props.active, active => {
-  if (active) expanded.value = true;
-}, { immediate: true });
 
 function getDraft() {
   if (!draft.value) drafts.set(key, {});
@@ -55,22 +50,17 @@ async function openAnnotation() {
   feedback.value = '';
   getDraft().annotation ??= { previous: savedAnnotationRevision.value, value: savedAnnotation.value };
   await nextTick();
-  annotationInput.value?.focus();
+  annotationInput.value?.focus({ preventScroll: true });
 }
 
 async function closeAnnotation() {
   clear('annotation');
   await nextTick();
-  if (expanded.value) annotationButton.value?.focus();
+  if (props.opened && document.activeElement?.closest('.block-mark')) annotationButton.value?.focus({ preventScroll: true });
 }
 
-function changeStatus(event: Event) {
-  const control = event.target as HTMLSelectElement;
-  const value = control.value;
-  if (props.busy || props.unavailable || !isMarkStatus(value)) {
-    control.value = shownStatus.value;
-    return;
-  }
+function changeStatus(value: MarkStatus) {
+  if (props.busy || props.unavailable || value === shownStatus.value) return;
   const entry = getDraft();
   const existing = entry.status;
   entry.status = { ...existing, previous: existing?.previous ?? savedStatus.value, value };
@@ -106,15 +96,10 @@ async function persist(edit: MarkEdit) {
 
 <template>
   <div :id="'mark-' + blockId" class="block-mark" tabindex="-1" role="group" :aria-label="t('markStatus')">
-    <div class="mark-controls">
-      <label>
-        <span>{{ t('markStatus') }}</span>
-        <select :value="shownStatus" :disabled="unavailable" :aria-disabled="busy" @change="changeStatus">
-          <option v-for="status in markStatuses" :key="status" :value="status">{{ t(status) }}</option>
-        </select>
-      </label>
-      <button type="button" class="record-toggle" :aria-controls="detailsId" :aria-expanded="expanded" @click="expanded = !expanded">
-        {{ t(savedAnnotation ? 'annotationPresent' : 'annotation') }}
+    <div class="mark-controls" role="group" :aria-label="t('markStatus')">
+      <button v-for="status in markStatuses" :key="status" type="button" :data-status="status" :aria-pressed="shownStatus === status"
+        :disabled="unavailable" :aria-disabled="busy || unavailable" @click="changeStatus(status)">
+        <span class="state-symbol" aria-hidden="true">{{ status === 'understood' ? '✓' : status === 'not-understood' ? '?' : '○' }}</span>{{ t(status) }}
       </button>
     </div>
     <div v-if="draft?.status?.problem" class="bookmark-error" role="alert">
@@ -127,12 +112,12 @@ async function persist(edit: MarkEdit) {
     </div>
     <div v-if="draft?.annotation?.problem" class="bookmark-error" role="alert">
       <p>{{ t('annotationSaveFailed') }} {{ problemText(language, draft.annotation.problem).message }} {{ problemText(language, draft.annotation.problem).nextStep }}</p>
-      <template v-if="expanded && annotationConflict && !unavailable">
+      <template v-if="annotationConflict && !unavailable">
         <p>{{ t('savedAnnotation') }}</p>
         <p class="bookmark-note">{{ savedAnnotation || t('annotationEmpty') }}</p>
       </template>
     </div>
-    <div v-show="expanded" :id="detailsId" class="annotation-details">
+    <div class="annotation-details">
       <p v-if="savedAnnotation && (!draft?.annotation || (active && !annotationConflict))" class="bookmark-note annotation-text">{{ savedAnnotation }}</p>
       <button v-if="!draft?.annotation" ref="annotationButton" type="button" :disabled="busy || unavailable"
         @click="openAnnotation">{{ t('editAnnotation') }}</button>

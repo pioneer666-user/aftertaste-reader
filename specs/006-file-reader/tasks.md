@@ -255,6 +255,13 @@
 
 - [x] T074 [US10] 将顶栏切为笔记列表，验证六页、原页加入、历史与触屏。
 
+## D039 · User Story 6 页边记录（P1）
+
+- [x] T075 [US6] 在 `src/web/ReaderDocument.vue` 实现长块页边入口、只开一处的浮层、响应式命中区、关闭与焦点，沿 FR-014、017 保留选文及连续角。
+- [x] T076 [US6] 在 `src/web/BlockBookmarks.vue`、`BlockUnderstandingMark.vue` 接入逐条书签、自评和独立批注，保留两类草稿和失败重试。
+- [x] T077 [US6] 在 `src/web/App.vue` 接通 FR-015、016 的显式回访与返回，核同块多条的焦点。
+- [x] T078 [US6] 更新 `docs/usage/file-reader.md`，在 `tests/browser/` 串行验证 SC-008、草稿、并发、写失败与正文选文。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。

@@ -303,8 +303,8 @@ try {
   await openFile(serviceFile);
   const expected = expectedLocation(serviceFile, 'zhidif44', fixture.commit, selectedPhrase);
   await paragraph.scrollIntoViewIfNeeded();
-  const records = first.locator('.block-records');
-  const positions = async () => [(await box(paragraph)).y, (await box(records)).y];
+  const nextBlock = first.locator('+ .document-block');
+  const positions = async () => [(await box(paragraph)).y, (await box(nextBlock)).y];
   const beforeSelection = await positions();
   await paragraph.click();
   assert.equal(await first.evaluate(el => getComputedStyle(el).outlineStyle), 'none');

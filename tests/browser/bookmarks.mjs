@@ -56,12 +56,12 @@ async function openBlockBookmarks(target = page) {
 
 async function draft(text, target = page, keyboard = false) {
   await openBlockBookmarks(target);
-  const add = button('加书签', block(target));
-  if (keyboard) {
-    await add.focus();
-    await target.keyboard.press('Enter');
-    await field(block(target)).evaluate(assertFocused);
-  } else await add.click();
+  if (!await field(block(target)).isVisible()) {
+    const add = button('再加一条', block(target));
+    if (keyboard) await add.press('Enter');
+    else await add.click();
+  }
+  if (keyboard) await field(block(target)).evaluate(assertFocused);
   await field(block(target)).fill(text);
 }
 
@@ -139,7 +139,14 @@ try {
   await button('编辑备注', row(first.id)).click();
   const edited = { ...first, note: '改过的备注' };
   await field().fill(edited.note);
+  await button('编辑备注', row(blank.id)).click();
+  await field().fill('另一条未保存的草稿');
+  await button('编辑备注', row(first.id)).click();
+  assert.equal(await field().inputValue(), edited.note);
   await save();
+  await button('编辑备注', row(blank.id)).click();
+  assert.equal(await field().inputValue(), '另一条未保存的草稿');
+  await button('取消', block()).click();
   await button('移除书签', row(blank.id)).click();
   await block().getByText('书签已移除', { exact: true }).waitFor();
   assert.deepEqual(await disk(), [edited, pure]);
@@ -208,12 +215,14 @@ try {
     await button('刷新资料').click();
     await refreshed;
     await block().waitFor();
-    assert.equal(await field().count(), 1, 'document refresh keeps the failed draft open');
+    await openBlockBookmarks();
+    assert.equal(await field().count(), 1, 'document refresh keeps the failed draft');
     assert.equal(await field().inputValue(), pending);
     await block().getByRole('alert').filter({ hasText: '书签未保存' }).waitFor();
     await openDocument('src/service.mjs');
     assert.equal(await field().count(), 0, 'same block ID in another document does not share the draft');
     await openDocument('src/rules.mjs');
+    await openBlockBookmarks();
     assert.equal(await field().inputValue(), pending);
     await save();
     assert.equal((await disk()).find(item => item.id === first.id).note, pending);

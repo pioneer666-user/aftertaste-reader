@@ -7,7 +7,7 @@ import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
 import type { BlockTarget } from '../core/notes.js';
 import type { MarkEdit, ReaderMark, UnderstandingMark } from '../core/understanding-marks.js';
 import { bookmarkDraftsKey } from './bookmark-drafts.js';
-import type { BookmarkDraft } from './bookmark-drafts.js';
+import type { BlockBookmarkDrafts } from './bookmark-drafts.js';
 import { markDraftsKey } from './mark-drafts.js';
 import type { MarkDraft } from './mark-drafts.js';
 import ReaderDocument from './ReaderDocument.vue';
@@ -150,12 +150,13 @@ const loopListError = ref<ReaderProblem>();
 const selectedLoop = ref('');
 const openedLoops = ref<string[]>([]);
 const bookmarks = ref<Bookmark[]>([]);
-provide(bookmarkDraftsKey, reactive(new Map<string, BookmarkDraft>()));
+provide(bookmarkDraftsKey, reactive(new Map<string, BlockBookmarkDrafts>()));
 const bookmarksLoading = ref(false);
 const bookmarksSaving = ref(false);
 const bookmarkListError = ref<ReaderProblem>();
 const unavailableMessage = ref<HTMLElement>();
 const unavailableBookmark = ref<Bookmark>();
+const readerDocument = ref<InstanceType<typeof ReaderDocument>>();
 const activeBookmark = ref('');
 const activeMark = ref('');
 const bookmarkItem = ref('');
@@ -892,10 +893,19 @@ async function openDocument(path: string, { block = '', bookmark = '', mark = ''
   if (!duplicate) pushPosition(capturePosition());
   await nextTick();
   if (sequence !== navigationSequence) return;
-  const target = bookmark ? document.getElementById(`bookmark-${bookmark}`) :
-    mark ? blockElement(block)?.querySelector<HTMLElement>(`#mark-${CSS.escape(mark)}`) : blockElement(block);
-  if (target) focusReadingTarget(target, block);
-  else {
+  const target = blockElement(block);
+  if (target) {
+    focusReadingTarget(target, block);
+    if (bookmark || mark) {
+      readerDocument.value?.showRecord(block, bookmark ? 'bookmarks' : 'mark');
+      await nextTick();
+      if (sequence !== navigationSequence) return;
+      const row = document.getElementById(bookmark ? `bookmark-${bookmark}` : `mark-${mark}`);
+      row?.focus({ preventScroll: true });
+      const scroller = row?.closest('.margin-body');
+      if (row && scroller) scroller.scrollTop += row.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+    }
+  } else {
     resetReading();
     if (origin !== 'reader' || narrow.value) readingPane.value?.focus({ preventScroll: true });
   }
@@ -1156,7 +1166,7 @@ onUnmounted(() => {
         @scroll.passive="trackReadingPosition">
         <div class="reading-content" :inert="fileSwitch?.placeholder">
           <p v-if="readingLoading" class="reading-state" role="status">{{ t('loading') }}</p>
-          <ReaderDocument v-else-if="result || readingError" :key="selected"
+          <ReaderDocument ref="readerDocument" v-else-if="result || readingError" :key="selected"
             v-bind="{ ...(result ? { result } : {}), ...(readingError ? { error: readingError } : {}) }"
             :language="language" :active="view === 'reader' && !fileSwitch?.placeholder"
             :bookmarks="bookmarks" :active-bookmark="activeBookmark" :active-mark="activeMark"

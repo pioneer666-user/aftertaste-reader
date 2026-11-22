@@ -7,4 +7,8 @@ export interface BookmarkDraft {
   problem?: ReaderProblem;
 }
 
-export const bookmarkDraftsKey: InjectionKey<Map<string, BookmarkDraft>> = Symbol('bookmark drafts');
+export interface BlockBookmarkDrafts {
+  selected: string;
+  entries: Map<string, BookmarkDraft>;
+}
+export const bookmarkDraftsKey: InjectionKey<Map<string, BlockBookmarkDrafts>> = Symbol('bookmark drafts');

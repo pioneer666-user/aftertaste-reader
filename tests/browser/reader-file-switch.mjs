@@ -315,10 +315,10 @@ try {
 
   const block = page.locator('#' + secondBlock);
   await block.locator('.block-bookmarks-toggle').click();
-  await block.getByRole('button', { name: '加书签', exact: true }).click();
+  if (!await block.locator('.bookmark-records textarea').isVisible()) await block.getByRole('button', { name: '再加一条' }).click();
   const draft = block.locator('.bookmark-records textarea');
   await draft.fill('留在服务篇原块的未保存书签');
-  await block.locator('.mark-controls .record-toggle').click();
+  await block.locator('[data-kind=mark]').click();
   await block.locator('.annotation-details button').first().click();
   const annotation = block.locator('.annotation-details textarea');
   await annotation.fill('留在服务篇原块的未保存批注');
