@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import NoteIcon from './NoteIcon.vue';
 import { fitFloatingAxis } from './floating-position.js';
 import { translate } from './i18n.js';
 import type { Language } from './i18n.js';
@@ -9,6 +10,7 @@ const props = defineProps<{
   language: Language;
   anchor?: { x: number; y: number };
 }>();
+const emit = defineEmits<{ addToNotes: [] }>();
 const t = (key: string) => translate(props.language, key);
 const control = ref<HTMLElement>();
 const button = ref<HTMLButtonElement>();
@@ -16,6 +18,7 @@ const manualPanel = ref<HTMLElement>();
 const manualInput = ref<HTMLTextAreaElement>();
 const manualText = ref('');
 const copied = ref(false);
+const keyboardLabel = ref(false);
 let feedbackTimer: number | undefined;
 let observer: ResizeObserver | undefined;
 let attempt = 0;
@@ -29,18 +32,12 @@ function placePanel() {
   const bounds = button.value?.getBoundingClientRect();
   const point = props.anchor ?? (bounds && { x: bounds.right, y: bounds.bottom });
   if (!panel || !point) return;
-  const gap = 8;
   const width = panel.offsetWidth;
   const height = panel.offsetHeight;
   const left = fitFloatingAxis(point.x, width, window.innerWidth);
-  let top = fitFloatingAxis(point.y, height, window.innerHeight);
-  if (props.anchor && !manualText.value) {
-    const note = panel.closest('.explanation-pane')?.querySelector('.note-selection-action')?.getBoundingClientRect();
-    if (note && left < note.right && left + width > note.left && top < note.bottom && top + height > note.top) {
-      const above = Math.min(point.y, note.top) - gap - height;
-      top = above >= gap ? above : fitFloatingAxis(note.bottom, height, window.innerHeight);
-    }
-  }
+  const top = fitFloatingAxis(point.y, height, window.innerHeight);
+  const readingTop = panel.closest('.reading-pane')?.getBoundingClientRect().top ?? 0;
+  panel.classList.toggle('labels-below', top - readingTop < 48);
   panel.style.left = left + 'px';
   panel.style.top = top + 'px';
 }
@@ -97,12 +94,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="control" class="block-location-control" :class="{ 'selection-copy-panel selection-float': anchor }">
+  <div ref="control" class="block-location-control" :class="{ 'selection-copy-panel selection-float': anchor, 'keyboard-label': keyboardLabel }"
+    @focusin="keyboardLabel = true" @pointermove="keyboardLabel = false">
     <button ref="button" type="button" :class="anchor ? 'selection-copy-action selection-float-action' : 'block-copy-button'"
       :aria-label="t('copyBlockLocation')" :title="anchor ? undefined : t('copyBlockLocation')"
       @mousedown="anchor && $event.preventDefault()" @click="copyLocation">
-      <span v-if="anchor">{{ t('copyBlockLocation') }}</span>
-      <span v-else class="copy-location-icon" aria-hidden="true"></span>
+      <span class="copy-location-icon" aria-hidden="true"></span>
+      <span v-if="anchor" class="selection-label" aria-hidden="true">{{ t('copyBlockLocation') }}</span>
+    </button>
+    <button v-if="anchor" type="button" class="selection-float-action" :aria-label="t('noteAddSelection')"
+      @mousedown.prevent @click="emit('addToNotes')">
+      <NoteIcon />
+      <span class="selection-label" aria-hidden="true">{{ t('noteAddSelection') }}</span>
     </button>
     <span class="location-copy-status" role="status">{{ copied ? t('copied') : '' }}</span>
     <div v-if="manualText" ref="manualPanel" class="location-copy-manual" @keydown.esc.stop.prevent="dismissManual">
@@ -151,6 +154,35 @@ onUnmounted(() => {
   position: fixed;
   margin: 0;
 }
+.selection-copy-panel .selection-float-action {
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+@media (max-width: 850px), (pointer: coarse) {
+  .selection-copy-panel .selection-float-action { width: 44px; min-height: 44px; }
+}
+.selection-label {
+  display: none;
+  position: absolute;
+  inset: auto 0 calc(100% + 4px);
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  pointer-events: none;
+}
+.labels-below .selection-label { inset-block: calc(100% + 4px) auto; }
+.selection-float-action:is(:hover, :focus-visible) .selection-label { display: block; }
+.selection-copy-panel:not(.keyboard-label):has(button:hover) button:not(:hover) .selection-label,
+.keyboard-label:has(:focus-visible) button:not(:focus-visible) .selection-label { display: none; }
 .location-copy-manual button {
   min-height: 32px;
   padding: 5px 10px;

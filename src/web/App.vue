@@ -25,6 +25,7 @@ import type { Language } from './i18n.js';
 import { blockLabel } from './markdown.js';
 import { markKey } from '../core/understanding-marks.js';
 import type { CanvasPosition } from './canvas-position.js';
+import NoteIcon from './NoteIcon.vue';
 import type { NotesPosition } from './notes-editor.js';
 
 const language = ref<Language>(readLanguage());
@@ -389,10 +390,31 @@ async function resizeNavigation(event: MediaQueryListEvent) {
   }
 }
 
+let landingBlock: HTMLElement | undefined;
+let landingTimer: number | undefined;
+
+function clearLanding() {
+  window.clearTimeout(landingTimer);
+  landingBlock?.removeAttribute('data-landing');
+  landingBlock = undefined;
+}
+
 function focusReadingTarget(target: HTMLElement, blockId: string) {
   target.scrollIntoView({ block: 'start', inline: 'nearest' });
-  handledScrollTop = readingPane.value?.scrollTop ?? 0;
+  // In a stacked block, a long source listing can put the explanation below the fold.
+  const explanation = target.querySelector<HTMLElement>(':scope > .explanation-pane');
+  const pane = readingPane.value;
+  if (pane && explanation && explanation.getBoundingClientRect().top + 32 > pane.getBoundingClientRect().bottom) {
+    explanation.scrollIntoView({ block: 'start', inline: 'nearest' });
+  }
+  handledScrollTop = pane?.scrollTop ?? 0;
   activeBlock.value = blockId;
+  clearLanding();
+  if (target.classList.contains('document-block')) {
+    landingBlock = target;
+    target.setAttribute('data-landing', '');
+    landingTimer = window.setTimeout(clearLanding, 1500);
+  }
   target.focus({ preventScroll: true });
 }
 
@@ -541,6 +563,7 @@ function clearFileSwitch() {
 }
 
 function startNavigation() {
+  clearLanding();
   controller?.abort();
   clearFileSwitch();
   openingDocument.value = '';
@@ -681,7 +704,22 @@ async function visitBookmark(bookmark: Bookmark) {
 function addToNotes(quote: BlockQuote) {
   openPage('notes');
   noteQuote.value = quote;
-  recordLists.notes = true;
+  recordLists.notes = !narrow.value;
+  void showDetail('notes');
+}
+
+const creatingNote = ref(false);
+async function newNote() {
+  if (creatingNote.value) return;
+  if (view.value === 'notes') {
+    startNavigation();
+    restoring = false;
+  } else openPage('notes');
+  const sequence = navigationSequence;
+  creatingNote.value = true;
+  try {
+    await notes.value?.createBlank(() => sequence === navigationSequence && view.value === 'notes');
+  } finally { creatingNote.value = false; }
 }
 
 const visitNoteBlock = (target: BlockTarget) => openDocument(target.documentPath, { block: target.blockId });
@@ -941,6 +979,7 @@ onMounted(() => {
   void refreshMarks();
 });
 onUnmounted(() => {
+  clearLanding();
   navigationMedia.removeEventListener('change', resizeNavigation);
   document.removeEventListener('keydown', catalogEscape, true);
   document.removeEventListener('keydown', dismissNavigationPreview);
@@ -987,6 +1026,10 @@ onUnmounted(() => {
         :title="t('refresh')" :disabled="listLoading" @click="refresh(); refreshMarks()">
         <span class="refresh-documents-label">{{ t('refresh') }}</span><span class="refresh-documents-icon" aria-hidden="true"></span>
       </button>
+      <button type="button" class="new-note" :aria-label="t('noteNew')" :title="t('noteNew')"
+        :disabled="creatingNote" @click="newNote">
+        <NoteIcon /><span>{{ t('noteNew') }}</span>
+      </button>
       <label class="language-control"><span>{{ t('language') }}</span>
         <select :value="language" :aria-label="t('language')" @change="changeLanguage"><option value="zh-CN">简体中文</option><option value="en">English</option></select>
       </label>
@@ -1032,7 +1075,7 @@ onUnmounted(() => {
     :list-open="recordLists.marks" :language="language" :marks="marks" @select="showDetail('marks')"
     :busy="marksBusy" v-bind="markListError ? { error: markListError } : {}" :visit="visitMark" @refresh="refreshMarks" />
   <ProjectNotes v-show="view === 'notes'" :class="{ 'record-active': view === 'notes' }" ref="notes" :visible="view === 'notes'" :list-open="recordLists.notes"
-    :language="language" :quote="noteQuote" @select="showDetail('notes')"
+    :language="language" :quote="noteQuote" @select="showDetail('notes')" @open-list="toggleAuxiliary"
     :visit="visitNoteBlock" @clear-quote="noteQuote = undefined" />
   <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" ref="canvas" :active="view === 'canvas'"
     :tools-open="canvasToolsOpen" :opening-document="openingDocument" :language="language" @read="openDocument" />

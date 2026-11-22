@@ -469,6 +469,21 @@ async function checkHistory() {
   assert.ok(position.scroll > 100 && position.offset > 30,
     'cross-page history must restore an offset inside the block: ' + JSON.stringify(position));
   await shot('desktop-reading-position');
+  await view().locator('#apiwalk1 p').nth(1).evaluate(el => {
+    getSelection().setBaseAndExtent(el.firstChild, 0, el.firstChild, 6);
+  });
+  await page.locator('.selection-copy-action').waitFor();
+  await top().getByRole('button', { name: '新建笔记' }).click();
+  const body = page.locator('#note-body:focus');
+  await body.waitFor();
+  assert.equal(await body.inputValue(), '');
+  await body.fill('从接口讲解中段记下的独立想法');
+  await notes().getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
+  assert.ok((await readJSON(path.join(data, 'notes.json'))).notes.some(note => note.body === '从接口讲解中段记下的独立想法'));
+  await back();
+  await upToDate(api);
+  await tick();
+  assert.deepEqual(await readingPosition(), position);
   await open('bookmarks');
   await bookmarks().locator('.bookmark-entry').first().waitFor();
   await back();
@@ -704,9 +719,22 @@ async function checkHeader(width, language) {
   for (const key of keys) {
     await open(key);
     await tick();
+    const newNote = top().getByRole('button', { name: language === 'en' ? 'New note' : '新建笔记', exact: true });
+    assert.ok(await newNote.isVisible());
+    assert.equal(await newNote.locator('span').isVisible(), width > 950);
+    assert.ok(await newNote.evaluate(el => {
+      const rect = el.getBoundingClientRect();
+      return el.nextElementSibling.matches('.language-control') &&
+        el.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    }));
     const positions = await Promise.all([arrow('back'), arrow('forward'), toggle(), nav].map(start));
     if (!compact) positions.push(...await top().locator('[data-page]').evaluateAll(nodes =>
       nodes.map(element => Math.round(element.getBoundingClientRect().x * 100) / 100)));
+    if (!compact) {
+      const lastTab = await top().locator('[data-page="notes"]').boundingBox();
+      const firstTool = await top().locator('.toolbar').boundingBox();
+      assert.ok(lastTab.x + lastTab.width <= firstTool.x, 'Tabs and tools must remain independently reachable');
+    }
     if (fixed) assert.deepEqual(positions, fixed, `${width}px ${language} ${key}`);
     else fixed = positions;
     assert.ok(positions[0] < positions[1] && positions[1] < positions[2] && positions[2] < positions[3]);
@@ -876,7 +904,7 @@ try {
     await open('canvas');
     await checkLoops();
     await checkHeader(1600, 'zh-CN');
-    await checkHeader(851, 'en');
+    for (const width of [1151, 1150, 951, 950, 851]) await checkHeader(width, 'en');
     await checkHeader(850, 'en');
     await checkHeader(390, 'zh-CN');
     await checkNarrow();

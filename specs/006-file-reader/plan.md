@@ -14,6 +14,8 @@
 
 **D029 增量** `codex/feat-reader-continuous-corners` @`703ea8c`，产品基线 dev @`663c1e2`。[批准依据](../../docs/work/2026/11/D029-reader-continuous-corners/task.md)。
 
+**D036 增量**　在现有文件阅读与项目笔记场景内实施[文件讲解选文与新建笔记](../../docs/work/2026/11/D036-reader-note-actions/task.md)，批准提交 `d3e42c0`。
+
 ## Summary
 
 单个 Node 本地服务提供预构建 Vue 页面和只读 JSON。DocumentService 在同次读取中完成解析、固定取源和覆盖检查，CLI 校验复用这条链。列表发现独立于 Git。页面仅在内存处理内容，以 code/params 翻译诊断。
@@ -31,6 +33,8 @@ D029 将连续角用于六页共用顶栏与文件讲解的操作表面。以同
 D030 在文件树切篇时即刻显示目的地。沿用 App 的导航序号处理取消和提交，在原阅读视口上铺延后出现的占位，保留原篇布局和块级记录实例供失败恢复。
 
 **D035 · 个人记录的侧栏与返回**　App.vue 管理各页的侧栏显隐和历史快照，RecordWorkbench.vue 提供两个独立滚动区。沿用现有页面序列保护过期的恢复。 个人资料格式、API 与写入方式沿用原契约。
+
+**D036 · 选文与起笔**　两个按钮共用 ReaderDocument 的选区和 BlockLocationControl 的固定浮层。App 的块跳转只给显式块目标短时标记；键盘焦点用持续的细线，具体记录继续取得焦点。六页共用顶栏沿现有访问历史进入笔记。
 
 ## Technical Context
 

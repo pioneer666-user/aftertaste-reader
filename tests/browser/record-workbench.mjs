@@ -8,7 +8,7 @@ import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { createLoopReaderProject } from '../fixtures/loop-reader.mjs';
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const root = path.join(repository, '.local/D035');
+const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D035');
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'workbench-'));
 const project = path.join(run, 'project');

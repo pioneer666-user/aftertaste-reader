@@ -238,6 +238,12 @@
 
 - [x] T066 [US10] src/web/App.vue、src/web/RecordWorkbench.vue 与 tests/browser/reader-history.mjs 完成三页的分栏、选择、双区位置恢复及窄屏键盘操作。
 
+## D036 · 从讲解选文、定位和起笔
+
+- [x] T067 [US9] 在 `src/web/ReaderDocument.vue`、`src/web/BlockLocationControl.vue` 与 `tests/browser/reader-center.mjs` 合并两项选文操作，核同窗零位移和键鼠目标。
+- [x] T068 [US5] 在 `src/web/App.vue`、`src/web/style.css` 区分普通点击、显式块跳转与持续键盘焦点，在 `tests/browser/reader-navigation.mjs` 验证。
+- [x] T069 [US10] 在 `src/web/App.vue` 和 `tests/browser/reader-history.mjs` 接入六页共用的新建入口、保留阅读历史并验证不同视口的可达性。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。

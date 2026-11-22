@@ -104,7 +104,7 @@ function selectionChanged() {
 
 function selectionStarted(event: PointerEvent) {
   if (event.button !== 0 || !(event.target instanceof Element)) return;
-  if (event.target.closest('.selection-copy-panel, .note-selection-action')) return;
+  if (event.target.closest('.selection-copy-panel')) return;
   selecting = !!event.target.closest('.explanation-text') && !!blockRoot.value?.contains(event.target);
   anchor.value = undefined;
 }
@@ -225,9 +225,7 @@ onUnmounted(() => {
           <p v-if="!block.body.trim()" class="notice">{{ t('unfilled') }}</p>
           <div class="markdown explanation-text" v-html="renderMarkdown(block.body)"></div>
           <BlockLocationControl v-if="anchor && selectionLocation && quote?.blockId === block.id"
-            :location="selectionLocation" :language="language" :anchor="anchor" />
-          <button v-if="quote?.blockId === block.id" type="button" class="note-selection-action"
-            @mousedown.prevent @click="addSelection">{{ t('noteAddSelection') }}</button>
+            :location="selectionLocation" :language="language" :anchor="anchor" @add-to-notes="addSelection" />
           <footer class="block-records">
             <BlockUnderstandingMark :document-path="result.documentPath" :block-id="block.id" :mark="blockMarks.get(block.id)"
               :active="block.id === activeMark" :language="language" :busy="marksBusy" :unavailable="!!markListError" :save-mark="saveMark" />

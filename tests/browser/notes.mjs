@@ -54,6 +54,7 @@ async function selectFile(name) {
 }
 
 async function selectText(locator, text) {
+  await locator.scrollIntoViewIfNeeded();
   await locator.evaluate((element, text) => {
     const node = element.firstChild;
     const i = text === undefined ? 0 : node.textContent.indexOf(text);
@@ -99,8 +100,17 @@ async function unlock() {
 
 try {
   await start();
-  await openNotes();
-  await button('新建笔记').click();
+  let releaseLoad;
+  const gate = new Promise(resolve => { releaseLoad = resolve; });
+  await page.route('**/api/notes', async route => { await gate; await route.continue(); }, { times: 1 });
+  const newNote = button('新建笔记');
+  await newNote.click();
+  try {
+    assert.ok(await newNote.isDisabled());
+    assert.equal(await body().count(), 0);
+  } finally { releaseLoad(); }
+  await body().locator(':scope:focus').waitFor();
+  assert.equal(await body().inputValue(), '');
   await body().fill('先写一个独立问题');
   await saved();
   const standalone = (await disk())[0];
@@ -110,8 +120,24 @@ try {
   assert.equal(await block().locator('.source-pane').count(), 1);
   await selectText(block().locator('.source-line > span:last-child').filter({ hasText: /\w/u }).first());
   assert.equal(await button('加入笔记').count(), 0);
+  const beforeCancel = await raw();
+  await selectQuote(firstQuote);
+  await button('取消', notes()).click();
+  assert.equal(await raw(), beforeCancel);
+  await button('文件讲解').click();
   await selectQuote(firstQuote);
   await button('新建笔记').click();
+  await body().locator(':scope:focus').waitFor();
+  assert.equal(await body().inputValue(), '');
+  assert.equal(await notes().getByRole('blockquote').count(), 0);
+  await saved();
+  assert.deepEqual((await disk()).filter(item => item.id === standalone.id), [standalone]);
+  page.once('dialog', dialog => dialog.accept());
+  await button('删除笔记').click();
+  await body().waitFor({ state: 'detached' });
+  await button('文件讲解').click();
+  await selectQuote(firstQuote);
+  await button('用这段选文新建').click();
   await notes().getByRole('link', { name: firstQuote, exact: true }).waitFor();
   await body().press('Control+End');
   await page.keyboard.insertText('\n\n~~~text\n这里是尚未合上的示例');
@@ -340,6 +366,14 @@ try {
   await button('Done').click();
   await notes().locator('.note-preview').getByText('陈旧草稿保留').waitFor();
   await page.screenshot({ path: path.join(run, 'narrow-en.png') });
+  const stored = await disk();
+  await button('New note').press('Enter');
+  await page.locator('#note-body:focus').waitFor();
+  assert.equal(await page.locator('#note-body').inputValue(), '');
+  await page.locator('#note-body').fill('Narrow keyboard note');
+  await notes().getByRole('status').filter({ hasText: /^Saved$/u }).waitFor();
+  assert.deepEqual((await disk()).filter(note => note.body !== 'Narrow keyboard note'), stored);
+  evidence.checks.push('English icon-only global action opens a focused blank editor at 390px; older notes stay intact');
   assert.deepEqual(evidence.errors, []);
   console.log(JSON.stringify(evidence, null, 2));
 } finally {

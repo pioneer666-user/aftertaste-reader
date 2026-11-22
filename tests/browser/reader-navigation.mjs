@@ -102,7 +102,9 @@ try {
   }
   async function jump(locator, id) {
     await locator.click();
-    await page.locator(`#${id}:focus`).waitFor();
+    await page.locator(`#${id}[data-landing]:focus`).waitFor();
+    assert.equal(await page.locator(`#${id} .explanation-text`).evaluate(el =>
+      getComputedStyle(el, '::before').borderInlineStartWidth), '2px');
   }
   async function readingPosition() {
     return reading.evaluate(element => {
@@ -327,11 +329,18 @@ try {
   await page.locator('#reading:focus').waitFor();
   await nav.waitFor({ state: 'hidden' });
   await button('展开阅读导航').press('Enter');
+  await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
   const sectionLink = button('先校验数量，再建立待加入集合的对象', contents);
   await tabTo(sectionLink);
   await page.keyboard.press('Enter');
   await page.locator('#m3vuiqzi:focus').waitFor();
   await nav.waitFor({ state: 'hidden' });
+  await page.locator('#m3vuiqzi[data-landing]').waitFor({ state: 'detached' });
+  const focusedBlock = page.locator('#m3vuiqzi:focus-visible');
+  assert.equal(await focusedBlock.locator('.explanation-text').evaluate(el =>
+    getComputedStyle(el, '::before').borderInlineStartWidth), '2px');
+  await page.keyboard.press('Tab');
+  assert.ok(await focusedBlock.count() === 0 && await page.locator('#m3vuiqzi :focus-visible').count() === 1);
   const narrowPosition = await reading.evaluate(element => element.scrollTop);
   await button('展开阅读导航').press('Enter');
   await nav.waitFor();
