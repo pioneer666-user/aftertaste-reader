@@ -20,7 +20,8 @@ export function noteReferences(body: string) {
       }
     } else if ('children' in node) node.children.forEach(visit);
   }
-  fromMarkdown(body).children.forEach(visit);
+  // The reader renders raw HTML as text. An unfinished HTML comment must not swallow later links.
+  fromMarkdown(body, { extensions: [{ disable: { null: ['htmlFlow', 'htmlText'] } }] }).children.forEach(visit);
   return references;
 }
 

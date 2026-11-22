@@ -32,12 +32,15 @@ try {
   await page.locator('#reader-navigation button[title="src/service.mjs"]').click();
   const text = '服务随后忽略这个返回值';
   const para = page.locator('#zhidif44 .explanation-text p').filter({ hasText: text });
-  await para.scrollIntoViewIfNeeded();
-  await para.evaluate((el, text) => {
-    const node = el.firstChild, offset = node.textContent.indexOf(text);
-    getSelection().setBaseAndExtent(node, offset, node, offset + text.length);
-  }, text);
-  await page.getByRole('button', { name: '加入笔记', exact: true }).click();
+  async function capturePassage() {
+    await para.scrollIntoViewIfNeeded();
+    await para.evaluate((el, text) => {
+      const node = el.firstChild, offset = node.textContent.indexOf(text);
+      getSelection().setBaseAndExtent(node, offset, node, offset + text.length);
+    }, text);
+    await page.getByRole('button', { name: '加入笔记', exact: true }).click();
+  }
+  await capturePassage();
   const panel = page.locator('#quick-note'), input = panel.getByRole('textbox', { name: '笔记正文' });
   const saved = () => panel.getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
   const btn = name => panel.getByRole('button', { name, exact: true });
@@ -47,6 +50,21 @@ try {
   const clip = value => page.evaluate(v => navigator.clipboard.writeText(v), value);
   const token = blockLink({ documentPath: 'docs/aftertaste/current/src/service.mjs.md', blockId: 'zhidif44', text });
   await card.getByText(text, { exact:true }).waitFor();
+  const unfinished = '接下来检查日志。\n\n<!-- TODO';
+  await input.press('Control+a');
+  await page.keyboard.insertText(unfinished);
+  await capturePassage();
+  await card.waitFor();
+  await saved();
+  const capturedBody = unfinished + '\n\n' + token + '\n\n';
+  assert.equal((await disk()).at(-1).body, capturedBody);
+  await card.click();
+  await input.press('ArrowRight');
+  await input.press('Backspace');
+  await saved();
+  assert.equal((await disk()).at(-1).body, unfinished + '\n\n\n\n');
+  await input.press('Control+z');
+  await card.waitFor();
   await title.fill('审计问题');
   await btn('＋ 标签').click();
   await panel.getByRole('combobox', {name:'新标签'}).fill('审计');
@@ -55,7 +73,7 @@ try {
   assert.equal(await page.locator('[data-page=reader]').getAttribute('aria-current'), 'page');
   assert.deepEqual((await disk()).slice(0,-1), original);
   let note = (await disk()).at(-1);
-  assert.equal(note.body, token + '\n\n'); assert.equal(note.title, '审计问题'); assert.deepEqual(note.tags, ['审计']);
+  assert.equal(note.body, capturedBody); assert.equal(note.title, '审计问题'); assert.deepEqual(note.tags, ['审计']);
   await card.click();
   await input.press('Control+c');
   assert.equal(await readClip(), token);
@@ -138,10 +156,12 @@ try {
   assert.equal((await disk()).at(-1).body,'');
   const special = blockLink({documentPath:'docs/aftertaste/current/src/中文 (a).mjs.md',blockId:'zhidif44',text:'原文 [x] & <字>\n😀'});
   const ordinary = '[普通链接](' + special.slice(special.indexOf('](<') + 3, -2) + ')';
-  const prefix = ordinary + ' 前文 ';
-  await clip(prefix + special + ' 后文');
+  const prefix = ordinary + '\n\n`' + token + '`\n\n~~~md\n' + token + '\n~~~\n\n<!-- TODO\n\n前文 ';
+  await page.keyboard.insertText(prefix);
+  await clip(special + ' 后文');
   await input.press('Control+v');
   await card.getByText('原文 [x] & <字> 😀').waitFor();
+  assert.equal(await card.count(), 1);
   await card.click();
   await page.keyboard.insertText('替换');
   await saved();
