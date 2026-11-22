@@ -12,3 +12,8 @@ export async function newQuickNote(page, language = 'zh-CN') {
   await page.locator('.new-note').click();
   await page.locator('#quick-note').getByRole('button', { name: language === 'en' ? 'New note' : '新建笔记', exact: true }).click();
 }
+
+export async function chooseNoteFilter(notes, value) {
+  await notes.locator('#note-tag-filter').click();
+  await notes.locator('.filter-menu').getByRole('button', { name: value.trim() || '全部笔记', exact: true }).click();
+}

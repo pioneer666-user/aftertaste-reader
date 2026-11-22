@@ -1,4 +1,4 @@
-import { editorText, newQuickNote } from './note-controls.mjs';
+import { chooseNoteFilter, editorText, newQuickNote } from './note-controls.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { EventEmitter, once } from 'node:events';
@@ -79,6 +79,7 @@ async function selectQuote(text) {
 }
 
 async function addTag(text) {
+  await button('＋ 标签', notes()).click();
   await page.getByRole('textbox', { name: '新标签' }).fill(text);
   await button('添加标签').click();
 }
@@ -168,22 +169,22 @@ try {
 
   await restart();
   await openNotes();
-  const filter = notes().getByRole('combobox', { name: '按标签筛选' });
   for (const tag of [firstTag, secondTag]) {
-    await filter.selectOption(tag);
+    await chooseNoteFilter(notes(), tag);
     assert.equal(await row('先写一个独立问题').count(), 0);
     await row('这里为什么').waitFor();
   }
-  await filter.selectOption('');
+  await chooseNoteFilter(notes(), '');
   await row('这里为什么').click();
   await visit(firstQuote, 'src/rules.mjs');
   await openNotes();
   await visit(secondQuote, 'src/service.mjs');
   await openNotes();
-  await filter.selectOption('');
+  await chooseNoteFilter(notes(), '');
   await row('先写一个独立问题').click();
   page.once('dialog', dialog => dialog.accept());
   await button('编辑').click();
+  await button('更多').click();
   await button('删除笔记').click();
   await row('先写一个独立问题').waitFor({ state: 'detached' });
   await restart();
@@ -310,6 +311,7 @@ try {
     await row('锁定期间另一篇随手记').click();
     await button('编辑').click();
     page.once('dialog', dialog => dialog.accept());
+    await button('更多').click();
     await button('删除笔记').click();
     await row('失败后继续编辑的草稿').click();
     await notes().getByRole('alert').waitFor();
@@ -340,6 +342,7 @@ try {
     await notes().getByRole('alert').filter({ hasText: '无法连接本地阅读服务' }).waitFor();
     assert.equal((await disk()).find(note => note.id === record.id).body, committed ? changed : original);
     page.once('dialog', dialog => dialog.accept());
+    await button('更多').click();
     await button('删除笔记').click();
     await body().waitFor({ state: 'detached' });
     assert.equal((await disk()).some(note => note.id === record.id), false);
@@ -382,7 +385,7 @@ try {
   await notes().locator('.note-view-switch').getByRole('button', { name: 'Edit', exact: true }).click();
   assert.equal(await editorText(notes().locator('#note-body')), '陈旧草稿保留');
   await button('Done').click();
-  await notes().locator('.note-preview').getByText('陈旧草稿保留').waitFor();
+  await notes().locator('.note-front').getByText('陈旧草稿保留').waitFor();
   await page.screenshot({ path: path.join(run, 'narrow-en.png') });
   const stored = await disk();
   await button('Note list').press('Enter');

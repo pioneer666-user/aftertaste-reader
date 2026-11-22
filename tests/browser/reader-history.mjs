@@ -1,4 +1,4 @@
-import { editorText, newQuickNote } from './note-controls.mjs';
+import { chooseNoteFilter, editorText, newQuickNote } from './note-controls.mjs';
 import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { appendFile, copyFile, cp, mkdir, mkdtemp, readFile, rename, writeFile } from 'node:fs/promises';
@@ -566,7 +566,7 @@ async function checkRecords() {
   assert.equal(await difficult.getAttribute('aria-pressed'), 'true');
 
   await open('notes');
-  await notes().locator('#note-tag-filter').selectOption({ label: '订单' });
+  await chooseNoteFilter(notes(), '订单');
   const note = notes().getByRole('button', { name: /数量无效时，订单去哪了/u });
   await note.click();
   const body = notes().locator('#note-body');
@@ -630,7 +630,7 @@ async function checkRecords() {
     await follow.locator(':scope:focus').waitFor();
     assert.ok(Math.abs((await follow.boundingBox()).y - Number(departure)) < 2, 'same sentence stays at the reading position after the old error clears');
     assert.equal(await editorText(body), draft);
-    assert.equal(await notes().locator('#note-tag-filter').inputValue(), '订单');
+    assert.match(await notes().locator('#note-tag-filter').innerText(), /订单/u);
     assert.ok(await notes().locator('.record-detail').evaluate(pane => pane.scrollTop > 0));
     await notes().locator('.note-detail').getByText('正在保存…', { exact: true }).waitFor();
   } finally { releaseSave.resolve(); }

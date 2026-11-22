@@ -47,6 +47,7 @@
 | D035 | [个人记录工作台与笔记读写](2026/11/D035-personal-record-workbench/task.md) · [回执](2026/11/D035-personal-record-workbench/handoff.md) |
 | D036 | [文件讲解选文与新建笔记](2026/11/D036-reader-note-actions/task.md) · [回执](2026/11/D036-reader-note-actions/handoff.md) |
 | D037 | [浅色选区浮条与右上角随手记](2026/11/D037-quick-note-overlay/task.md) |
+| D038 | [笔记工作台的篇首、标签筛选与连续圆角](2026/11/D038-note-workbench/task.md) |
 | D039 | [文件讲解页的页边书签与理解标注](2026/11/D039-reader-margin-records/task.md) |
 | D040 | [书签原位编辑与紧凑标注浮层](2026/11/D040-margin-record-editors/task.md) · [回执](2026/11/D040-margin-record-editors/handoff.md) |
 | D041 | [书签与标注回读，三页详情对齐](2026/11/D041-record-management-details/task.md) |
