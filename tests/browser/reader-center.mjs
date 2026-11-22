@@ -302,9 +302,34 @@ try {
 
   await openFile(serviceFile);
   const expected = expectedLocation(serviceFile, 'zhidif44', fixture.commit, selectedPhrase);
+  await paragraph.scrollIntoViewIfNeeded();
+  const records = first.locator('.block-records');
+  const positions = async () => [(await box(paragraph)).y, (await box(records)).y];
+  const beforeSelection = await positions();
+  await paragraph.click();
+  assert.equal(await first.evaluate(el => getComputedStyle(el).outlineStyle), 'none');
   await pointerSelect(paragraph, selectedPhrase);
   await floatingCopy.waitFor();
+  assert.deepEqual(await positions(), beforeSelection);
+  assert.equal(await first.evaluate(el => getComputedStyle(el).outlineStyle), 'none');
+  const addNote = first.getByRole('button', { name: '加入笔记', exact: true });
+  for (const action of [floatingCopy, addNote]) {
+    await action.hover();
+    await action.locator('.selection-label').waitFor();
+    assert.deepEqual(await positions(), beforeSelection);
+  }
   await screenshot('candidate-service-selection');
+  await page.keyboard.press('Tab');
+  await floatingCopy.locator(':scope:focus .selection-label').waitFor();
+  await page.keyboard.press('Tab');
+  await addNote.locator(':scope:focus .selection-label').waitFor();
+  assert.equal(await page.evaluate(() => getSelection().toString()), selectedPhrase);
+  await page.keyboard.press('Escape');
+  await addNote.waitFor({ state: 'hidden' });
+  assert.deepEqual(await positions(), beforeSelection);
+  report.selectionPositions = { beforeSelection, afterDismiss: await positions() };
+  await dismissSelection();
+  await pointerSelect(paragraph, selectedPhrase);
   await clickAndPaste(floatingCopy, expected);
   await clickAndPaste(directCopy(second), expectedLocation(serviceFile, 'm3vuiqzi', fixture.commit));
   await pointerSelect(paragraph, selectedPhrase, true);
@@ -430,6 +455,8 @@ try {
   await floatingCopy.waitFor();
   const action = await box(floatingCopy);
   assert.ok(action.x >= 0 && action.x + action.width <= end.x + 1 && action.y >= 0 && action.y + action.height <= 844);
+  const addBounds = await box(addNote);
+  assert.ok(addBounds.width >= 44 && addBounds.height >= 44 && addBounds.x + addBounds.width <= 390);
   await screenshot('candidate-narrow-edge');
   await navigationToggle.click();
   await openFile(auditFile);
@@ -466,6 +493,14 @@ try {
   assert.match(await lastRow.innerText(), new RegExp(verticalTail, 'u'));
   assert.ok(lastRowPosition.y > (await box(reading)).y && lastRowPosition.y + lastRowPosition.height < 320);
   await screenshot('candidate-long-last-line');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await navigationToggle.click();
+  await nav.getByRole('button', { name: '窗口边界', exact: true }).click();
+  await longBlock.locator(':scope[data-landing]:focus').waitFor();
+  const intro = await box(prose(longBlock).getByRole('heading', { name: '窗口边界' }));
+  report.narrowLanding = { heading: intro, reading: await box(reading) };
+  assert.ok(intro.y >= report.narrowLanding.reading.y && intro.y + intro.height <= 844);
+  await screenshot('candidate-narrow-jump');
   await page.setViewportSize({ width: 1440, height: 900 });
   const example = prose(longBlock).locator('pre code');
   await example.scrollIntoViewIfNeeded();

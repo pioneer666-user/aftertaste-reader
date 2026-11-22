@@ -469,6 +469,21 @@ async function checkHistory() {
   assert.ok(position.scroll > 100 && position.offset > 30,
     'cross-page history must restore an offset inside the block: ' + JSON.stringify(position));
   await shot('desktop-reading-position');
+  await view().locator('#apiwalk1 p').nth(1).evaluate(el => {
+    getSelection().setBaseAndExtent(el.firstChild, 0, el.firstChild, 6);
+  });
+  await page.locator('.selection-copy-action').waitFor();
+  await top().getByRole('button', { name: '新建笔记' }).click();
+  const body = page.locator('#note-body:focus');
+  await body.waitFor();
+  assert.equal(await body.inputValue(), '');
+  await body.fill('从接口讲解中段记下的独立想法');
+  await notes().getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
+  assert.ok((await readJSON(path.join(data, 'notes.json'))).notes.some(note => note.body === '从接口讲解中段记下的独立想法'));
+  await back();
+  await upToDate(api);
+  await tick();
+  assert.deepEqual(await readingPosition(), position);
   await open('bookmarks');
   await bookmarks().locator('.bookmark-entry').first().waitFor();
   await back();
@@ -704,9 +719,22 @@ async function checkHeader(width, language) {
   for (const key of keys) {
     await open(key);
     await tick();
+    const newNote = top().getByRole('button', { name: language === 'en' ? 'New note' : '新建笔记', exact: true });
+    assert.ok(await newNote.isVisible());
+    assert.equal(await newNote.locator('span').isVisible(), width > 950);
+    assert.ok(await newNote.evaluate(el => {
+      const rect = el.getBoundingClientRect();
+      return el.nextElementSibling.matches('.language-control') &&
+        el.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    }));
     const positions = await Promise.all([arrow('back'), arrow('forward'), toggle(), nav].map(start));
     if (!compact) positions.push(...await top().locator('[data-page]').evaluateAll(nodes =>
       nodes.map(element => Math.round(element.getBoundingClientRect().x * 100) / 100)));
+    if (!compact) {
+      const lastTab = await top().locator('[data-page="notes"]').boundingBox();
+      const firstTool = await top().locator('.toolbar').boundingBox();
+      assert.ok(lastTab.x + lastTab.width <= firstTool.x, 'Tabs and tools must remain independently reachable');
+    }
     if (fixed) assert.deepEqual(positions, fixed, `${width}px ${language} ${key}`);
     else fixed = positions;
     assert.ok(positions[0] < positions[1] && positions[1] < positions[2] && positions[2] < positions[3]);
@@ -819,6 +847,42 @@ async function checkTouch() {
       report.checks.push('Firefox touch emulation kept the desktop pointer media feature');
       return;
     }
+    const language = top().locator('.language-control select');
+    await language.selectOption('en');
+    for (const width of [320, 380, 390, 851, 951, 1151]) {
+      await page.setViewportSize({ width, height: 844 });
+      const menu = top().locator(width <= 850 ? '.app-page-menu-toggle' : '[data-page="notes"]');
+      await menu.waitFor();
+      for (const control of [menu, top().locator('.refresh-documents'), top().locator('.new-note'), language]) {
+        assert.ok(await control.evaluate(el => {
+          const r = el.getBoundingClientRect();
+          return [r.left + 3, r.right - 3].every(x => el.contains(document.elementFromPoint(x, r.y + r.height / 2)));
+        }), `Obstructed touch control at ${width}px`);
+      }
+      if (width === 320) {
+        await menu.tap();
+        await top().locator('#app-page-menu:popover-open').waitFor();
+        await page.keyboard.press('Escape');
+        const refresh = page.waitForRequest(req => req.url().includes('/api/documents'));
+        await top().locator('.refresh-documents').tap();
+        await refresh;
+        await top().locator('.new-note').tap();
+        await page.locator('#note-body:focus').waitFor();
+        assert.equal(await page.locator('#note-body').inputValue(), '');
+        await arrow('back').tap();
+        await upToDate(api);
+      }
+      if (width === 851) {
+        const bounds = await menu.boundingBox();
+        await page.touchscreen.tap(bounds.x + bounds.width - 5, bounds.y + bounds.height / 2);
+        await notes().waitFor();
+        await arrow('back').tap();
+        await upToDate(api);
+      }
+    }
+    await language.selectOption('zh-CN');
+    await page.setViewportSize({ width: 390, height: 760 });
+    report.checks.push('English touch toolbar, 320px menu and 851px end of last tab; refresh, blank note and back');
     await open('canvas');
     await file(api).waitFor();
     await checkCanvasFrame();
@@ -876,7 +940,7 @@ try {
     await open('canvas');
     await checkLoops();
     await checkHeader(1600, 'zh-CN');
-    await checkHeader(851, 'en');
+    for (const width of [1151, 1150, 951, 950, 851]) await checkHeader(width, 'en');
     await checkHeader(850, 'en');
     await checkHeader(390, 'zh-CN');
     await checkNarrow();

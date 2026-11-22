@@ -25,3 +25,7 @@ node tests/browser/notes.mjs
 ## D035 工作台
 
 构建后运行 `node tests/browser/record-workbench.mjs`。可用进程变量 `AFTERTASTE_D035_INPUT` 指定订单试读项目，脚本在新副本中添加长笔记，验证两处原句、非零侧栏位置、Tab 续读和窄窗读写。用 `AFTERTASTE_TEST_TASK=D035` 串行运行 notes、reader-history、bookmarks 和 understanding-marks 的浏览器用例，分别核真实写失败、保存中的历史、同块多书签及改标留原话。
+
+## D036 · 带引用与空白新建
+
+在试读副本选文加入，先取消核原记录，再用引文新建、选另一块明确追加并读回目标。六页顶栏均有新建入口；从讲解中段用它开空白笔记、写字后退验原段。带有待处理引文时重复全局新建，核空正文与焦点、旧笔记及失败草稿。

@@ -92,6 +92,11 @@ description: "D020 项目内全局笔记与跨文件回访"
 - [x] T017 [US1] src/web/ProjectNotes.vue、src/web/i18n.ts 与 tests/browser/notes.mjs 实现查签、只读正文、双栏编辑、窄窗预览、选文及失败草稿恢复。
 - [x] T018 [US2] 在 `src/web/ProjectNotes.vue`、`src/web/style.css` 和 `tests/browser/record-workbench.mjs` 核对长笔记中段的失效引用，错误原因可见、取得焦点且能继续访问有效引用。
 
+## D036 · 空白和引文分别起笔
+
+- [x] T019 [US1] 通过 `src/web/ProjectNotes.vue` 将全局新建接入单一草稿队列，在 `tests/browser/notes.mjs` 验等待读取、空白焦点和已有草稿。
+- [x] T020 [US2] 在同一工作台和 `src/web/i18n.ts` 提供引文新建、选篇追加及取消，在 `tests/browser/notes.mjs` 核两条引用和原记录，更新 `docs/usage/file-reader.md`。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

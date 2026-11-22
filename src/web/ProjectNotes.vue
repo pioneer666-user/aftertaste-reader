@@ -13,7 +13,7 @@ const props = defineProps<{
   visible: boolean; language: Language; quote: BlockQuote | undefined; listOpen: boolean;
   visit: (target: BlockTarget) => Promise<string | undefined>;
 }>();
-const emit = defineEmits<{ clearQuote: []; select: [] }>();
+const emit = defineEmits<{ clearQuote: []; select: []; openList: [] }>();
 const t = (key: string) => translate(props.language, key);
 const editor = useNotesEditor();
 const { drafts, selected, loaded, loading, loadProblem } = editor;
@@ -66,6 +66,10 @@ function finishEdit() {
   nextTick(() => editButton.value?.focus());
 }
 defineExpose({
+  async createBlank(current: () => boolean) {
+    await editor.load(!!loadProblem.value);
+    if (current() && loaded.value && !loadProblem.value) create('');
+  },
   capturePosition: (): NotesPosition => ({ selected: selected.value, filter: filter.value, query: query.value,
     editing: editing.value, preview: previewOnly.value, link: refLink.value, linkOffset,
     href: rendered.value?.querySelectorAll('a')[refLink.value]?.getAttribute('href') ?? '' }),
@@ -113,8 +117,8 @@ function title(body: string) {
   return text.length > 100 ? text.slice(0, 100) + '…' : text;
 }
 
-function create() {
-  editor.create(props.quote ? blockLink(props.quote) : '');
+function create(body: string) {
+  editor.create(body);
   clearFilter();
   emit('select');
   beginEdit();
@@ -196,7 +200,6 @@ function loadSaved() {
 
 <template>
   <RecordWorkbench page="notes" :heading="t('notes')" list-id="note-navigation" :list-open="listOpen">
-    <template #action><button type="button" :disabled="!loaded" @click="create">{{ t('noteNew') }}</button></template>
     <template #status>
       <p v-if="loading" role="status">{{ t('loading') }}</p>
       <div v-if="loadProblem">
@@ -233,6 +236,8 @@ function loadSaved() {
       <h2>{{ t('noteAddSelection') }}</h2>
       <blockquote>{{ quote.text }}</blockquote>
       <div class="bookmark-actions">
+        <button type="button" :disabled="!loaded || loading" @click="create(blockLink(quote))">{{ t('noteNewWithQuote') }}</button>
+        <button v-if="!listOpen" type="button" @click="emit('openList')">{{ t('openNoteList') }}</button>
         <button type="button" :disabled="!active || active.replacing || active.id !== explicitTarget" @click="append">{{ t('noteAppend') }}</button>
         <button type="button" @click="emit('clearQuote')">{{ t('bookmarkCancel') }}</button>
       </div>
