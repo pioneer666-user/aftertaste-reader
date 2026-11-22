@@ -251,6 +251,8 @@
 - [x] T071 [US9] 在 `src/web/BlockLocationControl.vue`、`src/web/style.css` 调整浮条材质与两类命中区，用 `tests/browser/reader-center.mjs` 实测。
 - [x] T072 [US10] 在 `src/web/App.vue` 共用顶栏挂载面板，在 `tests/browser/reader-history.mjs` 核六页、阅读现场、图与窄窗。
 
+- [x] T073 [US10] 在 `src/web/style.css` 处理读取失败提示和随手记同开的层级，用 `tests/browser/reader-file-switch.mjs` 实点预览、关闭及原提示（D037 独审 R1）。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。
