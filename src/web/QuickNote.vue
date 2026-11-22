@@ -137,6 +137,8 @@ async function follow(event: MouseEvent) {
           <button type="button" :aria-label="t('noteBack')" :title="t('noteBack')" @click="list">‹</button>
           <input v-if="!preview" v-model="title" class="quick-title" :placeholder="t('noteTitle')" :aria-label="t('noteTitle')" :readonly="draft?.replacing">
           <h2 v-else>{{ draft ? noteName(draft, t('noteUntitled')) : t('noteUntitled') }}</h2>
+          <NoteSaveStatus v-if="draft && !draft.problem" class="quick-save-state"
+            :draft="draft" :editor="editor" :language="language" show-saved />
           <button type="button" :aria-label="t(preview ? 'editNote' : 'previewTab')" :title="t(preview ? 'editNote' : 'previewTab')" @click="togglePreview">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path v-if="preview" d="m4 20 1-5L16 4l4 4L9 19l-5 1Zm10-14 4 4" />
@@ -182,13 +184,15 @@ async function follow(event: MouseEvent) {
             <button v-else type="button" :disabled="draft?.replacing" @click="addingTag = true; nextTick(() => tagInput?.focus())">＋ {{ t('noteTags') }}</button>
           </template>
         </div>
-        <NoteSaveStatus v-if="draft" :draft="draft" :editor="editor" :language="language" show-saved />
+        <NoteSaveStatus v-if="draft?.problem" :draft="draft" :editor="editor" :language="language" show-saved />
       </template>
     </div>
     <button type="button" class="quick-resize" :aria-label="t('noteResize')" :title="t('noteResize')"
       @pointerdown.prevent="startResize" @pointermove="moveResize" @lostpointercapture="drag = undefined" @keydown="keyResize">
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-        <path d="m3 5 8 8M3 10l3 3" />
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
+        <circle cx="3" cy="3" r="1.25"/>
+        <circle cx="3" cy="8" r="1.25"/><circle cx="8" cy="8" r="1.25"/>
+        <circle cx="3" cy="13" r="1.25"/><circle cx="8" cy="13" r="1.25"/><circle cx="13" cy="13" r="1.25"/>
       </svg>
     </button>
   </section>
@@ -216,11 +220,13 @@ async function follow(event: MouseEvent) {
 .quick-content > * { flex-shrink: 0; }
 .resized .quick-list, .resized .quick-preview, .resized .note-body-editor { flex: 1 0 48px; height: auto; max-height: none; }
 .quick-resize { position: absolute; bottom: 0; left: 0; display: grid; place-items: center; width: 28px; height: 24px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: nesw-resize; touch-action: none; user-select: none; }
+.quick-resize:is(:hover, :focus-visible, :active) { color: var(--accent); background: #edf4ee; }
 @media (pointer: coarse) {
   #quick-note { padding-bottom: 44px; }
   .quick-resize { width: 44px; height: 44px; }
 }
 .quick-note-heading { display: flex; gap: 4px; align-items: center; margin-bottom: 8px; }
+.quick-save-state { flex: none; margin: 0 3px; white-space: nowrap; color: var(--muted); font-size: 12px; }
 .quick-note-heading h2 { flex: 1; margin: 0; font-size: 15px; }
 .quick-note-heading button { width: 32px; padding: 0; display: grid; place-items: center; border-color: transparent; }
 .quick-note-heading svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }

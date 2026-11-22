@@ -42,7 +42,7 @@ try {
   }
   await capturePassage();
   const panel = page.locator('#quick-note'), input = panel.getByRole('textbox', { name: '笔记正文' });
-  const saved = () => panel.getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
+  const saved = () => panel.locator('.quick-note-heading').getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
   const btn = name => panel.getByRole('button', { name, exact: true });
   const title = panel.getByRole('textbox', { name: '笔记标题（可选）' });
   const card = panel.locator('.cm-content .note-reference');
@@ -198,6 +198,11 @@ try {
   await title.fill('重命名后');
   await saved();
   assert.deepEqual((await disk()).find(n=>n.id===note.id).tags,[]);
+  const stateBox = await panel.getByRole('status').boundingBox();
+  const titleBox = await title.boundingBox(), previewBox = await btn('预览').boundingBox();
+  assert.ok(titleBox.x + titleBox.width <= stateBox.x && stateBox.x + stateBox.width <= previewBox.x);
+  assert.ok(stateBox.y >= titleBox.y && stateBox.y + stateBox.height <= titleBox.y + titleBox.height);
+  await panel.screenshot({path:path.join(run,'note-panel.png')});
   await page.screenshot({path:path.join(run,'narrow-edit.png')});
   assert.deepEqual((await disk()).slice(0,original.length),original);
   assert.equal((await disk()).length,original.length+2);
