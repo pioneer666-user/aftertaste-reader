@@ -1,11 +1,14 @@
 <script setup lang="ts">
-defineProps<{ page: string; heading: string; listId: string; listOpen: boolean }>();
+defineProps<{ page: string; heading: string; listId: string; listOpen: boolean; count?: string }>();
 </script>
 
 <template>
   <main :id="page" class="record-workbench" :class="{ 'list-open': listOpen }" tabindex="-1" :aria-labelledby="page + '-heading'">
     <header class="record-heading">
-      <h1 :id="page + '-heading'">{{ heading }}</h1>
+      <div class="record-heading-title">
+        <h1 :id="page + '-heading'">{{ heading }}</h1>
+        <span v-if="count" class="record-count" role="status">{{ count }}</span>
+      </div>
       <slot name="action" />
       <div class="record-status"><slot name="status" /></div>
     </header>

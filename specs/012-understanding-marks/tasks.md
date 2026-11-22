@@ -83,6 +83,10 @@ description: "D021 块级理解标注与批注实施清单"
 
 - [x] T015 [US2] src/web/ProjectMarks.vue 和 tests/browser/understanding-marks.mjs 完成选中详情、筛选、一步回原文与改标后原话复验。
 
+## D041 增量 · 管理页回读
+
+- [x] T016 [US2] 在 `src/web/ProjectBlockRecords.vue`、`src/web/App.vue` 和 `tests/browser/record-details.mjs` 验证平铺筛选、整句原话、同块摘录、失效重试及一步回访（FR-009、SC-005）。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -114,3 +118,5 @@ US1 的 HTTP／模型检查和浏览器用例可独立编辑。US2 的筛选用�
 ## Notes
 
 正式版本更新提醒的触发、确认和保留按 D021 派单随更新任务联验。
+
+D041 T016 共用 010 T017 的读取和列表组件，依赖 006 T082 的布局；串行运行标注和阅读历史回归。

@@ -268,6 +268,12 @@
 - [x] T080 [US6] 在 `src/web/BlockUnderstandingMark.vue` 和 `style.css` 完成三态分段、共用原位输入区及连续角回退（FR-010、017）。
 - [x] T081 [US6] 更新 `docs/usage/file-reader.md`，串行运行 `tests/browser/` 的记录、写失败、冲突与回访回归，并在同一服务首块测尺寸、触屏及阅读位置（SC-008、016）。
 
+## D041 增量 · 管理页回读
+
+- [x] T082 [US10] 在 `src/web/RecordWorkbench.vue` 和 `src/web/style.css` 对齐三页详情并沿用 D029 轮廓（FR-017、020）。
+- [x] T083 [US10] 在 `tests/browser/record-details.mjs`、`tests/browser/record-workbench.mjs` 与 `tests/browser/reader-history.mjs` 串行复验几何、历史、窄窗、轮廓及 D038 组合（SC-015、018）。
+- [ ] T084 更新 `docs/usage/file-reader.md`，固定候选交独审，通过后切换 4342 并交回 D041 回执。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。
@@ -313,3 +319,5 @@ D026 先形成可切页的 US10，随后与 007 的首屏及分组在同一隔�
 D028 先让六页顶栏位置一致，再核访问历史与各页落点。完整访问与回归证据提交 007 的冻结候选及独审。
 
 D029 以同一份文件讲解覆盖核心阅读场景。等主要轮廓、相关状态和原操作均验证后，交独审与试读。
+
+D041 先完成 T082；联同 010／012 的只读详情与 011 的笔记兼容性执行 T083，归档独审和只读换版证据见 T084。

@@ -69,6 +69,10 @@ description: "块级注解书签与回访实施清单"
 
 - [x] T016 [US2] src/web/App.vue 和 tests/browser/bookmarks.mjs 验证同块多理由、无备注及两处回访入口。
 
+## D041 增量 · 管理页回读
+
+- [x] T017 [US2] 在 `src/web/ProjectBlockRecords.vue`、`src/web/App.vue` 和 `tests/browser/record-details.mjs` 实现并验证回读、双入口、同文档复用、失效与零写（FR-009、SC-005）。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -92,3 +96,5 @@ T002/T003 可分开准备。T006/T007 可分开编写，T014 可独立维护。�
 ## Implementation Strategy
 
 先完成收藏 MVP，再接通项目回访与失败恢复。各故事按独立验收验通，最后对真实服务及试读入口做串行验证。
+
+D041 的 T017 沿用 US2 的保存与位置机制，与 006 T082、012 T016 联验，再串行跑书签回归。

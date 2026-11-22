@@ -80,3 +80,7 @@ D010 合成样例使用 tests/fixtures/reader-project.mjs 重建到全新隔离�
 ## D040 原位编辑
 
 从 4342 作者项目复制独立输入。在 1440 × 900 Edge 对照服务首块已有书签的铅笔和已理解状态的批注编辑，记录整窗、浮层和各按钮尺寸。按 [D040 验证与停点](../../docs/work/2026/11/D040-margin-record-editors/task.md#验证与停点) 串行检查三份书签草稿、字段独立落盘、双页冲突、实际写失败、精确回访、更多开关前后各行和浮层坐标、尺寸及层内滚动量，390 px 触屏、强制色、Firefox 轮廓及正文零位移。
+
+## D041 · 三页详情对齐
+
+以 [D041 验证与停点](../../docs/work/2026/11/D041-record-management-details/task.md#验证与停点) 的订单项目副本串行运行 `tests/browser/record-details.mjs` 和 `tests/browser/record-workbench.mjs`。测两种桌面宽度、窄窗、连续角、两区域恢复及只读回访。D038 固定构建只在隔离页套用同一 CSS 布局规则，核正文和引用。

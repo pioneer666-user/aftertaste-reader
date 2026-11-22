@@ -548,7 +548,7 @@ async function checkHistory() {
 
 async function checkRecords() {
   await open('bookmarks');
-  const savedBookmark = bookmarks().locator('.bookmark-entry').filter({ hasText: 'x4y6az2y' });
+  const savedBookmark = bookmarks().locator('[data-record-path$="/rules.mjs.md"] .bookmark-entry');
   await savedBookmark.locator('..').locator('.record-visit').click();
   await upToDate(rules);
   await back();
@@ -556,13 +556,14 @@ async function checkRecords() {
   assert.equal(await arrow('forward').isEnabled(), true);
 
   await open('marks');
-  await marks().locator('select').selectOption('not-understood');
-  const mark = marks().locator('.bookmark-entry').filter({ hasText: 'x4y6az2y' });
+  const difficult = marks().getByRole('group', { name: '筛选标注' }).getByRole('button', { name: '不理解', exact: true });
+  await difficult.click();
+  const mark = marks().locator('[data-record-path$="/rules.mjs.md"] .bookmark-entry');
   await mark.locator('..').locator('.record-visit').click();
   await upToDate(rules);
   await back();
   await mark.and(marks().locator('[aria-current="true"]')).waitFor();
-  assert.equal(await marks().locator('select').inputValue(), 'not-understood');
+  assert.equal(await difficult.getAttribute('aria-pressed'), 'true');
 
   await open('notes');
   await notes().locator('#note-tag-filter').selectOption({ label: '订单' });

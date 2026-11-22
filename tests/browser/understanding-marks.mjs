@@ -41,7 +41,7 @@ const editor = (target = page) => block(target).getByRole('textbox', { name: '�
 const button = (name, target = page) => target.getByRole('button', { name, exact: true });
 const readMarks = async () => JSON.parse(await readFile(file, 'utf8')).marks;
 const panel = () => page.locator('#marks');
-const entry = target => panel().getByRole('button').filter({ hasText: target });
+const entry = target => panel().locator(`[data-record-path="${target}"] .bookmark-entry`);
 const responseTo = target => target.waitForResponse(response => response.request().method() === 'PUT' &&
   response.url().endsWith('/api/understanding-marks'));
 
@@ -103,7 +103,9 @@ async function openMarks() {
 
 async function visit(target, name) {
   await entry(target).press('Enter');
-  assert.equal(await panel().locator('.record-prose').textContent(), await entry(target).locator('.bookmark-note').textContent());
+  const saved = (await readMarks()).find(mark => mark.documentPath === target);
+  if (saved.annotation) assert.equal(await panel().locator('.record-prose').textContent(), saved.annotation);
+  else await panel().locator('.record-no-text').getByText('无批注', { exact: true }).waitFor();
   const visitButton = target === rulesPath ? button('回原文', panel().locator('.record-detail')) : entry(target).locator('..').locator('.record-visit');
   await visitButton.and(page.locator('button:enabled')).press('Enter');
   await page.getByRole('heading', { name, exact: true }).waitFor();
@@ -146,9 +148,9 @@ try {
   await saveAnnotation('');
   await restart();
   await openMarks();
-  await panel().getByRole('combobox', { name: '筛选标注' }).selectOption('not-understood');
+  await panel().getByRole('group', { name: '筛选标注' }).getByRole('button', { name: '不理解', exact: true }).click();
   assert.match(await entry(rulesPath).innerText(), /为什么要先校验数量？/u);
-  assert.match(await entry(servicePath).innerText(), /无批注/u);
+  await entry(servicePath).getByText('从数量规则到订单', { exact: true }).waitFor();
   await visit(servicePath, 'src/service.mjs');
   assert.equal(await selectedStatus(), 'not-understood');
   await openMarks();
@@ -160,7 +162,7 @@ try {
   await openMarks();
   await entry(rulesPath).waitFor({ state: 'hidden' });
   await entry(servicePath).waitFor();
-  await panel().getByRole('combobox', { name: '筛选标注' }).selectOption('all');
+  await panel().getByRole('group', { name: '筛选标注' }).getByRole('button', { name: '全部', exact: true }).click();
   assert.match(await entry(rulesPath).innerText(), /已理解/u);
   await page.screenshot({ path: path.join(run, 'marks.png') });
   await visit(rulesPath, 'src/rules.mjs');
@@ -294,8 +296,9 @@ try {
   await page.locator('header [popovertarget="app-page-menu"]').click();
   await button('Marks').click();
   await button('Open mark list').click();
-  await panel().getByRole('combobox', { name: 'Filter marks' }).waitFor();
-  assert.equal(await entry(servicePath).locator('.bookmark-note').textContent(), explanation);
+  const filterGroup = panel().getByRole('group', { name: 'Filter marks' });
+  await filterGroup.getByRole('button', { name: 'Not understood', exact: true }).waitFor();
+  assert.equal(await entry(servicePath).locator('.bookmark-note > span').textContent(), explanation);
   assert.ok(await panel().evaluate(element => element.scrollWidth <= element.clientWidth));
   await page.screenshot({ path: path.join(run, 'english-narrow.png') });
   evidence.checks.push('English narrow layout and original text');
