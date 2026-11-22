@@ -2,7 +2,9 @@
 
 ## 当前结论与入口
 
-**实施、自测和独立复核均已通过，待作者体验。** 4341 正在原订单试读项目上运行固定候选 `c9f61a4c49624301d9a60bc129dcf824d7b46b87`。三页共用左栏列表与中间详情，桌面可收栏，窄窗选一条后读整宽详情。个人记录格式与存取接口沿用原版。[打开本机试读](http://127.0.0.1:4341/) · [阅读器说明](../../../../usage/file-reader.md) · [独审原文](review.md)
+**已合入本地 `dev`，作者试读体验待记录。** 4341 正在原订单试读项目上运行固定候选 `c9f61a4c49624301d9a60bc129dcf824d7b46b87`。三页共用左栏列表与中间详情，桌面可收栏，窄窗选一条后读整宽详情。个人记录格式与存取接口沿用原版。[打开本机试读](http://127.0.0.1:4341/) · [阅读器说明](../../../../usage/file-reader.md) · [独审原文](review.md)
+
+2026-11-22，作者在执行会话指示「合并到dev」。D035 以 `5d190fe` 合入本地 `dev`，父提交为原基线 `3ba3f18` 和任务归档 `fd6e823`。合并结果与任务归档的 Git 树一致，沿用候选 `c9f61a4` 的自测与独审证据。合并前后核对 4341 首页、JS、CSS 均与固定构建相符，共用项目 HEAD 与 15 份资料逐文件哈希相同。已安全删除任务分支，未推送或发布。此次指令授权本地整合，作者对 D035 的试读体验仍待记录。
 
 作者体验可看三处：
 
@@ -12,7 +14,7 @@
 
 ## 依据与验证
 
-- 批准提交 `acdcf57`，产品基线 `dev@3ba3f18`，无调整。工作台实现 `55e66b4`，补回键盘测试的启用等待后固定首审候选 `96cd91e`，R1 修复候选为 `c9f61a4`。成果保留在 `codex/feat-personal-record-workbench`，本次在该分支归档回执，未合入 dev、推送或发布。[任务单](task.md)
+- 批准提交 `acdcf57`，产品基线 `dev@3ba3f18`，无调整。工作台实现 `55e66b4`，补回键盘测试的启用等待后固定首审候选 `96cd91e`，R1 修复候选为 `c9f61a4`。来源分支为 `codex/feat-personal-record-workbench`，任务归档为 `fd6e823`。[任务单](task.md)
 - 按 Spec Kit 的 specify、plan、tasks 和解析出的生效模板增量维护 006、010、011、012。编码前用 analyze 核对四组场景、要求和实施项，implement 读取的四份需求清单各 16/16。共用导航由 006 FR-020／T066 定义，书签、笔记、标注由各分册 FR-009 与 T016、T017、T015 承接，R1 追加 011 T018。沿用原模型、契约、依赖与保存队列。按项目适配使用 Ponytail full、Impeccable 的 Read／Operate 和实际窗口检查；复用既有视觉系统，未开启上游引擎的设计选稿流程。[导航](../../../../../specs/006-file-reader/spec.md) · [书签](../../../../../specs/010-block-bookmarks/spec.md) · [笔记快验](../../../../../specs/011-project-notes/quickstart.md) · [标注](../../../../../specs/012-understanding-marks/spec.md)
 - Windows、Node 24.11.1、Edge 158.0.4370.33。使用 `npm run typecheck`、`npm run build` 和 `node tests/browser/<用例>.mjs`。首审产品版本串行通过 record-workbench、reader-history、notes、bookmarks、understanding-marks、reader-navigation。Windows 文件锁让笔记 PUT 实际返回 422；旧文件完整，失败草稿在切换笔记后仍可重试。另验自动保存后 Ctrl+Z、保存中继续输入、双页冲突、选文新建与明确选篇追加、改标保留批注、同块有／无备注的精确书签焦点。[首轮自测日志](../../../../../.local/D035/selftest/) · [正式回归](../../../../../tests/browser/record-workbench.mjs)
 - 长文返回初测发现加载提示改变了原句位置，偏差 37 px。保存点击时的原句偏移后，自测返回前后均为 464.84 px，侧栏保持 1312 px，Tab 接到第二处。测试也校正了长文首行、真实收藏理由全文、标注刷新时按钮可用性三项前置。历史用例在旧错误消失、正文高度变化时核实际原句位置；稳定布局另核精确滚动读数。[长文与窄窗报告](../../../../../.local/D035/workbench-AqI7M5/report.json)
