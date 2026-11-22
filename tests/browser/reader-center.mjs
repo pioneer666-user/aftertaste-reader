@@ -521,6 +521,28 @@ try {
   assert.ok(intro.y >= report.narrowLanding.reading.y && intro.y + intro.height <= 844);
   await screenshot('candidate-narrow-jump');
   await page.setViewportSize({ width: 1440, height: 900 });
+  const middleLine = longBlock.locator('.source-line').nth(30);
+  report.longSourceRecords = [];
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await middleLine.evaluate(el => el.scrollIntoView({ block: 'center' }));
+    await middleLine.hover({ position: { x: 50, y: 4 } });
+    const top = await reading.evaluate(el => el.scrollTop);
+    const pane = await box(reading);
+    const entryPositions = [];
+    for (const kind of ['bookmarks', 'mark']) {
+      const entry = longBlock.locator(`[data-kind=${kind}]`);
+      const bounds = await box(entry);
+      assert.ok(bounds.y >= pane.y && bounds.y + bounds.height <= pane.y + pane.height, 'record entry beside source line 31');
+      entryPositions.push(bounds.y);
+      await entry.click();
+      await longBlock.getByRole('dialog').waitFor();
+      await page.keyboard.press('Escape');
+      assert.equal(await reading.evaluate(el => el.scrollTop), top);
+    }
+    report.longSourceRecords.push({ width, scroll: top, line31: (await box(middleLine)).y, entries: entryPositions });
+    await screenshot('source-middle-' + width);
+  }
   const example = prose(longBlock).locator('pre code');
   await example.scrollIntoViewIfNeeded();
   const nativeSelection = await selectRange(example, example, quotedText);

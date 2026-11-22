@@ -231,13 +231,13 @@ onUnmounted(() => {
           <div class="markdown explanation-text" v-html="renderMarkdown(block.body)"></div>
           <BlockLocationControl v-if="anchor && selectionLocation && quote?.blockId === block.id"
             :location="selectionLocation" :language="language" :anchor="anchor" @add-to-notes="addSelection" />
-          <BlockMarginRecords :document-path="result.documentPath" :block-id="block.id" :label="blockLabel(block.body) || block.id"
-            :kind="openRecord?.id === block.id ? openRecord.kind : undefined" :language="language"
-            :bookmarks="bookmarks.filter(entry => entry.documentPath === result?.documentPath && entry.blockId === block.id)"
-            :active-bookmark="activeBookmark" :bookmarks-busy="bookmarksBusy" :save-bookmark="saveBookmark"
-            :mark="blockMarks.get(block.id)" :active-mark="activeMark === block.id" :marks-busy="marksBusy"
-            :unavailable="!!markListError" :save-mark="saveMark" @open="showRecord(block.id, $event)" @close="openRecord = undefined" />
         </div>
+        <BlockMarginRecords :document-path="result.documentPath" :block-id="block.id" :label="blockLabel(block.body) || block.id"
+          :kind="openRecord?.id === block.id ? openRecord.kind : undefined" :language="language"
+          :bookmarks="bookmarks.filter(entry => entry.documentPath === result?.documentPath && entry.blockId === block.id)"
+          :active-bookmark="activeBookmark" :bookmarks-busy="bookmarksBusy" :save-bookmark="saveBookmark"
+          :mark="blockMarks.get(block.id)" :active-mark="activeMark === block.id" :marks-busy="marksBusy"
+          :unavailable="!!markListError" :save-mark="saveMark" @open="showRecord(block.id, $event)" @close="openRecord = undefined" />
       </section>
     </div>
     <article v-else class="markdown fallback-markdown" v-html="renderMarkdown(result.raw)"></article>

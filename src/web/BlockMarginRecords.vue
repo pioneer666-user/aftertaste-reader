@@ -125,13 +125,24 @@ watch(() => props.kind, (kind, _, cleanup) => {
 </template>
 
 <style>
+.document-block { position: relative; --rail-width: 32px; }
 .explanation-pane {
-  --rail-width: 32px;
   padding-inline-end: max(0px, calc(var(--rail-width) + 6px - var(--reader-gutter)));
   min-height: calc(2 * var(--rail-width));
 }
-.margin-track { position: absolute; inset-block: 0; inset-inline-end: calc(4px - min(var(--rail-width), var(--reader-gutter))); width: var(--rail-width); pointer-events: none; }
-.margin-rail { position: sticky; top: 12px; display: grid; }
+.margin-track {
+  position: absolute; inset: 0; max-width: 70ch; margin-inline: auto; padding-block: inherit; pointer-events: none;
+}
+.comparison > .margin-track { grid-column: 2; margin-inline: 0; }
+.margin-rail {
+  position: sticky; top: 12px; display: grid; width: var(--rail-width); margin-inline-start: auto;
+  transform: translateX(calc(min(var(--rail-width), var(--reader-gutter)) - 4px));
+}
+@media (max-width: 1050px) {
+  .comparison > .margin-track { grid-column: 1; max-width: none; }
+  .comparison:has(> .source-pane.is-sticky) > .margin-track { grid-row: 2; padding-block-start: 0; max-width: 70ch; }
+  .comparison > .source-pane:not(.is-sticky) { margin-inline-end: max(0px, calc(var(--rail-width) + 6px - var(--reader-gutter))); }
+}
 .margin-rail .margin-entry { position: relative; pointer-events: auto; width: 100%; min-height: var(--rail-width); padding: 2px; display: grid; place-content: center; color: var(--muted); background: white; border-color: transparent; }
 .margin-failure { position: absolute; right: 100%; bottom: 0; width: max-content; max-width: 50vw; padding: 4px 8px; background: white; color: #93352e; font-size: 12px; }
 .margin-entry svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linejoin: round; }
@@ -158,7 +169,7 @@ watch(() => props.kind, (kind, _, cleanup) => {
 .mark-controls button { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; }
 .mark-controls [aria-pressed="true"] { background: #edf4ee; border-color: #6a8172; font-weight: 600; }
 .margin-body .bookmark-status:empty { display: none; }
-@media (pointer: coarse) { .explanation-pane { --rail-width: 44px; } }
+@media (pointer: coarse) { .document-block { --rail-width: 44px; } }
 @media (max-width: 650px) {
   .margin-panel { inset: auto 8px max(6px,env(safe-area-inset-bottom)); width: auto; max-height: 52dvh; }
 }
