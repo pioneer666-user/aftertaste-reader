@@ -11,7 +11,7 @@ const { startReader } = await import(pathToFileURL(path.join(build, 'server/read
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
 assert.ok(['edge', 'chrome', 'firefox'].includes(engine));
 const input = process.env.AFTERTASTE_READER_INPUT;
-const root = path.join(repository, '.local/D030');
+const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D030');
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, engine + '-'));
 const project = path.join(run, 'project');
@@ -338,6 +338,15 @@ try {
     assert.equal(await annotation.inputValue(), '留在服务篇原块的未保存批注');
     assert.equal(await history('forward').isEnabled(), forwardBefore);
     await shot('desktop-failure');
+    const trigger = top().locator('.new-note'), quick = page.locator('#quick-note');
+    await trigger.click();
+    await quick.getByRole('button', { name: '新建笔记' }).click();
+    await quick.getByRole('button', { name: '预览', exact: true }).click();
+    await quick.getByRole('button', { name: '编辑', exact: true }).waitFor();
+    await quick.getByRole('button', { name: '关闭随手记' }).click();
+    await trigger.locator(':scope:focus').waitFor();
+    await notice.getByRole('button').click();
+    await notice.waitFor({ state: 'hidden' });
   }, true);
   await open(rules);
   assert.equal(await page.locator('.position-notice').count(), 0);

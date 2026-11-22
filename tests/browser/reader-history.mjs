@@ -1,3 +1,4 @@
+import { editorText, newQuickNote } from './note-controls.mjs';
 import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { appendFile, copyFile, cp, mkdir, mkdtemp, readFile, rename, writeFile } from 'node:fs/promises';
@@ -473,15 +474,34 @@ async function checkHistory() {
     getSelection().setBaseAndExtent(el.firstChild, 0, el.firstChild, 6);
   });
   await page.locator('.selection-copy-action').waitFor();
-  await top().getByRole('button', { name: '新建笔记' }).click();
-  const body = page.locator('#note-body:focus');
-  await body.waitFor();
-  assert.equal(await body.inputValue(), '');
-  await body.fill('从接口讲解中段记下的独立想法');
-  await notes().getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
-  assert.ok((await readJSON(path.join(data, 'notes.json'))).notes.some(note => note.body === '从接口讲解中段记下的独立想法'));
-  await back();
-  await upToDate(api);
+  await newQuickNote(page);
+  const panel = page.locator('#quick-note');
+  const body = panel.getByRole('textbox', {name: '笔记正文'});
+  await body.locator(':scope:focus').waitFor();
+  assert.equal(await editorText(body), '');
+  await body.fill('**接口**讲解中段的独立想法');
+  await body.press('Home');
+  for (let i = 0; i < 4; i++) await body.press('ArrowRight');
+  await body.press('Shift+ArrowLeft');
+  await body.press('Shift+ArrowLeft');
+  await button(panel, '预览').click();
+  await panel.locator('strong').filter({ hasText: /^接口$/u }).waitFor();
+  await shot('quick-note-preview');
+  await button(panel, '编辑').click();
+  assert.equal(await page.evaluate(() => getSelection().toString()), '接口');
+  await page.keyboard.insertText('API');
+  await panel.getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
+  assert.ok((await readJSON(path.join(data, 'notes.json'))).notes.some(note => note.body === '**API**讲解中段的独立想法'));
+  assert.deepEqual(await readingPosition(), position);
+  const readingBox = await view().boundingBox();
+  await page.mouse.click(readingBox.x + 32, readingBox.y + 140);
+  await page.mouse.wheel(0, 45);
+  await page.waitForFunction(previous => document.querySelector('.reading-pane').scrollTop !== previous, position.scroll);
+  const continued = await readingPosition();
+  await button(panel, '关闭随手记').click();
+  await top().locator('.new-note:focus').waitFor();
+  assert.deepEqual(await readingPosition(), continued);
+  await view().evaluate((el, scroll) => { el.scrollTop = scroll; }, position.scroll);
   await tick();
   assert.deepEqual(await readingPosition(), position);
   await open('bookmarks');
@@ -608,7 +628,7 @@ async function checkRecords() {
     await note.and(notes().locator('[aria-current="true"]')).waitFor();
     await follow.locator(':scope:focus').waitFor();
     assert.ok(Math.abs((await follow.boundingBox()).y - Number(departure)) < 2, 'same sentence stays at the reading position after the old error clears');
-    assert.equal(await body.inputValue(), draft);
+    assert.equal(await editorText(body), draft);
     assert.equal(await notes().locator('#note-tag-filter').inputValue(), '订单');
     assert.ok(await notes().locator('.record-detail').evaluate(pane => pane.scrollTop > 0));
     await notes().locator('.note-detail').getByText('正在保存…', { exact: true }).waitFor();
@@ -719,7 +739,7 @@ async function checkHeader(width, language) {
   for (const key of keys) {
     await open(key);
     await tick();
-    const newNote = top().getByRole('button', { name: language === 'en' ? 'New note' : '新建笔记', exact: true });
+    const newNote = top().getByRole('button', { name: language === 'en' ? 'Note list' : '笔记列表', exact: true });
     assert.ok(await newNote.isVisible());
     assert.equal(await newNote.locator('span').isVisible(), width > 950);
     assert.ok(await newNote.evaluate(el => {
@@ -727,6 +747,17 @@ async function checkHeader(width, language) {
       return el.nextElementSibling.matches('.language-control') &&
         el.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
     }));
+    const geom = key === 'canvas' ? [await geometry(), await file(api).boundingBox()] : undefined;
+    await newNote.click();
+    await page.locator('#quick-note input[type=search]:focus').waitFor();
+    assert.equal(await top().locator('[data-page][aria-current="page"]').getAttribute('data-page'), key);
+    const panel = await page.locator('#quick-note').boundingBox();
+    assert.equal(panel.width, Math.min(380, width - 16));
+    assert.ok(panel.x >= 0 && panel.x + panel.width <= width);
+    if (geom) assert.deepEqual([await geometry(), await file(api).boundingBox()], geom);
+    await page.keyboard.press('Escape');
+    await newNote.locator(':scope:focus').waitFor();
+    if (geom) assert.deepEqual([await geometry(), await file(api).boundingBox()], geom);
     const positions = await Promise.all([arrow('back'), arrow('forward'), toggle(), nav].map(start));
     if (!compact) positions.push(...await top().locator('[data-page]').evaluateAll(nodes =>
       nodes.map(element => Math.round(element.getBoundingClientRect().x * 100) / 100)));
@@ -867,9 +898,9 @@ async function checkTouch() {
         await top().locator('.refresh-documents').tap();
         await refresh;
         await top().locator('.new-note').tap();
-        await page.locator('#note-body:focus').waitFor();
-        assert.equal(await page.locator('#note-body').inputValue(), '');
-        await arrow('back').tap();
+        await page.locator('#quick-note input[type=search]:focus').waitFor();
+        assert.equal(await page.locator('#quick-note input[type=search]').inputValue(), '');
+        await page.getByRole('button', { name: 'Close quick note' }).tap();
         await upToDate(api);
       }
       if (width === 851) {
@@ -882,7 +913,35 @@ async function checkTouch() {
     }
     await language.selectOption('zh-CN');
     await page.setViewportSize({ width: 390, height: 760 });
-    report.checks.push('English touch toolbar, 320px menu and 851px end of last tab; refresh, blank note and back');
+    report.checks.push('English touch toolbar, 320px menu and 851px last tab; refresh and quick-note focus');
+    const passage = view().locator('.explanation-text p').first();
+    await passage.scrollIntoViewIfNeeded();
+    const selectPassage = () => passage.evaluate(el => {
+      const range = document.createRange();
+      range.setStart(el.firstChild, 0);
+      range.setEnd(el.firstChild, el.firstChild.textContent.length);
+      getSelection().removeAllRanges();
+      getSelection().addRange(range);
+      return range.toString();
+    });
+    const quote = await selectPassage();
+    const strip = view().locator('.selection-copy-panel');
+    const copy = strip.locator('.selection-copy-action'), add = strip.locator('button').nth(1);
+    await strip.waitFor();
+    const first = await copy.boundingBox(), second = await add.boundingBox();
+    assert.ok([first, second].every(r => r.width >= 44 && r.height >= 44));
+    assert.ok(first.x + first.width <= second.x);
+    await copy.tap();
+    const manual = strip.locator('textarea');
+    await manual.or(strip.getByRole('status').filter({ hasText: '已复制' })).first().waitFor();
+    if (await manual.isVisible()) await strip.locator('.location-copy-manual button').tap();
+    else await strip.getByRole('status').filter({ hasText: '已复制' }).waitFor();
+    await selectPassage();
+    await add.tap();
+    await page.locator('#quick-note .note-reference').getByText(quote, {exact:true}).waitFor();
+    await page.getByRole('button', {name:'关闭随手记'}).tap();
+    report.touchSelection = { first, second };
+
     await open('canvas');
     await file(api).waitFor();
     await checkCanvasFrame();

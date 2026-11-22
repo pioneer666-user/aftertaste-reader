@@ -28,6 +28,8 @@ a { color: var(--accent); text-underline-offset: .2em; }
 .skip-link { position: fixed; top: -80px; left: 12px; z-index: 10; padding: 12px; background: white; }
 .skip-link:focus { top: 8px; }
 .app-header { position: sticky; top: 0; z-index: 5; min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: #fff; }
+/* Keep the active writing surface above the reading-position notice. */
+.app-header:has(#quick-note) { z-index: 6; }
 .app-header-start { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .app-page-navigation { min-width: 0; }
 .app-page-menu { display: flex; align-items: center; gap: 2px; }
@@ -503,7 +505,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 }
 .app-page-menu[popover],
 #reader-navigation .project-info,
-#reading :is(.source-pane, .markdown pre, .notice, .reading-error, .selection-copy-panel, .location-copy-manual),
+#reading :is(.source-pane, .markdown pre, .notice, .reading-error, .location-copy-manual),
 .file-switch-placeholder .source-pane,
 #app:has(> .workspace-active) > .position-notice {
   --corner-size: var(--corner-panel);

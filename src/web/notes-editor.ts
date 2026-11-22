@@ -3,9 +3,10 @@ import type { ReaderProblem } from '../application/file-reader.js';
 import type { Note, NoteAction, SaveNote } from '../core/notes.js';
 import { failed, request } from './reader-api.js';
 
-interface Draft {
+export interface Draft {
   id: string;
   revision: string | null;
+  title: string;
   body: string;
   tags: readonly string[];
   dirty: boolean;
@@ -16,8 +17,8 @@ interface Draft {
 }
 export type NotesPosition = { selected: string; filter: string; query: string; editing: boolean; preview: boolean; link: number; href: string; linkOffset: number };
 
-function draftFor(id: string, body = '', tags: readonly string[] = [], revision: string | null = null): Draft {
-  return { id, body, tags, revision, dirty: revision === null, busy: false, replacing: false };
+function draftFor(id: string, body = '', tags: readonly string[] = [], revision: string | null = null, title = ''): Draft {
+  return { id, title, body, tags, revision, dirty: revision === null, busy: false, replacing: false };
 }
 
 const endpoint = '/api/notes';
@@ -32,7 +33,6 @@ function submit(action: NoteAction) {
 
 export function useNotesEditor() {
   const drafts = reactive(new Map<string, Draft>());
-  const selected = ref('');
   const loaded = ref(false);
   const loading = ref(false);
   const loadProblem = ref<ReaderProblem>();
@@ -63,14 +63,13 @@ export function useNotesEditor() {
       for (const note of notes) {
         const draft = drafts.get(note.id);
         if (!draft && !previous.has(note.id) || draft && unchanged(note.id, draft) && draft.revision !== note.revision) {
-          drafts.set(note.id, draftFor(note.id, note.body, note.tags, note.revision));
+          drafts.set(note.id, draftFor(note.id, note.body, note.tags, note.revision, note.title));
         }
       }
       const storedIds = new Set(notes.map(note => note.id));
       for (const [id, draft] of drafts) {
         if (!storedIds.has(id) && unchanged(id, draft)) drafts.delete(id);
       }
-      if (selected.value && !drafts.has(selected.value)) selected.value = '';
       loaded.value = true;
     } catch (error) { loadProblem.value = failed(error); }
     finally { loading.value = false; }
@@ -86,11 +85,11 @@ export function useNotesEditor() {
     if (!draft.problem && !draft.busy) schedule(draft);
   }
 
-  function create(body = '') {
+  function create(body: string) {
     const id = crypto.randomUUID();
     drafts.set(id, draftFor(id, body));
-    selected.value = id;
     schedule(drafts.get(id)!);
+    return id;
   }
 
   async function save(draft: Draft) {
@@ -99,9 +98,9 @@ export function useNotesEditor() {
     if (draft.problem?.code === 'NOTE_CONFLICT') return;
     const action = draft.pending ?? {
       action: 'save', id: draft.id, previousRevision: draft.revision,
-      revision: crypto.randomUUID(), body: draft.body, tags: [...draft.tags],
+      revision: crypto.randomUUID(), ...(draft.title ? { title: draft.title } : {}), body: draft.body, tags: [...draft.tags],
     };
-    draft.dirty = draft.body !== action.body || draft.tags.length !== action.tags.length ||
+    draft.dirty = draft.title !== (action.title ?? '') || draft.body !== action.body || draft.tags.length !== action.tags.length ||
       draft.tags.some((tag, index) => tag !== action.tags[index]);
     draft.busy = true;
     delete draft.problem;
@@ -138,7 +137,6 @@ export function useNotesEditor() {
         }
       }
       drafts.delete(draft.id);
-      if (selected.value === draft.id) selected.value = '';
     } catch (error) { draft.problem = failed(error); }
     finally { draft.busy = false; draft.replacing = false; }
   }
@@ -151,10 +149,9 @@ export function useNotesEditor() {
       const { notes } = await request<{ notes: Note[] }>(endpoint);
       const note = notes.find(note => note.id === draft.id);
       if (note) {
-        drafts.set(draft.id, draftFor(note.id, note.body, note.tags, note.revision));
+        drafts.set(draft.id, draftFor(note.id, note.body, note.tags, note.revision, note.title));
       } else {
         drafts.delete(draft.id);
-        if (selected.value === draft.id) selected.value = '';
       }
       delete draft.problem;
     } catch (error) { draft.problem = failed(error); }
@@ -173,5 +170,7 @@ export function useNotesEditor() {
     timers.forEach(timer => clearTimeout(timer));
   });
 
-  return { drafts, selected, loaded, loading, loadProblem, load, create, changed, save, remove, loadSaved };
+  return { drafts, loaded, loading, loadProblem, load, create, changed, save, remove, loadSaved };
 }
+
+export type NotesEditor = ReturnType<typeof useNotesEditor>;

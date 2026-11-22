@@ -313,7 +313,12 @@ try {
   assert.deepEqual(await positions(), beforeSelection);
   assert.equal(await first.evaluate(el => getComputedStyle(el).outlineStyle), 'none');
   const addNote = first.getByRole('button', { name: '加入笔记', exact: true });
+  const strip = first.locator('.selection-copy-panel');
+  report.selectionBounds = await box(strip);
+  assert.equal(report.selectionBounds.height, 32);
   for (const action of [floatingCopy, addNote]) {
+    const { width, height } = await box(action);
+    assert.deepEqual([width, height], [28, 28]);
     await action.hover();
     await action.locator('.selection-label').waitFor();
     assert.deepEqual(await positions(), beforeSelection);
@@ -323,6 +328,18 @@ try {
   await floatingCopy.locator(':scope:focus .selection-label').waitFor();
   await page.keyboard.press('Tab');
   await addNote.locator(':scope:focus .selection-label').waitFor();
+  if (engine === 'edge') {
+    await page.emulateMedia({ forcedColors: 'active' });
+    await addNote.locator(':scope:focus .selection-label').waitFor();
+    await screenshot('selection-forced-colors');
+    const colors = await strip.evaluate(el => [
+      getComputedStyle(el).backgroundColor, getComputedStyle(el.querySelector('svg')).color,
+      getComputedStyle(el).backdropFilter,
+    ]);
+    assert.notEqual(colors[0], colors[1]);
+    assert.equal(colors[2], 'none');
+    await page.emulateMedia({ forcedColors: 'none' });
+  }
   assert.equal(await page.evaluate(() => getSelection().toString()), selectedPhrase);
   await page.keyboard.press('Escape');
   await addNote.waitFor({ state: 'hidden' });
@@ -422,7 +439,9 @@ try {
   report.noteTarget = { selection: noteSelection, release: noteRelease, center: noteCenter };
   assert.ok(noteCenter.hit, 'The visible center of Add to note must receive the mouse click');
   await page.mouse.click(noteCenter.x, noteCenter.y);
-  await page.locator('#notes blockquote').getByText(noteSelection, { exact: true }).waitFor();
+  await page.locator('#quick-note .note-reference').getByText(noteSelection, { exact: true }).waitFor();
+  await page.locator('#quick-note').getByRole('status').filter({hasText: '已保存'}).waitFor();
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '文件讲解', exact: true }).click();
   report.checks.push('English control and rejection feedback, native selection and resized whole-block fallbacks round trip, actual mouse hit adds the entire wrapped passage to notes');
 
@@ -456,7 +475,7 @@ try {
   const action = await box(floatingCopy);
   assert.ok(action.x >= 0 && action.x + action.width <= end.x + 1 && action.y >= 0 && action.y + action.height <= 844);
   const addBounds = await box(addNote);
-  assert.ok(addBounds.width >= 44 && addBounds.height >= 44 && addBounds.x + addBounds.width <= 390);
+  assert.ok(addBounds.width === 28 && addBounds.height === 28 && addBounds.x + addBounds.width <= 390);
   await screenshot('candidate-narrow-edge');
   await navigationToggle.click();
   await openFile(auditFile);
@@ -526,9 +545,13 @@ try {
       element.scrollWidth <= element.clientWidth + 1;
   }), 'The full long document path must wrap within the narrow viewport');
   await screenshot('candidate-narrow-document-path');
-  assert.deepEqual(await readRecords(), originalRecords);
+  const [bookmarksAfter, marksAfter, notesAfter] = await readRecords();
+  assert.deepEqual([bookmarksAfter, marksAfter], originalRecords.slice(0, 2));
+  const storedNotes = JSON.parse(notesAfter).notes;
+  assert.deepEqual(storedNotes.slice(0, -1), JSON.parse(originalRecords[2]).notes);
+  assert.ok(storedNotes.at(-1).body.includes(noteSelection));
   assert.deepEqual(report.errors, []);
-  report.checks.push('indentation and blank source row, stationary gutter and visible long-line end, last source row reachable in short window, quotes/newline survive native paste, fallback diagnosis visible, long document path wraps without horizontal clipping, records unchanged');
+  report.checks.push('indentation and blank source row, stationary gutter and visible long-line end, last source row reachable in short window, quotes/newline survive native paste, fallback diagnosis visible, long document path wraps without horizontal clipping, existing records preserved');
   report.passed = true;
 } catch (error) {
   report.failure = error.stack;

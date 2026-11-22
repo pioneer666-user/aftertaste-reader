@@ -4,6 +4,10 @@
 
 **Input**: [本功能规格](spec.md)
 
+**D037 试读调整**　[作者确认的笔记列表与整块引用](../../docs/work/2026/11/D037-quick-note-overlay/amendments.md)。
+
+**D037 增量**　[浅色选区浮条与右上角随手记](../../docs/work/2026/11/D037-quick-note-overlay/task.md)，批准提交 `106e170`。
+
 **D036 增量**　在现有文件阅读与项目笔记场景内实施[文件讲解选文与新建笔记](../../docs/work/2026/11/D036-reader-note-actions/task.md)，批准提交 `d3e42c0`。
 
 ## Summary
@@ -12,13 +16,15 @@
 
 **D035 · 查标签、读原句和编辑**　ProjectNotes.vue 分离阅读与编辑状态，同一个 textarea 保留原生撤销，复用 notes-editor.ts 的逐条草稿和保存队列。历史按所选笔记、已选标签、搜索词及正文内链接定位。 个人资料格式、API 与写入方式沿用原契约。
 
-**D036 · 两种新建**　ProjectNotes 将空正文或选文链接明确传给同一草稿队列。全局动作等待共用加载请求，校验最新导航再创建；引文面板负责指定追加目标、取消及引文新建。沿用现有存储契约。
+**D037 试读调整 · 列表与引用**　复用 App 草稿集合，列表、编辑和预览在一个浮层中切换。标题沿同一次带修订保存。两个正文编辑器使用 CodeMirror 的文档、替换装饰和原子区间，以原字符串作为剪贴板及落盘数据；Markdown AST 定位真实链接，保留示例代码。左下角手柄通过 Pointer Events 同时调宽高，CSS 以顶栏和视口约束两轴。当前标签页共用一份临时尺寸。
+
+**D037 首轮 · 两种起笔**　App 创建唯一编辑器，工作台与随手记各用自己的 ID 取草稿。随手记首次输入正文时分配 ID，关闭后原队列继续保存，重开可找回未完成或失败的草稿。预览期间保留编辑框和编辑位置。工作台沿用 D036 的引文新建、明确选篇追加及取消。两处使用同一存储契约。
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9、Node.js 24 LTS
 
-**Primary Dependencies**: 既有 Vue 3、Vite、Fastify、Markdown-it
+**Primary Dependencies**: Vue 3、Vite、Fastify、Markdown-it、CodeMirror 6
 
 **Storage**: 所选项目 `docs/aftertaste/notes.json`
 

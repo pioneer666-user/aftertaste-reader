@@ -4,6 +4,7 @@ import { isSourcePath } from './source-path.js';
 export interface Note {
   readonly id: string;
   readonly revision: string;
+  readonly title?: string;
   readonly body: string;
   readonly tags: readonly string[];
 }
@@ -44,7 +45,8 @@ function uuid(value: unknown): value is string {
 }
 
 function isNote(value: Record<string, unknown>): value is Record<string, unknown> & Note {
-  return uuid(value.id) && uuid(value.revision) && typeof value.body === 'string' && value.body.isWellFormed() &&
+  return (!('title' in value) || (typeof value.title === 'string' && value.title.isWellFormed())) &&
+    uuid(value.id) && uuid(value.revision) && typeof value.body === 'string' && value.body.isWellFormed() &&
     Array.isArray(value.tags) && value.tags.every(tag => typeof tag === 'string' && tag.isWellFormed() && tag.trim()) &&
     new Set(value.tags).size === value.tags.length;
 }
@@ -57,7 +59,7 @@ export function parseNotes(raw: string): Note[] {
   const ids = new Set<string>();
   const notes: Note[] = [];
   for (const item of value.notes as unknown[]) {
-    if (!object(item) || Object.keys(item).length !== 4 || !isNote(item) || ids.has(item.id)) throw invalidData();
+    if (!object(item) || Object.keys(item).length !== ('title' in item ? 5 : 4) || !isNote(item) || ids.has(item.id)) throw invalidData();
     ids.add(item.id);
     notes.push(item);
   }
@@ -68,10 +70,10 @@ export function parseNoteAction(value: unknown): NoteAction {
   if (object(value)) {
     const fields = Object.keys(value).length;
     const previous = value.previousRevision;
-    if (value.action === 'save' && fields === 6 && isNote(value) &&
+    if (value.action === 'save' && fields === ('title' in value ? 7 : 6) && isNote(value) &&
         (previous === null || uuid(previous)) && previous !== value.revision) {
       const { id, revision, body, tags } = value;
-      return { action: 'save', id, previousRevision: previous, revision, body, tags };
+      return { action: 'save', id, previousRevision: previous, revision, body, tags, ...(value.title ? { title: value.title } : {}) };
     }
     if (value.action === 'remove' && fields === 3 && uuid(value.id) && uuid(previous)) {
       return { action: 'remove', id: value.id, previousRevision: previous };

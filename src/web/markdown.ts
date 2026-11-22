@@ -1,8 +1,10 @@
 import MarkdownIt from 'markdown-it';
+import type { NoteReference } from './note-references.js';
 
 interface InternalLinks {
   prefix: string;
   title: string;
+  byMarker?: ReadonlyMap<string, NoteReference>;
 }
 
 const markdown = new MarkdownIt({ html: false, linkify: false, typographer: false });
@@ -11,11 +13,19 @@ markdown.validateLink = (url: string) => standardValidate(url) && /^(?:https?:|m
 markdown.renderer.rules.image = (tokens, index) => markdown.utils.escapeHtml(tokens[index]?.content ?? '');
 markdown.renderer.rules.link_open = (tokens, index, options, env, renderer) => {
   const token = tokens[index]!;
-  const href = token.attrGet('href');
+  const attribute = token.attrGet('href');
+  const href = typeof attribute === 'string' ? attribute : '';
   const links = env?.internalLinks as InternalLinks | undefined;
-  if (links && typeof href === 'string' && href.startsWith(links.prefix)) {
+  const reference = href ? links?.byMarker?.get(href) : undefined;
+  if (links && (reference || href?.startsWith(links.prefix))) {
     token.attrSet('class', 'note-block-link');
     token.attrSet('title', links.title);
+    if (reference) {
+      token.attrSet('href', reference.href);
+      token.attrSet('data-note-raw', reference.raw);
+      token.attrSet('data-source', reference.source);
+      token.attrSet('aria-label', reference.label);
+    }
   } else {
     token.attrSet('rel', 'noopener noreferrer');
     token.attrSet('target', '_blank');
@@ -61,4 +71,14 @@ export function blockLinkInsertion(body: string, link: string): string {
   // If the new paragraph is absorbed by an open fence, close the fence before adding it.
   if (tail?.type === 'fence') return `${body.endsWith('\n') ? '' : '\n'}${tail.markup}\n\n${link}`;
   return '\n\n' + link;
+}
+
+export function noteName(note: {title: string; body: string}, fallback: string) {
+  if (note.title.trim()) return note.title;
+  const firstLine = note.body.split('\n').find(line => line.trim());
+  if (!firstLine) return fallback;
+  const element = document.createElement('template');
+  element.innerHTML = renderMarkdown(firstLine);
+  const text = element.content.textContent?.trim() || firstLine.trim();
+  return text.length > 100 ? text.slice(0, 100) + '…' : text;
 }

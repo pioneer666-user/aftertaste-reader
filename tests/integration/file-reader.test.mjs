@@ -26,7 +26,12 @@ const get = (route, options) => fetch(`${url}${route}`, options);
 test('built page, documents, same-name extensions and fixed source are readable', async () => {
   const page = await get('/');
   assert.equal(page.status, 200);
-  assert.match(await page.text(), /assets\/.*\.js/);
+  const html = await page.text();
+  assert.match(html, /assets\/.*\.js/);
+  const nonce = html.match(/name="reader-editor-style" nonce="([^"]+)"/u)?.[1];
+  assert.ok(nonce);
+  assert.ok(page.headers.get('content-security-policy').includes(`style-src 'self' 'nonce-${nonce}'`));
+  assert.ok(!(await (await get('/')).text()).includes(nonce));
   assert.equal(page.headers.get('cache-control'), 'no-store');
   assert.match(page.headers.get('content-security-policy'), /script-src 'self'/);
   await writeFile(path.join(fixture.projectRoot, 'docs/aftertaste/current/src/rules.ts.md'), original);

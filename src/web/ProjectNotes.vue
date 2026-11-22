@@ -1,22 +1,25 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import { blockLink, blockLinkPrefix, blockTarget } from '../core/notes.js';
-import type { BlockQuote, BlockTarget } from '../core/notes.js';
+import { blockLinkPrefix, blockTarget } from '../core/notes.js';
+import type { BlockTarget } from '../core/notes.js';
+import NoteBody from './NoteBody.vue';
+import NoteSaveStatus from './NoteSaveStatus.vue';
 import RecordWorkbench from './RecordWorkbench.vue';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
-import { blockLinkInsertion, renderMarkdown } from './markdown.js';
-import { useNotesEditor } from './notes-editor.js';
-import type { NotesPosition } from './notes-editor.js';
+import { copyNotePreview, renderNote } from './note-preview.js';
+import { noteName } from './markdown.js';
+import type { NotesEditor, NotesPosition } from './notes-editor.js';
 
 const props = defineProps<{
-  visible: boolean; language: Language; quote: BlockQuote | undefined; listOpen: boolean;
+  editor: NotesEditor; visible: boolean; language: Language; listOpen: boolean;
   visit: (target: BlockTarget) => Promise<string | undefined>;
 }>();
-const emit = defineEmits<{ clearQuote: []; select: []; openList: [] }>();
+const emit = defineEmits<{ select: [] }>();
 const t = (key: string) => translate(props.language, key);
-const editor = useNotesEditor();
-const { drafts, selected, loaded, loading, loadProblem } = editor;
+const { editor } = props;
+const { drafts, loaded, loading, loadProblem } = editor;
+const selected = ref('');
 const filter = ref('');
 const tag = ref('');
 const editing = ref(false);
@@ -25,9 +28,8 @@ const query = ref('');
 const rendered = ref<HTMLElement>();
 const refLink = ref(-1);
 let linkOffset = 0;
-const explicitTarget = ref('');
 const editButton = ref<HTMLButtonElement>();
-const textarea = ref<HTMLTextAreaElement>();
+const textarea = ref<InstanceType<typeof NoteBody>>();
 const visitMessage = ref<HTMLElement>();
 const visitProblem = ref('');
 const visiting = ref(false);
@@ -50,7 +52,6 @@ watch([entries, selected], () => {
 });
 function select(id: string) {
   selected.value = id;
-  explicitTarget.value = id;
   editing.value = false;
   previewOnly.value = false;
   emit('select');
@@ -66,10 +67,6 @@ function finishEdit() {
   nextTick(() => editButton.value?.focus());
 }
 defineExpose({
-  async createBlank(current: () => boolean) {
-    await editor.load(!!loadProblem.value);
-    if (current() && loaded.value && !loadProblem.value) create('');
-  },
   capturePosition: (): NotesPosition => ({ selected: selected.value, filter: filter.value, query: query.value,
     editing: editing.value, preview: previewOnly.value, link: refLink.value, linkOffset,
     href: rendered.value?.querySelectorAll('a')[refLink.value]?.getAttribute('href') ?? '' }),
@@ -96,52 +93,9 @@ defineExpose({
     link.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   },
 });
-watch(() => [props.visible, props.quote] as const, ([visible, quote], [wasVisible, previousQuote]) => {
-  if (!visible) return;
-  if (quote && quote !== previousQuote) {
-    clearFilter();
-    explicitTarget.value = '';
-    editing.value = false;
-  }
-  if (!wasVisible) void editor.load();
-});
+watch(() => props.visible, visible => { if (visible) void editor.load(); });
 watch(selected, () => { tag.value = ''; visitProblem.value = ''; refLink.value = -1; });
 watch(tags, list => { if (!list.includes(filter.value)) filter.value = ''; });
-
-function title(body: string) {
-  const firstLine = body.split('\n').find(line => line.trim());
-  if (!firstLine) return t('noteUntitled');
-  const element = document.createElement('template');
-  element.innerHTML = renderMarkdown(firstLine);
-  const text = element.content.textContent?.trim() || firstLine.trim();
-  return text.length > 100 ? text.slice(0, 100) + '…' : text;
-}
-
-function create(body: string) {
-  editor.create(body);
-  clearFilter();
-  emit('select');
-  beginEdit();
-  emit('clearQuote');
-}
-
-async function append() {
-  const draft = active.value;
-  if (!props.quote || !draft || explicitTarget.value !== draft.id) return;
-  const insertion = blockLinkInsertion(draft.body, blockLink(props.quote));
-  beginEdit();
-  await nextTick();
-  const input = textarea.value;
-  if (!input || active.value !== draft) return;
-  input.focus();
-  input.setSelectionRange(input.value.length, input.value.length);
-  if (!document.execCommand('insertText', false, insertion)) {
-    input.setRangeText(insertion, input.value.length, input.value.length, 'end');
-  }
-  draft.body = input.value;
-  editor.changed(draft);
-  emit('clearQuote');
-}
 
 function addTag() {
   const draft = active.value;
@@ -193,9 +147,6 @@ async function remove() {
   if (!drafts.has(draft.id)) { editing.value = false; emit('select'); }
 }
 
-function loadSaved() {
-  if (active.value && window.confirm(t('noteLoadConfirm'))) void editor.loadSaved(active.value);
-}
 </script>
 
 <template>
@@ -219,12 +170,11 @@ function loadSaved() {
       </label>
       <p v-if="missingTags">{{ t('noTagsFound') }}</p>
       <button v-if="filter || query" type="button" @click="clearFilter">{{ t('clearFilter') }}</button>
-      <p v-if="quote">{{ t('noteChooseTarget') }}</p>
       <p v-if="loaded && !entries.length && !missingTags" class="narrow-list-empty">{{ t(filter ? 'noteNoMatches' : 'noteEmpty') }}</p>
       <ul class="note-list">
         <li v-for="entry in entries" :key="entry.id">
           <button type="button" :aria-current="selected === entry.id || undefined" @click="select(entry.id)">
-            <strong>{{ title(entry.body) }}</strong>
+            <strong>{{ noteName(entry, t('noteUntitled')) }}</strong>
             <span v-if="entry.tags.length" class="note-list-tags">{{ entry.tags.join(' · ') }}</span>
             <span v-if="entry.problem" class="bookmark-error note-list-tags">{{ t('noteSaveFailed') }}</span>
             <span v-else-if="entry.busy || entry.dirty" class="note-list-tags">{{ t('noteSaving') }}</span>
@@ -232,18 +182,11 @@ function loadSaved() {
         </li>
       </ul>
     </template>
-    <section v-if="quote" class="note-quote">
-      <h2>{{ t('noteAddSelection') }}</h2>
-      <blockquote>{{ quote.text }}</blockquote>
-      <div class="bookmark-actions">
-        <button type="button" :disabled="!loaded || loading" @click="create(blockLink(quote))">{{ t('noteNewWithQuote') }}</button>
-        <button v-if="!listOpen" type="button" @click="emit('openList')">{{ t('openNoteList') }}</button>
-        <button type="button" :disabled="!active || active.replacing || active.id !== explicitTarget" @click="append">{{ t('noteAppend') }}</button>
-        <button type="button" @click="emit('clearQuote')">{{ t('bookmarkCancel') }}</button>
-      </div>
-    </section>
     <p v-if="loaded && !active">{{ t(missingTags ? 'noTagsFound' : filter ? 'noteNoMatches' : 'noteEmpty') }}</p>
     <article v-if="active" :key="active.id" class="note-detail" :class="{ editing, 'preview-only': previewOnly }">
+      <input v-if="editing" class="workbench-note-title" v-model="active.title" :aria-label="t('noteTitle')"
+        :placeholder="t('noteTitle')" :readonly="active.replacing" @input="editor.changed(active)" />
+      <h2 v-else-if="active.title">{{ active.title }}</h2>
       <div class="note-actions">
         <button v-if="!editing" ref="editButton" type="button" @click="beginEdit">{{ t('editNote') }}</button>
         <template v-else>
@@ -251,14 +194,7 @@ function loadSaved() {
           <button type="button" :disabled="active.busy" @click="remove">{{ t('noteDelete') }}</button>
         </template>
       </div>
-      <div v-if="active.problem" class="note-save-problem">
-        <p role="alert" class="bookmark-error">{{ t('noteSaveFailed') }} {{ problemText(language, active.problem).message }}
-          {{ problemText(language, active.problem).nextStep }}</p>
-        <button v-if="active.problem.code === 'NOTE_CONFLICT'" type="button" :disabled="active.busy"
-          @click="loadSaved">{{ t('noteLoadSaved') }}</button>
-        <button v-else-if="active.dirty" type="button" :disabled="active.busy" @click="editor.save(active)">{{ t('noteRetry') }}</button>
-      </div>
-      <p v-else-if="editing || active.busy || active.dirty" class="bookmark-status" role="status">{{ t(active.busy || active.dirty ? 'noteSaving' : 'noteSaved') }}</p>
+      <NoteSaveStatus :draft="active" :editor="editor" :language="language" :show-saved="editing" />
 
       <div v-if="editing" class="note-view-switch">
         <button type="button" :aria-pressed="!previewOnly" @click="previewOnly = false">{{ t('editNote') }}</button>
@@ -267,8 +203,8 @@ function loadSaved() {
       <div class="note-columns">
         <section v-if="editing" class="note-input">
           <label for="note-body">{{ t('noteBody') }}</label>
-          <textarea id="note-body" ref="textarea" v-model="active.body" rows="15" aria-describedby="note-body-help" :readonly="active.replacing"
-            @update:model-value="editor.changed(active)" />
+          <NoteBody ref="textarea" input-id="note-body" :label="t('noteBody')" :readonly="active.replacing"
+            :model-value="active.body" @update:model-value="active.body = $event; editor.changed(active)" />
           <p id="note-body-help" class="note-help">{{ t('noteMarkdown') }}</p>
         </section>
         <section class="note-preview">
@@ -276,7 +212,7 @@ function loadSaved() {
           <p v-if="visiting" role="status">{{ t('loading') }}</p>
           <p v-if="visitProblem" ref="visitMessage" class="notice note-visit-problem" role="alert" tabindex="-1">{{ visitProblem }}</p>
           <div v-if="active.body.trim()" ref="rendered" class="markdown" :class="{ 'note-with-title': /^[^\n]{1,100}\n\s*\n/u.test(active.body.trimStart()) }"
-            v-html="renderMarkdown(active.body, { prefix: blockLinkPrefix, title: t('noteBlockLink') })" @click="follow"></div>
+            v-html="renderNote(active.body, t('noteBlockLink'))" @click="follow" @copy="copyNotePreview"></div>
           <p v-else>{{ t('noteUntitled') }}</p>
         </section>
       </div>
