@@ -272,7 +272,7 @@
 
 - [x] T082 [US10] 在 `src/web/RecordWorkbench.vue` 和 `src/web/style.css` 对齐三页详情并沿用 D029 轮廓（FR-017、020）。
 - [x] T083 [US10] 在 `tests/browser/record-details.mjs`、`tests/browser/record-workbench.mjs` 与 `tests/browser/reader-history.mjs` 串行复验几何、历史、窄窗、轮廓及 D038 组合（SC-015、018）。
-- [ ] T084 更新 `docs/usage/file-reader.md`，固定候选交独审，通过后切换 4342 并交回 D041 回执。
+- [x] T084 更新 `docs/usage/file-reader.md`，固定候选交独审，通过后切换 4342 并交回 D041 回执。
 
 ## Dependencies & Execution Order
 
