@@ -16,6 +16,11 @@ else {
   await createLoopReaderProject(project);
   await cp(new URL('../fixtures/page-preview/', import.meta.url), data, { recursive: true });
 }
+// The empty-rail visibility check needs an unrecorded first block in this copy.
+const bookmarksFile = path.join(data, 'bookmarks.json');
+const initial = JSON.parse(await readFile(bookmarksFile, 'utf8'));
+initial.bookmarks = initial.bookmarks.filter(item => item.blockId !== 'zhidif44');
+await writeFile(bookmarksFile, JSON.stringify(initial));
 const marksFile = path.join(data, 'understanding-marks.json');
 const marks = JSON.parse(await readFile(marksFile, 'utf8'));
 marks.marks = marks.marks.filter(item => item.blockId !== 'zhidif44');

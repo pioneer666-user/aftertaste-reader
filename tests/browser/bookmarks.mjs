@@ -147,6 +147,7 @@ try {
   await button('编辑备注', row(blank.id)).click();
   assert.equal(await field().inputValue(), '另一条未保存的草稿');
   await button('取消', block()).click();
+  await button('更多', row(blank.id)).click();
   await button('移除书签', row(blank.id)).click();
   await block().getByText('书签已移除', { exact: true }).waitFor();
   assert.deepEqual(await disk(), [edited, pure]);

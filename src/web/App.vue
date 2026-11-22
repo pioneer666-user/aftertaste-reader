@@ -150,7 +150,8 @@ const loopListError = ref<ReaderProblem>();
 const selectedLoop = ref('');
 const openedLoops = ref<string[]>([]);
 const bookmarks = ref<Bookmark[]>([]);
-provide(bookmarkDraftsKey, reactive(new Map<string, BlockBookmarkDrafts>()));
+const bookmarkDrafts = reactive(new Map<string, BlockBookmarkDrafts>());
+provide(bookmarkDraftsKey, bookmarkDrafts);
 const bookmarksLoading = ref(false);
 const bookmarksSaving = ref(false);
 const bookmarkListError = ref<ReaderProblem>();
@@ -176,7 +177,8 @@ const marks = ref<ReaderMark[]>([]);
 const markFilter = ref<'all' | 'not-understood'>('all');
 const marksBusy = ref(false);
 const markListError = ref<ReaderProblem>();
-provide(markDraftsKey, reactive(new Map<string, MarkDraft>()));
+const markDrafts = reactive(new Map<string, MarkDraft>());
+provide(markDraftsKey, markDrafts);
 let listSequence = 0;
 let controller: AbortController | undefined;
 let handledScrollTop = 0;
@@ -897,6 +899,11 @@ async function openDocument(path: string, { block = '', bookmark = '', mark = ''
   if (target) {
     focusReadingTarget(target, block);
     if (bookmark || mark) {
+      const key = markKey({ documentPath: path, blockId: block });
+      const group = bookmarkDrafts.get(key);
+      if (bookmark && group) group.selected = '';
+      const annotation = markDrafts.get(key)?.annotation;
+      if (mark && annotation) annotation.showSaved = true;
       readerDocument.value?.showRecord(block, bookmark ? 'bookmarks' : 'mark');
       await nextTick();
       if (sequence !== navigationSequence) return;
@@ -1169,7 +1176,7 @@ onUnmounted(() => {
           <ReaderDocument ref="readerDocument" v-else-if="result || readingError" :key="selected"
             v-bind="{ ...(result ? { result } : {}), ...(readingError ? { error: readingError } : {}) }"
             :language="language" :active="view === 'reader' && !fileSwitch?.placeholder"
-            :bookmarks="bookmarks" :active-bookmark="activeBookmark" :active-mark="activeMark"
+            :bookmarks="bookmarks" :active-bookmark="activeBookmark"
             :bookmarks-busy="bookmarksLoading || bookmarksSaving" :save-bookmark="saveBookmark"
             :marks="marks" :marks-busy="marksBusy" :save-mark="saveMark" :mark-list-error="markListError"
             @refresh-marks="refreshMarks" @add-to-notes="quickNote?.addQuote($event)" />

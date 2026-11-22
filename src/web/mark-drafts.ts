@@ -10,7 +10,7 @@ interface FieldDraft<T> {
 
 export interface MarkDraft {
   status?: FieldDraft<MarkStatus>;
-  annotation?: FieldDraft<string>;
+  annotation?: FieldDraft<string> & { showSaved?: boolean };
 }
 
 export const markDraftsKey: InjectionKey<Map<string, MarkDraft>> = Symbol('mark drafts');
