@@ -98,7 +98,7 @@ async function visit(target, name) {
   await entry(target).press('Enter');
   assert.equal(await panel().locator('.record-prose').textContent(), await entry(target).locator('.bookmark-note').textContent());
   const visitButton = target === rulesPath ? button('回原文', panel().locator('.record-detail')) : entry(target).locator('..').locator('.record-visit');
-  await visitButton.press('Enter');
+  await visitButton.and(page.locator('button:enabled')).press('Enter');
   await page.getByRole('heading', { name, exact: true }).waitFor();
   await block().locator(`#mark-${sharedBlockId}:focus`).waitFor();
   assert.ok(await block().evaluate(element => {
