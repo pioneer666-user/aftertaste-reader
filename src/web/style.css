@@ -81,6 +81,15 @@ a { color: var(--accent); text-underline-offset: .2em; }
   }
   .app-header :is(.app-page-menu button, .app-page-menu-toggle, .language-control select) { min-height: var(--header-touch-target); }
 }
+@media (max-width: 360px), (pointer: coarse) and (max-width: 380px) {
+  .app-header { flex-wrap: wrap; row-gap: 2px; }
+  .app-header-start { flex-basis: 100%; }
+  .toolbar { margin-inline-start: auto; }
+}
+@media (pointer: coarse) and (min-width: 851px) and (max-width: 1200px) {
+  .app-header-start { gap: 3px; }
+  .app-page-menu button { padding-inline: 3px; }
+}
 .language-status { position: fixed; z-index: 2; right: 24px; bottom: 18px; max-width: min(460px, 90vw); margin: 0; padding: 10px 15px; border: 1px solid var(--line); border-radius: 6px; background: #f2faf4; font-size: 13px; color: #204c3b; pointer-events: none; }
 .position-notice { position: fixed; z-index: 5; top: 56px; right: 12px; width: min(420px, calc(100% - 24px)); padding: 10px 14px; border: 1px solid var(--line); border-radius: 6px; background: #fff8f1; color: #743b1e; overflow-wrap: anywhere; }
 .position-notice p { margin: 0 0 8px; }

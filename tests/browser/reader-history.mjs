@@ -847,6 +847,42 @@ async function checkTouch() {
       report.checks.push('Firefox touch emulation kept the desktop pointer media feature');
       return;
     }
+    const language = top().locator('.language-control select');
+    await language.selectOption('en');
+    for (const width of [320, 380, 390, 851, 951, 1151]) {
+      await page.setViewportSize({ width, height: 844 });
+      const menu = top().locator(width <= 850 ? '.app-page-menu-toggle' : '[data-page="notes"]');
+      await menu.waitFor();
+      for (const control of [menu, top().locator('.refresh-documents'), top().locator('.new-note'), language]) {
+        assert.ok(await control.evaluate(el => {
+          const r = el.getBoundingClientRect();
+          return [r.left + 3, r.right - 3].every(x => el.contains(document.elementFromPoint(x, r.y + r.height / 2)));
+        }), `Obstructed touch control at ${width}px`);
+      }
+      if (width === 320) {
+        await menu.tap();
+        await top().locator('#app-page-menu:popover-open').waitFor();
+        await page.keyboard.press('Escape');
+        const refresh = page.waitForRequest(req => req.url().includes('/api/documents'));
+        await top().locator('.refresh-documents').tap();
+        await refresh;
+        await top().locator('.new-note').tap();
+        await page.locator('#note-body:focus').waitFor();
+        assert.equal(await page.locator('#note-body').inputValue(), '');
+        await arrow('back').tap();
+        await upToDate(api);
+      }
+      if (width === 851) {
+        const bounds = await menu.boundingBox();
+        await page.touchscreen.tap(bounds.x + bounds.width - 5, bounds.y + bounds.height / 2);
+        await notes().waitFor();
+        await arrow('back').tap();
+        await upToDate(api);
+      }
+    }
+    await language.selectOption('zh-CN');
+    await page.setViewportSize({ width: 390, height: 760 });
+    report.checks.push('English touch toolbar, 320px menu and 851px end of last tab; refresh, blank note and back');
     await open('canvas');
     await file(api).waitFor();
     await checkCanvasFrame();

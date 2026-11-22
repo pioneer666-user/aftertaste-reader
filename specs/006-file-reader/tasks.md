@@ -244,6 +244,8 @@
 - [x] T068 [US5] 在 `src/web/App.vue`、`src/web/style.css` 区分普通点击、显式块跳转与持续键盘焦点，在 `tests/browser/reader-navigation.mjs` 验证。
 - [x] T069 [US10] 在 `src/web/App.vue` 和 `tests/browser/reader-history.mjs` 接入六页共用的新建入口、保留阅读历史并验证不同视口的可达性。
 
+- [x] T070 [US10] 在 `src/web/style.css` 和 `tests/browser/reader-history.mjs` 核英文粗指针顶栏，320px 菜单及 851px 笔记页签边缘可独立点按，右侧工具仍可用。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。
