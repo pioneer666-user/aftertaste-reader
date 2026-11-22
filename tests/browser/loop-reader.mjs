@@ -113,6 +113,7 @@ try {
   await readRequested;
   await readArrived.promise;
   const paths = await choose(page, legendLoopId);
+  await paths.locator('.loop-reader-toggle').click();
   await paths.locator('.loop-overview').waitFor();
   const orderLoaded = page.waitForResponse(response => response.url().endsWith(orderRoute));
   releaseRead.resolve();
@@ -131,8 +132,8 @@ try {
   report.checks.push('late A load stayed in A; saved legend uses files; English and keyboard selection');
 
   await choose(page, orderId);
-  await order.locator('.loop-overview').waitFor();
   await order.getByRole('button', { name: /^打开闭环概览/u }).click();
+  await order.locator('.loop-overview').waitFor();
   await order.getByText('串讲', { exact: true }).click();
   await order.getByText(/假设示例/).waitFor();
   await order.getByText('推荐阅读顺序', { exact: true }).click();
@@ -204,6 +205,8 @@ try {
   assert.notDeepEqual(movedGroup.layout.positions[legendId], reordered.layout.positions[legendId]);
   for (const id of ['upload', 'audit']) assert.deepEqual(movedGroup.layout.positions[id], reordered.layout.positions[id]);
   await saveAction(page, paths, legendRoute + '/layout', legendPath, () => drag(page, legend(paths), 20, 37));
+  await paths.locator('.loop-reader-toggle').click();
+  await paths.locator('.canvas-inspector').waitFor({ state: 'hidden' });
   await saveAction(page, paths, legendRoute + '/layout', legendPath, () => drag(page, paths.locator('.graph-area'), -30, 48, [0.9, 0.85]));
   const pathsFinal = await saveAction(page, paths, legendRoute + '/layout', legendPath, () => button(paths, '放大画布').click());
   const lateResponse = page.waitForResponse(response => response.url().endsWith(orderRoute + '/layout'));
@@ -304,9 +307,10 @@ try {
     await choose(reopened, legendLoopId);
     await button(afterPaths, '刷新图和布局').click();
     await step(afterPaths, 'upload').click();
+    await afterPaths.locator('.loop-reader-toggle').click();
     await lesson(afterPaths, 'upload').locator('.loop-source-trigger').click();
     await reopened.locator('#loop-source-' + legendLoopId).getByRole('alert').getByText('固定源码不可用', { exact: true }).waitFor();
-    await lesson(afterPaths, 'upload').getByText('保存的原块讲解', { exact: true }).click();
+    await lesson(afterPaths, 'upload').getByText('读这段代码的完整讲解', { exact: true }).click();
     await lesson(afterPaths, 'upload').getByText('入口提取上传文件名。', { exact: true }).waitFor();
     await lesson(afterPaths, 'upload').locator('[data-choice="audit"]').click();
     await lesson(afterPaths, 'audit').getByText('这里有文件名，需要拼出日志路径。', { exact: true }).waitFor();

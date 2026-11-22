@@ -394,6 +394,7 @@ try {
   const loop = page.locator('#loop-canvas-' + orderId + '-reading');
   const check = loop.locator('[data-step="check"]');
   await check.click();
+  await loop.locator('.loop-reader-toggle').click();
   await loop.locator('[data-reading-step="check"]').getByRole('heading', { name: orderInput.nodes.find(node => node.id === 'check').title }).waitFor();
   await page.keyboard.press('Control+g');
   assert.equal(await groupName(page).isVisible(), false);

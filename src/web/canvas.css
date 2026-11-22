@@ -340,16 +340,16 @@
   grid-template-columns: minmax(0, 1fr);
 }
 .loop-canvas .reader-stowed { --reader-edge: 0px; }
-.loop-canvas .graph-area { margin-inline-end: var(--reader-edge); overflow: clip; }
+.loop-canvas .graph-area { overflow: clip; }
 .loop-canvas .canvas-inspector {
-  position: absolute; inset: 0 0 0 auto; width: var(--reader-width); z-index: 3; padding-inline-start: 68px;
+  position: absolute; inset: 0 0 0 auto; width: var(--reader-width); z-index: 3; padding: 0 20px 20px;
   clip-path: inset(0); overscroll-behavior: contain;
 }
 .reader-stowed .canvas-inspector { clip-path: inset(0 0 0 100%); visibility: hidden; }
 @media (prefers-reduced-motion: no-preference) {
   .loop-canvas .canvas-inspector { transition: clip-path var(--canvas-enter), visibility 0s; }
   .reader-stowed .canvas-inspector { transition: clip-path var(--canvas-enter), visibility 0s 180ms; }
-  .loop-edge-controls { transition: right var(--canvas-enter); }
+  .loop-reader-toggle { transition: right var(--canvas-enter); }
 }
 .loop-canvas .canvas-inspector { min-height: 0; max-height: none; }
 .loop-overview, .loop-step { line-height: 1.55; }
@@ -428,13 +428,7 @@
   .canvas-workspace { grid-template-columns: minmax(0, 1fr); }
   .graph-area { height: 55dvh; min-height: 280px; }
   .canvas-inspector { min-height: 0; max-height: none; border-left: 0; border-top: 1px solid var(--line); }
-  .loop-canvas .canvas-workspace { grid-template-columns: minmax(0, 1fr); }
-  .loop-canvas .graph-area { height: 45dvh; }
-  /* The rail's containing block also includes the stacked inspector; center only within the graph row. */
-  .loop-canvas .canvas-rail {
-    top: calc((max(45dvh, calc(2 * var(--rail-half-height) + var(--dock-edge) + 16px)) - var(--dock-edge)) / 2);
-  }
-  .loop-canvas .canvas-inspector { max-height: none; }
+
 }
 
 /* D031 keeps reading primary and moves graph chrome into the shared floating controls. */
@@ -458,8 +452,8 @@
 .loop-step-explanation { color: #273a31; font-size: 15px; line-height: 1.75; }
 .loop-step-hint { color: #40564a; line-height: 1.65; }
 .loop-source-trigger {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; width: 100%; min-height: 38px; margin: 0 0 16px;
-  padding: 8px 10px; border: 1px solid #c9d9ce; border-radius: 8px; background: #f3f8f3; color: #315c46;
+  display: inline-block; max-width: 100%; min-height: 32px; margin: 0 0 10px;
+  padding: 3px 5px; border: 0; border-radius: 5px; background: transparent; color: #315c46;
   text-align: left; font-size: 13px; line-height: 18px;
 }
 .loop-source-trigger:hover, .loop-source-trigger[aria-pressed="true"] { background: #e6f1e8; border-color: #8eae99; }
@@ -492,6 +486,10 @@
 .loop-choice-reason > :first-child, .loop-choice-reason > :last-child { margin: 0; }
 .loop-step-controls { align-items: stretch; }
 .loop-step-controls button { flex: 1 1 12rem; min-height: 36px; overflow-wrap: anywhere; }
+.loop-single-exit button { display: block; text-align: start; }
+.loop-single-exit :is(.loop-choice-reason, .loop-choice-reason > p:only-child) { display: inline; }
+.loop-single-exit strong { margin-inline-start: .4em; }
+.loop-original { padding-top: 10px; border-top: 1px solid var(--line); }
 .loop-end { margin-top: 0; }
 @media (max-width: 760px) {
   .canvas-node-hint { top: 8px; right: 8px; max-width: calc(100% - 120px); font-size: 11px; }
@@ -516,7 +514,7 @@
 .loop-welcome strong { font-size: 25px; letter-spacing: .14em; color: #2c503e; }
 .loop-welcome p { margin: 0; font-size: 14px; }
 .loop-catalog {
-  position: absolute; z-index: 9; inset: 0 auto 0 0; width: var(--catalog-width);
+  position: absolute; z-index: 10; inset: 0 auto 0 0; width: var(--catalog-width);
   display: flex; flex-direction: column; background: #fbfcf8; border-right: 1px solid #bacbbf;
   transform: translateX(-100%); visibility: hidden;
 }
@@ -550,7 +548,7 @@
 .loop-catalog-goal { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .loop-catalog-copy small { color: #476454; font-size: 12px; }
 .loop-canvas-heading {
-  position: absolute; inset: 4px 12px auto; z-index: 2; pointer-events: none;
+  position: absolute; inset: 4px calc(var(--reader-edge) + 12px) auto 12px; z-index: 2; pointer-events: none;
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
 }
 .loop-canvas-heading .canvas-node-hint { position: static; max-width: 48%; }
@@ -560,25 +558,38 @@
   font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .loop-canvas .canvas-notices { top: 54px; }
-.loop-edge-controls {
-  position: absolute; z-index: 4; right: calc(var(--reader-edge) - 54px); width: 54px; top: 48%; transform: translateY(-50%);
-  display: grid; gap: 2px; padding: 3px; background: var(--canvas-float-surface);
-  border: 1px solid var(--canvas-float-rim); border-right: 0; border-radius: 12px 0 0 12px;
+.loop-reader-toggle {
+  position: absolute; z-index: 9; right: var(--reader-edge); top: 48%; transform: translateY(-50%);
+  width: 32px; height: 56px; padding: 0; border: 0; border-radius: 10px 0 0 10px; background: transparent;
+  color: var(--canvas-float-ink); font-size: 24px; line-height: 1;
 }
-.reader-stowed .loop-edge-controls { right: 0; width: auto; }
-.loop-edge-controls button {
-  position: relative; border: 0; background: transparent; min-height: 32px; padding: 3px 2px; white-space: nowrap;
-  text-align: center; font-size: 12px; color: var(--canvas-float-ink);
+.loop-reader-toggle::after {
+  content: ''; position: absolute; right: 3px; top: 12px; bottom: 12px; width: 4px; border-radius: 4px; background: #789183;
 }
-.loop-edge-controls button:disabled { opacity: .45; }
-.loop-edge-controls button:enabled:hover { background: var(--canvas-float-hover); }
-.loop-edge-controls .loop-reader-toggle { font-size: 23px; line-height: 1; min-width: 32px; }
+.loop-reader-toggle span { opacity: 0; }
+.loop-reader-toggle:is(:hover,:focus-visible) { background: var(--canvas-float-surface); }
+.loop-reader-toggle:is(:hover,:focus-visible) span { opacity: 1; }
+.loop-reader-toggle:is(:hover,:focus-visible)::after { opacity: 0; }
+.loop-step-nav {
+  position: sticky; top: 0; z-index: 1; display: flex; justify-content: flex-end; gap: 3px;
+  margin: 0 -20px 14px; padding: 5px 16px; border-bottom: 1px solid var(--line); background: #fbfcf9;
+}
+.loop-step-nav button {
+  display: grid; place-items: center; width: 36px; min-height: 36px; padding: 0;
+  border: 0; background: transparent; color: var(--canvas-float-ink);
+}
+.loop-step-nav svg { width: 18px; height: 18px; }
+.loop-step-nav button:disabled { opacity: .35; }
+.loop-step-nav button:enabled:is(:hover,:focus-visible) { background: var(--canvas-float-hover); }
 .loop-nav-tip {
-  display: none; position: absolute; right: calc(100% + 8px); top: 0; width: max-content;
-  max-width: min(22rem, 55vw); white-space: normal; padding: 6px 9px; overflow-wrap: anywhere;
+  display: none; position: absolute; right: 16px; top: 100%; width: max-content; max-width: min(20rem, calc(100% - 32px));
+  padding: 6px 9px; text-align: start; overflow-wrap: anywhere; font-size: 13px;
   background: var(--canvas-float-surface); border: 1px solid var(--canvas-float-rim); border-radius: 6px;
 }
-.loop-edge-controls button:is(:hover,:focus-visible) .loop-nav-tip { display: block; }
+.loop-step-nav button:is(:hover,:focus-visible) .loop-nav-tip { display: block; }
+@media (pointer: coarse) {
+  .loop-reader-toggle, .loop-step-nav button { width: 44px; min-height: 44px; }
+}
 .source-stowed { visibility: hidden; pointer-events: none; }
 .loop-group-bar { display: inline-flex; max-width: calc(100% - 12px); margin: 4px 6px; }
 .loop-group-bar .group-handle { margin: 0; max-width: none; border: 1px solid #ccd0b8; border-radius: 6px 0 0 6px; }
@@ -614,20 +625,16 @@
 }
 @media (max-width: 760px) {
   .loop-welcome.beside-catalog { visibility: hidden; }
-  .loop-canvas .canvas-workspace { --graph-height: max(45dvh, calc(2 * var(--rail-half-height) + var(--dock-edge) + 16px)); }
-  .loop-canvas .graph-area { margin: 0; height: var(--graph-height); }
-  .loop-canvas .reader-stowed .graph-area { height: 100%; }
-  .loop-canvas .canvas-inspector { inset: var(--graph-height) 0 0; width: 100%; padding: 50px 16px 16px; }
-  .loop-canvas .canvas-dock { bottom: auto; top: calc(var(--graph-height) - var(--dock-edge)); }
-  .loop-edge-controls { width: auto; inset: var(--graph-height) 0 auto; transform: none; display: flex; justify-content: flex-end; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
-  .loop-edge-controls button { min-height: 36px; min-width: 42px; }
-  .reader-stowed .loop-edge-controls { left: auto; border: 1px solid var(--canvas-float-rim); border-radius: 10px 0 0 10px; }
-  .loop-edit-panel { left: 50%; top: 8px; bottom: auto; max-height: calc(var(--graph-height) - 16px); }
-  .loop-nav-tip { right: 0; top: 100%; }
+  .loop-canvas .canvas-workspace { --reader-width: min(30rem, 100%); }
+  .loop-canvas .canvas-inspector { z-index: 5; }
+  .loop-canvas .canvas-workspace:not(.reader-stowed) .loop-reader-toggle {
+    right: calc(var(--reader-width) - 44px); top: 0; transform: none; width: 44px; height: 46px;
+  }
+  .loop-canvas .graph-area { height: 100%; }
+  .loop-edit-panel { left: 50%; top: 8px; bottom: auto; max-height: calc(100% - 16px); }
   .loop-canvas-heading { inset: 6px 8px auto; }
   .loop-overview-link { max-width: 48%; font-size: 13px; }
   .loop-canvas .canvas-node-hint { max-width: 45%; }
-  .loop-relations { bottom: var(--dock-clearance); left: auto; right: 8px; transform: none; max-width: calc(100% - 72px); }
-  .reader-stowed .loop-relations { left: 50%; right: auto; transform: translateX(-50%); bottom: 12px; max-width: calc(100% - 20px); }
+  .loop-relations { max-width: calc(100% - 20px); }
   .loop-relations:has([aria-expanded="true"]) { max-height: calc(100% - var(--dock-clearance) - 48px); }
 }

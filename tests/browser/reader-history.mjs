@@ -656,10 +656,13 @@ async function checkLoops() {
   const panel = loop.locator('.canvas-inspector');
   const start = panel.locator('[data-reading-step="start"]');
   const check = panel.locator('[data-reading-step="check"]');
+  await loop.locator('.loop-reader-toggle').click();
   await loop.locator('.loop-entry').click();
   await start.waitFor();
   const graphBox = await loop.locator('.graph-area').boundingBox();
-  assert.ok((await panel.boundingBox()).x >= graphBox.x + graphBox.width - 1);
+  const panelBox = await panel.boundingBox();
+  assert.ok(panelBox.x > graphBox.x && panelBox.x < graphBox.x + graphBox.width);
+  assert.ok(Math.abs(panelBox.x + panelBox.width - graphBox.x - graphBox.width) <= 1);
   await start.locator('.loop-source-trigger').click();
   await page.locator('#loop-source-' + orderId).locator('pre').waitFor();
   await start.locator('[data-choice="check"]').click();

@@ -214,6 +214,7 @@ try {
   await chooseLoop(page, orderId);
   const loop = page.locator('#loop-canvas-' + orderId + '-reading');
   await loop.locator('[data-step="check"]').click();
+  await loop.locator('.loop-reader-toggle').click();
   await loop.locator('[data-reading-step="check"]').waitFor();
   const ack = await saved(() => button(loop, '缩小画布').click(), '/api/loops/' + orderId + '/layout');
   const loopDisk = path.join(path.dirname(disk), 'loops', orderId, 'layout.json');

@@ -50,6 +50,7 @@ try {
   const panel = loop.locator('.canvas-inspector');
   const check = lesson(loop, 'check');
   await node(loop, 'check').click();
+  await loop.locator('.loop-reader-toggle').click();
   await check.waitFor();
   assert.match(await check.locator('.loop-step-explanation').innerText(), /规则先把值转换成数字，再要求它是 1 到 9 的整数/u, 'step explanation is directly readable');
   assert.equal(await check.locator('.loop-step-explanation code').filter({ hasText: '0' }).count(), 1, 'inline Markdown remains formatted');
@@ -218,6 +219,7 @@ try {
   const paths = page.locator('#loop-canvas-' + legendLoopId + '-reading');
   const audit = lesson(paths, 'audit');
   await paths.locator('[data-step="audit"]').click();
+  await paths.locator('.loop-reader-toggle').click();
   await audit.locator('.loop-step-explanation').filter({ hasText: '这里有文件名，需要拼出日志路径。' }).waitFor();
   assert.equal(await sourceTrigger(audit).count(), 0);
   await paths.locator('[data-legend="node-path"]').click();
@@ -275,6 +277,7 @@ try {
   await mobile.locator('[data-page="loops"]').click();
   await chooseLoop(mobile, orderId);
   await mobile.locator('[data-step="check"]').tap();
+  await mobile.locator('.loop-reader-toggle').tap();
   await mobile.locator('.loop-source-trigger').tap();
   await mobile.locator('.loop-source-panel').waitFor();
   await mobile.getByRole('button', { name: '关闭源码', exact: true }).tap();
