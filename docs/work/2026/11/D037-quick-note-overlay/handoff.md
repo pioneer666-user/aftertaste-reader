@@ -2,13 +2,15 @@
 
 ## 当前结论与入口
 
-**待作者试读。** 阅读页划选讲解后点「加入笔记」，原页右上角会打开笔记并显示原句及来源。拖住面板左下角可拉宽、拉高，列表、正文和预览共用当前页调好的尺寸。右上角「笔记列表」可按名称找已有篇，也可在列表底部新建。编辑器顶行改标题，正文下方增删标签。两个编辑入口都能选中、复制、剪切和删除整块引用。[本机试读](http://127.0.0.1:4341/) · [列表实图](../../../../../.local/D037/list-reference/selftest/references-07npIw/list.png) · [引用选中实图](../../../../../.local/D037/list-reference/selftest/references-07npIw/capture.png) · [窄窗实图](../../../../../.local/D037/list-reference/selftest/references-07npIw/narrow-edit.png)
+**待作者试读。** 阅读页划选讲解后点「加入笔记」，原页右上角会打开笔记并显示原句及来源。保存状态位于标题与眼睛之间。底部同一行从左到右是六点手柄、已有标签和「＋ 标签」。拖住手柄可拉宽、拉高，列表、正文和预览共用当前页调好的尺寸。右上角「笔记列表」可按名称找已有篇，也可在列表底部新建。编辑器顶行改标题，正文下方增删标签。两个编辑入口都能选中、复制、剪切和删除整块引用。[本机试读](http://127.0.0.1:4341/) · [列表实图](../../../../../.local/D037/list-reference/selftest/references-07npIw/list.png) · [引用选中实图](../../../../../.local/D037/list-reference/selftest/references-07npIw/capture.png) · [当前窄窗实图](../../../../../.local/D037/panel-detail/footer-selftest/references-UJ0OCl/note-footer.png)
 
-原[批准任务](task.md)固定于 `106e170`，本轮[调整](amendments.md)来自作者于 2026-11-22 确认的「直接改产品并验证」。本地分支 `codex/feat-quick-note-overlay`，本轮比较基线 `3ac0677`，笔记改动 `8769f54`，可调尺寸的整合候选 `3999caf`，引用边界修复及试读候选 `b256b8b`。独立复核 R5 通过，4341 在原试读项目上提供该固定构建，回执和审查原文单独提交，分支保留待试读。dev 仍为 `73a1fbc`，本次没有合并、推送或发布。
+原[批准任务](task.md)固定于 `106e170`，本轮[调整](amendments.md)来自作者于 2026-11-22 确认的「直接改产品并验证」。本地分支 `codex/feat-quick-note-overlay`，本轮比较基线 `3ac0677`，笔记改动 `8769f54`，可调尺寸的整合候选 `3999caf`，引用边界修复 `b256b8b` 通过 R5。本次试读微调以 `a99e969` 为基线，`6259bb6` 将保存状态放到顶行并换为六点手柄，`e9edc31` 将标签和手柄合并到同一行。独审 R7 结论为通过，4341 已提供最新固定构建，回执和审查原文单独提交，分支保留待试读。dev 仍为 `73a1fbc`，本次没有合并、推送或发布。
 
 作者可在任一页打开列表，选一篇查看标题、正文和标签，点眼睛预览，Esc 回到顶栏。若要体验实际写入，可以从文件讲解划选一句，点「加入笔记」，接着在引文下方写。要把下一句放入指定笔记，先在列表打开那一篇。切眼睛只改变呈现，预览时再加入选文仍追加于这篇。点引用后 Ctrl+C，切到另一篇 Ctrl+V，再试退格与 Ctrl+Z。对真实笔记的修改会自动保存，列表浏览及预览可只读体验。[使用说明](../../../../usage/file-reader.md#记录项目笔记)
 
 ## 依据与自测
+
+- 本次微调在 Windows、Edge 和共用试读副本完成类型检查、生产构建、引用及工作台浏览器回归。390 px 窗口中保存状态位于标题和眼睛之间。手柄、标签和添加按钮的顶边均为 313 px，高度均为 32 px。四个长标签产生 143 px 内容，在 96 px 高的标签区滚动，删除后逐项核对磁盘。粗指针模拟命中仍为 44 × 44 px。[实际坐标与长标签](../../../../../.local/D037/panel-detail/footer-selftest/references-UJ0OCl/report.json) · [保存失败与重试](../../../../../.local/D037/panel-detail/footer-selftest/workbench-gwS6Fc/report.json)
 
 - 本轮在 006、011 现有规格中增量维护 Spec Kit 的 spec、plan、tasks 及 011 契约和快验，沿用 D037 的模板、前置检查与分析流程，两个 requirements 清单分别核完 16/16。实现按 Ponytail full，列表、编辑、选中态及窄窗实图按 Impeccable 的项目适配核验。[文件讲解规格](../../../../../specs/006-file-reader/spec.md) · [项目笔记规格](../../../../../specs/011-project-notes/spec.md) · [存储契约](../../../../../specs/011-project-notes/contracts/notes.md)
 - 正文磁盘格式沿用既有 Markdown 块链接。两处编辑器共享同一套原文识别和原子编辑，呈现原句及源文件和块 ID。标题作为可选字段与正文、标签一起按修订保存，旧记录无需迁移。列表无标题时取正文首个非空行。
@@ -20,12 +22,14 @@
 
 ## 独审、保留资源与验收边界
 
+R6 在作者追加标签同行时结束，R7 用整合候选及隔离副本完成独立复核并交还写入。[本轮独审原文](review.md)
+
 R1 的错误提示遮挡已于 R2 修复。R3 在作者新增尺寸要求时结束只读核查。R4 实走通过拖动、常态引用及保存恢复，另发现未闭合的 `<!-- TODO` 会导致后续引文失去整块保护。修复 1 轮，使引用识别与预览对 HTML 的解释一致。R5 在 `b256b8b` 的两个编辑入口逐项复核。选中一个字复制仍得完整原串，边界退格整删，撤销后磁盘逐字恢复，行内及围栏代码示例仍可逐字编辑。独审已确认候选、构建和输入，关闭资源并交还写入。[失败现场](../../../../../.local/D037/list-reference/independent-r4/edge-markdown-copy/) · [修复后 Edge 自测](../../../../../.local/D037/list-reference/selftest/references-3QOfAV/report.json) · [Chrome 自测](../../../../../.local/D037/list-reference/selftest/references-IU5mWZ/report.json) · [独立复核现场](../../../../../.local/D037/list-reference/independent-r5/edge/) · [独审原文](review.md)
 
-切换前核实 4341 属于旧专用服务 PID 30108，旧资源与 `38f1e8d` 一致。新进程 PID 7640 在相同原项目上运行固定 `b256b8b`。前后原项目 Git HEAD 均为 `4be951b2bf9aae434e0acc3e1aeab3e4e0cf0734`，15 份资料和布局逐份 SHA-256 相同（清单 `3d23e7cb6e6b217947ed814a792855fb33762c61b987987c238ba210d18992f8`）。另比整个项目除 `.git` 外的全部 20 份文件，均相同。在线首页扣除每请求的防护 nonce 后与冻结资源一致，JS、CSS 逐字节相同。在原项目只读搜索并打开已有笔记、预览、从 380 × 340 实拖到 505 × 425、Esc 关闭回焦。实测浮条 64 × 32，零写请求、零页面异常。[4341 实际拖动截图](../../../../../.local/D037/list-reference/preview/live-resized.png) · [切换前](../../../../../.local/D037/list-reference/preview/before.json) · [切换后](../../../../../.local/D037/list-reference/preview/after.json) · [实际页面及静态资源](../../../../../.local/D037/list-reference/preview/live.json)
+本轮核实旧监听 PID 7640 运行 `b256b8b` 后，将 4341 切到同一原试读项目上的 `e9edc31`，当前服务 PID 为 18980。前后原项目 Git HEAD 均为 `4be951b2bf9aae434e0acc3e1aeab3e4e0cf0734`，15 份资料和布局逐份 SHA-256 相同（清单 `7fc90c6fe2f4f4283bc14f2ca5a0a892972d844ce72c7f28ea75e96c9c76260c`）。另比整个项目除 `.git` 外的全部 20 份文件，均相同。在线首页扣除每请求的防护 nonce 后与冻结资源一致，JS、CSS 逐字节相同。在原项目只读搜索并打开已有笔记、预览、核顶部「已保存」和底部手柄、标签添加处对齐，再实拖宽 125 px、高 85 px、Esc 关闭回焦。实测浮条 64 × 32，零写请求、零页面异常。[4341 实际拖动截图](../../../../../.local/D037/panel-detail/preview/live-resized.png) · [切换前](../../../../../.local/D037/panel-detail/preview/before.json) · [切换后](../../../../../.local/D037/panel-detail/preview/after.json) · [实际页面及静态资源](../../../../../.local/D037/panel-detail/preview/live.json)
 
 作者已确认调整的功能范围。阈值、左下手柄位置及当前页内保留尺寸由执行选定，刷新恢复默认。列表的检索与切换手感、引用选中与粘贴的呈现仍待作者亲验。实体触屏、系统输入法候选窗和读屏器未实测。试读服务保持运行。自测与独审专用服务、浏览器均已收束。需重启专用试读时，在仓库根、4341 空闲的情况下运行以下命令。
 
 ```powershell
-& ./.local/D009/runtime/node.exe ./.local/D037/list-reference/build-b256b8b/cli/main.js serve --project (Resolve-Path -LiteralPath '.local/2026-11-19-page-preview/project').Path --port 4341
+& ./.local/D009/runtime/node.exe ./.local/D037/panel-detail/build-e9edc31/cli/main.js serve --project (Resolve-Path -LiteralPath '.local/2026-11-19-page-preview/project').Path --port 4341
 ```
