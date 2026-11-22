@@ -8,6 +8,8 @@
 
 沿阅读器的当前块提供三态选择和可展开的批注。新增项目内标注列表，从文档路径与块 ID 回访原处。个人资料按字段操作，使用现有安全写入保护原件。
 
+**D035 · 在标注详情读原话**　ProjectMarks.vue 沿用 markKey 和现有回访，按筛选后的记录保留选择或回到首项，窗口与历史沿 006。 个人资料格式、API 与写入方式沿用原契约。
+
 ## Technical Context
 
 **Language/Version**: TypeScript、Node.js 24

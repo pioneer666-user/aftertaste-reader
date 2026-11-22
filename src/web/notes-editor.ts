@@ -14,7 +14,7 @@ interface Draft {
   problem?: ReaderProblem;
   pending?: SaveNote;
 }
-export type NotesPosition = { selected: string; filter: string };
+export type NotesPosition = { selected: string; filter: string; query: string; editing: boolean; preview: boolean; link: number; href: string; linkOffset: number };
 
 function draftFor(id: string, body = '', tags: readonly string[] = [], revision: string | null = null): Draft {
   return { id, body, tags, revision, dirty: revision === null, busy: false, replacing: false };

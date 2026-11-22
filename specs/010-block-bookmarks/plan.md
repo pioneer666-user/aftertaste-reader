@@ -8,6 +8,8 @@
 
 从现有阅读页保存和管理块级书签，顶栏提供项目书签列表。服务把逐条操作合并到磁盘最新资料，页面用文档路径打开当前讲解，再按块和记录定位。
 
+**D035 · 从收藏理由回访**　App.vue 按书签 ID 选择记录，列表和详情复用 visitBookmark。只读双栏和历史沿 006。 个人资料格式、API 与写入方式沿用原契约。
+
 ## Technical Context
 
 **Language/Version**：Node.js 24、TypeScript 5.9

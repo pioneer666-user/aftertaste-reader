@@ -87,6 +87,10 @@ description: "D020 项目内全局笔记与跨文件回访"
 - [X] T015 串行执行 [quickstart.md](quickstart.md) 和受影响的既有回归，固定受审候选和证据。
 - [X] T016 复核独审 R1 的断线删除。在 `src/web/notes-editor.ts` 检查本页可能保存过的修订，在 `tests/browser/notes.mjs` 验证请求未抵达及响应丢失。
 
+## D035 · 查标签、读原句和编辑
+
+- [x] T017 [US1] src/web/ProjectNotes.vue、src/web/i18n.ts 与 tests/browser/notes.mjs 实现查签、只读正文、双栏编辑、窄窗预览、选文及失败草稿恢复。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

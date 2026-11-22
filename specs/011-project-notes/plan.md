@@ -8,6 +8,8 @@
 
 为现有阅读器增加项目内笔记编辑和标签过滤。在讲解正文中选文并向一条笔记追加 Markdown 块链接。复用当前文档加载路径，落在讲解块。服务逐条检查版本、串行写入并替换 JSON，页面使用原生文本编辑器、隔开的草稿和保存确认状态。
 
+**D035 · 查标签、读原句和编辑**　ProjectNotes.vue 分离阅读与编辑状态，同一个 textarea 保留原生撤销，复用 notes-editor.ts 的逐条草稿和保存队列。历史按所选笔记、已选标签、搜索词及正文内链接定位。 个人资料格式、API 与写入方式沿用原契约。
+
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9、Node.js 24 LTS

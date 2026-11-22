@@ -65,6 +65,10 @@ description: "块级注解书签与回访实施清单"
 - [X] T014 [P] 定稿现行范围和说明，更新 `specs/001-first-release/05-reading-feedback.md`、`specs/001-first-release/08-current-spec-and-acceptance.md`、`docs/usage/file-reader.md`、`skills/aftertaste-reader/references/feedback.md`（FR-005、FR-006）。
 - [X] T015 按 `specs/010-block-bookmarks/quickstart.md` 串行运行单元、集成、浏览器和相关回归，核 SC-001 至 SC-004。
 
+## D035 · 从收藏理由回访
+
+- [x] T016 [US2] src/web/App.vue 和 tests/browser/bookmarks.mjs 验证同块多理由、无备注及两处回访入口。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

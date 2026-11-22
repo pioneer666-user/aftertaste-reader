@@ -8,7 +8,7 @@ import { createLoopReaderProject, explanationFile, git } from '../fixtures/loop-
 
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
 assert.ok(['edge', 'chrome', 'firefox'].includes(engine));
-const root = fileURLToPath(new URL('../../.local/D022/', import.meta.url));
+const root = fileURLToPath(new URL(`../../.local/${process.env.AFTERTASTE_TEST_TASK ?? 'D022'}/`, import.meta.url));
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'browser-'));
 const fixture = await createLoopReaderProject(path.join(run, 'project'));
@@ -288,12 +288,12 @@ try {
   }));
   assert.equal(await bookmarkToggle.getAttribute('aria-expanded'), 'false');
   await button('书签', topMenu).click();
-  await page.locator('#bookmarks button.bookmark-entry').filter({ hasText: '这个边界例子讲得巧' }).press('Enter');
+  await page.locator('#bookmarks button.bookmark-entry').filter({ hasText: '这个边界例子讲得巧' }).locator('..').locator('.record-visit').press('Enter');
   const bookmark = page.locator('#bookmark-892cf00e-fab8-4d6d-a307-74e0c4bbb89c:focus');
   await bookmark.getByText(/这个边界例子讲得巧/u).waitFor();
   await button('标注', topMenu).click();
   await page.getByRole('combobox', { name: '筛选标注' }).selectOption('not-understood');
-  await page.locator('#marks button.bookmark-entry').filter({ hasText: '为什么要先校验数量' }).press('Enter');
+  await page.locator('#marks button.bookmark-entry').filter({ hasText: '为什么要先校验数量' }).locator('..').locator('.record-visit').press('Enter');
   await page.locator('#mark-x4y6az2y:focus').getByText(/为什么要先校验数量/u).waitFor();
   report.checks.push('delayed document cannot replace current content, prose before folded records, exact bookmark and annotation focus');
 

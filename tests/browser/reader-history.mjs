@@ -514,7 +514,7 @@ async function checkHistory() {
 async function checkRecords() {
   await open('bookmarks');
   const savedBookmark = bookmarks().locator('.bookmark-entry').filter({ hasText: 'x4y6az2y' });
-  await savedBookmark.click();
+  await savedBookmark.locator('..').locator('.record-visit').click();
   await upToDate(rules);
   await back();
   await savedBookmark.and(bookmarks().locator('[aria-current="true"]')).waitFor();
@@ -523,7 +523,7 @@ async function checkRecords() {
   await open('marks');
   await marks().locator('select').selectOption('not-understood');
   const mark = marks().locator('.bookmark-entry').filter({ hasText: 'x4y6az2y' });
-  await mark.click();
+  await mark.locator('..').locator('.record-visit').click();
   await upToDate(rules);
   await back();
   await mark.and(marks().locator('[aria-current="true"]')).waitFor();
@@ -535,7 +535,8 @@ async function checkRecords() {
   await note.click();
   const body = notes().locator('#note-body');
   const follow = notes().getByRole('link', { name: '先校验数量，再建立待加入集合的对象', exact: true });
-  const original = await body.inputValue();
+  assert.equal(await body.count(), 0);
+  const original = (await readJSON(path.join(data, 'notes.json'))).notes.find(note => note.tags.includes('订单')).body;
   const serviceDocument = path.join(data, 'current', service + '.md');
   const serviceContent = await readFile(serviceDocument, 'utf8');
   try {
@@ -566,34 +567,36 @@ async function checkRecords() {
     }
   };
   await page.route('**/api/notes', holdSave);
-  const draft = original + '\n\n' + Array.from({ length: 32 }, (_, index) =>
+  const padding = Array.from({ length: 32 }, (_, index) =>
     `阅读第 ${index + 1} 处提示。跟踪数量规则和订单集合。`).join('\n\n');
+  const draft = original.replace('\n\n', '\n\n' + padding + '\n\n') + '\n\n' + padding;
   try {
+    await button(notes(), '编辑').click();
     await body.fill(draft);
     const reached = await Promise.race([saveReady.promise, new Promise((_, reject) => {
       const timer = setTimeout(() => reject(new Error('note save did not reach server')), 7000);
       timer.unref();
     })]);
     assert.equal(reached, 200);
-    await notes().getByText('正在保存…', { exact: true }).waitFor();
+    await notes().locator('.note-detail').getByText('正在保存…', { exact: true }).waitFor();
     await follow.evaluate(link => link.scrollIntoView({ block: 'center' }));
     await tick();
-    const scroll = await page.evaluate(() => window.scrollY);
+    const scroll = await page.evaluate(() => document.querySelector('#notes .record-detail').scrollTop);
     assert.ok(scroll > 0, 'notes return starts from a scrolled window');
     await follow.evaluate(link => link.addEventListener('click', () => {
-      document.body.dataset.noteDeparture = String(window.scrollY);
+      document.body.dataset.noteDeparture = String(link.getBoundingClientRect().top);
     }, { once: true }));
     await follow.click();
     const departure = await page.locator('body').getAttribute('data-note-departure');
     await upToDate(service);
     await back();
     await note.and(notes().locator('[aria-current="true"]')).waitFor();
-    assert.ok(Number(departure) > 0, 'click left the note at a nonzero scroll position');
-    await page.waitForFunction(top => window.scrollY === top, Number(departure));
+    await follow.locator(':scope:focus').waitFor();
+    assert.ok(Math.abs((await follow.boundingBox()).y - Number(departure)) < 2, 'same sentence stays at the reading position after the old error clears');
     assert.equal(await body.inputValue(), draft);
     assert.equal(await notes().locator('#note-tag-filter').inputValue(), '订单');
-    assert.equal(await page.evaluate(() => window.scrollY), Number(departure));
-    await notes().getByText('正在保存…', { exact: true }).waitFor();
+    assert.ok(await notes().locator('.record-detail').evaluate(pane => pane.scrollTop > 0));
+    await notes().locator('.note-detail').getByText('正在保存…', { exact: true }).waitFor();
   } finally { releaseSave.resolve(); }
   await notes().getByText('已保存', { exact: true }).waitFor();
   await page.unroute('**/api/notes', holdSave);
@@ -708,9 +711,13 @@ async function checkHeader(width, language) {
     else fixed = positions;
     assert.ok(positions[0] < positions[1] && positions[1] < positions[2] && positions[2] < positions[3]);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    if (['bookmarks', 'marks'].includes(key)) {
-      assert.ok(await toggle().isDisabled());
-      assert.ok((await toggle().getAttribute('title'))?.trim(), 'disabled switch gives its reason');
+    if (['bookmarks', 'marks', 'notes'].includes(key)) {
+      const pane = page.locator('#' + await toggle().getAttribute('aria-controls'));
+      const wasOpen = await pane.isVisible();
+      await toggle().press('Enter');
+      assert.equal(await pane.isVisible(), !wasOpen);
+      await toggle().press('Enter');
+      assert.equal(await pane.isVisible(), wasOpen);
     } else if (key === 'loops') {
       assert.equal(await toggle().isEnabled(), true);
       assert.equal(await toggle().getAttribute('aria-controls'), 'loop-navigation');
