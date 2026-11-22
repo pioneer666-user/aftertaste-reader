@@ -32,7 +32,11 @@ const question = '为什么要先校验数量？';
 const explanation = '  先排除无效订单，后续处理只接受合法数量。\n<我的理解> 🌱  ';
 const bookmark = '这个边界例子讲得巧';
 const block = (target = page) => target.locator(`section[id="${sharedBlockId}"]`);
-const chooser = (target = page) => block(target).getByRole('combobox', { name: '理解状态' });
+const selectedStatus = (target = page) => block(target).locator('.mark-controls [aria-pressed="true"]').getAttribute('data-status');
+async function openMark(target = page) {
+  const toggle = block(target).locator('[data-kind=mark]');
+  if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+}
 const editor = (target = page) => block(target).getByRole('textbox', { name: '批注（选填）' });
 const button = (name, target = page) => target.getByRole('button', { name, exact: true });
 const readMarks = async () => JSON.parse(await readFile(file, 'utf8')).marks;
@@ -42,7 +46,9 @@ const responseTo = target => target.waitForResponse(response => response.request
   response.url().endsWith('/api/understanding-marks'));
 
 async function selectFile(source, target = page) {
-  await target.locator(`#reader-navigation button[title="${source}"]`).click();
+  const file = target.locator(`#reader-navigation button[title="${source}"]`);
+  await target.locator('#reading .document-block').first().waitFor();
+  if (await file.getAttribute('aria-current') !== 'page') await file.click();
   await target.getByRole('heading', { name: source, exact: true }).waitFor();
 }
 
@@ -61,16 +67,17 @@ async function restart() {
 }
 
 async function status(value, target = page) {
+  await openMark(target);
   const saved = responseTo(target);
-  await chooser(target).selectOption(value);
+  await block(target).locator(`button[data-status="${value}"]:not(.margin-entry)`).click();
   assert.equal((await saved).status(), 200);
   await block(target).getByText('标注已保存', { exact: true }).waitFor();
-  assert.equal(await chooser(target).inputValue(), value);
+  assert.equal(await selectedStatus(target), value);
 }
 
 async function openAnnotation(target = page, keyboard = false) {
   if (await editor(target).isVisible()) return;
-  const control = block(target).getByRole('button', { name: /^批注/u });
+  const control = block(target).locator('[data-kind=mark]');
   if (await control.getAttribute('aria-expanded') !== 'true') {
     if (keyboard) await control.press('Enter');
     else await control.click();
@@ -120,12 +127,11 @@ try {
   await start();
   await selectFile('src/rules.mjs');
   assert.equal(await block().locator('.source-pane').count(), 1);
-  assert.equal(await chooser().inputValue(), 'unmarked');
+  assert.equal(await selectedStatus(), 'unmarked');
   await status('not-understood');
   await openAnnotation(page, true);
   await saveAnnotation(question);
   await block().locator('button.block-bookmarks-toggle').click();
-  await button('加书签', block()).click();
   await block().getByRole('textbox', { name: '备注（选填）' }).fill(bookmark);
   await button('保存书签', block()).click();
   await block().getByText('书签已保存', { exact: true }).waitFor();
@@ -144,10 +150,10 @@ try {
   assert.match(await entry(rulesPath).innerText(), /为什么要先校验数量？/u);
   assert.match(await entry(servicePath).innerText(), /无批注/u);
   await visit(servicePath, 'src/service.mjs');
-  assert.equal(await chooser().inputValue(), 'not-understood');
+  assert.equal(await selectedStatus(), 'not-understood');
   await openMarks();
   await visit(rulesPath, 'src/rules.mjs');
-  assert.equal(await chooser().inputValue(), 'not-understood');
+  assert.equal(await selectedStatus(), 'not-understood');
   await status('understood');
   await openAnnotation();
   assert.equal(await editor().inputValue(), question);
@@ -166,7 +172,7 @@ try {
   await openMarks();
   assert.match(await entry(rulesPath).innerText(), /未标记/u);
   await visit(rulesPath, 'src/rules.mjs');
-  assert.equal(await chooser().inputValue(), 'unmarked');
+  assert.equal(await selectedStatus(), 'unmarked');
   await openAnnotation();
   assert.equal(await editor().inputValue(), explanation);
   assert.equal((await readMarks()).find(mark => mark.documentPath === rulesPath).annotation, explanation);
@@ -203,7 +209,7 @@ try {
     await openAnnotation();
     await editor().fill('真实保存失败时保留的输入');
     const release = Promise.withResolvers();
-    const annotation = block().getByRole('button', { name: /^批注/u });
+    const annotation = block().locator('[data-kind=mark]');
     await page.route('**/api/understanding-marks', async route => {
       if (route.request().method() !== 'PUT') return route.continue();
       const response = await route.fetch();
@@ -249,7 +255,7 @@ try {
   await writeFile(fixture.service, serviceDocument.slice(0, first) + serviceDocument.slice(pure) + '\n' + serviceDocument.slice(first, pure));
   await openMarks();
   await visit(servicePath, 'src/service.mjs');
-  assert.equal(await chooser().inputValue(), 'not-understood');
+  assert.equal(await selectedStatus(), 'not-understood');
   assert.equal(await page.locator('.document-block').first().getAttribute('id'), sharedBlockId);
   await writeFile(fixture.rules, original.replace(sharedBlockId, 'changed1'));
   await openMarks();
@@ -258,8 +264,8 @@ try {
   await button('文件讲解').click();
   await page.getByRole('heading', { name: 'src/service.mjs', exact: true }).waitFor();
   await page.locator('#reader-navigation button[title="src/rules.mjs"]').click();
-  await page.locator('#changed1').getByRole('combobox', { name: '理解状态' }).waitFor();
-  assert.equal(await page.locator('#changed1').getByRole('combobox').inputValue(), 'unmarked');
+  await page.locator('#changed1 [data-kind=mark]').click();
+  assert.equal(await page.locator('#changed1 .mark-controls [aria-pressed=true]').getAttribute('data-status'), 'unmarked');
   await rename(fixture.rules, fixture.rules + '.offline');
   await openMarks();
   await entry(rulesPath).locator('..').locator('.record-visit').click();

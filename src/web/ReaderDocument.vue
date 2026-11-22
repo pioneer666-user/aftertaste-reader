@@ -5,12 +5,11 @@ import type { ReaderProblem } from '../application/file-reader.js';
 import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
 import type { BlockQuote } from '../core/notes.js';
 import type { MarkEdit, ReaderMark } from '../core/understanding-marks.js';
-import BlockBookmarks from './BlockBookmarks.vue';
+import BlockMarginRecords from './BlockMarginRecords.vue';
 import BlockLocationControl from './BlockLocationControl.vue';
-import BlockUnderstandingMark from './BlockUnderstandingMark.vue';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
-import { renderMarkdown } from './markdown.js';
+import { blockLabel, renderMarkdown } from './markdown.js';
 
 const props = defineProps<{
   result?: ReadingDocument; error?: ReaderProblem; language: Language; active: boolean;
@@ -21,6 +20,12 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ addToNotes: [quote: BlockQuote]; refreshMarks: [] }>();
 const t = (key: string) => translate(props.language, key);
+type RecordKind = 'bookmarks' | 'mark';
+const openRecord = ref<{ id: string; kind: RecordKind }>();
+function showRecord(id: string, kind: RecordKind) {
+  openRecord.value = { id, kind };
+}
+defineExpose({ showRecord });
 const copyStatus = ref('');
 const blockRoot = ref<HTMLElement>();
 const quote = ref<BlockQuote>();
@@ -151,7 +156,7 @@ function addSelection() {
   clearSelection();
 }
 
-watch(() => props.active, active => { if (!active) clearSelection(); });
+watch(() => props.active, active => { if (!active) { clearSelection(); openRecord.value = undefined; } });
 onMounted(() => {
   readingPane = blockRoot.value?.closest<HTMLElement>('.reading-pane');
   const sources = blockRoot.value?.querySelectorAll<HTMLElement>('.source-pane');
@@ -226,14 +231,13 @@ onUnmounted(() => {
           <div class="markdown explanation-text" v-html="renderMarkdown(block.body)"></div>
           <BlockLocationControl v-if="anchor && selectionLocation && quote?.blockId === block.id"
             :location="selectionLocation" :language="language" :anchor="anchor" @add-to-notes="addSelection" />
-          <footer class="block-records">
-            <BlockUnderstandingMark :document-path="result.documentPath" :block-id="block.id" :mark="blockMarks.get(block.id)"
-              :active="block.id === activeMark" :language="language" :busy="marksBusy" :unavailable="!!markListError" :save-mark="saveMark" />
-            <BlockBookmarks :document-path="result.documentPath" :block-id="block.id"
-              :bookmarks="bookmarks.filter(entry => entry.documentPath === result?.documentPath && entry.blockId === block.id)"
-              :active-bookmark="activeBookmark" :busy="bookmarksBusy" :language="language" :save-bookmark="saveBookmark" />
-          </footer>
         </div>
+        <BlockMarginRecords :document-path="result.documentPath" :block-id="block.id" :label="blockLabel(block.body) || block.id"
+          :kind="openRecord?.id === block.id ? openRecord.kind : undefined" :language="language"
+          :bookmarks="bookmarks.filter(entry => entry.documentPath === result?.documentPath && entry.blockId === block.id)"
+          :active-bookmark="activeBookmark" :bookmarks-busy="bookmarksBusy" :save-bookmark="saveBookmark"
+          :mark="blockMarks.get(block.id)" :active-mark="activeMark === block.id" :marks-busy="marksBusy"
+          :unavailable="!!markListError" :save-mark="saveMark" @open="showRecord(block.id, $event)" @close="openRecord = undefined" />
       </section>
     </div>
     <article v-else class="markdown fallback-markdown" v-html="renderMarkdown(result.raw)"></article>
@@ -261,35 +265,3 @@ onUnmounted(() => {
     <textarea class="repair-text" readonly :aria-label="t('manual')" :value="repairText" rows="10"></textarea>
   </section>
 </template>
-
-<style scoped>
-.block-records {
-  display: grid;
-  gap: 8px;
-  margin-block-start: 24px;
-  padding-block-start: 12px;
-  border-block-start: 1px solid var(--line);
-}
-.block-records :deep(.record-toggle) {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--muted);
-}
-.block-records :deep(.record-toggle[aria-expanded="true"]) {
-  color: var(--accent);
-  background: #edf4ee;
-}
-.block-records :deep(.record-toggle::after) {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-block-end: 1px solid;
-  border-inline-end: 1px solid;
-  transform: translateY(-2px) rotate(45deg);
-}
-.block-records :deep(.record-toggle[aria-expanded="true"]::after) {
-  transform: translateY(2px) rotate(225deg);
-}
-</style>

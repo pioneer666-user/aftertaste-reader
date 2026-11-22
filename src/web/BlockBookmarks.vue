@@ -12,6 +12,7 @@ const props = defineProps<{
   blockId: string;
   bookmarks: readonly Bookmark[];
   activeBookmark: string;
+  opened: boolean;
   language: Language;
   busy: boolean;
   saveBookmark: (action: BookmarkAction) => Promise<void>;
@@ -20,9 +21,23 @@ const props = defineProps<{
 const t = (key: string) => translate(props.language, key);
 const drafts = inject(bookmarkDraftsKey)!;
 const draftKey = `${props.documentPath}\n${props.blockId}`;
-const editor = computed(() => drafts.get(draftKey));
-const expanded = ref(!!editor.value);
-const detailsId = `bookmarks-${props.blockId}`;
+const group = computed(() => drafts.get(draftKey));
+const editor = computed(() => group.value?.entries.get(group.value.selected));
+function discard(id: string) {
+  const current = group.value;
+  if (!current) return;
+  current.entries.delete(id);
+  if (current.selected === id) current.selected = '';
+  if (!current.entries.size) drafts.delete(draftKey);
+}
+function focusInPanel(target?: HTMLElement | null) {
+  target?.focus({ preventScroll: true });
+  const scroller = target?.closest('.margin-body');
+  if (!target || !scroller) return;
+  const area = scroller.getBoundingClientRect();
+  const item = target.getBoundingClientRect();
+  if (item.top < area.top || item.bottom > area.bottom) scroller.scrollTop += item.top - area.top;
+}
 const noteInput = ref<HTMLTextAreaElement>();
 const addButton = ref<HTMLButtonElement>();
 const errorMessage = ref<HTMLElement>();
@@ -30,45 +45,54 @@ const status = ref('');
 const removeError = ref<ReaderProblem>();
 const error = computed(() => editor.value?.problem ?? removeError.value);
 
-watch(() => props.bookmarks.some(bookmark => bookmark.id === props.activeBookmark), revisited => {
-  if (revisited) expanded.value = true;
-}, { immediate: true });
+let opening = false;
+watch([() => props.opened, () => props.busy], ([opened, busy], [wasOpen]) => {
+  if (opened !== wasOpen) opening = opened;
+  if (!opening || busy) return;
+  opening = false;
+  if (!props.bookmarks.length && !editor.value) void start();
+});
 
 async function start(bookmark?: Bookmark) {
   status.value = '';
   removeError.value = undefined;
-  drafts.set(draftKey, { command: bookmark ?
-    { action: 'edit', id: bookmark.id, note: bookmark.note, previousNote: bookmark.note } :
+  const id = bookmark?.id ?? 'new';
+  if (!group.value) drafts.set(draftKey, { selected: id, entries: new Map() });
+  const current = drafts.get(draftKey)!;
+  current.selected = id;
+  if (!current.entries.has(id)) current.entries.set(id, { command: bookmark ?
+    { action: 'edit', id, note: bookmark.note, previousNote: bookmark.note } :
     { action: 'create', id: crypto.randomUUID(), note: '' } });
   await nextTick();
-  noteInput.value?.focus();
+  if (props.opened) focusInPanel(noteInput.value);
 }
 
 async function cancel() {
   const previous = editor.value?.command;
-  drafts.delete(draftKey);
+  if (group.value) discard(group.value.selected);
   await nextTick();
   const editButton = previous?.action === 'edit' ? document.getElementById(`edit-bookmark-${previous.id}`) : null;
-  (editButton ?? addButton.value)?.focus();
+  (editButton ?? addButton.value)?.focus({ preventScroll: true });
 }
 
 async function save(action: BookmarkAction) {
-  const draft = editor.value;
+  const id = action.action === 'create' ? 'new' : action.id;
+  const draft = action.action === 'remove' ? undefined : group.value?.entries.get(id);
   status.value = '';
   removeError.value = undefined;
   if (draft) delete draft.problem;
   try {
     await props.saveBookmark(action);
-    drafts.delete(draftKey);
+    discard(id);
     status.value = action.action === 'remove' ? 'bookmarkRemoved' : 'bookmarkSaved';
     await nextTick();
     const target = action.action === 'remove' ? addButton.value : document.getElementById(`bookmark-${action.id}`);
-    if (expanded.value) target?.focus();
+    if (props.opened && document.activeElement?.closest('.bookmark-records')) focusInPanel(target);
   } catch (cause) {
     if (draft) draft.problem = failed(cause);
     else removeError.value = failed(cause);
     await nextTick();
-    if (expanded.value) (noteInput.value ?? errorMessage.value)?.focus();
+    if (props.opened && document.activeElement?.closest('.bookmark-records')) (noteInput.value ?? errorMessage.value)?.focus({ preventScroll: true });
   }
 }
 
@@ -86,28 +110,28 @@ function submit() {
 
 <template>
   <div class="bookmark-records">
-    <button type="button" class="block-bookmarks-toggle record-toggle" :aria-controls="detailsId" :aria-expanded="expanded"
-      @click="expanded = !expanded">{{ t('bookmarks') }}<span v-if="bookmarks.length">({{ bookmarks.length }})</span></button>
-    <div v-show="expanded" :id="detailsId" class="block-bookmark-details">
-      <button ref="addButton" type="button" :disabled="busy || !!editor"
-        :aria-expanded="editor?.command.action === 'create'" @click="start()">{{ t('bookmarkAdd') }}</button>
+    <div class="block-bookmark-details">
+      <button v-if="bookmarks.length || !editor" ref="addButton" type="button" :disabled="busy || group?.selected === 'new'"
+        @click="start()">{{ t(bookmarks.length ? 'bookmarkAnother' : 'bookmarkAdd') }}</button>
       <ul v-if="bookmarks.length" class="block-bookmarks">
         <li v-for="bookmark in bookmarks" :id="'bookmark-' + bookmark.id" :key="bookmark.id" tabindex="-1"
           :class="{ 'bookmark-visited': bookmark.id === activeBookmark }">
           <span v-if="bookmark.id === activeBookmark" class="bookmark-current">{{ t('bookmarkRevisited') }}</span>
+          <small v-if="group?.entries.has(bookmark.id)">{{ t('bookmarkDraft') }}</small>
           <p class="bookmark-note">{{ bookmark.note || t('bookmarkNoNote') }}</p>
           <div class="bookmark-actions">
-            <button :id="'edit-bookmark-' + bookmark.id" type="button" :disabled="busy || !!editor"
+            <button :id="'edit-bookmark-' + bookmark.id" type="button" :disabled="busy || group?.selected === bookmark.id"
               @click="start(bookmark)">{{ t('bookmarkEdit') }}</button>
-            <button type="button" :disabled="busy || !!editor"
+            <button type="button" :disabled="busy || group?.entries.has(bookmark.id)"
               @click="save({ action: 'remove', id: bookmark.id, previousNote: bookmark.note })">{{ t('bookmarkRemove') }}</button>
           </div>
         </li>
       </ul>
       <form v-if="editor" class="bookmark-editor" @submit.prevent="submit">
         <label>
+          <span v-if="editor.command.action === 'edit'" class="bookmark-editing-reason">{{ t('bookmarkEdit') }} · {{ bookmarks.find(item => item.id === editor?.command.id)?.note || t('bookmarkNoNote') }}</span>
           <span>{{ t('bookmarkNote') }}</span>
-          <textarea ref="noteInput" v-model="editor.command.note" :readonly="busy" rows="3" />
+          <textarea ref="noteInput" :aria-label="t('bookmarkNote')" v-model="editor.command.note" :readonly="busy" rows="3" />
         </label>
         <div class="bookmark-actions">
           <button type="submit" :disabled="busy">{{ t('bookmarkSave') }}</button>
@@ -124,7 +148,7 @@ function submit() {
 </template>
 
 <style scoped>
-.block-bookmark-details { margin-block-start: 8px; }
+.bookmark-editing-reason { display: block; margin-block-end: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .block-bookmark-details > button { font-size: 13px; }
 .block-bookmarks li { scroll-margin-block: 8px; }
 </style>
