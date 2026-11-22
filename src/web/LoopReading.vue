@@ -145,7 +145,7 @@ onUnmounted(() => window.clearTimeout(closeTimer));
 </script>
 
 <template>
-  <div v-if="!step && !legendSelected" class="loop-overview">
+  <div v-if="!step && !legendSelected" class="loop-overview" :inert="!panelOpen">
     <div class="markdown loop-goal" v-html="renderMarkdown(loop.goal)"></div>
     <details>
       <summary>{{ t('loopOverview') }}</summary>
@@ -164,13 +164,20 @@ onUnmounted(() => window.clearTimeout(closeTimer));
     </details>
   </div>
 
-  <section v-if="step" class="loop-step canvas-selection" :data-reading-step="step.id" :aria-label="t('loopSelected')">
+  <section v-if="step" class="loop-step canvas-selection" :inert="!panelOpen" :data-reading-step="step.id" :aria-label="t('loopSelected')">
     <h2 ref="stepHeading" class="loop-step-heading" tabindex="-1" aria-live="polite">{{ step.title }}</h2>
+    <div class="loop-step-reading">
+      <div class="markdown loop-step-explanation" v-html="renderMarkdown(step.explanation)"></div>
+      <template v-if="step.hint">
+        <h3>{{ t('loopHint') }}</h3>
+        <div class="markdown loop-step-hint" v-html="renderMarkdown(step.hint)"></div>
+      </template>
+    </div>
     <button v-if="step.lines" ref="sourceTrigger" type="button" class="loop-source-trigger"
       :aria-expanded="sourceVisible" :aria-controls="sourceId" :aria-pressed="pinned"
       @mouseenter="openPreview" @mouseleave="schedulePreviewClose" @focus="focusPreview" @blur="schedulePreviewClose"
       @click="toggleSource" @keydown="sourceKeys">
-      <span>{{ t('loopCompareSource') }}</span><code>{{ step.path }}</code><span>{{ step.lines.start }}–{{ step.lines.end }} {{ t('loopSourceLines') }}</span>
+      <span>{{ t('loopCompareSource') }}</span> · <code>{{ step.path }}</code> · <span>{{ step.lines.start }}–{{ step.lines.end }} {{ t('loopSourceLines') }}</span>
     </button>
     <Teleport to="#loop-workspace" :disabled="inlineSource">
       <section v-if="sourceVisible && step.lines" :id="sourceId" ref="sourcePanel" class="loop-source-panel"
@@ -191,26 +198,19 @@ onUnmounted(() => window.clearTimeout(closeTimer));
         </div>
       </section>
     </Teleport>
-    <div :key="step.id" class="loop-step-reading">
-      <div class="markdown loop-step-explanation" v-html="renderMarkdown(step.explanation)"></div>
-      <template v-if="step.hint">
-        <h3>{{ t('loopHint') }}</h3>
-        <div class="markdown loop-step-hint" v-html="renderMarkdown(step.hint)"></div>
-      </template>
-      <details class="loop-original">
-        <summary>{{ t('loopOriginal') }}</summary>
-        <div class="markdown" v-html="renderMarkdown(step.block_explanation)"></div>
-      </details>
-    </div>
-    <h3>{{ t('loopConnections') }}</h3>
-    <ul v-if="choices.length" class="canvas-relations loop-connections">
+    <h3 v-if="choices.length > 1">{{ t('loopConnections') }}</h3>
+    <ul v-if="choices.length" class="canvas-relations loop-connections" :class="{ 'loop-single-exit': choices.length === 1 }">
       <li v-for="edge in choices" :key="edge.to">
         <button type="button" :data-choice="edge.to" @click="selectStep(edge.to)">
-          <strong>{{ nodes.get(edge.to)?.title }}</strong>
           <span class="markdown loop-choice-reason" v-html="renderMarkdown(edge.reason)"></span>
+          <strong><span aria-hidden="true">→ </span>{{ nodes.get(edge.to)?.title }}</strong>
         </button>
       </li>
     </ul>
     <p v-else class="canvas-hint loop-end">{{ t('loopEnd') }}</p>
+    <details :key="step.id" class="loop-original">
+      <summary>{{ t('loopOriginal') }}</summary>
+      <div class="markdown" v-html="renderMarkdown(step.block_explanation)"></div>
+    </details>
   </section>
 </template>

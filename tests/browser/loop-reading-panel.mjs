@@ -7,7 +7,7 @@ import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { chooseLoop } from './loop-controls.mjs';
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const root = path.join(repository, '.local/D033');
+const root = path.join(repository, '.local/D034');
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'panel-'));
 const project = path.join(run, 'project');
@@ -22,7 +22,7 @@ let browser;
 const report = { build, run, frames: [], writes: [], errors: [] };
 try {
   browser = await chromium.launch({ channel: 'msedge' });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 780 } });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.setDefaultTimeout(8000);
   page.on('pageerror', e => report.errors.push(e.message));
   page.on('request', r => { if (r.method() === 'PUT') report.writes.push(new URL(r.url()).pathname); });
@@ -51,53 +51,133 @@ try {
     await page.goto(reader.url);
     await press(page, '闭环阅读');
     await chooseLoop(page, 'order-quantity');
-    await loop.locator('.loop-overview').waitFor();
+    assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+    await panel.waitFor({ state: 'hidden' });
   }
   await open();
   await page.getByLabel('界面语言').selectOption('en');
+  const settled = () => toggle.evaluate(el => Promise.all(el.getAnimations().map(a => a.finished)));
   for (const width of [780, 820, 1440]) {
     await page.setViewportSize({ width, height: 780 });
-    const title = await loop.locator('.loop-overview-link').boundingBox();
-    const hint = await loop.locator('.canvas-node-hint').boundingBox();
-    assert.ok(title.x + title.width < hint.x && title.width > 80, 'title and hint at ' + width);
+    for (const openPanel of [true, false]) {
+      await toggle.click();
+      await settled();
+      assert.equal(await toggle.getAttribute('aria-expanded'), String(openPanel));
+      const title = await loop.locator('.loop-overview-link').boundingBox();
+      const hint = await loop.locator('.canvas-node-hint').boundingBox();
+      assert.ok(title.x + title.width < hint.x && title.width > 80, 'title and hint at ' + width);
+      if (openPanel) assert.ok(hint.x + hint.width <= (await panel.boundingBox()).x);
+    }
   }
   await page.getByLabel('Interface language').selectOption('zh-CN');
-  await save(() => drag(560, 230, 15, 12));
-  await save(() => press(loop, '放大画布'));
-  await node('check').click();
-  await lesson('check').locator('.loop-original summary').click();
-  await loop.locator('.loop-source-trigger').click();
-  const scroll = await panel.evaluate(el => { el.scrollTop = el.scrollHeight; return el.scrollTop; });
-  assert.ok(scroll > 0);
+  await page.setViewportSize({ width: 1440, height: 900 });
   const readingWrites = report.writes.length;
+  await node('check').click();
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+  await toggle.hover();
+  assert.equal(await toggle.locator('span').evaluate(el => getComputedStyle(el).opacity), '1');
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+  await page.mouse.move(10, 20);
+  assert.equal(await toggle.locator('span').evaluate(el => getComputedStyle(el).opacity), '0');
+  await shot('first-selection');
+  await toggle.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  assert.ok(await toggle.evaluate(el => el === document.activeElement));
   await page.evaluate(() => {
     const scope = document.querySelector('#loop-canvas-order-quantity-reading');
     const box = selector => {
       const { x, y, width, height } = scope.querySelector(selector).getBoundingClientRect();
-      return [x,y,width,height];
+      return [x, y, width, height];
     };
     window.readingFrames = [];
     function sample() {
-      window.readingFrames.push({ node: box('[data-id="file:check"]'), map: box('.dependency-minimap'), handle: box('.loop-reader-toggle')[0] });
+      window.readingFrames.push({ graph: box('.graph-area'), node: box('[data-id="file:check"]'),
+        map: box('.dependency-minimap'), relations: box('.loop-relations'),
+        viewport: getComputedStyle(scope.querySelector('.vue-flow__transformationpane')).transform,
+        handle: box('.loop-reader-toggle')[0] });
       window.readingFrame = requestAnimationFrame(sample);
     }
     sample();
   });
   await toggle.press('Enter');
+  await panel.waitFor();
+  await settled();
+  const check = lesson('check');
+  assert.deepEqual(await check.locator(':scope > *').evaluateAll(els => els.map(el => el.tagName)), ['H2','DIV','BUTTON','H3','UL','DETAILS']);
+  assert.equal(await check.locator('details').evaluate(el => el.open), false);
+  await shot('branch-reading');
+  const bounds = await panel.boundingBox();
+  await toggle.press('Space');
+  await panel.waitFor({ state: 'hidden' });
+  await settled();
+  report.frames = await page.evaluate(() => { cancelAnimationFrame(window.readingFrame); return window.readingFrames; });
+  const first = report.frames[0];
+  assert.equal(first.graph[2], 1440);
+  assert.equal(first.relations[0] + first.relations[2] / 2, 720);
+  assert.equal(900 - first.relations[1] - first.relations[3], 12);
+  assert.ok(report.frames.some(f => f.handle > bounds.x + 12 && f.handle < first.handle - 12));
+  for (const { handle, ...geometry } of report.frames) {
+    const { handle: initialHandle, ...initial } = first;
+    assert.deepEqual(geometry, initial);
+  }
+  await toggle.click();
+  await settled();
+  for (const [x, inside] of [[bounds.x + 2, true], [bounds.x - 2, false]]) {
+    await page.mouse.click(x, bounds.y + 160);
+    assert.equal(await check.count(), inside ? 1 : 0);
+  }
+  await node('check').click();
+  // Hold a real closing frame and click on either side of the visible drawer edge.
+  const closingEdge = await toggle.evaluate(async button => {
+    button.click();
+    await new Promise(requestAnimationFrame);
+    const drawer = document.getElementById(button.getAttribute('aria-controls'));
+    const animations = [...drawer.getAnimations(), ...button.getAnimations()];
+    for (const animation of animations) {
+      animation.pause();
+      animation.currentTime = 90;
+    }
+    return button.getBoundingClientRect().right;
+  });
+  assert.ok(closingEdge > bounds.x + 10 && closingEdge < 1430);
+  await page.mouse.click(closingEdge + 8, bounds.y + 160);
+  assert.equal(await node('check').getAttribute('aria-pressed'), 'true');
+  await page.mouse.click(closingEdge - 8, bounds.y + 160);
+  assert.equal(await node('check').getAttribute('aria-pressed'), 'false');
+  await loop.evaluate(el => el.getAnimations({ subtree: true }).filter(a => a.playState === 'paused').forEach(a => a.play()));
+  await panel.waitFor({ state: 'hidden' });
+  await node('check').click();
+  await toggle.click();
+  await check.locator('[data-choice="resume"]').click();
+  await lesson('resume').getByText(/建立对象这一步还没有改变集合/).waitFor();
+  await shot('before-append');
+  await lesson('resume').locator('[data-choice="store"]').click();
+  await lesson('store').getByText(/数组追加使调用者持有的集合增加一项/).waitFor();
+  await shot('append');
+  await node('check').click();
+  await page.setViewportSize({ width: 1440, height: 640 });
+  await check.locator('.loop-original summary').click();
+  await loop.locator('.loop-source-trigger').click();
+  const scroll = await panel.evaluate(el => { el.scrollTop = el.scrollHeight; return el.scrollTop; });
+  assert.ok(scroll > 0);
+  await toggle.press('Enter');
   await panel.waitFor({ state: 'hidden' });
   await page.locator('.loop-source-panel').waitFor({ state: 'hidden' });
   assert.ok(await toggle.evaluate(el => el === document.activeElement));
-  assert.ok(await page.evaluate(() => document.elementFromPoint(innerWidth - 90, innerHeight - 160)?.closest('.vue-flow')));
   await toggle.press('Enter');
   await page.locator('.loop-source-floating').waitFor();
-  await page.waitForFunction(() => !document.querySelector('.loop-reader-toggle').parentElement.getAnimations().length);
-  report.frames = await page.evaluate(() => { cancelAnimationFrame(window.readingFrame); return window.readingFrames; });
-  assert.ok(report.frames.some(f => f.handle > report.frames[0].handle + 10 && f.handle < 1380));
-  for (const f of report.frames) {
-    assert.deepEqual(f.node, report.frames[0].node);
-    assert.deepEqual(f.map, report.frames[0].map);
-  }
   assert.equal(await panel.evaluate(el => el.scrollTop), scroll);
+  const next = loop.locator('[data-step-nav="next"]');
+  await next.focus();
+  await next.locator('.loop-nav-tip').waitFor();
+  await settled();
+  await shot('long-navigation');
+  await next.press('Enter');
+  await lesson('resume').waitFor();
+  assert.equal(await panel.evaluate(el => el.scrollTop), 0);
+  await node('check').click();
+  await page.setViewportSize({ width: 1440, height: 900 });
   await toggle.click();
   await panel.waitFor({ state: 'hidden' });
   assert.deepEqual(await loop.locator('[data-relation]').evaluateAll(els => els.map(el => el.dataset.relation)), ['start','resume','stop']);
@@ -114,7 +194,7 @@ try {
   await lesson('stop').locator('.loop-step-explanation').getByText(/集合/u).waitFor();
   await page.locator('.loop-source-floating').waitFor();
   await page.getByRole('button', { name: '关闭源码' }).click();
-  await page.waitForFunction(() => !document.querySelector('.loop-edge-controls').getAnimations().length);
+  await settled();
   await shot('failure-reading');
   await select('check');
   await select('stop');
@@ -122,6 +202,7 @@ try {
   await lesson('store').waitFor();
   await loop.locator('.loop-entry').click();
   await lesson('start').waitFor();
+  await lesson('start').locator('.loop-step-hint').waitFor();
   assert.ok(await loop.locator('[data-step-nav="previous"]').isDisabled());
   await toggle.click();
   await loop.locator('.loop-overview-link').click();
@@ -129,10 +210,14 @@ try {
   assert.equal(await loop.locator('.loop-relations').count(), 0);
   assert.equal(report.writes.length, readingWrites);
 
-  // Work in the expanded graph with the existing personal group still present.
+  // Drag across the edge handle while the pointer is captured by the graph.
   await toggle.click();
   await panel.waitFor({ state: 'hidden' });
   await node('check').click();
+  const edge = await toggle.boundingBox();
+  await save(() => drag(edge.x - 40, edge.y + 6, 62, 18));
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+  await save(() => press(loop, '放大画布'));
   const a = await node('start').boundingBox();
   const b = await node('check').boundingBox();
   const x = Math.min(a.x,b.x) - 9, y = Math.min(a.y,b.y) - 9;
@@ -179,8 +264,6 @@ try {
   assert.deepEqual(after, { ...beforeDissolve, groups: beforeDissolve.groups.filter(g => g.id !== group.id) });
   assert.deepEqual(await edges(), savedEdges);
   await open();
-  await toggle.click();
-  await panel.waitFor({ state: 'hidden' });
   await node('check').click();
   assert.equal(await frame.count(), 0);
   assert.deepEqual(await layout(), after);
@@ -208,11 +291,12 @@ try {
   await mobile.locator('.app-page-menu-toggle').tap();
   await mobile.locator('[data-page="loops"]').tap();
   await chooseLoop(mobile, 'order-quantity');
+  await mobile.locator('.loop-reader-toggle').tap();
   await mobile.locator('.loop-entry').tap();
   await mobile.locator('[data-step-nav="next"]').tap();
   const mobileToggle = mobile.locator('.loop-reader-toggle');
   await mobileToggle.tap();
-  assert.equal(await mobileToggle.evaluate(el => getComputedStyle(el.parentElement).transitionDuration), '0s');
+  assert.equal(await mobileToggle.evaluate(el => getComputedStyle(el).transitionDuration), '0s');
   const relations = mobile.locator('.loop-relations');
   await relations.getByRole('button', { name: '查看全部关系与理由' }).tap();
   const third = relations.locator('[data-relation="store"]');
@@ -223,7 +307,30 @@ try {
   assert.equal(await mobileToggle.getAttribute('aria-expanded'), 'false');
   await mobileToggle.tap();
   await mobile.locator('[data-reading-step="store"]').getByRole('heading', { name: longTitle }).waitFor();
+  const mobilePanel = mobile.locator('.canvas-inspector');
+  assert.ok(await mobilePanel.evaluate(el => {
+    const rect = el.getBoundingClientRect();
+    return [rect.left + 2, rect.right - 2].every(x => el.contains(document.elementFromPoint(x, rect.top + rect.height / 2)));
+  }));
+  await mobile.getByLabel('界面语言').selectOption('en');
+  const nextMobile = mobile.locator('[data-step-nav="next"]');
+  assert.match(await nextMobile.getAttribute('aria-label'), /^Next in order · /);
+  await mobile.locator('[data-step-nav="previous"]').tap();
+  await mobile.locator('[data-reading-step="resume"]').waitFor();
+  await nextMobile.focus();
+  await mobile.keyboard.press('Tab');
+  await mobile.keyboard.press('Shift+Tab');
+  assert.equal(await nextMobile.locator('.loop-nav-tip').innerText(), 'Next in order · ' + longTitle);
+  assert.ok(await nextMobile.locator('.loop-nav-tip').evaluate(el => {
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.left >= 0 && rect.right <= innerWidth;
+  }));
   await mobile.screenshot({ path: path.join(run, 'narrow-reading.png') });
+  await mobile.setViewportSize({ width: 780, height: 900 });
+  assert.ok(await nextMobile.locator('.loop-nav-tip').evaluate(el => {
+    const tip = el.getBoundingClientRect(), drawer = el.closest('.canvas-inspector').getBoundingClientRect();
+    return tip.width > 0 && tip.left >= drawer.left && tip.right <= drawer.right;
+  }));
   await touch.close();
   assert.equal(await content(), before);
   assert.deepEqual(report.errors, []);

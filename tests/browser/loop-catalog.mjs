@@ -57,6 +57,7 @@ try {
   assert.ok(await drawer.evaluate(el => el === document.activeElement));
   await chooseLoop(page, 'order-quantity');
   const loop = page.locator('#loop-canvas-order-quantity-reading');
+  await loop.locator('.loop-reader-toggle').click();
   await loop.locator('.loop-overview').waitFor();
   await waitClosed();
   await openCatalog(page);
@@ -159,7 +160,7 @@ try {
   await waitClosed();
   await page.setViewportSize({ width: 1440, height: 900 });
   await chooseLoop(page, 'path-tools');
-  await page.locator('#loop-canvas-path-tools-reading .loop-overview').waitFor();
+  assert.equal(await page.locator('#loop-canvas-path-tools-reading .loop-reader-toggle').getAttribute('aria-expanded'), 'false');
   await chooseLoop(page, 'order-quantity');
   assert.equal(await inspector.evaluate(el => el.scrollTop), frames[0].scroll);
   await button('文件讲解').click();
@@ -174,6 +175,7 @@ try {
   await shot('narrow-catalog');
   assert.equal(await drawer.evaluate(el => getComputedStyle(el).transitionDuration), '0s');
   await drawer.locator('[data-loop="order-quantity"]').press('Enter');
+  await loop.locator('.loop-reader-toggle').click();
   await loop.locator('.loop-entry').click();
   await loop.locator('[data-reading-step="start"]').waitFor();
   await shot('narrow-step');

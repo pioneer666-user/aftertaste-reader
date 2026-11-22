@@ -62,7 +62,7 @@ const detailHeading = ref<HTMLElement>();
 const inspector = ref<HTMLElement>();
 const groupTrigger = shallowRef<HTMLElement>();
 const detailsOpen = ref(false);
-const panelOpen = ref(true);
+const panelOpen = ref(false);
 const groupMenu = ref<HTMLElement>();
 const menuGroup = ref<CanvasGroup>();
 const groupNameInput = ref<HTMLInputElement>();
@@ -109,10 +109,10 @@ const stepNavigation = computed(() => {
   const graph = loop.value?.loop;
   if (!graph) return [];
   const index = graph.reading_order.indexOf(selected.value);
-  const actions = [{ key: 'entry', label: 'loopEntry', short: 'loopEntry', id: graph.entry }];
+  const actions = [{ key: 'entry', label: 'loopEntry', id: graph.entry }];
   if (index >= 0) actions.push(
-    { key: 'previous', label: 'loopPrevious', short: 'loopPrevShort', id: graph.reading_order[index - 1] ?? '' },
-    { key: 'next', label: 'loopNext', short: 'loopNextShort', id: graph.reading_order[index + 1] ?? '' },
+    { key: 'previous', label: 'loopPrevious', id: graph.reading_order[index - 1] ?? '' },
+    { key: 'next', label: 'loopNext', id: graph.reading_order[index + 1] ?? '' },
   );
   return actions.map(action => ({ ...action, title: [t(action.label), graph.nodes.find(node => node.id === action.id)?.title].filter(Boolean).join(' · ') }));
 });
@@ -901,20 +901,23 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
-      <nav v-if="loop" class="loop-edge-controls" :aria-label="t('loopOrder')" :inert="toolsCovered">
-        <button type="button" class="loop-reader-toggle" :aria-expanded="panelOpen" :aria-controls="flowId + '-inspector'"
-          :aria-label="t(panelOpen ? 'loopCollapse' : 'loopExpand')" :title="t(panelOpen ? 'loopCollapse' : 'loopExpand')"
-          @click="panelOpen = !panelOpen"><span aria-hidden="true">{{ panelOpen ? '›' : '‹' }}</span></button>
-        <template v-if="panelOpen">
-          <button v-for="item in stepNavigation" :key="item.key" type="button" :data-step-nav="item.key" :class="{ 'loop-entry': item.key === 'entry' }"
-            :disabled="!item.id" :aria-label="item.title" :title="item.title" @click="selectDetail(item.id)">
-            {{ t(item.short) }}<span class="loop-nav-tip">{{ item.title }}</span>
-          </button>
-        </template>
-      </nav>
+      <button v-if="loop" type="button" class="loop-reader-toggle" :aria-expanded="panelOpen" :aria-controls="flowId + '-inspector'"
+        :aria-label="t(panelOpen ? 'loopCollapse' : 'loopExpand')" :inert="toolsCovered"
+        @click="panelOpen = !panelOpen"><span aria-hidden="true">{{ panelOpen ? '›' : '‹' }}</span></button>
       <component :is="loopId ? 'aside' : 'div'" v-if="loopId || (hasSelection && !groupEditor)" ref="inspector"
-        :id="loopId ? flowId + '-inspector' : undefined" :inert="loopId && !panelOpen"
+        :id="loopId ? flowId + '-inspector' : undefined" :aria-hidden="loopId && !panelOpen || undefined"
         :class="loopId ? 'canvas-inspector' : ['canvas-panel', { 'canvas-panel-compact': !detailsOpen }]">
+        <nav v-if="loop" class="loop-step-nav" :aria-label="t('loopOrder')" :inert="toolsCovered || !panelOpen">
+          <button v-for="item in stepNavigation" :key="item.key" type="button" :data-step-nav="item.key" :class="{ 'loop-entry': item.key === 'entry' }"
+            :disabled="!item.id" :aria-label="item.title" @click="selectDetail(item.id)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path v-if="item.key === 'entry'" d="M5 20V4h13l-3 4 3 4H5" />
+              <path v-else-if="item.key === 'previous'" d="m13 6-6 6 6 6M7 12h13" />
+              <path v-else d="m11 6 6 6-6 6M17 12H4" />
+            </svg>
+            <span aria-hidden="true" class="loop-nav-tip">{{ item.title }}</span>
+          </button>
+        </nav>
         <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" :active="active" :panel-open="panelOpen" :legend-selected="!!selectedLegend" @select="selectDetail" />
         <template v-if="!loopId && hasSelection && !groupEditor">
           <section class="canvas-summary" :aria-label="t(selectedNode ? 'canvasSelected' : 'canvasSelectedLibrary')"
@@ -977,7 +980,7 @@ onUnmounted(() => {
             </template>
           </section>
         </template>
-        <section v-if="loopId && selectedLegend" class="canvas-selection" :aria-label="t('canvasSelectedLibrary')">
+        <section v-if="loopId && selectedLegend" :inert="!panelOpen" class="canvas-selection" :aria-label="t('canvasSelectedLibrary')">
           <div class="detail-file">
             <h2>{{ selectedLegend.name }}</h2>
             <p class="canvas-hint">{{ legendKind(selectedLegend.kind) }}</p>
