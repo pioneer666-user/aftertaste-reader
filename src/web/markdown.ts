@@ -83,13 +83,19 @@ export function blockPreview(body: string): { title: string; excerpt: string } {
     paragraphs = paragraphs.slice(1);
   }
   const excerpt: string[] = [];
+  let remaining = 3;
   for (const paragraph of paragraphs) {
+    let passage = '';
     for (const { segment } of sentences.segment(paragraph)) {
       const sentence = segment.trim();
       if (!title) title = sentence;
-      else if (sentence !== title) excerpt.push(sentence);
-      if (excerpt.length === 3) return { title, excerpt: excerpt.join(' ') };
+      else if (sentence && sentence !== title) {
+        passage += segment;
+        if (--remaining === 0) break;
+      }
     }
+    if (passage) excerpt.push(passage.trim());
+    if (remaining === 0) break;
   }
   return { title, excerpt: excerpt.join(' ') };
 }

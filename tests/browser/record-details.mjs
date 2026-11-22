@@ -104,6 +104,24 @@ async function checkOriginalRecords(page) {
   await open(page, 'bookmarks');
   assert.equal(await full(saved).getAttribute('open'), null);
   const original = row(saved, ownBookmark.note);
+  const glyph = arrow(original).locator('svg');
+  const explanation = saved.getByRole('region', { name: '当前讲解' });
+  await explanation.getByRole('heading', { name: title, exact: true }).waitFor();
+  for (const icon of [glyph, saved.locator('.record-label svg'), explanation.locator('.record-icon-label svg')]) {
+    assert.equal(await icon.getAttribute('aria-hidden'), 'true');
+  }
+  const target = await arrow(original).boundingBox();
+  const glyphBox = await glyph.boundingBox();
+  assert.equal(glyphBox.width, 12);
+  assert.ok(Math.abs(target.x + target.width / 2 - glyphBox.x - glyphBox.width / 2) <= 1);
+  const metadata = original.locator('.record-list-location');
+  await metadata.getByText('rules.mjs · 第 1–7 行', { exact: true }).waitFor();
+  const [location, listText] = await Promise.all([metadata.boundingBox(), original.locator('.bookmark-note').boundingBox()]);
+  assert.ok(Math.abs(location.x - listText.x) <= 1 && location.y > listText.y + listText.height);
+  assert.equal(await metadata.evaluate(element => getComputedStyle(element).fontSize), '12px');
+  const textArrow = button(explanation, '回原文').locator('svg path');
+  assert.equal(await textArrow.getAttribute('d'), await glyph.locator('path').getAttribute('d'));
+  report.amendment = { glyph: glyphBox, target, location, listText };
   await original.focus();
   await page.keyboard.press('Tab');
   await arrow(original).locator(':scope:focus-visible').waitFor();
@@ -131,7 +149,7 @@ async function checkOriginalRecords(page) {
   await detail(marked).getByText(emptyTitle, { exact: true }).waitFor();
   assert.equal(await detail(marked).getByText('无批注', { exact: true }).count(), 1);
   await row(marked, '下次和上传入口').click();
-  await marked.getByText('support/audit.mjs · 块 overview', { exact: true }).waitFor();
+  await marked.getByText('support/audit.mjs · 讲解块 overview', { exact: true }).waitFor();
   await marked.locator('.record-label').getByText('○ 未标记', { exact: true }).waitFor();
   await button(detail(marked), '回原文').click();
   await page.locator('#mark-overview:focus').waitFor();
@@ -147,6 +165,21 @@ async function checkOriginalRecords(page) {
   assert.equal(await button(filter(marked), '不理解').getAttribute('aria-pressed'), 'true');
   await active(marked).filter({ hasText: ownMark.annotation }).waitFor();
   report.checks.push('原话、共用摘录与真实行号、两种回访焦点、空原话、无行号批注、笔记引用与 Tab');
+}
+
+async function checkPrototype(page) {
+  const viewport = page.viewportSize();
+  await page.setViewportSize({ width: 960, height: 500 });
+  await open(page, 'bookmarks');
+  const saved = pane(page, 'bookmarks');
+  await saved.getByRole('heading', { name: title, exact: true }).waitFor();
+  const nav = await saved.locator('.record-navigation').boundingBox();
+  const body = await saved.locator('.record-prose').boundingBox();
+  assert.equal(nav.width, 270);
+  assert.equal(body.x - nav.x - nav.width, 40);
+  await saved.screenshot({ path: path.join(run, 'bookmarks-prototype-scale.png') });
+  await page.setViewportSize(viewport);
+  await open(page, 'notes');
 }
 
 function activeNote(notes) {
@@ -384,6 +417,7 @@ try {
   await page.goto(reader.url);
   if (engine !== 'firefox') {
     await checkGeometry(page);
+    await checkPrototype(page);
     await checkOriginalRecords(page);
     await checkTouch(browser);
   }

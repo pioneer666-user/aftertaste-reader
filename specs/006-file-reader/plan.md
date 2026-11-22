@@ -181,6 +181,8 @@ D026 的原设计记录。现行入口与历史按下节。
 
 `RecordWorkbench.vue` 与 `style.css` 继续共用桌面网格、窄窗列表和详情，展开时以统一内边距和阅读行宽控制左缘，编辑保留更宽的双栏。`ProjectBlockRecords.vue` 共用书签与标注的列表、原话、摘录、错误和定位，通过已有 `App.vue` 导航回到对应记录；Firefox 沿用 `reader-corners.ts`。数据与契约见 010／012 和现有 [文档接口](contracts/cli-http.md)。
 
+按[标记图](../../docs/work/2026/11/D041-record-management-details/amendments.md)使用细线斜箭头和摊开书本图标，行尾箭头置于独立触控区内居中。左栏将较小的短来源放在理由或批注下面，两行文字左对齐。书签的理由标题增加书签轮廓。
+
 按宪法 I–V 核对派单范围、只读边界、现有读取和布局复用、隔离自测及独审，沿当前分册增量维护。无新依赖及迁移。
 
 ## Complexity Tracking

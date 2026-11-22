@@ -9,6 +9,7 @@ import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { blockLabel, blockPreview } from './markdown.js';
 import { failed, requestDocument } from './reader-api.js';
+import RecordIcon from './RecordIcon.vue';
 import RecordWorkbench from './RecordWorkbench.vue';
 
 type BlockRecord = Bookmark | UnderstandingMark;
@@ -28,6 +29,7 @@ const filter = defineModel<'all' | 'not-understood'>('filter', { default: 'all' 
 const currentItem = defineModel<string>('currentItem', { required: true });
 const emit = defineEmits<{ select: []; filterChange: [] }>();
 const t = (key: string) => translate(props.language, key);
+const refreshLabel = computed(() => t(props.page === 'marks' ? 'markRefresh' : 'bookmarkRefresh'));
 const recordId = (record: BlockRecord) => 'id' in record ? record.id : markKey(record);
 const recordText = (record: BlockRecord) => 'note' in record ? record.note : record.annotation;
 const symbols = { unmarked: '○', understood: '✓', 'not-understood': '?' };
@@ -113,9 +115,10 @@ const names = computed(() => {
 function location(record: BlockRecord, short: boolean) {
   const file = sourcePath(record.documentPath);
   const name = file.split('/').at(-1)!;
-  const range = findBlock(record)?.lines;
+  const block = findBlock(record);
+  const range = block?.lines;
   const target = range ? t('recordLines').replace('{range}', range.start === range.end ? String(range.start) : `${range.start}–${range.end}`)
-    : `${t('block')} ${record.blockId}`;
+    : `${t(block ? 'recordExplanationBlock' : 'block')} ${record.blockId}`;
   return `${short && names.value.get(name)?.size === 1 ? name : file} · ${target}`;
 }
 
@@ -189,7 +192,9 @@ async function visit(record: BlockRecord) {
   <RecordWorkbench :page="page" :heading="t(page)" :list-id="page === 'marks' ? 'mark-navigation' : 'bookmark-navigation'"
     :list-open="listOpen" :count="count">
     <template #action>
-      <button type="button" :disabled="busy" @click="refresh">{{ t(page === 'marks' ? 'markRefresh' : 'bookmarkRefresh') }}</button>
+      <button type="button" class="record-refresh" :aria-label="refreshLabel" :title="refreshLabel" :disabled="busy" @click="refresh">
+        <RecordIcon name="refresh" />
+      </button>
     </template>
     <template #status>
       <p v-if="busy || visiting" role="status">{{ t('loading') }}</p>
@@ -207,10 +212,10 @@ async function visit(record: BlockRecord) {
               <strong v-if="'status' in record" class="record-mark" :data-status="record.status"><span class="state-symbol">{{ statusLabel(record) }}</span></strong>
               <span>{{ rowText(record) }}</span>
             </span>
-            <small>{{ location(record, true) }}</small>
+            <small class="record-list-location">{{ location(record, true) }}</small>
           </button>
           <button type="button" class="record-visit" :aria-label="t('recordVisit')" :data-tooltip="t('recordVisit')" @click="visit(record)">
-            <span aria-hidden="true">↗</span>
+            <RecordIcon name="visit" />
           </button>
         </li>
       </ul>
@@ -219,11 +224,11 @@ async function visit(record: BlockRecord) {
 
     <article v-if="active" class="record-article">
       <h2 v-if="'status' in active" class="record-label record-mark" :data-status="active.status"><span class="state-symbol">{{ statusLabel(active) }}</span></h2>
-      <h2 v-else class="record-label">{{ t('bookmarkReason') }}</h2>
+      <h2 v-else class="record-label record-icon-label"><RecordIcon name="bookmark" />{{ t('bookmarkReason') }}</h2>
       <p class="record-prose">{{ recordText(active) || title }}</p>
       <p v-if="!recordText(active)" class="record-location record-no-text">{{ emptyText }}</p>
       <section v-if="!previewProblem" class="record-context" :aria-label="t('currentExplanation')">
-        <p class="record-location">{{ t('currentExplanation') }}</p>
+        <p class="record-location record-icon-label"><RecordIcon name="explanation" />{{ t('currentExplanation') }}</p>
         <p v-if="!titleAndExcerpt" role="status">{{ t('loading') }}</p>
         <template v-else>
           <h3 v-if="recordText(active) && titleAndExcerpt.title">{{ titleAndExcerpt.title }}</h3>
@@ -231,7 +236,7 @@ async function visit(record: BlockRecord) {
         </template>
         <div class="record-context-footer">
           <span class="record-location">{{ location(active, false) }}</span>
-          <button type="button" class="record-visit-text" @click="visit(active)">{{ t('recordVisit') }} <span aria-hidden="true">↗</span></button>
+          <button type="button" class="record-visit-text" @click="visit(active)">{{ t('recordVisit') }} <RecordIcon name="visit" /></button>
         </div>
       </section>
       <div v-if="previewProblem || visitProblem" class="record-context record-unavailable">
@@ -240,7 +245,7 @@ async function visit(record: BlockRecord) {
           <p>{{ previewProblem || visitProblem }}</p>
         </div>
         <button type="button" @click="visitProblem ? visit(active) : load(active.documentPath, true)">{{ t('retry') }}</button>
-        <button v-if="previewProblem" type="button" class="record-visit-text" @click="visit(active)">{{ t('recordVisit') }} <span aria-hidden="true">↗</span></button>
+        <button v-if="previewProblem" type="button" class="record-visit-text" @click="visit(active)">{{ t('recordVisit') }} <RecordIcon name="visit" /></button>
       </div>
       <details :key="recordId(active)" class="record-full-location">
         <summary>{{ t('recordFullLocation') }}</summary>
