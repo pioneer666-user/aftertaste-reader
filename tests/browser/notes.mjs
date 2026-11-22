@@ -121,6 +121,7 @@ try {
   await selectFile('src/service.mjs');
   assert.equal(await block().locator('.source-pane').count(), 0);
   await selectQuote(secondQuote);
+  assert.ok(await button('加入所选笔记').isDisabled());
   await row(firstQuote).click();
   await button('加入所选笔记').click();
   await notes().getByRole('link', { name: secondQuote, exact: true }).waitFor();
@@ -156,6 +157,7 @@ try {
   await filter.selectOption('');
   await row('先写一个独立问题').click();
   page.once('dialog', dialog => dialog.accept());
+  await button('编辑').click();
   await button('删除笔记').click();
   await row('先写一个独立问题').waitFor({ state: 'detached' });
   await restart();
@@ -193,6 +195,7 @@ try {
   await assert.rejects(readFile(fixture.bookmarks), { code: 'ENOENT' });
   evidence.checks.push('same ID rewrite, missing file, invalid document, missing block, recovery and link/bookmark preservation');
 
+  await button('编辑').click();
   await body().press('Control+Home');
   await page.keyboard.insertText('甲');
   await saved();
@@ -207,6 +210,7 @@ try {
   await page.reload();
   await openNotes();
   await row('甲这里为什么').click();
+  await button('编辑').click();
   assert.equal(await body().inputValue(), firstEdit);
   evidence.checks.push('Ctrl+Z after completed autosave, resave and refresh');
 
@@ -262,6 +266,17 @@ try {
     await body().fill('失败后继续编辑的草稿');
     await page.screenshot({ path: path.join(run, 'write-failed.png') });
     await unlock();
+    await button('完成').click();
+    await notes().getByRole('alert').waitFor();
+    await button('新建笔记').click();
+    await notes().locator('.note-preview').getByText('空白笔记').waitFor();
+    await saved();
+    page.once('dialog', dialog => dialog.accept());
+    await button('删除笔记').click();
+    await row('失败后继续编辑的草稿').click();
+    await notes().getByRole('alert').waitFor();
+    await button('编辑').click();
+    assert.equal(await body().inputValue(), '失败后继续编辑的草稿');
     await button('重试保存').click();
     await saved();
     assert.deepEqual((await disk()).map(record => record.body), ['失败后继续编辑的草稿']);
@@ -298,11 +313,13 @@ try {
   await other.goto(reader.url);
   await openNotes(other);
   await row(previous, other).click();
+  await button('编辑', other).click();
   await Promise.all([body().fill('第一页面修改第二条'), body(other).fill('第二页面修改第一条')]);
   await saved();
   await saved(other);
   assert.deepEqual((await disk()).map(record => record.body), ['第二页面修改第一条', '第一页面修改第二条']);
   await row(previous).click();
+  await button('编辑').click();
   await body().fill('陈旧草稿保留');
   await notes().getByRole('alert').filter({ hasText: '已保存版本已变化' }).waitFor();
   assert.equal(await body().inputValue(), '陈旧草稿保留');
@@ -315,6 +332,13 @@ try {
   await notes().getByRole('alert').filter({ hasText: 'The saved version' }).waitFor();
   assert.equal(await page.getByRole('textbox', { name: 'Note body' }).inputValue(), '陈旧草稿保留');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  await button('Preview').click();
+  await notes().locator('.note-preview').getByText('陈旧草稿保留').waitFor();
+  assert.equal(await notes().locator('#note-body').isVisible(), false);
+  await notes().locator('.note-view-switch').getByRole('button', { name: 'Edit', exact: true }).click();
+  assert.equal(await notes().locator('#note-body').inputValue(), '陈旧草稿保留');
+  await button('Done').click();
+  await notes().locator('.note-preview').getByText('陈旧草稿保留').waitFor();
   await page.screenshot({ path: path.join(run, 'narrow-en.png') });
   assert.deepEqual(evidence.errors, []);
   console.log(JSON.stringify(evidence, null, 2));

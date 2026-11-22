@@ -95,7 +95,10 @@ async function openMarks() {
 }
 
 async function visit(target, name) {
-  await entry(target).and(page.locator('button:enabled')).press('Enter');
+  await entry(target).press('Enter');
+  assert.equal(await panel().locator('.record-prose').textContent(), await entry(target).locator('.bookmark-note').textContent());
+  const visitButton = target === rulesPath ? button('回原文', panel().locator('.record-detail')) : entry(target).locator('..').locator('.record-visit');
+  await visitButton.and(page.locator('button:enabled')).press('Enter');
   await page.getByRole('heading', { name, exact: true }).waitFor();
   await block().locator(`#mark-${sharedBlockId}:focus`).waitFor();
   assert.ok(await block().evaluate(element => {
@@ -250,7 +253,7 @@ try {
   assert.equal(await page.locator('.document-block').first().getAttribute('id'), sharedBlockId);
   await writeFile(fixture.rules, original.replace(sharedBlockId, 'changed1'));
   await openMarks();
-  await entry(rulesPath).click();
+  await entry(rulesPath).locator('..').locator('.record-visit').click();
   await panel().getByText(/当前讲解中没有目标块/u).waitFor();
   await button('文件讲解').click();
   await page.getByRole('heading', { name: 'src/service.mjs', exact: true }).waitFor();
@@ -259,12 +262,12 @@ try {
   assert.equal(await page.locator('#changed1').getByRole('combobox').inputValue(), 'unmarked');
   await rename(fixture.rules, fixture.rules + '.offline');
   await openMarks();
-  await entry(rulesPath).click();
+  await entry(rulesPath).locator('..').locator('.record-visit').click();
   await panel().getByText(/当前讲解文档暂时缺失/u).waitFor();
   await entry(rulesPath).waitFor();
   await rename(fixture.rules + '.offline', fixture.rules);
   await writeFile(fixture.rules, '损坏的讲解');
-  await entry(rulesPath).click();
+  await entry(rulesPath).locator('..').locator('.record-visit').click();
   await panel().getByText(/当前讲解无法按块读取/u).waitFor();
   await writeFile(fixture.rules, original);
   await visit(rulesPath, 'src/rules.mjs');
@@ -284,6 +287,7 @@ try {
   await page.getByRole('combobox', { name: '界面语言' }).selectOption('en');
   await page.locator('header [popovertarget="app-page-menu"]').click();
   await button('Marks').click();
+  await button('Open mark list').click();
   await panel().getByRole('combobox', { name: 'Filter marks' }).waitFor();
   assert.equal(await entry(servicePath).locator('.bookmark-note').textContent(), explanation);
   assert.ok(await panel().evaluate(element => element.scrollWidth <= element.clientWidth));

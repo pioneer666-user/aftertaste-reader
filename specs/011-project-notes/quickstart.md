@@ -21,3 +21,7 @@ node tests/browser/notes.mjs
 5. 保存一条笔记，截断下一次保存的请求或响应。恢复连接后删除，分别确认原版本与成功提交的新版本均能删除，其他页面的新修订仍需要读者处理冲突。
 
 正式版本更新的确认删除信号由后续更新联验承接。
+
+## D035 工作台
+
+构建后运行 `node tests/browser/record-workbench.mjs`。可用进程变量 `AFTERTASTE_D035_INPUT` 指定订单试读项目，脚本在新副本中添加长笔记，验证两处原句、非零侧栏位置、Tab 续读和窄窗读写。用 `AFTERTASTE_TEST_TASK=D035` 串行运行 notes、reader-history、bookmarks 和 understanding-marks 的浏览器用例，分别核真实写失败、保存中的历史、同块多书签及改标留原话。

@@ -85,11 +85,13 @@ function listEntry(bookmark) {
 }
 
 async function visit(bookmark, file, keyboard = false) {
-  const entry = listEntry(bookmark);
+  await listEntry(bookmark).click();
+  assert.equal(await page.locator('#bookmarks .record-prose').textContent(), bookmark.note || '无备注');
+  const entry = listEntry(bookmark).locator('..').locator('.record-visit');
   if (keyboard) {
     await entry.focus();
     await page.keyboard.press('Enter');
-  } else await entry.click();
+  } else await button('回原文', page.locator('#bookmarks .record-detail')).click();
   await page.getByRole('heading', { name: file, exact: true }).waitFor();
   await page.locator(`#bookmark-${bookmark.id}:focus`).waitFor();
   assert.equal(await row(bookmark.id).locator('.bookmark-note').textContent(), bookmark.note || '无备注');
@@ -166,7 +168,7 @@ try {
     await breakTarget();
     try {
       await openBookmarks();
-      await listEntry(pure).click();
+      await listEntry(pure).locator('..').locator('.record-visit').click();
       const unavailable = page.getByRole('status').filter({ hasText: '暂时无法定位这个块' });
       await unavailable.waitFor();
       await unavailable.evaluate(assertFocused);

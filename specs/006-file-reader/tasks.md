@@ -234,6 +234,10 @@
 - [x] T064 [US4] 按占位覆盖调整更新 `src/web/App.vue`、`src/web/style.css` 并用 `tests/browser/reader-file-switch.mjs` 核对桌面、增高和窄窗占位填充（FR-018、SC-017），交审查者复核受影响的视口及自然、受控切篇。
 - [x] T065 [US4] 按块高调整在 `src/web/App.vue`、`src/web/style.css` 交错长短块，随视口补足组数。用 `tests/browser/reader-file-switch.mjs` 复验覆盖、不同块高与快慢交接，交审查者复核（FR-018、SC-017）。
 
+## D035 · 个人记录的侧栏与返回
+
+- [x] T066 [US10] src/web/App.vue、src/web/RecordWorkbench.vue 与 tests/browser/reader-history.mjs 完成三页的分栏、选择、双区位置恢复及窄屏键盘操作。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。

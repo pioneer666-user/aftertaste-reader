@@ -274,7 +274,6 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .bookmark-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .bookmark-heading h1, .bookmark-heading .pane-label { margin: 0; }
 .bookmark-heading button, .bookmark-actions button { font-size: 13px; }
-.bookmark-panel { max-width: 54rem; margin-inline: auto; padding: clamp(20px, 4vw, 42px); }
 .project-bookmarks, .block-bookmarks { list-style: none; padding: 0; }
 .project-bookmarks { display: grid; gap: 10px; }
 .bookmark-entry { width: 100%; text-align: start; line-height: 1.5; }
@@ -300,19 +299,74 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .mark-controls select:disabled { cursor: default; }
 .mark-controls select[aria-disabled="true"] { cursor: wait; }
 .mark-read-error { padding: 0 24px 14px; border-bottom: 1px solid var(--line); }
-.notes-panel { max-width: 70rem; margin-inline: auto; padding: clamp(16px, 4vw, 42px); }
-.note-workspace { display: grid; grid-template-columns: minmax(0, 14rem) minmax(0, 1fr); gap: clamp(16px, 4vw, 36px); }
-.note-workspace.note-navigation-closed { grid-template-columns: minmax(0, 1fr); }
-.note-navigation { border-inline-end: 1px solid var(--line); padding-inline-end: 16px; }
-.note-navigation select { display: block; width: 100%; margin-top: 6px; }
+#app:has(> .record-active) { display: flex; flex-direction: column; height: 100dvh; }
+.record-workbench {
+  display: grid; grid-template: "heading" auto "detail" minmax(0,1fr) / minmax(0,1fr);
+  flex: 1; min-height: 0; background: white;
+}
+.record-workbench.list-open {
+  grid-template: "heading detail" auto "list detail" minmax(0,1fr) / clamp(258px, 23vw, 340px) minmax(0,1fr);
+}
+.record-workbench > .record-detail { min-width: 0; }
+.record-heading, .record-navigation { background: #f5f7f5; }
+.record-heading { grid-area: heading; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 18px; }
+.record-status { flex-basis: 100%; font-size: .88rem; overflow-wrap: anywhere; }
+.record-status:empty, .narrow-list-empty { display: none; }
+.record-heading h1 { font-size: 20px; margin: 0; }
+.record-navigation { grid-area: list; overflow: auto; overscroll-behavior: contain; padding: 0 14px 24px; }
+.list-open :is(.record-navigation, .record-heading) { border-inline-end: 1px solid var(--line); }
+.record-detail { grid-area: detail; overflow: auto; padding: clamp(20px, 4vw, 64px); overflow-wrap: anywhere; }
+.record-detail:focus-visible, .record-navigation:focus-visible { outline-offset: -3px; }
+.record-sheet { max-width: 74ch; margin-inline: auto; }
+.record-sheet:has(.editing) { max-width: 84rem; }
+.record-sheet h2 { margin-top: 0; }
+.record-prose { white-space: pre-wrap; font-size: 1.2rem; line-height: 1.8; }
+.record-location, .record-filter, .record-heading button { color: var(--muted); font-size: .83rem; }
+.record-filter { display: grid; gap: 5px; margin-bottom: 10px; }
+.record-filter :is(select,input) { width: 100%; min-width: 0; }
+.record-workbench :is(input,textarea) { font: inherit; color: inherit; border: 1px solid #a6b8ac; padding: 8px 10px; }
+.record-workbench :is(button, select, input, textarea) {
+  --corner-size: var(--corner-control); border-radius: calc(var(--corner-size) * var(--corner-radius-scale)); corner-shape: squircle;
+}
 .note-list, .note-tags { padding: 0; list-style: none; }
-.note-list { display: grid; gap: 6px; }
-.note-list button { width: 100%; text-align: start; overflow-wrap: anywhere; }
-.note-list [aria-current="true"] { background: #e0eee4; border-color: #a9c4b1; }
-.note-list-tags { display: block; margin-top: 4px; font-size: 13px; white-space: pre-wrap; }
-.note-edit-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-.note-detail textarea, .note-tag-form input { border: 1px solid #869b8c; padding: 8px; border-radius: 6px; font: inherit; }
-.note-detail textarea { display: block; width: 100%; resize: vertical; line-height: 1.6; }
+.record-navigation :is(.project-bookmarks,.note-list) { display: grid; gap: 6px; }
+.record-navigation li { min-width: 0; position: relative; }
+.record-navigation :is(.bookmark-entry,.note-list button) {
+  --corner-size: var(--corner-row); width: 100%; display: grid; gap: 4px; text-align: start; background: transparent;
+  border-color: transparent; overflow-wrap: anywhere; line-height: 1.5;
+}
+.record-navigation button[aria-current="true"] { background: #e1ede4; border-color: #c4d8cb; }
+.record-navigation :is(.bookmark-entry,.note-list button):hover { background: #eaf1eb; }
+.record-navigation .bookmark-entry { padding-bottom: 38px; }
+.record-navigation .bookmark-note, .note-list strong {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: .93rem; color: inherit;
+}
+.record-navigation small, .note-list-tags { color: var(--muted); font-size: .78rem; }
+.record-navigation .record-visit { position: absolute; left: 12px; bottom: 5px; min-height: 28px; padding: 2px 6px; color: var(--accent); font-size: .8rem; }
+.note-actions, .note-view-switch { display: flex; gap: 8px; align-items: center; }
+.note-actions { justify-content: flex-end; }
+.note-view-switch { display: none; margin-block: 18px; }
+.note-view-switch [aria-pressed="true"] { background: #e1ede4; }
+.note-detail .note-preview { margin: 12px 0 0; padding: 0; border: 0; }
+.editing .note-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: clamp(18px, 3vw, 44px); margin-top: 24px; }
+.editing .note-preview { margin: 0; }
+.note-input label, .editing .note-preview h2 { display: block; margin: 0 0 8px; font-size: .9rem; font-weight: 600; }
+.note-detail textarea { display: block; width: 100%; resize: vertical; line-height: 1.65; }
+.note-detail .markdown { line-height: 1.8; }
+.note-preview .note-with-title > p:first-child { font-size: clamp(1.28rem, 2vw, 1.65rem); line-height: 1.4; font-weight: 600; }
+.note-detail .note-tag-form { max-width: 30rem; margin-top: 24px; }
+.note-detail .markdown > :first-child { margin-top: 0; }
+.note-tags li > span { color: var(--accent); font-size: .85rem; background: #edf4ee; padding: 3px 8px; border-radius: var(--corner-control); corner-shape: squircle; }
+.note-detail .note-tags { row-gap: 8px; overflow-wrap: anywhere; }
+@media (max-width: 850px) {
+  .narrow-list-empty { display: block; }
+  .record-workbench.list-open { grid-template: "heading" auto "list" minmax(0,1fr) / minmax(0,1fr); }
+  .record-workbench.list-open .record-detail { display: none; }
+  .record-detail { padding: 20px 16px; }
+  .editing .note-columns { display: block; margin-top: 12px; }
+  .note-view-switch { display: flex; }
+  .editing:not(.preview-only) .note-preview, .editing.preview-only .note-input { display: none; }
+}
 .note-tag-form label { display: block; margin-block: 14px 6px; }
 .note-tag-form input { flex: 1 1 10rem; min-width: 0; }
 .note-tags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -322,9 +376,8 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .note-quote { margin-block: 14px 22px; padding: 12px 16px; border: 1px solid var(--line); background: #f2f6f2; }
 .note-quote blockquote { margin-inline: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .note-quote h2, .note-preview h2 { font-size: 16px; margin-top: 0; }
-.note-preview { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); }
 .note-preview .note-block-link { color: #21624d; text-decoration-style: double; white-space: pre-wrap; }
-.note-visit-problem { margin-block: 0 12px; overflow-wrap: anywhere; }
+.note-visit-problem { position: sticky; top: 8px; z-index: 1; margin-block: 0 12px; overflow-wrap: anywhere; }
 .note-selection-action { margin-top: 12px; }
 .selection-float {
   z-index: 2;
@@ -344,8 +397,6 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 }
 .document-block:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 @media (max-width: 640px) {
-  .note-workspace { grid-template-columns: minmax(0, 1fr); }
-  .note-navigation { border-inline-end: 0; border-bottom: 1px solid var(--line); padding-inline-end: 0; }
 }
 .markdown { line-height: 1.95; font-size: 15px; overflow-wrap: anywhere; }
 .markdown > :first-child { margin-top: 0; }
