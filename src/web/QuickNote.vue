@@ -23,6 +23,35 @@ const knownTags = computed(() => [...new Set([...drafts.values()].flatMap(item =
 const trigger = ref<HTMLButtonElement>(), search = ref<HTMLInputElement>(), tagInput = ref<HTMLInputElement>();
 const input = ref<InstanceType<typeof NoteBody>>();
 let scrollTop = 0;
+const panel = ref<HTMLElement>();
+const size = ref<{ width: number; height: number }>();
+let drag: { pointerId: number; insetX: number; insetY: number } | undefined;
+
+function startResize(event: PointerEvent) {
+  if (!event.isPrimary || event.button !== 0 || !panel.value) return;
+  const box = panel.value.getBoundingClientRect();
+  drag = { pointerId: event.pointerId, insetX: event.clientX - box.left, insetY: box.bottom - event.clientY };
+  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+}
+function moveResize(event: PointerEvent) {
+  if (!panel.value || drag?.pointerId !== event.pointerId || !(event.currentTarget as HTMLElement).hasPointerCapture(event.pointerId)) return;
+  const box = panel.value.getBoundingClientRect();
+  size.value = { width: Math.max(0, box.right - event.clientX + drag.insetX),
+    height: Math.max(0, event.clientY - box.top + drag.insetY) };
+}
+function keyResize(event: KeyboardEvent) {
+  if (!panel.value) return;
+  const { width, height } = panel.value.getBoundingClientRect();
+  switch (event.key) {
+    case 'ArrowLeft': size.value = { width: width + 16, height }; break;
+    case 'ArrowRight': size.value = { width: width - 16, height }; break;
+    case 'ArrowDown': size.value = { width, height: height + 16 }; break;
+    case 'ArrowUp': size.value = { width, height: height - 16 }; break;
+    case 'Home': size.value = undefined; break;
+    default: return;
+  }
+  event.preventDefault();
+}
 
 function change(fields: Partial<{ title: string; body: string; tags: readonly string[] }>) {
   if (draft.value?.replacing) return;
@@ -99,75 +128,97 @@ async function follow(event: MouseEvent) {
       <rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/>
     </svg><span>{{ t('noteList') }}</span>
   </button>
-  <section v-if="mode !== 'closed'" id="quick-note" :aria-label="t(mode === 'list' ? 'noteList' : 'quickNote')"
+  <section ref="panel" :class="{ resized: size }" :style="size && { width: size.width + 'px', height: size.height + 'px' }" v-if="mode !== 'closed'" id="quick-note" :aria-label="t(mode === 'list' ? 'noteList' : 'quickNote')"
     @keydown.esc.stop="!$event.isComposing && close()">
-    <div class="quick-note-heading">
-      <h2 v-if="mode === 'list'">{{ t('noteList') }}</h2>
-      <template v-else>
-        <button type="button" :aria-label="t('noteBack')" :title="t('noteBack')" @click="list">‹</button>
-        <input v-if="!preview" v-model="title" class="quick-title" :placeholder="t('noteTitle')" :aria-label="t('noteTitle')" :readonly="draft?.replacing">
-        <h2 v-else>{{ draft ? noteName(draft, t('noteUntitled')) : t('noteUntitled') }}</h2>
-        <button type="button" :aria-label="t(preview ? 'editNote' : 'previewTab')" :title="t(preview ? 'editNote' : 'previewTab')" @click="togglePreview">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path v-if="preview" d="m4 20 1-5L16 4l4 4L9 19l-5 1Zm10-14 4 4" />
-            <g v-else><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></g>
-          </svg>
-        </button>
+    <div class="quick-content">
+      <div class="quick-note-heading">
+        <h2 v-if="mode === 'list'">{{ t('noteList') }}</h2>
+        <template v-else>
+          <button type="button" :aria-label="t('noteBack')" :title="t('noteBack')" @click="list">‹</button>
+          <input v-if="!preview" v-model="title" class="quick-title" :placeholder="t('noteTitle')" :aria-label="t('noteTitle')" :readonly="draft?.replacing">
+          <h2 v-else>{{ draft ? noteName(draft, t('noteUntitled')) : t('noteUntitled') }}</h2>
+          <button type="button" :aria-label="t(preview ? 'editNote' : 'previewTab')" :title="t(preview ? 'editNote' : 'previewTab')" @click="togglePreview">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path v-if="preview" d="m4 20 1-5L16 4l4 4L9 19l-5 1Zm10-14 4 4" />
+              <g v-else><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></g>
+            </svg>
+          </button>
+        </template>
+        <button type="button" :aria-label="t('closeQuickNote')" :title="t('closeQuickNote')" @click="close">×</button>
+      </div>
+      <template v-if="mode === 'list'">
+        <input ref="search" v-model="query" class="quick-search" type="search" :aria-label="t('noteSearch')" :placeholder="t('noteSearch')">
+        <p v-if="loading" role="status">{{ t('loading') }}</p>
+        <div v-if="loadProblem" role="alert">{{ problemText(language, loadProblem).message }} <button @click="editor.load(true)">{{ t('retry') }}</button></div>
+        <ul v-if="entries.length" class="quick-list">
+          <li v-for="entry in entries" :key="entry.id"><button type="button" @click="edit(entry.id)">
+            <span>{{ noteName(entry, t('noteUntitled')) }}</span>
+            <small v-if="entry.problem">{{ t('noteSaveFailed') }}</small><small v-else-if="entry.id === id">{{ t('noteCurrent') }}</small>
+          </button></li>
+        </ul>
+        <p v-else-if="!loading && !loadProblem">{{ t(query ? 'noteSearchEmpty' : 'noteEmpty') }}</p>
+        <button type="button" class="quick-new" @click="edit()"><span aria-hidden="true">＋</span> {{ t('noteNew') }}</button>
       </template>
-      <button type="button" :aria-label="t('closeQuickNote')" :title="t('closeQuickNote')" @click="close">×</button>
+      <template v-else>
+        <NoteBody v-show="!preview" ref="input" :model-value="draft?.body ?? ''" :label="t('noteBody')" :readonly="!!draft?.replacing"
+          @update:model-value="change({ body: $event })" />
+        <div v-if="preview" class="quick-preview">
+          <div v-if="draft?.body" class="markdown" v-html="renderNote(draft.body, t('noteBlockLink'))" @copy="copyNotePreview" @click="follow"></div>
+          <p v-else>{{ t('noteUntitled') }}</p>
+          <p v-if="visitProblem" role="alert">{{ visitProblem }}</p>
+        </div>
+        <div class="quick-tags" :aria-label="t('noteTags')">
+          <template v-for="value in draft?.tags" :key="value">
+            <span v-if="preview">{{ value }}</span>
+            <button v-else type="button" :aria-label="t('noteRemoveTag') + ' ' + value" :disabled="draft?.replacing"
+              @click="change({tags: draft!.tags.filter(item => item !== value)})">{{ value }} ×</button>
+          </template>
+          <template v-if="!preview">
+            <form v-if="addingTag" @submit.prevent="addTag">
+              <input ref="tagInput" v-model="tag" :aria-label="t('noteTag')" :placeholder="t('noteTag')" list="quick-tag-options">
+              <datalist id="quick-tag-options"><option v-for="value in knownTags" :key="value" :value="value" /></datalist>
+              <button :disabled="!tag.trim()" type="submit">{{ t('noteAddTag') }}</button>
+            </form>
+            <button v-else type="button" :disabled="draft?.replacing" @click="addingTag = true; nextTick(() => tagInput?.focus())">＋ {{ t('noteTags') }}</button>
+          </template>
+        </div>
+        <NoteSaveStatus v-if="draft" :draft="draft" :editor="editor" :language="language" show-saved />
+      </template>
     </div>
-    <template v-if="mode === 'list'">
-      <input ref="search" v-model="query" class="quick-search" type="search" :aria-label="t('noteSearch')" :placeholder="t('noteSearch')">
-      <p v-if="loading" role="status">{{ t('loading') }}</p>
-      <div v-if="loadProblem" role="alert">{{ problemText(language, loadProblem).message }} <button @click="editor.load(true)">{{ t('retry') }}</button></div>
-      <ul v-if="entries.length" class="quick-list">
-        <li v-for="entry in entries" :key="entry.id"><button type="button" @click="edit(entry.id)">
-          <span>{{ noteName(entry, t('noteUntitled')) }}</span>
-          <small v-if="entry.problem">{{ t('noteSaveFailed') }}</small><small v-else-if="entry.id === id">{{ t('noteCurrent') }}</small>
-        </button></li>
-      </ul>
-      <p v-else-if="!loading && !loadProblem">{{ t(query ? 'noteSearchEmpty' : 'noteEmpty') }}</p>
-      <button type="button" class="quick-new" @click="edit()"><span aria-hidden="true">＋</span> {{ t('noteNew') }}</button>
-    </template>
-    <template v-else>
-      <NoteBody v-show="!preview" ref="input" :model-value="draft?.body ?? ''" :label="t('noteBody')" :readonly="!!draft?.replacing"
-        @update:model-value="change({ body: $event })" />
-      <div v-if="preview" class="quick-preview">
-        <div v-if="draft?.body" class="markdown" v-html="renderNote(draft.body, t('noteBlockLink'))" @copy="copyNotePreview" @click="follow"></div>
-        <p v-else>{{ t('noteUntitled') }}</p>
-        <p v-if="visitProblem" role="alert">{{ visitProblem }}</p>
-      </div>
-      <div class="quick-tags" :aria-label="t('noteTags')">
-        <template v-for="value in draft?.tags" :key="value">
-          <span v-if="preview">{{ value }}</span>
-          <button v-else type="button" :aria-label="t('noteRemoveTag') + ' ' + value" :disabled="draft?.replacing"
-            @click="change({tags: draft!.tags.filter(item => item !== value)})">{{ value }} ×</button>
-        </template>
-        <template v-if="!preview">
-          <form v-if="addingTag" @submit.prevent="addTag">
-            <input ref="tagInput" v-model="tag" :aria-label="t('noteTag')" :placeholder="t('noteTag')" list="quick-tag-options">
-            <datalist id="quick-tag-options"><option v-for="value in knownTags" :key="value" :value="value" /></datalist>
-            <button :disabled="!tag.trim()" type="submit">{{ t('noteAddTag') }}</button>
-          </form>
-          <button v-else type="button" :disabled="draft?.replacing" @click="addingTag = true; nextTick(() => tagInput?.focus())">＋ {{ t('noteTags') }}</button>
-        </template>
-      </div>
-      <NoteSaveStatus v-if="draft" :draft="draft" :editor="editor" :language="language" show-saved />
-    </template>
+    <button type="button" class="quick-resize" :aria-label="t('noteResize')" :title="t('noteResize')"
+      @pointerdown.prevent="startResize" @pointermove="moveResize" @lostpointercapture="drag = undefined" @keydown="keyResize">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="m3 5 8 8M3 10l3 3" />
+      </svg>
+    </button>
   </section>
 </template>
 <style scoped>
 #quick-note {
   position: absolute;
   inset: calc(100% + 4px) 8px auto auto;
-  width: min(380px, calc(100vw - 16px));
-  max-height: calc(100dvh - 100% - 12px);
-  overflow: auto;
-  padding: 12px;
+  --available-width: calc(100vw - 16px);
+  --available-height: calc(100dvh - 100% - 12px);
+  width: 380px;
+  min-width: min(300px, var(--available-width));
+  max-width: min(900px, var(--available-width));
+  min-height: min(220px, var(--available-height));
+  max-height: min(800px, var(--available-height));
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 24px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 6px 24px rgb(0 0 0 / .13);
+}
+.quick-content { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: auto; padding: 12px 12px 0; }
+.quick-content > * { flex-shrink: 0; }
+.resized .quick-list, .resized .quick-preview, .resized .note-body-editor { flex: 1 0 48px; height: auto; max-height: none; }
+.quick-resize { position: absolute; bottom: 0; left: 0; display: grid; place-items: center; width: 28px; height: 24px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: nesw-resize; touch-action: none; user-select: none; }
+@media (pointer: coarse) {
+  #quick-note { padding-bottom: 44px; }
+  .quick-resize { width: 44px; height: 44px; }
 }
 .quick-note-heading { display: flex; gap: 4px; align-items: center; margin-bottom: 8px; }
 .quick-note-heading h2 { flex: 1; margin: 0; font-size: 15px; }

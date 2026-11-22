@@ -105,6 +105,7 @@ description: "D020 项目内全局笔记与跨文件回访"
 - [x] T023 [US1] 在 src/core/notes.ts、保存服务和页面编辑器传递可选标题与标签，旧笔记可读。
 - [x] T024 [US2] 在 src/web/QuickNote.vue 和 App.vue 接通列表、新建、编辑与原页选文。
 - [x] T025 [US2] 两个编辑入口共用正文引用组件，串行验证跨篇复制、删除、撤销和失败恢复。
+- [x] T026 [US2] 浮层支持指针和键盘调宽高，在宽窄视口验证两轴限值、正文空间和会话内切篇。
 
 ## Dependencies & Execution Order
 
