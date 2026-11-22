@@ -340,6 +340,7 @@ try {
     await shot('desktop-failure');
     const trigger = top().locator('.new-note'), quick = page.locator('#quick-note');
     await trigger.click();
+    await quick.getByRole('button', { name: '新建笔记' }).click();
     await quick.getByRole('button', { name: '预览', exact: true }).click();
     await quick.getByRole('button', { name: '编辑', exact: true }).waitFor();
     await quick.getByRole('button', { name: '关闭随手记' }).click();

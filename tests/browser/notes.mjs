@@ -1,3 +1,4 @@
+import { editorText, newQuickNote } from './note-controls.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { EventEmitter, once } from 'node:events';
@@ -26,7 +27,7 @@ const firstTag = '边界,数量';
 const secondTag = ' 待核对 ';
 const button = (name, target = page) => target.getByRole('button', { name, exact: true });
 const quick = () => page.locator('#quick-note');
-const quickBody = () => quick().locator('textarea');
+const quickBody = () => quick().getByRole('textbox', { name: /^(笔记正文|Note body)$/u });
 const quickSaved = () => quick().getByRole('status').filter({ hasText: /^(已保存|Saved)$/u }).waitFor();
 const body = (target = page) => notes(target).getByRole('textbox', { name: '笔记正文' });
 const notes = (target = page) => target.locator('#notes');
@@ -74,7 +75,7 @@ async function selectText(locator, text) {
 async function selectQuote(text) {
   await selectText(block().locator('.explanation-text p'), text);
   await button('加入笔记').click();
-  await notes().getByRole('blockquote').getByText(text, { exact: true }).waitFor();
+  await quick().locator('.note-reference').getByText(text, { exact: true }).waitFor();
 }
 
 async function addTag(text) {
@@ -103,20 +104,21 @@ async function unlock() {
 
 try {
   await start();
-  const newNote = button('新建笔记');
+  const newNote = button('笔记列表');
   const writes = [];
   page.on('request', req => { if (req.method() === 'PUT' && req.url().endsWith('/api/notes')) writes.push(req.postDataJSON()); });
   const originalFile = await raw().catch(error => { assert.equal(error.code, 'ENOENT'); return null; });
   await newNote.dblclick();
+  await button('新建笔记', quick()).click();
   await quickBody().locator(':scope:focus').waitFor();
-  assert.equal(await quickBody().inputValue(), '');
+  assert.equal(await editorText(quickBody()), '');
   await button('预览', quick()).click();
   await button('编辑', quick()).press('Escape');
   await newNote.locator(':scope:focus').waitFor();
   await page.waitForTimeout(500);
   assert.equal(writes.length, 0);
   assert.equal(await raw().catch(error => { assert.equal(error.code, 'ENOENT'); return null; }), originalFile);
-  await newNote.click();
+  await newQuickNote(page);
   const put = page.waitForResponse(res => res.request().method() === 'PUT' && res.url().endsWith('/api/notes'));
   if (engine === 'firefox') await quickBody().fill('先写一个独立问题');
   else {
@@ -136,37 +138,20 @@ try {
   assert.equal(await block().locator('.source-pane').count(), 1);
   await selectText(block().locator('.source-line > span:last-child').filter({ hasText: /\w/u }).first());
   assert.equal(await button('加入笔记').count(), 0);
-  const beforeCancel = await raw();
   await selectQuote(firstQuote);
-  await button('取消', notes()).click();
-  assert.equal(await raw(), beforeCancel);
-  await button('文件讲解').click();
-  await selectQuote(firstQuote);
-  await button('新建笔记').click();
-  await quickBody().locator(':scope:focus').waitFor();
-  assert.equal(await quickBody().inputValue(), '');
-  assert.equal(await notes().getByRole('blockquote').innerText(), firstQuote);
-  await quickBody().fill('引文处理期间的随手记');
+  await quickBody().press('Control+End');
+  await page.keyboard.insertText('~~~text\n这里是尚未合上的示例');
   await quickSaved();
-  await quickBody().press('Escape');
-  assert.ok(await button('加入所选笔记').isDisabled());
-  assert.equal(await notes().getByRole('blockquote').innerText(), firstQuote);
-  await button('用这段选文新建').click();
-  await notes().getByRole('link', { name: firstQuote, exact: true }).waitFor();
-  await body().press('Control+End');
-  await page.keyboard.insertText('\n\n~~~text\n这里是尚未合上的示例');
-  await saved();
-
-  await button('文件讲解').click();
   await selectFile('src/service.mjs');
   assert.equal(await block().locator('.source-pane').count(), 0);
   await selectQuote(secondQuote);
-  assert.ok(await button('加入所选笔记').isDisabled());
-  await row(firstQuote).click();
-  await button('加入所选笔记').click();
-  await notes().getByRole('link', { name: secondQuote, exact: true }).waitFor();
-  await body().press('Control+Home');
+  await quickBody().press('Control+Home');
   await page.keyboard.insertText('这里为什么要先判断数量？\n\n[普通网址](https://example.org/)\n\n');
+  await quickSaved();
+  await quickBody().press('Escape');
+  await openNotes();
+  await row('这里为什么').click();
+  await button('编辑').click();
   await addTag(firstTag);
   await addTag(secondTag);
   await saved();
@@ -178,7 +163,7 @@ try {
   assert.equal(await notes().getByRole('link', { name: firstQuote, exact: true }).getAttribute('title'), '回到讲解块');
   await notes().locator('.note-preview').scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(run, 'linked-note.png') });
-  assert.equal((await disk()).length, 3);
+  assert.equal((await disk()).length, 2);
   evidence.checks.push('standalone create, selection from comparison and pure explanation, append and two literal tags');
 
   await restart();
@@ -190,11 +175,6 @@ try {
     await row('这里为什么').waitFor();
   }
   await filter.selectOption('');
-  await row('引文处理期间的随手记').click();
-  await button('编辑').click();
-  page.once('dialog', dialog => dialog.accept());
-  await button('删除笔记').click();
-  await row('引文处理期间的随手记').waitFor({ state: 'detached' });
   await row('这里为什么').click();
   await visit(firstQuote, 'src/rules.mjs');
   await openNotes();
@@ -245,19 +225,19 @@ try {
   await body().press('Control+Home');
   await page.keyboard.insertText('甲');
   await saved();
-  const firstEdit = await body().inputValue();
+  const firstEdit = await editorText(body());
   await body().press('Control+End');
   await page.keyboard.insertText('乙');
   await saved();
   await body().press('Control+z');
   await saved();
-  assert.equal(await body().inputValue(), firstEdit);
+  assert.equal(await editorText(body()), firstEdit);
   assert.equal((await disk())[0].body, firstEdit);
   await page.reload();
   await openNotes();
   await row('甲这里为什么').click();
   await button('编辑').click();
-  assert.equal(await body().inputValue(), firstEdit);
+  assert.equal(await editorText(body()), firstEdit);
   evidence.checks.push('Ctrl+Z after completed autosave, resave and refresh');
 
   let releaseFirst, releaseSecond;
@@ -284,7 +264,7 @@ try {
     const started = once(checkpoints, 'started', { signal: AbortSignal.timeout(15000) });
     releaseFirst();
     await started;
-    assert.equal(await body().inputValue(), '最新输入');
+    assert.equal(await editorText(body()), '最新输入');
     await notes().getByRole('status').filter({ hasText: '正在保存' }).waitFor();
     assert.equal((await disk())[0].body, '较早输入');
   } finally { releaseFirst(); releaseSecond(); }
@@ -306,19 +286,20 @@ try {
     assert.equal(response.status(), 422);
     assert.equal((await response.json()).error.code, 'NOTE_WRITE_FAILED');
     await notes().getByRole('alert').filter({ hasText: '笔记未保存' }).waitFor();
-    assert.equal(await body().inputValue(), '真实写失败的草稿');
+    assert.equal(await editorText(body()), '真实写失败的草稿');
     assert.equal(await raw(), before);
     assert.ok((await readdir(path.dirname(file))).every(name => !name.startsWith('.aftertaste-notes-')));
     await body().fill('失败后继续编辑的草稿');
     await page.screenshot({ path: path.join(run, 'write-failed.png') });
-    await button('新建笔记').click();
+    await newQuickNote(page);
     const failure = page.waitForResponse(res => res.request().method() === 'PUT' && res.url().endsWith('/api/notes'));
     await quickBody().fill('锁定期间另一篇随手记');
     await quickBody().press('Escape');
     assert.equal((await failure).status(), 422);
-    await button('新建笔记').click();
-    assert.equal(await quickBody().inputValue(), '锁定期间另一篇随手记');
-    assert.equal(await body().inputValue(), '失败后继续编辑的草稿');
+    await button('笔记列表').click();
+    await quick().getByRole('button').filter({hasText:'锁定期间另一篇随手记'}).click();
+    assert.equal(await editorText(quickBody()), '锁定期间另一篇随手记');
+    assert.equal(await editorText(body()), '失败后继续编辑的草稿');
     await quick().getByRole('alert').waitFor();
     assert.equal(await raw(), before);
     await unlock();
@@ -333,7 +314,7 @@ try {
     await row('失败后继续编辑的草稿').click();
     await notes().getByRole('alert').waitFor();
     await button('编辑').click();
-    assert.equal(await body().inputValue(), '失败后继续编辑的草稿');
+    assert.equal(await editorText(body()), '失败后继续编辑的草稿');
     await button('重试保存').click();
     await saved();
     assert.deepEqual((await disk()).map(record => record.body), ['失败后继续编辑的草稿']);
@@ -341,7 +322,7 @@ try {
   }
 
   for (const committed of [false, true]) {
-    await button('新建笔记').click();
+    await newQuickNote(page);
     const original = `断开前的笔记 ${committed}`;
     const changed = `结果未知的编辑 ${committed}`;
     await quickBody().fill(original);
@@ -365,7 +346,7 @@ try {
   }
   evidence.checks.push('delete after interrupted save checks confirmed or committed candidate revision');
 
-  await button('新建笔记').click();
+  await newQuickNote(page);
   await quickBody().fill('另一条可并行编辑');
   await quickSaved();
   await quickBody().press('Escape');
@@ -385,7 +366,7 @@ try {
   await button('编辑').click();
   await body().fill('陈旧草稿保留');
   await notes().getByRole('alert').filter({ hasText: '已保存版本已变化' }).waitFor();
-  assert.equal(await body().inputValue(), '陈旧草稿保留');
+  assert.equal(await editorText(body()), '陈旧草稿保留');
   assert.equal((await disk())[0].body, '第二页面修改第一条');
   await other.close();
   evidence.checks.push('two real pages save distinct records, stale edit retains unsaved draft and durable edit');
@@ -393,31 +374,30 @@ try {
   await page.getByRole('combobox', { name: '界面语言' }).selectOption('en');
   await page.setViewportSize({ width: 390, height: 760 });
   await notes().getByRole('alert').filter({ hasText: 'The saved version' }).waitFor();
-  assert.equal(await page.getByRole('textbox', { name: 'Note body' }).inputValue(), '陈旧草稿保留');
+  assert.equal(await editorText(page.getByRole('textbox', { name: 'Note body' })), '陈旧草稿保留');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   await button('Preview').click();
   await notes().locator('.note-preview').getByText('陈旧草稿保留').waitFor();
   assert.equal(await notes().locator('#note-body').isVisible(), false);
   await notes().locator('.note-view-switch').getByRole('button', { name: 'Edit', exact: true }).click();
-  assert.equal(await notes().locator('#note-body').inputValue(), '陈旧草稿保留');
+  assert.equal(await editorText(notes().locator('#note-body')), '陈旧草稿保留');
   await button('Done').click();
   await notes().locator('.note-preview').getByText('陈旧草稿保留').waitFor();
   await page.screenshot({ path: path.join(run, 'narrow-en.png') });
   const stored = await disk();
-  await button('New note').press('Enter');
+  await button('Note list').press('Enter');
+  await button('New note', quick()).press('Enter');
   await quickBody().locator(':scope:focus').waitFor();
-  assert.equal(await quickBody().inputValue(), '');
+  assert.equal(await editorText(quickBody()), '');
   await quickBody().fill(Array.from({ length: 40 }, (_, i) => 'Line ' + i).join('\n'));
-  const selection = await quickBody().evaluate(el => {
-    el.setSelectionRange(130, 136, 'backward');
-    el.scrollTop = 200;
-    return [el.selectionStart, el.selectionEnd, el.selectionDirection, el.scrollTop];
-  });
-  assert.ok(selection[3] > 0);
+  await quickBody().press('Control+End');
+  await quickBody().press('Shift+ArrowLeft');
+  const selection = () => quickBody().evaluate(el => [getSelection().toString(), el.closest('.cm-scroller').scrollTop]);
+  const beforePreview = await selection();
+  assert.ok(beforePreview[0] && beforePreview[1] > 0);
   await button('Preview', quick()).click();
   await button('Edit', quick()).click();
-  assert.deepEqual(await quickBody().evaluate(el =>
-    [el.selectionStart, el.selectionEnd, el.selectionDirection, el.scrollTop]), selection);
+  assert.deepEqual(await selection(), beforePreview);
   await quickBody().fill('Narrow keyboard note');
   await quickSaved();
   assert.deepEqual((await disk()).filter(note => note.body !== 'Narrow keyboard note'), stored);

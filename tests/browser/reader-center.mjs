@@ -439,7 +439,9 @@ try {
   report.noteTarget = { selection: noteSelection, release: noteRelease, center: noteCenter };
   assert.ok(noteCenter.hit, 'The visible center of Add to note must receive the mouse click');
   await page.mouse.click(noteCenter.x, noteCenter.y);
-  await page.locator('#notes blockquote').getByText(noteSelection, { exact: true }).waitFor();
+  await page.locator('#quick-note .note-reference').getByText(noteSelection, { exact: true }).waitFor();
+  await page.locator('#quick-note').getByRole('status').filter({hasText: '已保存'}).waitFor();
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '文件讲解', exact: true }).click();
   report.checks.push('English control and rejection feedback, native selection and resized whole-block fallbacks round trip, actual mouse hit adds the entire wrapped passage to notes');
 
@@ -543,9 +545,13 @@ try {
       element.scrollWidth <= element.clientWidth + 1;
   }), 'The full long document path must wrap within the narrow viewport');
   await screenshot('candidate-narrow-document-path');
-  assert.deepEqual(await readRecords(), originalRecords);
+  const [bookmarksAfter, marksAfter, notesAfter] = await readRecords();
+  assert.deepEqual([bookmarksAfter, marksAfter], originalRecords.slice(0, 2));
+  const storedNotes = JSON.parse(notesAfter).notes;
+  assert.deepEqual(storedNotes.slice(0, -1), JSON.parse(originalRecords[2]).notes);
+  assert.ok(storedNotes.at(-1).body.includes(noteSelection));
   assert.deepEqual(report.errors, []);
-  report.checks.push('indentation and blank source row, stationary gutter and visible long-line end, last source row reachable in short window, quotes/newline survive native paste, fallback diagnosis visible, long document path wraps without horizontal clipping, records unchanged');
+  report.checks.push('indentation and blank source row, stationary gutter and visible long-line end, last source row reachable in short window, quotes/newline survive native paste, fallback diagnosis visible, long document path wraps without horizontal clipping, existing records preserved');
   report.passed = true;
 } catch (error) {
   report.failure = error.stack;

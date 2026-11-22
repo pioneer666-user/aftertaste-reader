@@ -253,6 +253,8 @@
 
 - [x] T073 [US10] 在 `src/web/style.css` 处理读取失败提示和随手记同开的层级，用 `tests/browser/reader-file-switch.mjs` 实点预览、关闭及原提示（D037 独审 R1）。
 
+- [x] T074 [US10] 将顶栏切为笔记列表，验证六页、原页加入、历史与触屏。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。

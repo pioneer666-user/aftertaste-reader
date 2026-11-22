@@ -14,6 +14,8 @@
 
 **D029 增量** `codex/feat-reader-continuous-corners` @`703ea8c`，产品基线 dev @`663c1e2`。[批准依据](../../docs/work/2026/11/D029-reader-continuous-corners/task.md)。
 
+**D037 试读调整**　[作者确认的笔记列表与整块引用](../../docs/work/2026/11/D037-quick-note-overlay/amendments.md)。
+
 **D037 增量**　[浅色选区浮条与右上角随手记](../../docs/work/2026/11/D037-quick-note-overlay/task.md)，批准提交 `106e170`。
 
 **D036 增量**　在现有文件阅读与项目笔记场景内实施[文件讲解选文与新建笔记](../../docs/work/2026/11/D036-reader-note-actions/task.md)，批准提交 `d3e42c0`。

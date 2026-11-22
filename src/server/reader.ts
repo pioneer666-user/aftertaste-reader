@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import Fastify from 'fastify';
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -72,6 +73,7 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   const loopStore = new LoopFileStore();
   const loops = new LoopReaderService(project, new LoopService(source, documents, new GraphService(source, graphStore), loopStore),
     loopStore, relativePath => new LayoutFileStore(project, relativePath));
+  const contentPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; font-src 'self'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
   const server = Fastify({ logger: false, trustProxy: false, exposeHeadRoutes: false });
   server.addHook('onRequest', async (request, reply) => {
     reply.headers({
@@ -80,7 +82,7 @@ export async function startReader(projectRoot: string, port: number = 4317) {
       'Referrer-Policy': 'no-referrer',
       'Cross-Origin-Resource-Policy': 'same-origin',
       'X-Frame-Options': 'DENY',
-      'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; font-src 'self'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      'Content-Security-Policy': contentPolicy,
     });
     const address = server.server.address();
     const actualPort = typeof address === 'object' && address ? address.port : port;
@@ -135,7 +137,13 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   });
   server.setNotFoundHandler((_request, reply) => reply.code(404).send({ ok: false,
     error: readerProblem(new ReaderError('NOT_FOUND', '该阅读资源不存在。', '从阅读页面选择已有讲解。')) }));
-  for (const [url, asset] of assets) server.get(url, async (_request, reply) => reply.type(asset.type).send(asset.content));
+  for (const [url, asset] of assets) server.get(url, async (_request, reply) => {
+    reply.type(asset.type);
+    if (url !== '/') return reply.send(asset.content);
+    const nonce = randomBytes(18).toString('base64');
+    reply.header('Content-Security-Policy', contentPolicy.replace("style-src 'self'", `style-src 'self' 'nonce-${nonce}'`));
+    return reply.send(asset.content.toString('utf8').replace('__READER_STYLE_NONCE__', nonce));
+  });
   server.get('/api/documents', async request => {
     if (Object.keys(request.query as object).length > 0) throw new SourceError('INVALID_ARGUMENT', '列表参数无效。', '直接读取当前项目的资料列表。');
     return { ok: true, ...await reader.list() };

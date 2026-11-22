@@ -1,3 +1,4 @@
+import { editorText, newQuickNote } from './note-controls.mjs';
 import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { appendFile, copyFile, cp, mkdir, mkdtemp, readFile, rename, writeFile } from 'node:fs/promises';
@@ -473,18 +474,21 @@ async function checkHistory() {
     getSelection().setBaseAndExtent(el.firstChild, 0, el.firstChild, 6);
   });
   await page.locator('.selection-copy-action').waitFor();
-  await top().getByRole('button', { name: '新建笔记' }).click();
+  await newQuickNote(page);
   const panel = page.locator('#quick-note');
-  const body = panel.locator('textarea');
+  const body = panel.getByRole('textbox', {name: '笔记正文'});
   await body.locator(':scope:focus').waitFor();
-  assert.equal(await body.inputValue(), '');
+  assert.equal(await editorText(body), '');
   await body.fill('**接口**讲解中段的独立想法');
-  await body.evaluate(el => el.setSelectionRange(2, 4, 'backward'));
+  await body.press('Home');
+  for (let i = 0; i < 4; i++) await body.press('ArrowRight');
+  await body.press('Shift+ArrowLeft');
+  await body.press('Shift+ArrowLeft');
   await button(panel, '预览').click();
   await panel.locator('strong').filter({ hasText: /^接口$/u }).waitFor();
   await shot('quick-note-preview');
   await button(panel, '编辑').click();
-  assert.deepEqual(await body.evaluate(el => [el.selectionStart, el.selectionEnd, el.selectionDirection]), [2, 4, 'backward']);
+  assert.equal(await page.evaluate(() => getSelection().toString()), '接口');
   await page.keyboard.insertText('API');
   await panel.getByRole('status').filter({ hasText: /^已保存$/u }).waitFor();
   assert.ok((await readJSON(path.join(data, 'notes.json'))).notes.some(note => note.body === '**API**讲解中段的独立想法'));
@@ -624,7 +628,7 @@ async function checkRecords() {
     await note.and(notes().locator('[aria-current="true"]')).waitFor();
     await follow.locator(':scope:focus').waitFor();
     assert.ok(Math.abs((await follow.boundingBox()).y - Number(departure)) < 2, 'same sentence stays at the reading position after the old error clears');
-    assert.equal(await body.inputValue(), draft);
+    assert.equal(await editorText(body), draft);
     assert.equal(await notes().locator('#note-tag-filter').inputValue(), '订单');
     assert.ok(await notes().locator('.record-detail').evaluate(pane => pane.scrollTop > 0));
     await notes().locator('.note-detail').getByText('正在保存…', { exact: true }).waitFor();
@@ -735,7 +739,7 @@ async function checkHeader(width, language) {
   for (const key of keys) {
     await open(key);
     await tick();
-    const newNote = top().getByRole('button', { name: language === 'en' ? 'New note' : '新建笔记', exact: true });
+    const newNote = top().getByRole('button', { name: language === 'en' ? 'Note list' : '笔记列表', exact: true });
     assert.ok(await newNote.isVisible());
     assert.equal(await newNote.locator('span').isVisible(), width > 950);
     assert.ok(await newNote.evaluate(el => {
@@ -745,7 +749,7 @@ async function checkHeader(width, language) {
     }));
     const geom = key === 'canvas' ? [await geometry(), await file(api).boundingBox()] : undefined;
     await newNote.click();
-    await page.locator('#quick-note textarea:focus').waitFor();
+    await page.locator('#quick-note input[type=search]:focus').waitFor();
     assert.equal(await top().locator('[data-page][aria-current="page"]').getAttribute('data-page'), key);
     const panel = await page.locator('#quick-note').boundingBox();
     assert.equal(panel.width, Math.min(380, width - 16));
@@ -894,8 +898,8 @@ async function checkTouch() {
         await top().locator('.refresh-documents').tap();
         await refresh;
         await top().locator('.new-note').tap();
-        await page.locator('#quick-note textarea:focus').waitFor();
-        assert.equal(await page.locator('#quick-note textarea').inputValue(), '');
+        await page.locator('#quick-note input[type=search]:focus').waitFor();
+        assert.equal(await page.locator('#quick-note input[type=search]').inputValue(), '');
         await page.getByRole('button', { name: 'Close quick note' }).tap();
         await upToDate(api);
       }
@@ -934,7 +938,8 @@ async function checkTouch() {
     else await strip.getByRole('status').filter({ hasText: '已复制' }).waitFor();
     await selectPassage();
     await add.tap();
-    assert.equal(await notes().getByRole('blockquote').innerText(), quote);
+    await page.locator('#quick-note .note-reference').getByText(quote, {exact:true}).waitFor();
+    await page.getByRole('button', {name:'关闭随手记'}).tap();
     report.touchSelection = { first, second };
 
     await open('canvas');

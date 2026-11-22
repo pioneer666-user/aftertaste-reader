@@ -1,3 +1,4 @@
+import { editorText, newQuickNote } from './note-controls.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { chmod, cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
@@ -101,10 +102,10 @@ try {
   const left = await inputBox.boundingBox(), right = await markdown.boundingBox();
   assert.ok(left.x + left.width <= right.x);
   await page.screenshot({ path: path.join(run, 'edit.png') });
-  const originalBody = await inputBox.inputValue();
+  const originalBody = await editorText(inputBox);
   const originalFile = await readFile(file, 'utf8');
-  const trigger = page.locator('.new-note'), quick = page.locator('#quick-note'), quickBody = quick.locator('textarea');
-  await trigger.click();
+  const trigger = page.locator('.new-note'), quick = page.locator('#quick-note'), quickBody = quick.getByRole('textbox', {name:'笔记正文'});
+  await newQuickNote(page);
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Input.imeSetComposition', { text: 'shou', selectionStart: 4, selectionEnd: 4 });
   await page.waitForTimeout(450);
@@ -121,8 +122,9 @@ try {
       assert.equal((await result.json()).error.code, 'NOTE_WRITE_FAILED');
       assert.equal(await readFile(file, 'utf8'), originalFile);
       await trigger.click();
+      await quick.locator('.quick-list button').filter({hasText:'随手记'}).click();
       await quick.getByRole('alert').waitFor();
-      assert.equal(await quickBody.inputValue(), '随手记');
+      assert.equal(await editorText(quickBody), '随手记');
       await page.screenshot({ path: path.join(run, 'quick-note-failure.png') });
     } else assert.equal(result.status(), 200);
   } finally {
@@ -142,7 +144,7 @@ try {
   const written = JSON.parse(await readFile(file, 'utf8')).notes;
   assert.deepEqual(written.slice(0, -1), JSON.parse(originalFile).notes);
   assert.equal(written.at(-1).body, '随手记');
-  assert.equal(await inputBox.inputValue(), originalBody);
+  assert.equal(await editorText(inputBox), originalBody);
   report.checks.push('组合输入未提交时零写入，提交立即关面板后原工作台仍在编辑；重读新笔记恰好一篇');
 
   await button(notes, '完成').click();
@@ -155,7 +157,7 @@ try {
   await button(notes, '预览').click();
   await markdown.getByText('窄窗写入并预览').waitFor();
   await notes.locator('.note-view-switch').getByRole('button', { name: '编辑' }).click();
-  assert.equal(await inputBox.inputValue(), '窄窗写入并预览');
+  assert.equal(await editorText(inputBox), '窄窗写入并预览');
   await notes.getByRole('status').filter({ hasText: /^已保存$/ }).waitFor();
   await button(notes, '完成').click();
   await markdown.getByText('窄窗写入并预览').waitFor();

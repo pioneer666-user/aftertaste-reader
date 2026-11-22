@@ -39,11 +39,11 @@ export class NotesService {
     } else {
       const { id, revision, body, tags } = action;
       if (stored?.revision === revision) {
-        if (stored.body === body && stored.tags.length === tags.length && tags.every((tag, i) => tag === stored.tags[i])) return stored;
+        if ((stored.title ?? '') === (action.title ?? '') && stored.body === body && stored.tags.length === tags.length && tags.every((tag, i) => tag === stored.tags[i])) return stored;
         throw noteConflict();
       }
       if ((stored?.revision ?? null) !== action.previousRevision) throw noteConflict();
-      note = { id, revision, body, tags };
+      note = { id, revision, body, tags, ...(action.title ? { title: action.title } : {}) };
       if (stored) notes[index] = note;
       else notes.push(note);
     }

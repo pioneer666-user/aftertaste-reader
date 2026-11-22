@@ -102,6 +102,10 @@ description: "D020 项目内全局笔记与跨文件回访"
 - [x] T021 [US1] 在 `src/web/notes-editor.ts`、`ProjectNotes.vue`、`QuickNote.vue` 共享保存队列，按首次输入建稿、原地预览与关闭回焦。
 - [x] T022 [US3] 用 `tests/browser/notes.mjs` 核空白、立即关闭、真失败恢复和后台引文隔离，更新 `docs/usage/file-reader.md`。
 
+- [x] T023 [US1] 在 src/core/notes.ts、保存服务和页面编辑器传递可选标题与标签，旧笔记可读。
+- [x] T024 [US2] 在 src/web/QuickNote.vue 和 App.vue 接通列表、新建、编辑与原页选文。
+- [x] T025 [US2] 两个编辑入口共用正文引用组件，串行验证跨篇复制、删除、撤销和失败恢复。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
