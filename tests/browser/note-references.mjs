@@ -194,6 +194,13 @@ try {
   await panel.getByRole('searchbox').fill('审计问题');
   await panel.locator('.quick-list button').click();
   assert.equal(await title.inputValue(),'审计问题');
+  const gripBox = await grip.boundingBox(), tagBox = await btn('移除标签 审计').boundingBox();
+  const addBox = await btn('＋ 标签').boundingBox();
+  assert.ok(gripBox.x + gripBox.width <= tagBox.x && tagBox.x + tagBox.width <= addBox.x);
+  for (const box of [tagBox, addBox]) {
+    assert.ok(Math.abs((box.y + box.height / 2) - (gripBox.y + gripBox.height / 2)) <= 1);
+  }
+  await panel.screenshot({path:path.join(run,'note-footer.png')});
   await btn('移除标签 审计').click();
   await title.fill('重命名后');
   await saved();
@@ -207,6 +214,22 @@ try {
   assert.deepEqual((await disk()).slice(0,original.length),original);
   assert.equal((await disk()).length,original.length+2);
   report.checks.push('原页捕获、命名、标签、搜索、重开已有篇、双向整删/撤销、跨笔记原格式剪贴、预览复制与工作台一致，原记录完整');
+  const longTags = Array.from({ length: 4 }, (_, i) => '需要回访的项目记录及其来源文件 ' + (i + 1));
+  for (const tag of longTags) {
+    await btn('＋ 标签').click();
+    await panel.getByRole('combobox', { name: '新标签' }).fill(tag);
+    await btn('添加标签').click();
+  }
+  await saved();
+  const tags = panel.locator('.quick-tags');
+  const wrapped = await tags.evaluate(el => ({
+    width: el.clientWidth, contentWidth: el.scrollWidth, height: el.clientHeight, contentHeight: el.scrollHeight,
+  }));
+  assert.ok(wrapped.contentHeight > wrapped.height && wrapped.contentWidth === wrapped.width);
+  await btn('移除标签 ' + longTags[0]).click();
+  await saved();
+  assert.deepEqual((await disk()).find(n => n.id === note.id).tags, longTags.slice(1));
+  report.footer = { gripBox, tagBox, addBox, wrapped };
   assert.deepEqual(report.errors,[]);
   await context.close();
   const touch = await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true, isMobile: true });

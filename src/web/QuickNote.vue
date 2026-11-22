@@ -169,32 +169,34 @@ async function follow(event: MouseEvent) {
           <p v-else>{{ t('noteUntitled') }}</p>
           <p v-if="visitProblem" role="alert">{{ visitProblem }}</p>
         </div>
-        <div class="quick-tags" :aria-label="t('noteTags')">
-          <template v-for="value in draft?.tags" :key="value">
-            <span v-if="preview">{{ value }}</span>
-            <button v-else type="button" :aria-label="t('noteRemoveTag') + ' ' + value" :disabled="draft?.replacing"
-              @click="change({tags: draft!.tags.filter(item => item !== value)})">{{ value }} ×</button>
-          </template>
-          <template v-if="!preview">
-            <form v-if="addingTag" @submit.prevent="addTag">
-              <input ref="tagInput" v-model="tag" :aria-label="t('noteTag')" :placeholder="t('noteTag')" list="quick-tag-options">
-              <datalist id="quick-tag-options"><option v-for="value in knownTags" :key="value" :value="value" /></datalist>
-              <button :disabled="!tag.trim()" type="submit">{{ t('noteAddTag') }}</button>
-            </form>
-            <button v-else type="button" :disabled="draft?.replacing" @click="addingTag = true; nextTick(() => tagInput?.focus())">＋ {{ t('noteTags') }}</button>
-          </template>
-        </div>
         <NoteSaveStatus v-if="draft?.problem" :draft="draft" :editor="editor" :language="language" show-saved />
       </template>
     </div>
-    <button type="button" class="quick-resize" :aria-label="t('noteResize')" :title="t('noteResize')"
-      @pointerdown.prevent="startResize" @pointermove="moveResize" @lostpointercapture="drag = undefined" @keydown="keyResize">
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
-        <circle cx="3" cy="3" r="1.25"/>
-        <circle cx="3" cy="8" r="1.25"/><circle cx="8" cy="8" r="1.25"/>
-        <circle cx="3" cy="13" r="1.25"/><circle cx="8" cy="13" r="1.25"/><circle cx="13" cy="13" r="1.25"/>
-      </svg>
-    </button>
+    <div class="quick-footer">
+      <button type="button" class="quick-resize" :aria-label="t('noteResize')" :title="t('noteResize')"
+        @pointerdown.prevent="startResize" @pointermove="moveResize" @lostpointercapture="drag = undefined" @keydown="keyResize">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
+          <circle cx="3" cy="3" r="1.25"/>
+          <circle cx="3" cy="8" r="1.25"/><circle cx="8" cy="8" r="1.25"/>
+          <circle cx="3" cy="13" r="1.25"/><circle cx="8" cy="13" r="1.25"/><circle cx="13" cy="13" r="1.25"/>
+        </svg>
+      </button>
+      <div v-if="mode === 'edit'" class="quick-tags" :aria-label="t('noteTags')">
+        <template v-for="value in draft?.tags" :key="value">
+          <span v-if="preview">{{ value }}</span>
+          <button v-else type="button" :aria-label="t('noteRemoveTag') + ' ' + value" :disabled="draft?.replacing"
+            @click="change({tags: draft!.tags.filter(item => item !== value)})">{{ value }} ×</button>
+        </template>
+        <template v-if="!preview">
+          <form v-if="addingTag" @submit.prevent="addTag">
+            <input ref="tagInput" v-model="tag" :aria-label="t('noteTag')" :placeholder="t('noteTag')" list="quick-tag-options">
+            <datalist id="quick-tag-options"><option v-for="value in knownTags" :key="value" :value="value" /></datalist>
+            <button :disabled="!tag.trim()" type="submit">{{ t('noteAddTag') }}</button>
+          </form>
+          <button v-else type="button" :disabled="draft?.replacing" @click="addingTag = true; nextTick(() => tagInput?.focus())">＋ {{ t('noteTags') }}</button>
+        </template>
+      </div>
+    </div>
   </section>
 </template>
 <style scoped>
@@ -210,19 +212,19 @@ async function follow(event: MouseEvent) {
   max-height: min(800px, var(--available-height));
   display: flex;
   flex-direction: column;
-  padding-bottom: 24px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 6px 24px rgb(0 0 0 / .13);
 }
-.quick-content { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: auto; padding: 12px 12px 0; }
+.quick-content { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: auto; padding: 12px 12px 3px; }
 .quick-content > * { flex-shrink: 0; }
 .resized .quick-list, .resized .quick-preview, .resized .note-body-editor { flex: 1 0 48px; height: auto; max-height: none; }
-.quick-resize { position: absolute; bottom: 0; left: 0; display: grid; place-items: center; width: 28px; height: 24px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: nesw-resize; touch-action: none; user-select: none; }
+.quick-footer { flex: none; display: flex; align-items: end; gap: 5px; padding-inline-end: 12px; }
+.quick-footer:has(.quick-tags > *) { padding-block: 4px; }
+.quick-resize { flex: none; display: grid; place-items: center; width: 28px; height: 24px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: nesw-resize; touch-action: none; user-select: none; }
 .quick-resize:is(:hover, :focus-visible, :active) { color: var(--accent); background: #edf4ee; }
 @media (pointer: coarse) {
-  #quick-note { padding-bottom: 44px; }
   .quick-resize { width: 44px; height: 44px; }
 }
 .quick-note-heading { display: flex; gap: 4px; align-items: center; margin-bottom: 8px; }
@@ -253,7 +255,9 @@ async function follow(event: MouseEvent) {
 .quick-list small { flex: none; color: var(--muted); }
 .quick-new { border-top: 1px solid var(--line); border-radius: 0; }
 .quick-tags, .quick-tags form { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
-.quick-tags { margin-top: 8px; }
+.quick-tags { align-self: center; min-width: 0; max-height: min(96px, 30dvh); overflow: auto; }
+.quick-tags form, .quick-tags input { min-width: 0; max-width: 100%; }
+.quick-footer:has(.quick-tags > *) .quick-resize { min-height: 32px; }
 .quick-tags button, .quick-tags span { overflow-wrap: anywhere; max-width: 100%; }
 .quick-note-heading h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .quick-preview > p { margin: 0; color: var(--muted); }
