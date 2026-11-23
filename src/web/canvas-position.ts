@@ -5,4 +5,5 @@ export interface CanvasPosition {
   viewport?: Viewport;
   edge: string;
   detailScroll: number;
+  panelOpen?: boolean;
 }

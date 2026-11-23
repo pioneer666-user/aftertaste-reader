@@ -76,3 +76,7 @@ node tests/browser/loop-reader.mjs
 ## D042 · 依赖图与闭环往返
 
 运行 `node tests/browser/loop-reading-panel.mjs`。选中校验步，点击底部展开、沿两个出口换步，再回原依赖图。多出口样例查第三个理由与目标。
+
+## D043 订单试读
+
+打开 order-quantity 的 resume 步，选择「建立对象这一步还没有改变集合」，复制后核 JSON，再加入笔记。从浮层及工作台重开引文。按 [D043 任务](../../docs/work/2026/11/D043-reading-qa-and-revision/task.md) 分别只问、同意补例和明确改写；对比文件与闭环 current、个人资料。

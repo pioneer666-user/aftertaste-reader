@@ -99,10 +99,12 @@ export class LoopService {
     return this.readSources(saved.projectRoot, parseSavedLoop(saved.raw, id));
   }
 
-  async readSources(projectRoot: string, loop: SavedLoop): Promise<ReadingLoop> {
+  async readSources(projectRoot: string, loop: SavedLoop, verifyStep?: string): Promise<ReadingLoop> {
     const projectPrefix = loop.project_prefix;
     const repositoryRoot = path.resolve(projectRoot, ...projectPrefix.split('/').filter(Boolean).map(() => '..'));
     const fixed = { projectRoot, repositoryRoot, projectPrefix, commit: loop.source_commit };
+    const step = verifyStep && loop.nodes.find(node => node.id === verifyStep);
+    if (step && !step.lines) await this.sources.read(fixed, step.path);
     const files = new Map<string, string[] | SourceError>();
     const sources: NodeSource[] = [];
     for (const node of loop.nodes) {

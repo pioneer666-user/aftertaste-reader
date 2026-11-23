@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
-import { blockLink, blockLinkPrefix, blockTarget } from '../core/notes.js';
-import type { BlockQuote, BlockTarget } from '../core/notes.js';
+import { blockLink, isNoteHref, blockTarget } from '../core/notes.js';
+import type { NoteQuote, NoteTarget } from '../core/notes.js';
 import NoteBody from './NoteBody.vue';
 import NoteSaveStatus from './NoteSaveStatus.vue';
 import { problemText, translate } from './i18n.js';
@@ -10,7 +10,7 @@ import { blockLinkInsertion, noteName } from './markdown.js';
 import { copyNotePreview, renderNote } from './note-preview.js';
 import type { NotesEditor } from './notes-editor.js';
 
-const props = defineProps<{ editor: NotesEditor; language: Language; visit: (target: BlockTarget) => Promise<string | undefined> }>();
+const props = defineProps<{ editor: NotesEditor; language: Language; visit: (target: NoteTarget) => Promise<string | undefined> }>();
 const t = (key: string) => translate(props.language, key);
 const mode = ref<'closed' | 'list' | 'edit'>('closed');
 const preview = ref(false), addingTag = ref(false);
@@ -79,7 +79,7 @@ async function edit(noteId = '') {
   input.value?.focus();
 }
 
-async function addQuote(quote: BlockQuote) {
+async function addQuote(quote: NoteQuote) {
   // An explicit capture starts its own note unless the reader is already editing one here.
   if (mode.value !== 'edit' || draft.value?.replacing) await edit();
   preview.value = false;
@@ -111,7 +111,7 @@ function addTag() {
 }
 async function follow(event: MouseEvent) {
   const href = (event.target as Element).closest('a')?.getAttribute('href');
-  if (!href?.startsWith(blockLinkPrefix)) return;
+  if (!isNoteHref(href)) return;
   event.preventDefault();
   const target = blockTarget(href);
   const current = id.value;
@@ -216,6 +216,20 @@ async function follow(event: MouseEvent) {
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 6px 24px rgb(0 0 0 / .13);
+}
+/* Leave the step text reachable while the reader appends another excerpt. */
+@media (min-width: 761px) {
+  :global(#app:has(.loops-active) #quick-note) {
+    right: calc(max(300px, 36vw) + 8px);
+    --available-width: calc(100vw - max(300px, 36vw) - 16px);
+  }
+}
+@media (max-width: 760px) {
+  :global(#app:has(.loops-active) #quick-note) {
+    position: fixed;
+    inset: auto 8px 8px;
+    --available-height: 40dvh;
+  }
 }
 .quick-content { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: auto; padding: 12px 12px 3px; }
 .quick-content > * { flex-shrink: 0; }

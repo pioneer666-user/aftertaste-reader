@@ -1,4 +1,4 @@
-import { blockLinkPrefix } from '../core/notes.js';
+import { blockLinkPrefix, stepLinkPrefix } from '../core/notes.js';
 import { renderNoteMarkdown } from './markdown.js';
 import { noteReferences } from './note-references.js';
 
@@ -21,7 +21,7 @@ export function noteParts(body: string, title: string, liftTitle: boolean) {
     offset = reference.to;
   }
   parts.push(body.slice(offset));
-  return renderNoteMarkdown(parts.join(''), { prefix: blockLinkPrefix, title, byMarker }, liftTitle);
+  return renderNoteMarkdown(parts.join(''), { prefix: blockLinkPrefix, stepPrefix: stepLinkPrefix, title, byMarker }, liftTitle);
 }
 
 export function copyNotePreview(event: ClipboardEvent, root = event.currentTarget, heading?: HTMLElement) {

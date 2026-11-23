@@ -28,3 +28,5 @@ Markdown 模式输出目标、串讲、顺序、来源定位、已存块解释�
 - `LOOP_INPUT_INVALID`、`LOOP_INPUT_READ_FAILED` 定位输入失败字段或文件。 `LOOP_BLOCK_INVALID`、`LOOP_LEGEND_INVALID` 定位欠缺的引用。直接 Git 或依赖图失败保留原诊断。
 - `LOOP_EXISTS` 表示 ID 已被占用。 `LOOP_NOT_FOUND` 表示未找到成品。 `LOOP_INVALID` 表示成品结构不合法。
 - `LOOP_PATH_UNSAFE` 拒绝不安全的资料入口，`LOOP_READ_FAILED` 和 `LOOP_WRITE_FAILED` 给出失败类别与位置。失败的同名创建保留旧成果；未发布的创建可用原 ID 重试。
+
+D043 的 revise-step 以固定提交、原文件 SHA-256、闭环 ID、步骤 ID 和字段为条件，stdin 仅为该字段的新讲解。成品与固定源码校验后同目录安全替换，重新读回核对。具体调用见[修订命令](../../../skills/aftertaste-reader/references/tools.md#revise-current)。

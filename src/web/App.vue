@@ -4,7 +4,8 @@ import type { DocumentEntry, ReaderProblem } from '../application/file-reader.js
 import type { ReadingDocument } from '../application/document-blocks.js';
 import type { LoopEntry } from '../application/loop-reader.js';
 import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
-import type { BlockTarget } from '../core/notes.js';
+import { blockTarget } from '../core/notes.js';
+import type { NoteTarget } from '../core/notes.js';
 import type { MarkEdit, ReaderMark, UnderstandingMark } from '../core/understanding-marks.js';
 import { bookmarkDraftsKey } from './bookmark-drafts.js';
 import type { BlockBookmarkDrafts } from './bookmark-drafts.js';
@@ -692,7 +693,35 @@ async function restorePosition(position: Position, current: () => boolean) {
 
 const notesEditor = useNotesEditor();
 
-const visitNoteBlock = (target: BlockTarget) => openDocument(target.documentPath, { block: target.blockId });
+async function visitNoteTarget(target: NoteTarget, initial = false): Promise<string | undefined> {
+  if ('documentPath' in target) return openDocument(target.documentPath, { block: target.blockId });
+  const { loopId, stepId } = target;
+  const origin = capturePosition();
+  const sequence = startNavigation();
+  const current = () => sequence === navigationSequence;
+  const existing = openedLoops.value.includes(loopId);
+  if (!existing) openedLoops.value.push(loopId);
+  await nextTick();
+  const graph = loopCanvas(loopId);
+  if (!graph) return t('graphPositionUnavailable');
+  try {
+    const problem = await graph.prepareStep(stepId, existing, current);
+    if (!current()) return;
+    if (problem) return problem + ' ' + loopId + ' · ' + stepId;
+  } catch (error) {
+    return problemText(language.value, failed(error)).message + ' ' + loopId + ' · ' + stepId;
+  }
+  rememberPosition(origin);
+  restoring = false;
+  readingLoading.value = false;
+  activatePage('loops');
+  showLoop(loopId);
+  catalogOpen.value = false;
+  graph.openStep(stepId);
+  if (initial) history[0] = capturePosition();
+  else pushPosition(capturePosition());
+  if (!loopsLoaded.value) void refreshLoops();
+}
 function visitRecord(target: Bookmark | UnderstandingMark) {
   return openDocument(target.documentPath, { block: target.blockId,
     ...('id' in target ? { bookmark: target.id } : { mark: target.blockId }) });
@@ -969,7 +998,10 @@ async function changeLanguage(event: Event) {
 }
 
 onMounted(() => {
-  if (window.location.hash === '#canvas-reading') {
+  const target = blockTarget(window.location.hash);
+  if (target && 'stepId' in target) {
+    void visitNoteTarget(target, true).then(problem => { if (problem) navigationProblem(problem); });
+  } else if (window.location.hash === '#canvas-reading') {
     activatePage('canvas');
     history[0] = capturePosition();
   }
@@ -1031,7 +1063,7 @@ onUnmounted(() => {
         :title="t('refresh')" :disabled="listLoading" @click="refresh(); refreshMarks()">
         <span class="refresh-documents-label">{{ t('refresh') }}</span><span class="refresh-documents-icon" aria-hidden="true"></span>
       </button>
-      <QuickNote ref="quick-note" :editor="notesEditor" :language="language" :visit="visitNoteBlock" />
+      <QuickNote ref="quick-note" :editor="notesEditor" :language="language" :visit="visitNoteTarget" />
       <label class="language-control"><span>{{ t('language') }}</span>
         <select :value="language" :aria-label="t('language')" @change="changeLanguage"><option value="zh-CN">简体中文</option><option value="en">English</option></select>
       </label>
@@ -1053,7 +1085,7 @@ onUnmounted(() => {
     v-bind="markListError ? { error: markListError } : {}"
     :visit="visitRecord" :refresh="refreshMarks" @select="showDetail('marks')" @filter-change="startNavigation" />
   <ProjectNotes :editor="notesEditor" v-show="view === 'notes'" :class="{ 'record-active': view === 'notes' }" ref="notes" :visible="view === 'notes'" :list-open="recordLists.notes"
-    :language="language" @select="showDetail('notes')" :visit="visitNoteBlock" />
+    :language="language" @select="showDetail('notes')" :visit="visitNoteTarget" />
   <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" ref="canvas" :active="view === 'canvas'"
     :route-choice="routeChoice" :tools-covered="canvasCatalogOpen" @read-route="readRoute" @clear-route="routeChoice = undefined; navigationButton?.focus()" :opening-document="openingDocument" :language="language" @read="openDocument" />
   <div id="loop-workspace" v-show="view === 'loops'" class="loop-workspace" :class="{ 'loops-active': view === 'loops' }" tabindex="-1">
@@ -1093,7 +1125,7 @@ onUnmounted(() => {
       </aside>
     </Teleport>
     <DependencyCanvas v-for="id in openedLoops" v-show="selectedLoop === id" :key="id" ref="loop-canvases" :loop-id="id"
-      :tools-covered="catalogOpen" :active="view === 'loops' && selectedLoop === id" :language="language" />
+      @add-to-notes="quickNote?.addQuote($event)" :tools-covered="catalogOpen" :active="view === 'loops' && selectedLoop === id" :language="language" />
   </div>
   <div v-show="view === 'reader'" class="workspace"
     :class="{ 'workspace-active': view === 'reader', 'with-navigation': !narrow && desktopOpen, 'file-switch-wait': fileSwitch?.placeholder }">

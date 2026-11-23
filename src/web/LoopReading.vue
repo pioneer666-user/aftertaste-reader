@@ -3,13 +3,16 @@ import { computed, nextTick, onUnmounted, ref, watch, watchPostEffect } from 'vu
 import type { ReadingLoop } from '../application/loops.js';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
+import BlockLocationControl from './BlockLocationControl.vue';
+import { useReadingSelection } from './reading-selection.js';
+import type { NoteQuote } from '../core/notes.js';
 import { renderMarkdown } from './markdown.js';
 
 const props = withDefaults(defineProps<{ reading: ReadingLoop; language: Language; selected: string; legendSelected?: boolean; panelOpen: boolean; active?: boolean }>(), {
   legendSelected: false,
   active: true,
 });
-const emit = defineEmits<{ select: [id: string] }>();
+const emit = defineEmits<{ select: [id: string]; addToNotes: [quote: NoteQuote] }>();
 const t = (key: string) => translate(props.language, key);
 const loop = computed(() => props.reading.loop);
 const nodes = computed(() => new Map(loop.value.nodes.map(node => [node.id, node])));
@@ -17,6 +20,22 @@ const step = computed(() => nodes.value.get(props.selected));
 const source = computed(() => props.reading.sources.find(item => item.node_id === props.selected));
 const incoming = computed(() => loop.value.edges.filter(edge => edge.to === props.selected));
 const choices = computed(() => loop.value.edges.filter(edge => edge.from === props.selected));
+const stepRoot = ref<HTMLElement>();
+const { selected: excerpt, anchor, clearSelection } = useReadingSelection(stepRoot,
+  () => props.active && props.panelOpen, () => step.value);
+function stepLocation(withSelection = false) {
+  const fields = { format: 'aftertaste-loop-step/v1', loop_id: loop.value.id, step_id: step.value?.id,
+    source_commit: loop.value.source_commit, ...(withSelection && excerpt.value && {
+      field: excerpt.value.element.dataset.quoteField, selection: excerpt.value.text,
+    }) };
+  return 'Aftertaste 闭环步骤定位\n```json\n' + JSON.stringify(fields, null, 2) + '\n```';
+}
+function addSelection() {
+  if (!step.value || !excerpt.value) return;
+  emit('addToNotes', { loopId: loop.value.id, stepId: step.value.id, text: excerpt.value.text });
+  window.getSelection()?.removeAllRanges();
+  clearSelection();
+}
 const stepHeading = ref<HTMLElement>();
 const sourceTrigger = ref<HTMLButtonElement>();
 const sourcePanel = ref<HTMLElement>();
@@ -165,13 +184,15 @@ onUnmounted(() => window.clearTimeout(closeTimer));
     </details>
   </div>
 
-  <section v-if="step" class="loop-step canvas-selection" :inert="!panelOpen" :data-reading-step="step.id" :aria-label="t('loopSelected')">
+  <section v-if="step" ref="stepRoot" class="loop-step canvas-selection" :inert="!panelOpen" :data-reading-step="step.id" :aria-label="t('loopSelected')">
+    <BlockLocationControl v-if="active && panelOpen" :key="step.id" step :location="stepLocation()" :language="language" />
+    <BlockLocationControl v-if="anchor && excerpt" step :anchor="anchor" :location="stepLocation(true)" :language="language" @add-to-notes="addSelection" />
     <h2 ref="stepHeading" class="loop-step-heading" tabindex="-1" aria-live="polite">{{ step.title }}</h2>
     <div class="loop-step-reading">
-      <div class="markdown loop-step-explanation" v-html="renderMarkdown(step.explanation)"></div>
+      <div data-quote-field="explanation" class="markdown loop-step-explanation" v-html="renderMarkdown(step.explanation)"></div>
       <template v-if="step.hint">
         <h3>{{ t('loopHint') }}</h3>
-        <div class="markdown loop-step-hint" v-html="renderMarkdown(step.hint)"></div>
+        <div data-quote-field="hint" class="markdown loop-step-hint" v-html="renderMarkdown(step.hint)"></div>
       </template>
     </div>
     <button v-if="step.lines" ref="sourceTrigger" type="button" class="loop-source-trigger"

@@ -104,7 +104,8 @@ try {
   await panel.waitFor();
   await settled();
   const check = lesson('check');
-  assert.deepEqual(await check.locator(':scope > *').evaluateAll(els => els.map(el => el.tagName)), ['H2','DIV','BUTTON','H3','UL','SECTION','DETAILS']);
+  assert.equal(await check.locator(':scope > .block-location-control').getByRole('button', { name: '复制步骤定位' }).count(), 1);
+  assert.deepEqual(await check.locator(':scope > :not(.block-location-control)').evaluateAll(els => els.map(el => el.tagName)), ['H2','DIV','BUTTON','H3','UL','SECTION','DETAILS']);
   assert.equal(await check.locator('details').evaluate(el => el.open), false);
   await shot('branch-reading');
   const bounds = await panel.boundingBox();
