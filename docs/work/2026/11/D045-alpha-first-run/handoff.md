@@ -6,7 +6,7 @@
 
 - **首次安装**使用[根 README](../../../../../README.md#首次安装)和[本地预构建包](../../../../../experiments/D045-alpha-first-run/.local/release-4e8c625/aftertaste-reader-0.0.0.tgz)。包 SHA-256 为 `156a4d5262180c184c972070597f199583539e2c15f7f226abf91d6aecd22559`，大小 490,233 字节。包内已有 CLI、页面、字体和 Skill。生成资料在被读项目，日常可以离线打开。
 - **试读**包含 14 篇完整文件讲解、依赖图和一条 16 步闭环，使用 Apache Answer v1.5.0 的固定提交。实际读图、源码对照、复制位置及关停重开已自测。独审 R2 通过，作者的教学体验验收待进行。[上游提交](https://github.com/apache/answer/commit/3f1ed50f6776452c11b6ffdbdc767cd1887d629b)
-- **候选** `4e8c6257739e09fe77665dc2b508fdfe7e8eff6b` 保留在本地 `codex/feat-alpha-first-run`，比较派单 `8bd5e7b`，产品基线 `dev@d1b5652`。作者试读使用同一安装包与复核版本的闭环。分支待验，`dev` 仍为 `d1b5652`，本仓无 `main`、`master` 或远程发布记录。[独审原文](review.md)
+- **Git** 作者于 2026-11-23 在本对话指示「合并到dev」。本地合并提交为 `5d1149f`，父提交为原 `dev@d1b5652` 和任务尖端 `f4c58f2`。合并结果与任务尖端的文件树一致，沿用成果候选 `4e8c6257739e09fe77665dc2b508fdfe7e8eff6b` 的自测和独审，比较派单 `8bd5e7b`。已切回 `dev` 并正常删除已合入的本地任务分支 `codex/feat-alpha-first-run`。本仓无 `main`、`master` 或远程发布记录。[独审原文](review.md)
 
 ## 依据与验证
 
@@ -43,7 +43,7 @@
 
 ## 本机资源与重开
 
-作者专用服务由执行会话的独立终端保留，PID `22696`，只监听 `127.0.0.1:4357`。试读项目与工具都在 `$env:TEMP\aftertaste D045 candidate` 下。独审端口 4358 与本次检查浏览器均已关闭。试读后可关闭对应终端。若从另一终端停止服务，先核端口的 PID 和命令行仍指向下方专用安装及项目。作者体验结束后再按任务归属清理。原有共用试读服务不在本次资源内。[监听归属](../../../../../experiments/D045-alpha-first-run/.local/release-4e8c625/author-service.json)
+作者专用服务由执行会话的独立终端保留，PID `22696`，只监听 `127.0.0.1:4357`。试读项目与工具都在 `$env:TEMP\aftertaste D045 candidate` 下。独审端口 4358 与本次检查浏览器均已关闭。试读后可关闭对应终端。若从另一终端停止服务，先核端口的 PID 和命令行仍指向下方专用安装及项目。作者体验结束后再按任务归属清理。合入 dev 后复核了安装包与闭环摘要、监听进程和闭环接口，仍可读到受审版本的 16 步。[监听归属](../../../../../experiments/D045-alpha-first-run/.local/release-4e8c625/author-service.json)
 
 服务停止后，在本机 PowerShell 重新启动，随后用回执开头的链接回到同一步。
 
