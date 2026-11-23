@@ -437,6 +437,10 @@ try {
   await dep(page).locator('.loop-group-menu').waitFor({ state: 'hidden' });
   assert.equal(await more.getAttribute('aria-expanded'), 'false');
   await more.press('Enter');
+  await dep(page).getByRole('button', { name: /解散分组/u }).press('Tab');
+  assert.ok(await dep(page).locator('.dependency-minimap').evaluate(el => el === document.activeElement));
+  assert.equal(await more.getAttribute('aria-expanded'), 'false');
+  await more.press('Enter');
   await page.keyboard.press('Escape');
   assert.ok(await more.evaluate(el => el === document.activeElement));
   await more.press('Enter');

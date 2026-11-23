@@ -505,7 +505,7 @@ async function openGroupMenu(id: string, event: MouseEvent) {
 
 function leaveGroupMenu(event: FocusEvent) {
   const next = event.relatedTarget;
-  if (next instanceof HTMLElement && next !== groupTrigger.value && !groupMenu.value?.contains(next)) menuGroup.value = undefined;
+  if (next instanceof Element && next !== groupTrigger.value && !groupMenu.value?.contains(next)) menuGroup.value = undefined;
 }
 
 function dissolveGroup() {
