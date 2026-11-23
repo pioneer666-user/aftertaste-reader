@@ -2,6 +2,8 @@
 
 用浏览器对照 Git 固定提交的源码和 AI 讲解。可以逐文件读，也可以沿跨文件的闭环追一次请求如何传递、写入和返回。讲解、闭环与个人阅读记录保存在你的项目里。
 
+**首个公开试用版 `v0.1.0-alpha.1`。** 已在 Windows 上用真实的后端收藏请求走通安装、逐文件阅读、闭环分支和关闭后重开。欢迎带一个你正在读的项目试用。[下载预构建安装包](https://github.com/pioneer666-user/aftertaste-reader/releases/download/v0.1.0-alpha.1/aftertaste-reader-0.1.0-alpha.1.tgz) · [发行说明与校验值](https://github.com/pioneer666-user/aftertaste-reader/releases/tag/v0.1.0-alpha.1) · [反馈使用体验](https://github.com/pioneer666-user/aftertaste-reader/issues)
+
 ## 首次安装
 
 准备 Node.js 24 LTS、npm、Git 2.45+、一个已有 Git 提交的本地项目，以及能读取本机文件和运行终端命令的 AI。确认 `node --version` 显示 `v24.x`，再用 `npm --version` 和 `git --version` 检查工具可用。
@@ -65,3 +67,9 @@ npm pack --pack-destination "$packageDir"
 - [开发规范交接](docs/work/2026/11/D002-directory-layout/handoff.md) · [Spec Kit 接入](docs/development/spec-kit.md) · [实验](experiments/README.md)
 
 2026-11-16 的设计交接、仓库初始化和早期 AR1 原话索引保存在本仓库历史中，可用 `git show 8bd5e7b:README.md` 查阅。现行产品行为以当前规格和后续确认的任务为准。
+
+## 开源许可
+
+回味自有的代码、产品 Skill、文档、设计和开发记录采用 MIT，允许使用、修改、再分发和商用。分发时请保留版权与许可声明。[MIT 许可证](LICENSE)
+
+第三方开发技能、Spec Kit、字体及网页依赖各有原作者与许可。安装包内的 `dist/web/third-party-licenses.md` 收录网页构建所用依赖，另附 Vue Flow 已内嵌依赖的声明。[开发技能来源](.agents/README.md) · [Spec Kit 许可证](.specify/LICENSE-SpecKit.txt) · [补充第三方声明](THIRD-PARTY-NOTICES.md)
