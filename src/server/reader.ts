@@ -142,7 +142,9 @@ export async function startReader(projectRoot: string, port: number = 4317) {
     reply.type(asset.type);
     if (url !== '/') return reply.send(asset.content);
     const nonce = randomBytes(18).toString('base64');
-    reply.header('Content-Security-Policy', contentPolicy.replace("style-src 'self'", `style-src 'self' 'nonce-${nonce}'`));
+    reply.header('Content-Security-Policy', contentPolicy
+      .replace("script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'")
+      .replace("style-src 'self'", `style-src 'self' 'nonce-${nonce}'`));
     return reply.send(asset.content.toString('utf8').replace('__READER_STYLE_NONCE__', nonce));
   });
   server.get('/api/documents', async request => {

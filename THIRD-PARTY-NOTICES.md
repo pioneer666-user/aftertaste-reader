@@ -1,5 +1,9 @@
 # Third-party notices
 
+The file reader bundles Shiki, TextMate grammars, and Oniguruma WebAssembly for local syntax highlighting. Its build appends the upstream `tm-grammars` and `vscode-oniguruma` licenses and notices, and the Linguist file association notices, to `dist/web/third-party-licenses.md`.
+
+The upstream grammar notice covers its entire catalog. The reader omits these upstream grammars from its browser assets: `ada`, `ahk2`, `bird2`, `gnuplot`, `hcl`, `nginx`, `org`, `racket`, and `terraform`.
+
 Vue Flow 1.48.2 includes code from the packages below in its distributed JavaScript. These notices accompany the separate dependency and font notices in `dist/web/third-party-licenses.md`.
 
 ## D3 · d3-color, d3-dispatch, d3-drag, d3-interpolate, d3-selection, d3-timer, d3-transition, d3-zoom (ISC)

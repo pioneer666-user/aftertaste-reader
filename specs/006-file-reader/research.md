@@ -111,3 +111,11 @@ D023 的 Range 和松手端定位已有 U73 粘贴与拒绝剪贴板的实测。
 D041 实测基线的详情居中使宽窗间距达 309.03 CSS px。展开侧栏时采用统一内边距并保留内容最大宽度。阅读记录共用 006 的分栏和 D029 轮廓，D038 仅验证 CSS 组合兼容，继续独立试读。
 
 D044 沿用语言偏好的异常处理。CSS 与 SVG 可继承根色板；Canvas 的重复图案和 Firefox 的圆角快照需要在换色时失效。沿用两种既有绘制路径，避免重建图和编辑器导致选择丢失。
+
+## D047 固定源码高亮
+
+选 Shiki 的完整语法目录、TextMate 状态和 Oniguruma。现有 CodeMirror 负责编辑器操作。最初的 Lezer Python 语法覆盖不了 A1 的多语言和 Vue 嵌入要求。Shiki 的 JS 正则引擎对部分语法采用兼容处理，选择随包 WebAssembly 引擎保持原 TextMate 匹配。仅加载所需语法，沿用回味自己的配色。证据入口见 [Shiki 语法与构建说明](https://shiki.style/guide/bundles)和[引擎说明](https://shiki.style/guide/regex-engines)。
+
+Shiki 名称和别名与 Linguist 的文件名、后缀数据匹配，构建时只输出路径关联。两个固定版本分别提供语法及文件关联，无须手维护语言名单。使用原声明随包保存语法、引擎与路径数据的再分发许可。[Linguist 路径识别](https://github.com/github-linguist/linguist/blob/main/docs/how-linguist-works.md)
+
+`tm-grammars` 的完整声明中有个别 GPL、LGPL 和 MPL 语法。本版在路径关联及 Vite 直接、嵌入加载中一并排除这九项，原声明完整随包。被排除的语言和许可证入口见 [THIRD-PARTY-NOTICES](../../THIRD-PARTY-NOTICES.md)。
