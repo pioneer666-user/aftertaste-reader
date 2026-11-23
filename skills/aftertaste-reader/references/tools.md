@@ -199,3 +199,24 @@ function runValidation(args) {
 DOCUMENT_EXISTS 保留原文，按生成流程确认本次骨架归属。GRAPH_VERSION_MISMATCH 停止版本相关写入。GRAPH_CHANGED 重新读真实图后判断，勿盲重试。DOCUMENT_PATH_UNSAFE／GRAPH_PATH_UNSAFE 和其他失败带定位给用户，保留原资料。Git 错误不能自动修仓库、取新 HEAD 或换工作区。
 
 参数、路径或工具实现疑问可在当前 toolRoot 读 `src/cli/main.ts`、`src/application/` 和对应 adapters/core。源码读取问题沿固定来源诊断，检查工具代码也保留当前范围和资料保护。
+
+<a id="revise-current"></a>
+## 同提交修订
+
+使用 Node argv 独立传参，UTF-8 stdin 只传替换正文。先从已核对的目标 current 读取 Buffer，`createHash('sha256').update(buffer).digest('hex')` 得到 expected。对同一 Buffer 解码并形成候选，保留标题和需要保留的段落，按磁盘原文的编码计算摘要。
+
+| 命令 | 目标参数 | stdin |
+| --- | --- | --- |
+| revise-document | --document 项目相对镜像路径 --block 块ID | 该块完整的新 Markdown 正文 |
+| revise-document | --document 项目相对镜像路径 --blocks 原序相邻旧ID逗号列表 | 完整替换这些块的顶层标记、正文与结束符；结果各用未用过的随机八位小写字母数字 ID，连续覆盖原范围 |
+| revise-step | --id 闭环ID --step 步骤ID --field explanation 或 hint | 对应字段完整的新 Markdown |
+
+三者均另传 `--project` 绝对项目、`--commit` 成品完整固定提交和 `--expected` 原文摘要。调用示意：
+
+```javascript
+const result = receive('revise-step', process.execPath, [cli, 'revise-step',
+  '--project', projectRoot, '--id', loopId, '--step', stepId, '--field', field,
+  '--commit', commit, '--expected', expected], { input: revisedMarkdown });
+```
+
+核退出码和 JSON。校验或内容冲突失败保住原件；锁冲突先核是否有进行中的修订。读回失败须报告已尝试发布、重查当前成品。原始 read-loop 响应不能当写回输入。

@@ -161,7 +161,7 @@ try {
   assert.ok(linked.body.startsWith('这里为什么要先判断数量？\n\n'));
   assert.match(linked.body, /~~~text\n这里是尚未合上的示例\n~~~\n\n/u);
   assert.equal(await notes().getByRole('link', { name: '普通网址' }).getAttribute('target'), '_blank');
-  assert.equal(await notes().getByRole('link', { name: firstQuote, exact: true }).getAttribute('title'), '回到讲解块');
+  assert.equal(await notes().getByRole('link', { name: firstQuote, exact: true }).getAttribute('title'), '回到讲解原文');
   await notes().locator('.note-preview').scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(run, 'linked-note.png') });
   assert.equal((await disk()).length, 2);

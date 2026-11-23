@@ -118,7 +118,7 @@ export class LoopFileStore implements LoopStore {
       const target = path.join(current, artifact);
       const entry = await lstat(target);
       if (!entry.isFile() || entry.isSymbolicLink() || entry.nlink !== 1) throw unsafePath();
-      const raw = new TextDecoder('utf-8', { fatal: true }).decode(await readFile(target));
+      const raw = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(await readFile(target));
       return { raw, projectRoot: await realpath(projectRoot) };
     } catch (error) {
       if (error instanceof LoopError) throw error;

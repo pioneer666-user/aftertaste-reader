@@ -1,4 +1,5 @@
 import { isDocumentBlockId } from './document-blocks.js';
+import { isLoopId, isNodeId } from './loops.js';
 import { isSourcePath } from './source-path.js';
 
 export interface Note {
@@ -16,6 +17,13 @@ export interface BlockTarget {
   readonly documentPath: string;
   readonly blockId: string;
 }
+
+export interface StepTarget {
+  readonly loopId: string;
+  readonly stepId: string;
+}
+export type NoteTarget = BlockTarget | StepTarget;
+export type NoteQuote = NoteTarget & { readonly text: string };
 
 export interface BlockQuote extends BlockTarget {
   readonly text: string;
@@ -83,16 +91,26 @@ export function parseNoteAction(value: unknown): NoteAction {
 }
 
 export const blockLinkPrefix = '#aftertaste-block/';
+export const stepLinkPrefix = '#aftertaste-loop/';
+export function isNoteHref(href: string | null | undefined): href is string {
+  return !!href && (href.startsWith(blockLinkPrefix) || href.startsWith(stepLinkPrefix));
+}
 const mirrorRoot = 'docs/aftertaste/current/';
 
-export function blockLink(quote: BlockQuote): string {
+export function blockLink(quote: NoteQuote): string {
   // Encode Markdown punctuation and whitespace so the label renders as the original selection.
   const label = quote.text.replace(/[\t\r\n\x20-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]/gu,
     character => `&#${character.charCodeAt(0)};`);
-  return `[${label}](<${blockLinkPrefix}${encodeURIComponent(quote.documentPath)}/${quote.blockId}>)`;
+  const href = 'loopId' in quote ? stepLinkPrefix + quote.loopId + '/' + quote.stepId :
+    blockLinkPrefix + encodeURIComponent(quote.documentPath) + '/' + quote.blockId;
+  return `[${label}](<${href}>)`;
 }
 
-export function blockTarget(href: string): BlockTarget | undefined {
+export function blockTarget(href: string): NoteTarget | undefined {
+  if (href.startsWith(stepLinkPrefix)) {
+    const [loopId, stepId, extra] = href.slice(stepLinkPrefix.length).split('/');
+    return isLoopId(loopId) && isNodeId(stepId) && extra === undefined ? { loopId, stepId } : undefined;
+  }
   if (!href.startsWith(blockLinkPrefix)) return;
   const [encoded, blockId, extra] = href.slice(blockLinkPrefix.length).split('/');
   if (!encoded || extra !== undefined || !isDocumentBlockId(blockId)) return;

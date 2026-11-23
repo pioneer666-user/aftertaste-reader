@@ -3,6 +3,7 @@ import type { NoteReference } from './note-references.js';
 
 interface InternalLinks {
   prefix: string;
+  stepPrefix?: string;
   title: string;
   byMarker?: ReadonlyMap<string, NoteReference>;
 }
@@ -17,7 +18,7 @@ markdown.renderer.rules.link_open = (tokens, index, options, env, renderer) => {
   const href = typeof attribute === 'string' ? attribute : '';
   const links = env?.internalLinks as InternalLinks | undefined;
   const reference = href ? links?.byMarker?.get(href) : undefined;
-  if (links && (reference || href?.startsWith(links.prefix))) {
+  if (links && (reference || href.startsWith(links.prefix) || (links.stepPrefix && href.startsWith(links.stepPrefix)))) {
     token.attrSet('class', 'note-block-link');
     token.attrSet('title', links.title);
     if (reference) {

@@ -52,5 +52,6 @@
 | D040 | [书签原位编辑与紧凑标注浮层](2026/11/D040-margin-record-editors/task.md) · [回执](2026/11/D040-margin-record-editors/handoff.md) |
 | D041 | [书签与标注回读，三页详情对齐](2026/11/D041-record-management-details/task.md) |
 | D042 | [从依赖图高亮闭环参与文件，进入步骤讲解](2026/11/D042-loop-route-highlights/task.md) |
+| D043 | [从闭环选文记笔记，按文件块或闭环步骤答疑与写回](2026/11/D043-reading-qa-and-revision/task.md) · [回执与订单试读](2026/11/D043-reading-qa-and-revision/handoff.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。

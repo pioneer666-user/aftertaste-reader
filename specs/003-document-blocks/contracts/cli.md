@@ -18,3 +18,5 @@ blocks 示例为 `[{"lines":{"start":1,"end":2}},{},{"lines":{"start":3,"end":3}
 操作或输入失败 stdout 空，stderr `{ok:false,error:{code,message,nextStep,context}}`。参数问题 INVALID_ARGUMENT/INVALID_PATH/BLOCK_PLAN_INVALID 退出 2。DOCUMENT_EXISTS、DOCUMENT_PATH_UNSAFE、DOCUMENT_READ_FAILED、DOCUMENT_WRITE_FAILED、ID_GENERATION_FAILED 和原取源操作错误退出 1。未预期异常 INTERNAL_ERROR，不打印原异常正文。
 
 所有结果不包含提取源码，raw 仅为输入讲解原文。调用者可能手工在讲解中粘贴源码，工具不承担语义识别。所有诊断 params/context 无源码正文，校验不改原文和 ID。
+
+D043 增加同提交 revise-document。输入、普通块与明确重新分块的参数见[修订命令](../../../skills/aftertaste-reader/references/tools.md#revise-current)。原文摘要、固定源码校验和发布后读回都成功后报告完成。

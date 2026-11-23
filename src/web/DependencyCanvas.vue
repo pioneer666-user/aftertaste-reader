@@ -10,6 +10,7 @@ import DependencyMiniMap from './DependencyMiniMap.vue';
 import DependencyDots from './DependencyDots.vue';
 import DependencyCard from './DependencyCard.vue';
 import LoopRelations from './LoopRelations.vue';
+import type { NoteQuote } from '../core/notes.js';
 import LoopReading from './LoopReading.vue';
 import { groupBounds, maxZoom, minZoom, moveMembers, nodeSize, rearrange, reconcileLayout, renewedPaths, updateGroup } from '../core/canvas-layout.js';
 import type { CanvasGroup, CanvasLayout, Point } from '../core/canvas-layout.js';
@@ -28,7 +29,7 @@ import type { CanvasPosition } from './canvas-position.js';
 const props = defineProps<{
   language: Language; active: boolean; loopId?: string; routeChoice?: Pick<LoopEntry, 'id' | 'title'> | undefined; toolsCovered?: boolean; openingDocument?: string;
 }>();
-const emit = defineEmits<{ read: [documentPath: string]; readRoute: []; clearRoute: [] }>();
+const emit = defineEmits<{ read: [documentPath: string]; readRoute: []; clearRoute: []; readingChoice: []; addToNotes: [quote: NoteQuote] }>();
 const t = (key: string) => translate(props.language, key);
 // The parent keys each retained canvas by graph, including its in-flight requests and draft.
 const loopRoute = props.loopId ? '/api/loops/' + encodeURIComponent(props.loopId) : '';
@@ -76,6 +77,9 @@ watch(() => props.routeChoice, async (choice, _, onCleanup) => {
   }
 }, { immediate: true, flush: 'sync' });
 const panelOpen = ref(false);
+watch([selected, selectedEdgeId, panelOpen], () => {
+  if (props.active && props.loopId) emit('readingChoice');
+}, { flush: 'sync' });
 const groupMenu = ref<HTMLElement>();
 const menuGroup = ref<CanvasGroup>();
 const groupNameInput = ref<HTMLInputElement>();
@@ -216,6 +220,7 @@ function capturePosition(): CanvasPosition {
     selected: selected.value,
     ...(currentViewport && { viewport: currentViewport }),
     edge: selectedEdgeId.value,
+    ...(props.loopId && { panelOpen: panelOpen.value }),
     detailScroll: inspector.value?.scrollTop ?? 0,
   };
 }
@@ -259,6 +264,7 @@ async function restorePosition(position: CanvasPosition, isCurrent = () => true)
   const edge = changedSelection ? selectedEdgeId.value : position.edge;
   const edgeAvailable = !edge || getEdges.value.some(item => item.id === edge);
   selectedEdgeId.value = edgeAvailable ? edge : '';
+  if (props.loopId && position.panelOpen !== undefined) panelOpen.value = position.panelOpen;
   if (groupEditor.value === beforeGroupEditor) groupEditor.value = false;
   await nextTick();
   if (!current()) return false;
@@ -271,7 +277,37 @@ async function restorePosition(position: CanvasPosition, isCurrent = () => true)
   return !!latest && available && edgeAvailable;
 }
 
-defineExpose({ capturePosition, restorePosition });
+let initialLoad: Promise<void>;
+async function prepareStep(id: string, refresh: boolean, current: () => boolean) {
+  await initialLoad;
+  if (!current()) return;
+  if (refresh) {
+    const latest = await request<LoopCanvasReading>(readRoute);
+    if (!current()) return;
+    if (!latest.result.loop.nodes.some(node => node.id === id)) return t('noteStepMissing');
+    if (dirty.value || saving.value) {
+      if (latest.graphVersion !== reading.value?.graphVersion) return t('graphPositionUnavailable');
+    } else {
+      layout.value = latest.layout;
+      revision = latest.revision;
+    }
+    reading.value = latest;
+    readProblem.value = undefined;
+    render();
+  }
+  if (readProblem.value) return problemText(props.language, readProblem.value).message;
+  if (!loop.value?.loop.nodes.some(node => node.id === id)) return t('noteStepMissing');
+}
+function openStep(id: string) {
+  panelOpen.value = true;
+  selectDetail(id);
+  void nextTick(() => {
+    if (!inspector.value || !props.active || selected.value !== id) return;
+    inspector.value.scrollTop = 0;
+    inspector.value.querySelector<HTMLElement>('.loop-step-heading')?.focus({ preventScroll: true });
+  });
+}
+defineExpose({ capturePosition, restorePosition, prepareStep, openStep });
 
 function render() {
   if (!reading.value || !layout.value) return;
@@ -754,7 +790,7 @@ onMounted(() => {
   window.addEventListener('keydown', trackControl);
   window.addEventListener('keyup', trackControl, true);
   window.addEventListener('blur', releaseControl);
-  void load();
+  initialLoad = load();
 });
 onUnmounted(() => {
   window.removeEventListener('keydown', trackControl);
@@ -952,7 +988,7 @@ onUnmounted(() => {
             <span aria-hidden="true" class="loop-nav-tip">{{ item.title }}</span>
           </button>
         </nav>
-        <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" :active="active" :panel-open="panelOpen" :legend-selected="!!selectedLegend" @select="selectDetail" />
+        <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" :active="active" :panel-open="panelOpen" :legend-selected="!!selectedLegend" @select="selectDetail" @add-to-notes="emit('addToNotes', $event)" />
         <template v-if="!loopId && hasSelection && !groupEditor">
           <section class="canvas-summary" :aria-label="t(selectedEdge ? 'canvasRelationshipDetails' : selectedNode ? 'canvasSelected' : 'canvasSelectedLibrary')"
             @keydown.esc.stop="clearDetail()">

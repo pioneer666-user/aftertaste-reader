@@ -13,6 +13,12 @@ import { LoopService, loopMarkdown } from '../application/loops.js';
 import { LoopFileStore, readLoopInput } from '../adapters/loop-store.js';
 import { LoopError } from '../core/loops.js';
 
+import { buffer as readBuffer } from 'node:stream/consumers';
+import { isUtf8 } from 'node:buffer';
+import { reviseDocument, reviseStep, RevisionError } from '../application/revisions.js';
+import { replaceCurrent } from '../adapters/replace-current.js';
+
+const revisionOptions = ['--project', '--commit', '--expected'];
 const fixedOptions = ['--project', '--repository', '--prefix', '--commit'];
 
 const commands: Record<string, { allowed: string[]; required: string[] }> = {
@@ -31,6 +37,8 @@ const commands: Record<string, { allowed: string[]; required: string[] }> = {
   'query-graph': { allowed: [...fixedOptions, '--path'], required: [...fixedOptions, '--path'] },
   'query-legends': { allowed: [...fixedOptions, '--id'], required: fixedOptions },
   'validate-graph': { allowed: fixedOptions, required: fixedOptions },
+  'revise-document': { allowed: [...revisionOptions, '--document', '--block', '--blocks'], required: [...revisionOptions, '--document'] },
+  'revise-step': { allowed: [...revisionOptions, '--id', '--step', '--field'], required: [...revisionOptions, '--id', '--step', '--field'] },
   'create-loop': { allowed: [...fixedOptions, '--id', '--input'], required: [...fixedOptions, '--id', '--input'] },
   'read-loop': { allowed: ['--project', '--id', '--format'], required: ['--project', '--id'] },
 };
@@ -92,6 +100,28 @@ async function main(): Promise<void> {
       requestContext = { ...source, path: filePath };
       const file = await service.read(source, filePath);
       process.stdout.write(`${JSON.stringify({ ok: true, file })}\n`);
+    } else if (command === 'revise-document' || command === 'revise-step') {
+      const commit = options.get('--commit')!, expected = options.get('--expected')!;
+      requestContext = Object.fromEntries(options);
+      if (!/^[a-f0-9]{64}$/u.test(expected)) throw new SourceError('INVALID_ARGUMENT', '原文摘要无效。', '提供读取原文时的 SHA-256。');
+      const documents = new DocumentService(service, new DocumentFileStore());
+      const input = await readBuffer(process.stdin);
+      if (!isUtf8(input)) throw new RevisionError('REVISION_INVALID', '修订正文不是有效 UTF-8。');
+      const text = input.toString('utf8');
+      if (!text.trim()) throw new RevisionError('REVISION_INVALID', '修订正文为空。');
+      let result;
+      if (command === 'revise-document') {
+        const single = options.get('--block'), multiple = options.get('--blocks');
+        if (!!single === !!multiple) throw new SourceError('INVALID_ARGUMENT', '需指定普通修订或重新分块。', '单选 --block 或 --blocks。');
+        result = await reviseDocument(documents, replaceCurrent, projectRoot, options.get('--document')!,
+          commit, expected, single ? [single] : multiple!.split(','), !!multiple, text);
+      } else {
+        const store = new LoopFileStore();
+        const loops = new LoopService(service, documents, new GraphService(service, new GraphFileStore()), store);
+        result = await reviseStep(loops, store, replaceCurrent, projectRoot, options.get('--id')!, options.get('--step')!,
+          options.get('--field')!, commit, expected, text);
+      }
+      process.stdout.write(JSON.stringify({ ok: true, result }) + '\n');
     } else if (command === 'create-loop' || command === 'read-loop') {
       const loops = new LoopService(service, new DocumentService(service, new DocumentFileStore()),
         new GraphService(service, new GraphFileStore()), new LoopFileStore());
@@ -157,7 +187,7 @@ async function main(): Promise<void> {
       }
     }
   } catch (error) {
-    const problem = error instanceof SourceError || error instanceof DocumentError || error instanceof GraphError || error instanceof ReaderError || error instanceof LoopError ? error :
+    const problem = error instanceof RevisionError || error instanceof SourceError || error instanceof DocumentError || error instanceof GraphError || error instanceof ReaderError || error instanceof LoopError ? error :
       new SourceError('INTERNAL_ERROR', '命令发生未预期错误。', '将命令及问题标识交给维护者检查。');
     process.stderr.write(`${JSON.stringify({ ok: false, error: {
       code: problem.code, message: problem.message, nextStep: problem.nextStep, context: { ...requestContext, ...problem.context },

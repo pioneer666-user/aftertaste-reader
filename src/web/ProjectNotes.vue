@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import { blockLinkPrefix, blockTarget } from '../core/notes.js';
-import type { BlockTarget } from '../core/notes.js';
+import { isNoteHref, blockTarget } from '../core/notes.js';
+import type { NoteTarget } from '../core/notes.js';
 import NoteBody from './NoteBody.vue';
 import NoteSaveStatus from './NoteSaveStatus.vue';
 import RecordWorkbench from './RecordWorkbench.vue';
@@ -13,7 +13,7 @@ import type { NotesEditor, NotesPosition } from './notes-editor.js';
 
 const props = defineProps<{
   editor: NotesEditor; visible: boolean; language: Language; listOpen: boolean;
-  visit: (target: BlockTarget) => Promise<string | undefined>;
+  visit: (target: NoteTarget) => Promise<string | undefined>;
 }>();
 const emit = defineEmits<{ select: [] }>();
 const t = (key: string) => translate(props.language, key);
@@ -174,7 +174,7 @@ function removeTag(value: string) {
 async function follow(event: MouseEvent) {
   const anchor = (event.target as Element).closest('a');
   const href = anchor?.getAttribute('href');
-  if (!anchor || !href?.startsWith(blockLinkPrefix)) return;
+  if (!anchor || !isNoteHref(href)) return;
   event.preventDefault();
   linkOffset = anchor.getBoundingClientRect().top - (anchor.closest('.record-detail')?.getBoundingClientRect().top ?? 0);
   refLink.value = [...(rendered.value?.querySelectorAll('a') ?? [])].findIndex(item => item === anchor);

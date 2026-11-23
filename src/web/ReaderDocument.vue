@@ -5,6 +5,7 @@ import type { ReaderProblem } from '../application/file-reader.js';
 import type { Bookmark, BookmarkAction } from '../core/bookmarks.js';
 import type { BlockQuote } from '../core/notes.js';
 import type { MarkEdit, ReaderMark } from '../core/understanding-marks.js';
+import { useReadingSelection } from './reading-selection.js';
 import BlockMarginRecords from './BlockMarginRecords.vue';
 import BlockLocationControl from './BlockLocationControl.vue';
 import { problemText, translate } from './i18n.js';
@@ -28,15 +29,17 @@ function showRecord(id: string, kind: RecordKind) {
 defineExpose({ showRecord });
 const copyStatus = ref('');
 const blockRoot = ref<HTMLElement>();
-const quote = ref<BlockQuote>();
-const anchor = shallowRef<{ x: number; y: number }>();
+const { selected, anchor, clearSelection } = useReadingSelection(blockRoot, () => props.active, () => props.result);
+const quote = computed(() => {
+  const blockId = selected.value?.element.closest('.document-block')?.id;
+  if (blockId && selected.value && props.result) return { documentPath: props.result.documentPath, blockId, text: selected.value.text };
+});
 const stickyBlocks = shallowRef(new Set<string>());
 const sourcePath = computed(() => props.result?.sourcePath ?? '');
 const sourceNameIndex = computed(() => sourcePath.value.lastIndexOf('/') + 1);
 const selectionLocation = computed(() => quote.value ? blockLocation(quote.value.blockId, quote.value.text) : '');
 let readingPane: HTMLElement | null | undefined;
 let sourceObserver: ResizeObserver | undefined;
-let selecting = false;
 const blockMarks = computed(() => new Map(props.marks.filter(mark => mark.documentPath === props.result?.documentPath)
   .map(mark => [mark.blockId, mark])));
 const diagnostics = computed(() => props.result?.diagnostics ?? []);
@@ -70,85 +73,6 @@ function blockLocation(blockId: string, text?: string) {
   return 'Aftertaste 文档块定位\n```json\n' + JSON.stringify(fields, null, 2) + '\n```';
 }
 
-function clearSelection() {
-  quote.value = undefined;
-  anchor.value = undefined;
-}
-
-function captureSelection(point?: { x: number; y: number }, reposition = false) {
-  if (!props.active || selecting ||
-      document.activeElement?.closest('.selection-copy-panel .location-copy-manual')) return;
-  const selection = window.getSelection();
-  if (selection?.rangeCount !== 1 || selection.isCollapsed || !selection.focusNode || !props.result) {
-    clearSelection();
-    return;
-  }
-  const range = selection.getRangeAt(0);
-  const start = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
-  const explanation = start?.closest('.explanation-text');
-  const block = explanation?.closest<HTMLElement>('.document-block');
-  const text = selection.toString();
-  if (!block || !blockRoot.value?.contains(block) || !explanation?.contains(range.endContainer) || !text.trim()) {
-    clearSelection();
-    return;
-  }
-  if (!point && !reposition && quote.value?.blockId === block.id && quote.value.text === text) return;
-  quote.value = { documentPath: props.result.documentPath, blockId: block.id, text };
-  const caret = document.createRange();
-  caret.setStart(selection.focusNode, selection.focusOffset);
-  caret.collapse(true);
-  const edge = caret.getBoundingClientRect();
-  const frame = readingPane?.getBoundingClientRect();
-  anchor.value = point ?? (frame && edge.bottom >= frame.top && edge.top <= frame.bottom
-    ? { x: edge.left, y: edge.bottom } : undefined);
-}
-
-function selectionChanged() {
-  captureSelection();
-}
-
-function selectionStarted(event: PointerEvent) {
-  if (event.button !== 0 || !(event.target instanceof Element)) return;
-  if (event.target.closest('.selection-copy-panel')) return;
-  selecting = !!event.target.closest('.explanation-text') && !!blockRoot.value?.contains(event.target);
-  anchor.value = undefined;
-}
-
-function selectionFinished(event: PointerEvent) {
-  if (!selecting) return;
-  selecting = false;
-  captureSelection({ x: event.clientX, y: event.clientY });
-}
-
-function selectionCanceled() {
-  selecting = false;
-}
-
-function followSelection() {
-  if (anchor.value) captureSelection(undefined, true);
-}
-
-function selectionKeys(event: KeyboardEvent) {
-  const button = blockRoot.value?.querySelector<HTMLButtonElement>('.selection-copy-action');
-  if (!button || event.defaultPrevented) return;
-  if (event.key === 'Escape') {
-    if (document.activeElement?.closest('.selection-copy-panel')) {
-      readingPane?.focus({ preventScroll: true });
-    }
-    anchor.value = undefined;
-  } else if (event.key === 'Tab' && !event.shiftKey && startsInSelection(event.target, button)) {
-    event.preventDefault();
-    button.focus({ preventScroll: true });
-  }
-}
-
-function startsInSelection(target: EventTarget | null, button: HTMLButtonElement) {
-  if (target === document.body || target === readingPane) return true;
-  const block = button.closest('.document-block');
-  return target instanceof Element &&
-    (target === block || block?.querySelector('.explanation-text')?.contains(target));
-}
-
 function addSelection() {
   if (!quote.value) return;
   emit('addToNotes', quote.value);
@@ -169,23 +93,11 @@ onMounted(() => {
     sourceObserver.observe(readingPane);
     sources.forEach(source => sourceObserver!.observe(source));
   }
-  readingPane?.addEventListener('scroll', followSelection, { passive: true });
-  window.addEventListener('resize', followSelection);
-  document.addEventListener('selectionchange', selectionChanged);
-  document.addEventListener('pointerdown', selectionStarted);
-  document.addEventListener('pointerup', selectionFinished);
-  document.addEventListener('pointercancel', selectionCanceled);
-  document.addEventListener('keydown', selectionKeys);
+
 });
 onUnmounted(() => {
   sourceObserver?.disconnect();
-  readingPane?.removeEventListener('scroll', followSelection);
-  window.removeEventListener('resize', followSelection);
-  document.removeEventListener('selectionchange', selectionChanged);
-  document.removeEventListener('pointerdown', selectionStarted);
-  document.removeEventListener('pointerup', selectionFinished);
-  document.removeEventListener('pointercancel', selectionCanceled);
-  document.removeEventListener('keydown', selectionKeys);
+
 });
 </script>
 
@@ -228,7 +140,7 @@ onUnmounted(() => {
           <BlockLocationControl v-if="result.commit" :key="active + ':' + block.id"
             :location="blockLocation(block.id)" :language="language" />
           <p v-if="!block.body.trim()" class="notice">{{ t('unfilled') }}</p>
-          <div class="markdown explanation-text" v-html="renderMarkdown(block.body)"></div>
+          <div class="markdown explanation-text" data-quote-field="body" v-html="renderMarkdown(block.body)"></div>
           <BlockLocationControl v-if="anchor && selectionLocation && quote?.blockId === block.id"
             :location="selectionLocation" :language="language" :anchor="anchor" @add-to-notes="addSelection" />
         </div>

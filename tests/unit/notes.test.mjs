@@ -41,3 +41,16 @@ test('block links preserve literal punctuation and newlines and carry the comple
   assert.match(html, /<pre><code class="language-text">已有内容\n<\/code><\/pre>/u);
   assert.match(html, /class="note-block-link" title="回到讲解块"/u);
 });
+
+test('同源步骤分别定位；原句的标点、换行与文字逐字保留', () => {
+  for (const stepId of ['start', 'resume']) {
+    const target = { loopId: 'order-quantity', stepId };
+    const text = '「对象」 "ready"\n集合 [0]';
+    const tokens = markdown.parseInline(blockLink({ ...target, text }), {})[0].children;
+    assert.deepEqual(blockTarget(tokens[0].attrGet('href')), target);
+    assert.equal(tokens[1].content, text);
+  }
+  for (const path of ['con/start', 'orders/../resume', 'orders/', 'orders/%2f']) {
+    assert.equal(blockTarget('#aftertaste-loop/' + path), undefined);
+  }
+});

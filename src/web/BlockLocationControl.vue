@@ -7,6 +7,7 @@ import type { Language } from './i18n.js';
 
 const props = defineProps<{
   location: string;
+  step?: boolean;
   language: Language;
   anchor?: { x: number; y: number };
 }>();
@@ -36,7 +37,7 @@ function placePanel() {
   const height = panel.offsetHeight;
   const left = fitFloatingAxis(point.x, width, window.innerWidth);
   const top = fitFloatingAxis(point.y, height, window.innerHeight);
-  const readingTop = panel.closest('.reading-pane')?.getBoundingClientRect().top ?? 0;
+  const readingTop = panel.closest('.reading-pane, .canvas-inspector')?.getBoundingClientRect().top ?? 0;
   panel.classList.toggle('labels-below', top - readingTop < 48);
   panel.style.left = left + 'px';
   panel.style.top = top + 'px';
@@ -58,6 +59,7 @@ async function copyLocation() {
     manualText.value = text;
     await nextTick();
     if (request !== attempt) return;
+    if (props.step && !props.anchor) manualPanel.value?.showPopover();
     placePanel();
     manualInput.value?.focus({ preventScroll: true });
     manualInput.value?.select();
@@ -81,6 +83,7 @@ watch(manualText, text => {
 });
 onMounted(() => {
   if (!props.anchor || !control.value) return;
+  if (props.step) control.value.showPopover();
   placePanel();
   observer = new ResizeObserver(placePanel);
   observer.observe(control.value);
@@ -94,13 +97,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="control" class="block-location-control" :class="{ 'selection-copy-panel selection-float': anchor, 'keyboard-label': keyboardLabel }"
+  <div ref="control" :popover="step && anchor ? 'manual' : undefined" class="block-location-control" :class="{ 'selection-copy-panel selection-float': anchor, 'keyboard-label': keyboardLabel }"
     @focusin="keyboardLabel = true" @pointermove="keyboardLabel = false">
     <button ref="button" type="button" :class="anchor ? 'selection-copy-action selection-float-action' : 'block-copy-button'"
-      :aria-label="t('copyBlockLocation')" :title="anchor ? undefined : t('copyBlockLocation')"
+      :aria-label="t(step ? 'copyStepLocation' : 'copyBlockLocation')" :title="anchor ? undefined : t(step ? 'copyStepLocation' : 'copyBlockLocation')"
       @mousedown="anchor && $event.preventDefault()" @click="copyLocation">
       <span class="copy-location-icon" aria-hidden="true"></span>
-      <span v-if="anchor" class="selection-label" aria-hidden="true">{{ t('copyBlockLocation') }}</span>
+      <span v-if="anchor" class="selection-label" aria-hidden="true">{{ t(step ? 'copyStepLocation' : 'copyBlockLocation') }}</span>
     </button>
     <button v-if="anchor" type="button" class="selection-float-action" :aria-label="t('noteAddSelection')"
       @mousedown.prevent @click="emit('addToNotes')">
@@ -108,10 +111,10 @@ onUnmounted(() => {
       <span class="selection-label" aria-hidden="true">{{ t('noteAddSelection') }}</span>
     </button>
     <span class="location-copy-status" role="status">{{ copied ? t('copied') : '' }}</span>
-    <div v-if="manualText" ref="manualPanel" class="location-copy-manual" @keydown.esc.stop.prevent="dismissManual">
+    <div v-if="manualText" ref="manualPanel" :popover="step && !anchor ? 'manual' : undefined" class="location-copy-manual" @keydown.esc.stop.prevent="dismissManual">
       <p role="alert">{{ t('copyFailed') }}</p>
       <textarea ref="manualInput" readonly rows="5" class="location-copy-text"
-        :aria-label="t('manualBlockLocation')" :value="manualText"></textarea>
+        :aria-label="t(step ? 'manualStepLocation' : 'manualBlockLocation')" :value="manualText"></textarea>
       <button type="button" @click="dismissManual">{{ t('closeBlockLocation') }}</button>
     </div>
   </div>
@@ -152,6 +155,7 @@ onUnmounted(() => {
 }
 .selection-copy-panel {
   position: fixed;
+  inset: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -231,6 +235,8 @@ onUnmounted(() => {
 }
 .location-copy-manual {
   position: fixed;
+  inset: auto;
+  margin: 0;
   z-index: 2;
   width: min(26rem, calc(100vw - 16px));
   max-height: calc(100dvh - 16px);

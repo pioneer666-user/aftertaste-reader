@@ -105,6 +105,12 @@ description: D016 已保存闭环的阅读与个人布局
 - [x] T033 [US1] 在 src/web/LoopRelations.vue、src/web/LoopReading.vue 与 src/web/DependencyCanvas.vue 将底条接入右栏并保全所有有向关系。
 - [x] T034 [US1] 在 tests/browser/loop-reading-panel.mjs 及路线往返用例核步骤、显隐与分支。
 
+## D043 · 从选句到局部修订
+
+- [x] T035 [US1] 在 src/web/LoopReading.vue 与 ReaderDocument.vue 共用选区控制，在 src/core/notes.ts、QuickNote.vue、ProjectNotes.vue 与 App.vue 接入混合引用及历史回访（FR-009）。
+- [x] T036 [US1] 在 src/cli/main.ts 与现有文档、闭环服务中接入经校验的同提交写回；在 skills/aftertaste-reader/SKILL.md 与参考指南接入按意图答疑和偏好（005 FR-010）。
+- [x] T037 [US1] 用 tests/browser、tests/skills、文档与闭环入口验证 SC-009、005 SC-005，保存真实 Skill 试用与候选独审证据。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
