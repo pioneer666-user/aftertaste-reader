@@ -203,6 +203,10 @@ export async function startReader(projectRoot: string, port: number = 4317) {
     if (Object.keys(request.query as object).length) throw new ReaderError('INVALID_ARGUMENT', '闭环读取参数无效。', '从本机阅读器打开闭环。');
     return { ok: true, ...await loops.read(request.params.id) };
   });
+  server.get<{ Params: { id: string } }>('/api/loops/:id/route', async request => {
+    if (Object.keys(request.query as object).length) throw new ReaderError('INVALID_ARGUMENT', '闭环路径参数无效。', '从本机阅读器选择闭环。');
+    return { ok: true, ...await loops.route(request.params.id) };
+  });
   server.put<{ Params: { id: string } }>('/api/loops/:id/layout', async request => {
     if (Object.keys(request.query as object).length || request.headers['content-type']?.split(';')[0]?.trim().toLowerCase() !== 'application/json') {
       throw new ReaderError('INVALID_ARGUMENT', '闭环保存参数无效。', '使用本机页面提交当前闭环布局。');

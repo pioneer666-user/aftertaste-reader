@@ -192,7 +192,7 @@ async function checkNavigation(page) {
   await page.setViewportSize(desktop);
   const bookmarkPage = button(header(page), '书签');
   await bookmarkPage.click();
-  await page.locator('#bookmarks .bookmark-heading button:enabled').waitFor();
+  await page.locator('#bookmarks .record-refresh:enabled').waitFor();
   const [refreshed] = await Promise.all([
     page.waitForResponse(response => response.url().endsWith('/api/bookmarks') && response.request().method() === 'GET'),
     bookmarkPage.click(),
@@ -226,20 +226,19 @@ try {
   await file(page, api).click();
   const summary = dep(page).locator('.canvas-summary');
   const detail = dep(page).locator('.canvas-details');
-  await button(summary, '查看关系').click();
-  await detail.getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
+  await button(dep(page), service + ' → ' + api).press('Enter');
+  await summary.getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
   await screenshot(page, 'file-detail');
-  await button(detail, service).click();
+  await file(page, service).click();
   await button(summary, '阅读讲解').click();
   await page.getByRole('heading', { level: 1, name: service }).waitFor();
   await button(header(page), '后退').click();
-  await summary.getByRole('heading', { name: service, exact: true }).waitFor();
+  await summary.getByRole('heading', { name: 'service.mjs', exact: true }).waitFor();
   assert.equal(await transform(dep(page)), originalView);
   assert.deepEqual(await bounds(area(page)), full);
-  await button(dep(page), '关闭详情').click();
+  await button(dep(page), '清除选择').click();
   assert.deepEqual(await bounds(area(page)), full);
   await library(page).click();
-  await button(summary, '查看关系').click();
   await detail.getByText(standardLegend.description, { exact: true }).waitFor();
   await button(dep(page), '清除选择').click();
   report.checks.push('画布首屏、API 关系读到 service 讲解及原视野返回、文件和库详情按需关闭');
@@ -333,13 +332,14 @@ try {
   const blank = { x: graph.x + 170, y: graph.y + graph.height - 150 };
   const panned = await dependencyWrite(page, () => drag(page, blank, { x: blank.x + 10, y: blank.y + 12 }));
   assert.notEqual(panned.layout.viewport.x, zoomed.layout.viewport.x);
-  const reverseStart = { x: Math.floor((await bounds(file(page, audit))).x + 8),
+  const reverseStart = { x: Math.floor(((await bounds(file(page, audit))).x + (await bounds(file(page, rules))).x) / 2),
     y: Math.ceil((await bounds(library(page))).y + (await bounds(library(page))).height + 10) };
   const nearEdge = { x: Math.floor(graph.x + graph.width - 2), y: Math.ceil(graph.y + 8) };
   assert.ok(page.viewportSize().width - nearEdge.x <= 24);
-  const railToggle = header(page).getByRole('button', { name: '收起依赖图工具', exact: true });
-  await railToggle.click();
-  await dep(page).locator('#dependency-tools').waitFor({ state: 'hidden' });
+  await button(header(page), '展开闭环目录').click();
+  await dep(page).locator('#loop-navigation').waitFor();
+  await page.keyboard.press('Escape');
+  await dep(page).locator('#loop-navigation').waitFor({ state: 'hidden' });
   await drag(page, reverseStart, nearEdge, { selecting: true });
   await assertSelected(page, [rules, service, api, legendId]);
   const edgeButton = await bounds(groupAction(page));
@@ -376,7 +376,6 @@ try {
   assert.deepEqual(retried.layout.viewport, panned.layout.viewport);
   report.checks.push('实际平移缩放后的逆向边缘命中、Ctrl+G、旧组移空、真实失败时保留草稿及可重试');
 
-  await button(header(page), '展开依赖图工具').click();
   await button(dep(page), '编辑分组').press('Enter');
   const picker = dep(page).locator('#canvas-group-picker');
   await picker.press('End');

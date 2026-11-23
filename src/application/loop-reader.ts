@@ -16,6 +16,8 @@ export interface LoopEntry {
   edges: { from: string; to: string }[];
 }
 
+export interface LoopRoute { title: string; source_commit: string; paths: string[] }
+
 export interface LoopCanvasReading extends LayoutReading {
   result: ReadingLoop;
 }
@@ -49,6 +51,13 @@ export class LoopReaderService {
       }
     }
     return { loops, problems };
+  }
+
+  async route(id: string): Promise<LoopRoute> {
+    checkLoopId(id);
+    const { raw } = await this.store.read(this.projectRoot, id);
+    const loop = parseSavedLoop(raw, id);
+    return { title: loop.title, source_commit: loop.source_commit, paths: [...new Set(loop.nodes.map(node => node.path))] };
   }
 
   private async graph(id: string) {

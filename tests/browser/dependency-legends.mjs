@@ -10,7 +10,7 @@ import { audit, createLegendProject, legendId, readJSON, rules, standardLegend, 
 import { dependencySaved as saved, openDependencyGroups, refreshDependency } from './dependency-controls.mjs';
 
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
-const root = path.join(repository, '.local/D014');
+const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D014');
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'browser-' + channel + '-'));
 const project = await createLegendProject(path.join(run, 'project'));
@@ -100,7 +100,6 @@ try {
 
     await legend(page).focus();
     await page.keyboard.press('Enter');
-    await button(summary(page), '查看关系').click();
     await detail(page).getByText(standardLegend.description, { exact: true }).waitFor();
     for (const use of standardLegend.uses) await detail(page).getByText(use.reason, { exact: true }).waitFor();
     assert.equal(await summary(page).getByRole('button', { name: '阅读讲解' }).count(), 0);
@@ -173,7 +172,6 @@ try {
     await saved(page);
     await assertVisibleLayout(page, beforeUpdate.layout);
     await legend(page).click();
-    await button(summary(page), '查看关系').click();
     await detail(page).getByText(updatedDescription, { exact: true }).waitFor();
     for (const use of standardLegend.uses) await detail(page).getByText(use.reason, { exact: true }).waitFor();
     assert.deepEqual(await disk(), beforeUpdate);

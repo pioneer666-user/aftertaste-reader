@@ -7,7 +7,7 @@ import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { chooseLoop } from './loop-controls.mjs';
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const root = path.join(repository, '.local/D034');
+const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D034');
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'panel-'));
 const project = path.join(run, 'project');
@@ -104,7 +104,7 @@ try {
   await panel.waitFor();
   await settled();
   const check = lesson('check');
-  assert.deepEqual(await check.locator(':scope > *').evaluateAll(els => els.map(el => el.tagName)), ['H2','DIV','BUTTON','H3','UL','DETAILS']);
+  assert.deepEqual(await check.locator(':scope > *').evaluateAll(els => els.map(el => el.tagName)), ['H2','DIV','BUTTON','H3','UL','SECTION','DETAILS']);
   assert.equal(await check.locator('details').evaluate(el => el.open), false);
   await shot('branch-reading');
   const bounds = await panel.boundingBox();
@@ -181,11 +181,11 @@ try {
   await toggle.click();
   await panel.waitFor({ state: 'hidden' });
   assert.deepEqual(await loop.locator('[data-relation]').evaluateAll(els => els.map(el => el.dataset.relation)), ['start','resume','stop']);
-  await press(loop, '关系详情');
+  await press(loop, '展开讲解');
   for (const e of graph.edges.filter(e => e.to === 'check' || e.from === 'check')) {
-    await loop.locator('.loop-relations').getByText(e.reason, { exact: true }).waitFor();
+    await panel.getByText(e.reason, { exact: true }).waitFor();
   }
-  await press(loop, '收起关系详情');
+  await press(loop, '收起讲解');
   await shot('collapsed-branches');
   await select('stop');
   assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
@@ -270,7 +270,8 @@ try {
   assert.deepEqual(await edges(), savedEdges);
   for (const [id,point] of Object.entries(after.positions)) {
     const position = await node(id).evaluate(el => { const m = new DOMMatrixReadOnly(getComputedStyle(el.closest('.vue-flow__node')).transform); return {x:m.e,y:m.f}; });
-    assert.ok(Math.abs(position.x - point.x) < .001 && Math.abs(position.y - point.y) < .001, 'rendered position for ' + id);
+    // Computed CSS matrices serialize to six significant digits, including four-digit canvas coordinates.
+    assert.ok(['x', 'y'].every(axis => Math.abs(position[axis] - Number(point[axis].toPrecision(6))) < .001), 'rendered position for ' + id);
   }
   await shot('group-reopened');
   report.group = { id: group.id, before: beforeDissolve, reopened: after, edges: savedEdges };
@@ -298,14 +299,13 @@ try {
   await mobileToggle.tap();
   assert.equal(await mobileToggle.evaluate(el => getComputedStyle(el).transitionDuration), '0s');
   const relations = mobile.locator('.loop-relations');
-  await relations.getByRole('button', { name: '查看全部关系与理由' }).tap();
-  const third = relations.locator('[data-relation="store"]');
-  assert.equal(await third.locator('span').innerText(), longTitle);
-  assert.equal(await third.locator('small').innerText(), extraReason);
+  await relations.getByRole('button', { name: '展开讲解' }).tap();
+  const third = mobile.locator('[data-choice="store"]');
+  assert.ok((await third.innerText()).includes(longTitle));
+  assert.equal(await third.locator('.loop-choice-reason').innerText(), extraReason);
   assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await third.tap();
-  assert.equal(await mobileToggle.getAttribute('aria-expanded'), 'false');
-  await mobileToggle.tap();
+  assert.equal(await mobileToggle.getAttribute('aria-expanded'), 'true');
   await mobile.locator('[data-reading-step="store"]').getByRole('heading', { name: longTitle }).waitFor();
   const mobilePanel = mobile.locator('.canvas-inspector');
   assert.ok(await mobilePanel.evaluate(el => {

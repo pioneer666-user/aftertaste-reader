@@ -73,6 +73,9 @@ button.package-card {
 .dependency-card:hover .card-surface { stroke: var(--ink); }
 .dependency-card[aria-pressed="true"] .card-surface { fill: #eff8ef; stroke: #226448; stroke-width: 2.7; }
 .package-card[aria-pressed="true"] .card-surface { fill: #ece5fa; stroke: #675482; }
+.dependency-card[data-route-member] .card-surface { fill: #fff1c9; stroke: #946916; stroke-width: 3; }
+.dependency-card[data-route-member][aria-pressed="true"] .card-surface { stroke: #226448; stroke-width: 4; }
+.dependency-card[data-route-member] .card-name::before { content: '◆'; color: #916417; font-size: .7em; margin-right: .45em; }
 .card-focus, .card-pick { fill: none; stroke: none; }
 .dependency-card[data-box-selected="true"] .card-pick { stroke: #41765c; stroke-width: 7; stroke-dasharray: 5 4; }
 button.dependency-card:focus-visible { outline: none; }

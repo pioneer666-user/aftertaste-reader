@@ -160,9 +160,12 @@ try {
   assert.deepEqual((await drawnEdges.locator('title').allTextContents()).sort(), rawGraph.edges.map(edge => edge.reason).sort());
   await node(service).click();
   const selection = page.locator('.canvas-summary');
-  await selection.getByRole('button', { name: '查看关系' }).click();
-  assert.equal(await selection.locator('h2').innerText(), service);
-  for (const { reason } of rawGraph.edges) await page.locator('.canvas-details').getByText(reason, { exact: true }).waitFor();
+  assert.equal(await selection.locator('h2').getAttribute('title'), service);
+  for (const { dependency, dependent, reason } of rawGraph.edges) {
+    await page.getByRole('button', { name: dependency + ' → ' + dependent, exact: true }).press('Enter');
+    await selection.getByText(reason, { exact: true }).waitFor();
+  }
+  await node(service).click();
   await page.getByRole('button', { name: '放大画布' }).click();
   const beforeReading = await saved();
   const atReading = (await visibleLayout()).viewport;

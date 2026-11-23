@@ -40,6 +40,10 @@ test('real reader lists both artifacts and publishes independent layouts with re
       edges: orderInput.edges.map(({ from, to }) => ({ from, to })),
     });
     assert.deepEqual(list.problems, []);
+    assert.deepEqual(await get(route(orderId) + '/route'), {
+      ok: true, title: orderInput.title, source_commit: project.commit, paths: ['src/service.mjs', 'src/rules.mjs'],
+    });
+    assert.equal((await get(route('not-published') + '/route')).error.code, 'LOOP_NOT_FOUND');
     const originalFiles = [artifact(project, orderId), artifact(project, legendLoopId), project.graph, project.layout];
     const original = await Promise.all(originalFiles.map(file => readFile(file)));
     const order = await get(route(orderId));

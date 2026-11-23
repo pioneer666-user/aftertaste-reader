@@ -100,6 +100,11 @@ description: D016 已保存闭环的阅读与个人布局
 - [x] T031 [US1] 在 tests/browser/ 验证开合逐帧几何、浮层命中、两条订单路线、长文导航、窄窗源码与跨图回访（SC-005—007）。
 - [x] T032 冻结候选与输入，独审后按 docs/work/2026/11/D034-loop-step-reading/task.md 核资料、换版并交回。
 
+## D042 · 依赖图与闭环往返
+
+- [x] T033 [US1] 在 src/web/LoopRelations.vue、src/web/LoopReading.vue 与 src/web/DependencyCanvas.vue 将底条接入右栏并保全所有有向关系。
+- [x] T034 [US1] 在 tests/browser/loop-reading-panel.mjs 及路线往返用例核步骤、显隐与分支。
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

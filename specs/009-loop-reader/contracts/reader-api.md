@@ -13,3 +13,7 @@ ID 按 D015 校验。服务启动时固定项目根。子目录和文件经过�
 D031 的讲解直读、源码浮层和画布反馈使用现有 `GET /api/loops/:id` 的 `result.loop` 与按步骤标记的 `result.sources`，本机请求及响应契约不变。预览、固定、关闭、选择和文本滚动不调用 `PUT`，不新增布局字段。
 
 目录按推荐顺序给出步骤 ID 数组 `steps`；`edges` 只返回 `{from,to}`。步数取数组长度，`fileCount` 按步骤引用的源码路径去重。列表不读取个人布局或 Git 源码。
+
+## 参与文件
+
+`GET /api/loops/:id/route` 读取并核验当前闭环，返回 title、source_commit 和去重的 paths。读取失败沿用闭环诊断。
