@@ -644,12 +644,13 @@
 .route-actions .route-read { background: var(--action); border-color: var(--action); color: var(--on-action); }
 .route-actions p { flex-basis: 100%; margin: 0; font-size: 13px; overflow-wrap: anywhere; }
 .edge-ink .vue-flow__edge-path { opacity: .09; }
-.edge-ink:is(.edge-lit, :focus-visible, .inspected-edge) .vue-flow__edge-path { opacity: 1; }
+.edge-ink.edge-lit .vue-flow__edge-path { opacity: 1; }
 @media (prefers-reduced-motion: no-preference) {
   .edge-ink .vue-flow__edge-path { transition: opacity 100ms ease-out; }
 }
 .inspect-edge { cursor: pointer; pointer-events: visibleStroke; }
-.inspect-edge:is(:focus-visible,.inspected-edge) .vue-flow__edge-path { stroke: var(--focus) !important; stroke-width: 4px !important; opacity: 1 !important; }
+.graph-area:not(.node-relations-active) .inspect-edge:focus-visible .vue-flow__edge-path,
+.inspect-edge.inspected-edge .vue-flow__edge-path { stroke: var(--focus) !important; stroke-width: 4px !important; opacity: 1 !important; }
 .canvas-summary:has(.edge-reason) { align-items: start; white-space: normal; }
 .canvas-summary:has(.edge-reason) h2, .canvas-summary .edge-reason { overflow-wrap: anywhere; white-space: pre-wrap; }
 @media (max-width: 760px) {

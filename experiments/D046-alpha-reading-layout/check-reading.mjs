@@ -144,6 +144,22 @@ async function graph(kind) {
   await hoverCard.focus();
   await page.waitForTimeout(140);
   assert.equal((await opacity()).filter(alpha => alpha === 1).length, incident);
+  if (!loop) {
+    const unrelatedId = edges.map(e => flowId(e.from) + '→' + flowId(e.to)).find(id => !expected.includes(id));
+    const oldEdge = canvas.locator('.vue-flow__edge[data-id="' + unrelatedId + '"] .inspect-edge');
+    await oldEdge.focus();
+    assert.ok(await oldEdge.evaluate(el => el.matches(':focus-visible')));
+    const width = () => oldEdge.locator('.vue-flow__edge-path').evaluate(line => Number.parseFloat(getComputedStyle(line).strokeWidth));
+    assert.equal(await width(), 4);
+    await hoverCard.hover();
+    await page.waitForTimeout(140);
+    assert.equal((await opacity()).filter(alpha => alpha === 1).length, incident);
+    assert.ok(await width() < 4);
+    await page.mouse.move(4, 60);
+    await page.waitForTimeout(140);
+    assert.equal(await width(), 4);
+    report.focusThenHover = { unrelatedId, incident };
+  }
   assert.equal((await get(route)).revision, before.revision);
   report[kind + 'Ink'] = { total: lit.length, incident, restingOpacity: initialInk[0], hoverOpacity: 1 };
   await persist();

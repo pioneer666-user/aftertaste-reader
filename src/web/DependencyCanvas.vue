@@ -890,7 +890,7 @@ onUnmounted(() => {
           </div>
         </details>
       </div>
-      <section ref="graphArea" class="graph-area" :aria-label="t(loopId ? 'loopGraph' : 'dependencyCanvas')"
+      <section ref="graphArea" class="graph-area" :class="{ 'node-relations-active': litNode }" :aria-label="t(loopId ? 'loopGraph' : 'dependencyCanvas')"
         :data-tool="effectiveTool" tabindex="0" @keydown="selectionKeys"
         @pointerover="pointAtCard" @pointerleave="hoverNode = ''" @focusin="focusCard" @focusout="focusNode = ''"
         @pointerdown.capture="beginPointer" @pointermove="moveSelection" @pointerup="finishSelection"
