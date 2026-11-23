@@ -237,6 +237,11 @@ try {
   assert.notDeepEqual(moved.positions.check, created.positions.check);
   const menu = loop.locator('.loop-group-menu');
   const count = report.writes.length;
+  await more.click();
+  await menu.waitFor();
+  await more.click();
+  await menu.waitFor({ state: 'hidden' });
+  assert.equal(await more.getAttribute('aria-expanded'), 'false');
   await more.press('Enter');
   await page.keyboard.press('Escape');
   assert.ok(await more.evaluate(el => document.activeElement === el));
@@ -260,6 +265,7 @@ try {
   await menu.getByRole('button', { name: /解散分组.*节点保留在原位/u }).press('Enter');
   await frame.waitFor({ state: 'detached' });
   assert.ok(await area.evaluate(el => el === document.activeElement));
+  await loop.getByRole('alert').filter({ hasText: 'LAYOUT_WRITE_FAILED' }).waitFor();
   const after = await save(() => press(loop, '重试保存'));
   assert.deepEqual(after, { ...beforeDissolve, groups: beforeDissolve.groups.filter(g => g.id !== group.id) });
   assert.deepEqual(await edges(), savedEdges);

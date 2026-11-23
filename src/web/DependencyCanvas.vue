@@ -504,7 +504,8 @@ async function openGroupMenu(id: string, event: MouseEvent) {
 }
 
 function leaveGroupMenu(event: FocusEvent) {
-  if (event.relatedTarget instanceof HTMLElement && !groupMenu.value?.contains(event.relatedTarget)) menuGroup.value = undefined;
+  const next = event.relatedTarget;
+  if (next instanceof HTMLElement && next !== groupTrigger.value && !groupMenu.value?.contains(next)) menuGroup.value = undefined;
 }
 
 function dissolveGroup() {
@@ -892,7 +893,8 @@ onUnmounted(() => {
               <div class="loop-group-bar">
                 <span class="group-handle" :title="data.name">{{ data.name }}</span>
                 <button type="button" class="group-more nodrag nopan" :aria-label="t('loopGroupActions') + ' · ' + data.name"
-                  :disabled="!editable || !idle" :aria-expanded="menuGroup?.id === id.slice(6)" @click.stop="openGroupMenu(id.slice(6), $event)">⋯</button>
+                  :disabled="!editable || !idle" :aria-expanded="menuGroup?.id === id.slice(6)"
+                  @blur="leaveGroupMenu" @click.stop="openGroupMenu(id.slice(6), $event)">⋯</button>
               </div>
             </div>
           </template>

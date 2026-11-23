@@ -431,6 +431,11 @@ try {
   for (const [id, point] of Object.entries(edited.layout.positions)) assertNear(shown.positions[id], [point.x, point.y]);
   await screenshot(page, 'reopened');
   const more = button(dep(page), '分组操作 · 键盘编排');
+  await more.click();
+  await dep(page).locator('.loop-group-menu').waitFor();
+  await more.click();
+  await dep(page).locator('.loop-group-menu').waitFor({ state: 'hidden' });
+  assert.equal(await more.getAttribute('aria-expanded'), 'false');
   await more.press('Enter');
   await page.keyboard.press('Escape');
   assert.ok(await more.evaluate(el => el === document.activeElement));
