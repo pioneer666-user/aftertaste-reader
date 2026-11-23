@@ -11,6 +11,7 @@ import BlockLocationControl from './BlockLocationControl.vue';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { blockLabel, renderMarkdown } from './markdown.js';
+import { highlightSource } from './source-highlight.js';
 
 const props = defineProps<{
   result?: ReadingDocument; error?: ReaderProblem; language: Language; active: boolean;
@@ -36,6 +37,16 @@ const quote = computed(() => {
 });
 const stickyBlocks = shallowRef(new Set<string>());
 const sourcePath = computed(() => props.result?.sourcePath ?? '');
+const highlightedSource = shallowRef<Awaited<ReturnType<typeof highlightSource>>>();
+watch(() => props.result, async (result, _, onCleanup) => {
+  highlightedSource.value = undefined;
+  if (result?.renderMode === 'comparison' && result.sourcePath && result.sourceLines) {
+    let current = true;
+    onCleanup(() => { current = false; });
+    const highlighted = await highlightSource(result.sourcePath, result.sourceLines);
+    if (current) highlightedSource.value = highlighted;
+  }
+}, { immediate: true });
 const sourceNameIndex = computed(() => sourcePath.value.lastIndexOf('/') + 1);
 const selectionLocation = computed(() => quote.value ? blockLocation(quote.value.blockId, quote.value.text) : '');
 let readingPane: HTMLElement | null | undefined;
@@ -133,7 +144,10 @@ onUnmounted(() => {
         <div v-if="block.lines" class="source-pane" :class="{ 'is-sticky': stickyBlocks.has(block.id) }">
           <h2 class="pane-label">{{ t('source') }} <span>{{ block.lines.start }}–{{ block.lines.end }}</span></h2>
           <div class="source-scroll" tabindex="0" role="region" :aria-label="t('sourceScroll')">
-            <pre><code><span v-for="(line, index) in result.sourceLines?.slice(block.lines.start - 1, block.lines.end)" :key="index" class="source-line"><span class="line-number" aria-hidden="true">{{ block.lines.start + index }}</span><span>{{ line }}</span>{{ '\n' }}</span></code></pre>
+            <pre><code><span v-for="(line, index) in result.sourceLines?.slice(block.lines.start - 1, block.lines.end)"
+              :key="index" class="source-line"><span class="line-number" aria-hidden="true">{{ block.lines.start + index }}</span><span
+              v-if="highlightedSource"><template v-for="(part, partIndex) in highlightedSource[block.lines.start - 1 + index]"
+              :key="partIndex"><span v-if="part.className" :class="part.className">{{ part.text }}</span><template v-else>{{ part.text }}</template></template></span><span v-else>{{ line }}</span>{{ '\n' }}</span></code></pre>
           </div>
         </div>
         <div class="explanation-pane">

@@ -22,6 +22,8 @@
 
 ## Summary
 
+**D047 增量** 按[调整 A1](../../docs/work/2026/11/D047-source-syntax-highlighting/amendments.md)在原固定源码栏加入本地多语言着色。构建编入 Shiki 语言目录及从 Linguist 派生的路径关联，浏览器按需读取本机语法模块，用既有主题 CSS 呈现，正文和行号继续来自同一阅读结果。[研究](research.md#d047-固定源码高亮)
+
 **D046 增量** ReaderFileTree 按递归深度缩进按钮内部，保留完整路径和原生按钮的焦点与激活语义。桌面侧栏 232 px、行高至少 24 px，窄屏或粗指针使用 44 px。
 
 单个 Node 本地服务提供预构建 Vue 页面和只读 JSON。DocumentService 在同次读取中完成解析、固定取源和覆盖检查，CLI 校验复用这条链。列表发现独立于 Git。页面仅在内存处理内容，以 code/params 翻译诊断。
@@ -47,6 +49,8 @@ D030 在文件树切篇时即刻显示目的地。沿用 App 的导航序号处�
 **Language/Version** TypeScript 5.9.3，Node 24.11.1 开发验证。
 
 **Primary Dependencies** Fastify 5.12.8，Vue 3.5.45，Vite 8.3.8，@vitejs/plugin-vue 6.0.11，vue-tsc 3.3.14，markdown-it 15.0.3。沿单一 npm 锁文件，Playwright 1.65.1 仅验证。
+
+D047 构建依赖 Shiki 4.6.0、linguist-languages 9.5.0。tm-grammars 1.32.22 与 vscode-oniguruma 1.7.0 提供再分发声明。安装沿用现有产品运行依赖，页面读取本机分块资产。
 
 **Storage** 读取目标项目 current 与 Git 对象。浏览器分别保存 aftertaste.language 和 aftertaste.theme，侧栏状态和目录标签均为页面内存状态。记录读写仍经各自已有的项目资料入口。
 
@@ -85,6 +89,8 @@ D028 研究前及设计后核对 I—V。FR-011、015—016 与授权一致（I�
 D029 研究前及设计后按 I—V 复核。FR-017 以派单表面为界，继续按固定提交读取，记录及契约无变更。使用已有 Vue 控件和浏览器边线。隔离试读按 SC-016 对照与独审，按生效模板维护 006 的增量。
 
 D030 规划前按 I—V 核对 [D030 派单](../../docs/work/2026/11/D030-reader-file-switch/task.md) 与 FR-018—019。设计完成复核：改动限阅读端，单次导航继续读同一固定版本，不改变资料所有权、访问历史契约或磁盘写入。沿用已有工具链和布局，固定副本做自然与阻断读取，送同候选独审。
+
+D047 研究前及设计后复核 I—V。范围以 A1 和 FR-023 为准。高亮只派生于既有固定源及路径，失败使用原文，没有新增存储。语法、路径元数据与现有 Vue 行模板各有单一来源。实际成包按 SC-021 验证并送独审。006 沿用 Spec Kit 生效模板增量维护。
 
 ## Project Structure
 
@@ -190,6 +196,12 @@ D026 的原设计记录。现行入口与历史按下节。
 ### D044 全站主题
 
 使用根元素的主题属性统一选择固定色板。按页面、表面、正文、辅助文字、交互、状态、关系线、库、分组和路线分配用途。CSS 与 SVG 继承同一组属性。Canvas 位图按当前色板重建笔刷并请求一帧，Firefox 的圆角表面重新采样。顶栏原位改变外观，不触发路由、资料读取、编辑器更新或布局保存。验收使用 D043 订单独立副本。
+
+### D047 固定源码高亮
+
+`scripts/source-languages.mjs` 在 Vite 构建时将 Linguist 文件名和扩展名关联与 Shiki 可用目录匹配。优先已知文件名和最长匹配后缀。扩展名保留大小写的精确匹配，兼容常见大写文件后缀。无足够依据的冲突回退纯文本，C/C++ 共用的 `.h` 使用 C++ 语法。可随本版分发的语言文件作为动态 JS 分块入包。阅读页的 CSP 仅额外允许 WebAssembly 编译，页面依旧只从本机加载脚本。
+
+`src/web/source-highlight.ts` 用 Oniguruma 按整篇源码着色，以文本片段表示样式并核对切分可逐行还原原文。`ReaderDocument.vue` 按现有行范围呈现片段。先显示原文，着色未成功保留原文，离开或切换后丢弃过期结果。五套 CSS 主题提供实际色值，切换时无需重新着色。验证用 [quickstart](quickstart.md#d047-固定源码高亮)和浏览器现有对比度辅助检查。既有阅读响应与资料契约适用。
 
 ## Complexity Tracking
 

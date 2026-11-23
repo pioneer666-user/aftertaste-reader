@@ -86,3 +86,9 @@ D010 合成样例使用 tests/fixtures/reader-project.mjs 重建到全新隔离�
 以 [D041 验证与停点](../../docs/work/2026/11/D041-record-management-details/task.md#验证与停点) 的订单项目副本串行运行 `tests/browser/record-details.mjs` 和 `tests/browser/record-workbench.mjs`。测两种桌面宽度、窄窗、连续角、两区域恢复及只读回访。D038 固定构建只在隔离页套用同一 CSS 布局规则，核正文和引用。
 
 D044 使用 D043 订单独立副本，展开第 03 步并打开《订单步骤核对》，从顶栏切换深黑和浅绿。核同一篇正文、笔记引文、图上 ◆ 与选中边线，再重开站点。六页五主题验收按 SC-019。
+
+## D047 固定源码高亮
+
+用 Node 24 依次执行 `npm run typecheck`、`npm pack`，在 `.local/D047/<run-id>/` 内将实际包安装到隔离目录，使用 `--omit=dev`。从仓库根运行 `node tests/browser/source-highlighting.mjs --prepare <隔离项目绝对路径>` 生成合成 Git 项目和已有讲解。用隔离安装里的 `dist/cli/main.js serve --project <隔离项目绝对路径> --port 4318` 启动，端口已占用时另选空闲回环端口。
+
+串行运行 `node tests/browser/source-highlighting.mjs http://127.0.0.1:4318 <证据目录>`。脚本用独立 Edge 上下文逐篇打开，阻断外网和写请求，核对应样例的着色、原文、行号、五套主题、长行、跨块语境与语法分块失败。最后沿用 `tests/browser/reader-center.mjs` 回归源码区的基本布局和阅读操作。

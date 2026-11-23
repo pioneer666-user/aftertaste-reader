@@ -425,6 +425,8 @@ try {
   await page.evaluate(() => { delete navigator.clipboard.writeText; });
   await page.locator('.language-control select').selectOption('zh-CN');
   await openFile(serviceFile);
+  // Use a width where this passage wraps with the current reader columns.
+  await page.setViewportSize({ width: 1360, height: 900 });
   const noteSelection = '文本，服务随后忽略这';
   const noteRelease = await pointerSelect(paragraph, noteSelection);
   await floatingCopy.waitFor();
@@ -496,10 +498,12 @@ try {
   await sourceScroll.evaluate(element => { element.scrollLeft = element.scrollWidth; });
   assert.ok(Math.abs((await box(number)).x - initialX) <= 1);
   const lastGlyph = await sourceScroll.locator('.source-line').first().evaluate(row => {
-    const node = row.lastElementChild.firstChild;
+    const walker = document.createTreeWalker(row.lastElementChild, NodeFilter.SHOW_TEXT);
+    let node, last;
+    while ((node = walker.nextNode())) if (node.length) last = node;
     const range = new Range();
-    range.setStart(node, node.textContent.length - 1);
-    range.setEnd(node, node.textContent.length);
+    range.setStart(last, last.length - 1);
+    range.setEnd(last, last.length);
     return range.getBoundingClientRect().right;
   });
   const sourceBox = await box(sourceScroll);

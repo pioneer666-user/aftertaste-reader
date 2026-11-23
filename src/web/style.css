@@ -265,6 +265,11 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .document-block .source-pane.is-sticky { position: sticky; top: 16px; }
 .document-block .source-pane .pane-label { margin: 0 0 5px; padding-inline: 15px; }
 .document-block .source-scroll pre { width: max-content; min-width: 100%; padding-block: 0 4px; }
+.document-block .source-keyword { color: var(--source-keyword); font-weight: 600; }
+.document-block .source-string { color: var(--source-string); }
+.document-block .source-comment { color: var(--secondary); }
+.document-block .source-tag { color: var(--source-tag); }
+.document-block .source-property { color: var(--source-property); }
 .document-block .line-number {
   position: sticky;
   inset-inline-start: 0;

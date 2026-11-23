@@ -5,6 +5,10 @@
   --panel: #fcfdfa;
   --inset: #f2f6f2;
   --code-surface: #edf4ee;
+  --source-keyword: #633796;
+  --source-string: #216343;
+  --source-tag: #155481;
+  --source-property: #79461e;
   --text: #202e29;
   --secondary: #52645b;
   --action: #21624d;
@@ -50,6 +54,10 @@
   --panel: #fdf5e8;
   --inset: #f5eddd;
   --code-surface: #eee4d1;
+  --source-keyword: #75346b;
+  --source-string: #82501d;
+  --source-tag: #235482;
+  --source-property: #305a3f;
   --text: #2c231c;
   --secondary: #675748;
   --action: #884216;
@@ -95,6 +103,10 @@
   --panel: #f3f8ff;
   --inset: #e9f1fb;
   --code-surface: #e1ebf8;
+  --source-keyword: #56339a;
+  --source-string: #08605f;
+  --source-tag: #235491;
+  --source-property: #824625;
   --text: #182c46;
   --secondary: #495e78;
   --action: #15579d;
@@ -140,6 +152,10 @@
   --panel: #fafafa;
   --inset: #f1f1f1;
   --code-surface: #eaeaea;
+  --source-keyword: #63398a;
+  --source-string: #1f6253;
+  --source-tag: #1c527b;
+  --source-property: #79492b;
   --text: #252525;
   --secondary: #565656;
   --action: #414956;
@@ -185,6 +201,10 @@
   --panel: #282d32;
   --inset: #1b1f23;
   --code-surface: #181c20;
+  --source-keyword: #d1a8ff;
+  --source-string: #98d5a7;
+  --source-tag: #91c9fa;
+  --source-property: #f7be90;
   --text: #f1f3f4;
   --secondary: #b4bec5;
   --action: #99c4e7;
