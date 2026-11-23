@@ -41,6 +41,33 @@ const { setNodes, setEdges, findNode, updateNode, setViewport, viewport, getNode
 const reading = shallowRef<CanvasReading | LoopCanvasReading>();
 const layout = shallowRef<CanvasLayout>();
 const selected = ref('');
+const hoverNode = ref('');
+const focusNode = ref('');
+const touchSelection = ref(false);
+const litNode = computed(() => hoverNode.value || focusNode.value ||
+  (touchSelection.value && selected.value ? nodeId(selected.value) : ''));
+
+function cardId(target: EventTarget | null) {
+  return target instanceof Element ? target.closest('.file-node')?.closest<HTMLElement>('.vue-flow__node')?.dataset.id ?? '' : '';
+}
+
+function pointAtCard(event: PointerEvent) {
+  if (event.pointerType === 'touch') return;
+  touchSelection.value = false;
+  hoverNode.value = cardId(event.target);
+}
+function beginPointer(event: PointerEvent) {
+  touchSelection.value = event.pointerType === 'touch';
+  if (touchSelection.value) { hoverNode.value = ''; focusNode.value = ''; }
+  startSelection(event);
+}
+function focusCard(event: FocusEvent) {
+  focusNode.value = event.target instanceof Element && event.target.matches(':focus-visible') ? cardId(event.target) : '';
+  if (focusNode.value) hoverNode.value = '';
+}
+watch(() => props.active, active => {
+  if (!active) { hoverNode.value = ''; focusNode.value = ''; touchSelection.value = false; }
+});
 const groupId = ref('');
 const groupName = ref('');
 const members = ref<string[]>([]);
@@ -165,6 +192,11 @@ const selectedFileName = computed(() => {
   return dependency.value?.graph.nodes.some(node => node.path !== path && basename(node.path) === name) ? path : name;
 });
 const legends = computed(() => loop.value?.loop.legends ?? dependency.value?.graph.legends ?? []);
+const visibleLegends = computed(() => legends.value.filter(legend => !loop.value ||
+  reading.value?.relations.libraries.some(item => item.id === legendKey(legend.id) && item.targets.length)));
+const visibleKeys = computed(() => new Set([...nodes.value.map(node => node.key), ...visibleLegends.value.map(legend => legendKey(legend.id))]));
+const visibleGroups = computed(() => (layout.value?.groups ?? []).map(group =>
+  ({ ...group, members: group.members.filter(id => visibleKeys.value.has(id)) })).filter(group => group.members.length));
 const selectedLegend = computed(() => legends.value.find(legend => legendKey(legend.id) === selected.value));
 const usedLibraries = computed(() => legends.value.filter(legend => legend.uses.some(use => use.path === selected.value)));
 const hasNodes = computed(() => ids.value.length > 0);
@@ -313,7 +345,7 @@ function render() {
   if (!reading.value || !layout.value) return;
   const current = layout.value;
   setNodes([
-    ...current.groups.map((group): Node => {
+    ...visibleGroups.value.map((group): Node => {
       const { x, y, width, height } = groupBounds(current.positions, group.members, dimensions);
       return { id: groupNodeId(group.id), type: 'canvasGroup', position: { x, y }, dragHandle: '.group-handle',
         data: { name: group.name }, style: { width: width + 'px', height: height + 'px' } };
@@ -322,7 +354,7 @@ function render() {
       id: nodeId(node.key), type: 'canvasFile', position: { ...current.positions[node.key]! }, data: node,
       style: { width: nodeSize.width + 'px', height: nodeSize.height + 'px' },
     })),
-    ...legends.value.map((legend): Node => ({
+    ...visibleLegends.value.map((legend): Node => ({
       id: legendKey(legend.id), type: 'canvasLegend', position: { ...current.positions[legendKey(legend.id)]! },
       data: { ...legend, key: legendKey(legend.id) },
       style: { width: nodeSize.width + 'px', height: nodeSize.height + 'px' },
@@ -335,7 +367,6 @@ function renderEdges() {
   const edge = (from: string, to: string, reason: string, libraryName?: string): Edge => {
     const library = libraryName !== undefined;
     const direct = !loopRoute && (from === selected.value || to === selected.value);
-    const muted = !loopRoute && !!selected.value && !direct;
     const color = library ? (direct ? 'var(--library-direct)' : 'var(--library-edge)')
       : (direct ? 'var(--direct-edge)' : 'var(--edge)');
     return {
@@ -343,7 +374,7 @@ function renderEdges() {
       targetHandle: from === to ? 'self' : 'in', type: 'dependency', focusable: !!loopRoute,
       data: { from: libraryName ?? from, to, reason, loop: !!loopRoute, direct },
       class: [library && 'library-use-edge', direct && 'direct-relation'].filter(Boolean).join(' '),
-      ...(!loopRoute && { style: { stroke: color, strokeWidth: direct ? 2.8 : 1.9, opacity: muted ? .87 : 1 } }),
+      ...(!loopRoute && { style: { stroke: color, strokeWidth: direct ? 2.8 : 1.9 } }),
       markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color },
       ariaLabel: reason,
     };
@@ -353,7 +384,9 @@ function renderEdges() {
     ...graph.edges.map(({ dependency, dependent, reason }) => edge(dependency, dependent, reason)),
     ...legends.value.flatMap(legend => legend.uses.map(use => edge(legendKey(legend.id), use.path, use.reason, legend.name))),
   ].sort((a, b) => Number(a.data.direct) - Number(b.data.direct)) :
-    (loop.value?.loop.edges ?? []).map(({ from, to, reason }) => edge(from, to, reason)));
+    [...(loop.value?.loop.edges ?? []).map(({ from, to, reason }) => edge(from, to, reason)),
+      ...(loop.value?.loop.nodes ?? []).flatMap(node => (node.library_uses ?? []).map(use =>
+        edge(legendKey(use.id), node.id, use.reason, legends.value.find(legend => legend.id === use.id)!.name)))]);
 }
 
 watch(selected, () => { if (!loopRoute) renderEdges(); });
@@ -388,7 +421,7 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
       }
     }
     const renewed = 'graph' in next ? renewedPaths(ids, dependency.value?.nodeRemovals ?? {}, next.nodeRemovals) : undefined;
-    layout.value = carry ? reconcileLayout(carry, ids, renewed) : next.layout;
+    layout.value = carry ? reconcileLayout(carry, ids, renewed, next.relations) : next.layout;
     if (!carry) {
       newGroups.clear();
       savedGroupId.value = '';
@@ -725,7 +758,7 @@ watchPostEffect(onCleanup => {
 function startDrag({ node }: NodeDragEvent) {
   if (!editable.value || !layout.value) return;
   dragging.value = true;
-  const group = layout.value.groups.find(item => groupNodeId(item.id) === node.id);
+  const group = visibleGroups.value.find(item => groupNodeId(item.id) === node.id);
   if (group) dragGroup = { group, origin: { ...node.position }, layout: layout.value };
 }
 
@@ -736,7 +769,7 @@ function previewDrag({ node }: NodeDragEvent) {
     for (const [id, point] of Object.entries(moved)) updateNode(nodeId(id), { position: point });
   } else {
     const id = node.data.key as string;
-    const group = layout.value.groups.find(item => item.members.includes(id));
+    const group = visibleGroups.value.find(item => item.members.includes(id));
     if (!group) return;
     const positions = { ...layout.value.positions, [id]: node.position };
     const { x, y, width, height } = groupBounds(positions, group.members, dimensions);
@@ -778,7 +811,7 @@ async function zoom(factor: number) {
 async function relayout() {
   if (!editable.value || !idle.value || !layout.value || !reading.value) return;
   clearSelection();
-  changed(rearrange(layout.value, ids.value));
+  changed(rearrange(layout.value, ids.value, reading.value.relations));
   render();
   await setViewport(layout.value.viewport);
 }
@@ -853,13 +886,14 @@ onUnmounted(() => {
           <div class="canvas-tools-menu">
             <p>{{ t('canvasToolOrder') }}</p>
             <p>{{ t('canvasGestures') }}</p>
-            <p>{{ t(legends.length ? 'canvasLibraryDirection' : 'canvasDirection') }}</p>
+            <p>{{ t(loopId ? 'loopEdgeDirection' : legends.length ? 'canvasLibraryDirection' : 'canvasDirection') }}</p>
           </div>
         </details>
       </div>
-      <section ref="graphArea" class="graph-area" :aria-label="t(loopId ? 'loopGraph' : 'dependencyCanvas')"
+      <section ref="graphArea" class="graph-area" :class="{ 'node-relations-active': litNode }" :aria-label="t(loopId ? 'loopGraph' : 'dependencyCanvas')"
         :data-tool="effectiveTool" tabindex="0" @keydown="selectionKeys"
-        @pointerdown.capture="startSelection" @pointermove="moveSelection" @pointerup="finishSelection"
+        @pointerover="pointAtCard" @pointerleave="hoverNode = ''" @focusin="focusCard" @focusout="focusNode = ''"
+        @pointerdown.capture="beginPointer" @pointermove="moveSelection" @pointerup="finishSelection"
         @pointercancel="cancelPointer" @lostpointercapture="cancelPointer">
         <section v-if="routeChoice" class="route-actions" :inert="toolsCovered" :aria-label="t('loopCatalog')">
           <strong>{{ route?.title ?? routeChoice.title }}</strong>
@@ -935,7 +969,7 @@ onUnmounted(() => {
               </div>
             </div>
           </template>
-          <template #edge-dependency="edge"><DependencyEdge v-bind="edge" :active="selectedEdgeId === edge.id" @inspect="selectEdge(edge.id)" /></template>
+          <template #edge-dependency="edge"><DependencyEdge v-bind="edge" :lit="litNode === edge.source || litNode === edge.target" :active="!litNode && selectedEdgeId === edge.id" @inspect="selectEdge(edge.id)" /></template>
         </VueFlow>
         <div v-if="menuGroup" ref="groupMenu" class="loop-group-menu" @keydown.esc.stop.prevent="closeGroupEditor"
           @focusout="leaveGroupMenu">
@@ -1036,6 +1070,12 @@ onUnmounted(() => {
             <p class="library-description">{{ selectedLegend.description }}</p>
           </div>
           <div>
+            <ul class="canvas-relations">
+              <li v-for="node in loop?.loop.nodes.filter(n => n.library_uses?.some(use => use.id === selectedLegend?.id))" :key="node.id">
+                <button type="button" @click="openStep(node.id)">{{ node.title }}</button>
+                <p>{{ node.library_uses?.find(use => use.id === selectedLegend?.id)?.reason }}</p>
+              </li>
+            </ul>
             <h3>{{ t('loopLibraryFiles') }}</h3>
             <ul v-if="selectedLegend.uses.length" class="canvas-relations">
               <li v-for="use in selectedLegend.uses" :key="use.path">
@@ -1058,7 +1098,7 @@ onUnmounted(() => {
           <select :id="groupControl + '-picker'" ref="groupPicker" :value="groupId" :disabled="!editable || !idle"
             @change="editGroup(($event.target as HTMLSelectElement).value)">
             <option value="">{{ t('canvasNewGroup') }}</option>
-            <option v-for="group in layout?.groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+            <option v-for="group in visibleGroups" :key="group.id" :value="group.id">{{ group.name }}</option>
           </select>
           <label :for="groupControl + '-name'">{{ t('canvasGroupName') }}</label>
           <input :id="groupControl + '-name'" ref="groupNameInput" v-model="groupName" maxlength="160" :disabled="!editable || !idle" />
@@ -1067,7 +1107,7 @@ onUnmounted(() => {
             <label v-for="node in nodes" :key="node.key" class="canvas-member">
               <input v-model="members" type="checkbox" :value="node.key" />{{ node.label }}
             </label>
-            <label v-for="legend in legends" :key="legendKey(legend.id)" class="canvas-member">
+            <label v-for="legend in visibleLegends" :key="legendKey(legend.id)" class="canvas-member">
               <input v-model="members" type="checkbox" :value="legendKey(legend.id)" />{{ legend.name }} · {{ legendKind(legend.kind) }}
             </label>
           </fieldset>

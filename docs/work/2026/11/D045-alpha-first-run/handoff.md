@@ -5,7 +5,8 @@
 [打开《收藏一次问题后，数据库和响应怎样变化》](http://127.0.0.1:4357/#aftertaste-loop/question-bookmark-request/request)。从「进入收藏接口」沿右栏出口阅读，在「比较现有关系和目标状态」可分别走首次收藏和重复提交。也可直接看[关系插入](http://127.0.0.1:4357/#aftertaste-loop/question-bookmark-request/insert-bookmark)、[计数写回](http://127.0.0.1:4357/#aftertaste-loop/question-bookmark-request/write-count)或[两种响应](http://127.0.0.1:4357/#aftertaste-loop/question-bookmark-request/read-response)。每一步可展开源码对照，标题旁可复制步骤定位。
 
 - **首次安装**使用[根 README](../../../../../README.md#首次安装)和[本地预构建包](../../../../../experiments/D045-alpha-first-run/.local/release-4e8c625/aftertaste-reader-0.0.0.tgz)。包 SHA-256 为 `156a4d5262180c184c972070597f199583539e2c15f7f226abf91d6aecd22559`，大小 490,233 字节。包内已有 CLI、页面、字体和 Skill。生成资料在被读项目，日常可以离线打开。
-- **试读**包含 14 篇完整文件讲解、依赖图和一条 16 步闭环，使用 Apache Answer v1.5.0 的固定提交。实际读图、源码对照、复制位置及关停重开已自测。独审 R2 通过，作者的教学体验验收待进行。[上游提交](https://github.com/apache/answer/commit/3f1ed50f6776452c11b6ffdbdc767cd1887d629b)
+- **试读**包含 14 篇完整文件讲解、依赖图和一条 16 步闭环，使用 Apache Answer v1.5.0 的固定提交。实际读图、源码对照、复制位置及关停重开已自测，独审 R2 通过。[上游提交](https://github.com/apache/answer/commit/3f1ed50f6776452c11b6ffdbdc767cd1887d629b)
+- **作者体验（2026-11-23）** 作者已试读上述收藏闭环，指出文件树偏大、两图每行排列看不出谁连到谁、闭环里的库图例没有连到步骤，缺少讲解偏好时内容也偏浅。作者要求先修再考虑发布，确认双图默认从左向右按关系分层，已有个人排布优先，主动重排再按层排列。本次首装及独审记录沿用，阅读体验待新版复验。[D046 修复单与作者截图](../D046-alpha-reading-layout/task.md)
 - **Git** 作者于 2026-11-23 在本对话指示「合并到dev」。本地合并提交为 `5d1149f`，父提交为原 `dev@d1b5652` 和任务尖端 `f4c58f2`。合并结果与任务尖端的文件树一致，沿用成果候选 `4e8c6257739e09fe77665dc2b508fdfe7e8eff6b` 的自测和独审，比较派单 `8bd5e7b`。已切回 `dev` 并正常删除已合入的本地任务分支 `codex/feat-alpha-first-run`。本仓无 `main`、`master` 或远程发布记录。[独审原文](review.md)
 
 ## 依据与验证

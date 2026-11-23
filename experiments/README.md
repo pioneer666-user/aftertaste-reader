@@ -3,6 +3,7 @@
 实验是一次已批准任务的取证过程，按任务保留实现、固定输入和结果证据。
 
 - [D004 · 图画布自由布局与持久恢复](D004-canvas-persistence/README.md)
+- [D046 · 收藏请求新版双图与文件树试读](D046-alpha-reading-layout/README.md)
 - [D045 · 从本地安装包开始读真实后端](D045-alpha-first-run/README.md)
 
 ```text

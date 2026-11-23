@@ -124,7 +124,7 @@ try {
   await page.keyboard.press('Enter');
   await paths.getByText(standardLegend.description, { exact: true }).waitFor();
   for (const use of standardLegend.uses) await paths.getByText(use.reason, { exact: true }).waitFor();
-  assert.equal(await paths.locator('.library-use-edge').count(), 0);
+  assert.equal(await paths.locator('.library-use-edge').count(), 1);
   await page.getByLabel('界面语言').selectOption('en');
   await paths.getByText('Participating files that use this library').waitFor();
   await paths.getByText(standardLegend.description, { exact: true }).waitFor();
@@ -180,12 +180,13 @@ try {
     await releaseWrite.promise;
     await route.fulfill({ response });
   }, { times: 1 });
+  const startX = await step(order, 'start').evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el.closest('.vue-flow__node')).transform).e);
   const writeRequested = page.waitForRequest(request => request.url().endsWith(orderRoute + '/layout'));
   await drag(page, step(order, 'start'), 35, 24);
   await writeRequested;
   assert.equal(await writeReachedDisk.promise, 200);
   const whileSaving = await readJSON(orderPath);
-  assert.notEqual(whileSaving.layout.positions.start.x, 30);
+  assert.notEqual(whileSaving.layout.positions.start.x, startX);
   await order.getByTestId('layout-status').filter({ hasText: '正在保存布局' }).waitFor();
   await choose(page, legendLoopId);
   const pathsGrouped = await saveAction(page, paths, legendRoute + '/layout', legendPath,

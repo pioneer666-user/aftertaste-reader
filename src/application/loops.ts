@@ -160,6 +160,7 @@ export function loopMarkdown(result: ReadingLoop): string {
     const ref = [inlineCode(node.path), `块 ${inlineCode(node.block_id)}`,
       node.lines ? `第 ${node.lines.start}–${node.lines.end} 行` : '纯讲解'].join(' · ');
     parts.push(`### ${index + 1}. ${title(nodeId)}`, ref, node.explanation);
+    for (const use of node.library_uses ?? []) parts.push(`**${oneLine(loop.legends.find(legend => legend.id === use.id)!.name)}** ${use.reason}`);
     if (node.hint) parts.push(`**提示** ${node.hint}`);
     const problem = problems.get(nodeId);
     if (problem) parts.push(`**固定源码不可用** ${problem.code} · ${problem.message} ${problem.nextStep}\n\n仓库 ${inlineCode(String(problem.context.repositoryRoot))}`);

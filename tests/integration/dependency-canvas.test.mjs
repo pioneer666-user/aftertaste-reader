@@ -233,7 +233,9 @@ test('正式重加的身份跨直接编辑和撤销保留，旧页写入始终�
     const verify = async () => {
       const next = await get(reader.url);
       assert.equal(next.layoutProblem, null);
-      assert.deepEqual(next.layout.positions[audit], { x: 570, y: 64 });
+      const point = next.layout.positions[audit];
+      assert.notDeepEqual(point, first.layout.positions[audit]);
+      assert.ok(point.x > Math.max(next.layout.positions[rules].x, next.layout.positions[service].x) + 212);
       assert.deepEqual(next.layout.groups, []);
       const rejected = await turn(reader.url, stale);
       assert.equal(rejected.status, 409);
