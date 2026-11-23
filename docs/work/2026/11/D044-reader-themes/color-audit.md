@@ -10,7 +10,7 @@ rg -n -i 'color|background|fill|stroke|shadow|gradient|opacity|transparent|curre
 rg -n -i 'color|paint|rgba?|stroke|fill|shadow|gradient|tint|chroma|ripple|forcedColors' tests/browser node_modules/@vue-flow/core/dist/style.css node_modules/@vue-flow/core/dist/theme-default.css
 ```
 
-用候选提交替换第一项的 504fec9 可重跑结果。基线 289 处／13 个文件。按次数为 canvas.css 119、style.css 97、DependencyCard 20、BlockLocationControl 17、BlockMarginRecords 和 DependencyMiniMap 各 8、NoteBody 5、DependencyCanvas 和 QuickNote 各 4、DependencyDots 3、ReaderSidebarDivider 2、LoopThumbnail 和 BlockUnderstandingMark 各 1。候选的 210 个直接色值全部集中在 themes.css，42 个用途各有五组固定值。具名系统色按系统高对比设置绘制。
+用候选提交替换第一项的 504fec9 可重跑结果。基线 289 处／13 个文件。按次数为 canvas.css 119、style.css 97、DependencyCard 20、BlockLocationControl 17、BlockMarginRecords 和 DependencyMiniMap 各 8、NoteBody 5、DependencyCanvas 和 QuickNote 各 4、DependencyDots 3、ReaderSidebarDivider 2、LoopThumbnail 和 BlockUnderstandingMark 各 1。候选的 205 个直接色值全部集中在 themes.css，41 个用途各有五组固定值。具名系统色按系统高对比设置绘制。
 
 ## 用途与实际落点
 
@@ -32,4 +32,3 @@ rg -n -i 'color|paint|rgba?|stroke|fill|shadow|gradient|tint|chroma|ripple|force
 - Vue Flow 使用自定义文件、库、组、边和导航控件。产品禁用连线编辑、默认节点选择器和内置框选。基础样式和默认主题仍随包导入，实际边、端点与 marker 的绘制走产品规则。CodeMirror 当前启用历史、换行、引用装饰和 drawSelection；自带 gutter、搜索、高亮当前行等样式没有对应启用扩展。触屏选区把手继承 currentColor。
 - 浅绿基线保留语义与主要纸色，并收深控件边界、非直接关系线和选区，统一相近表面。旧 Firefox 用例读取按钮透明背景，在实际 SVG 上分开核普通、当前、悬停与焦点。浅绿符号的固定 RGB、英文顶栏收纳边界及玻璃测试的两种 CSS 颜色序列化形式随实现校正。保留玻璃填充约 0.33、模糊 4 px 和轻高光。波纹专项按默认浅绿查实绘绿色亮点。
 - [浅绿同场景对照](green-comparison.jpg) · [六页五主题](six-pages.jpg)。对比度的具体色对、构建和样本记录见[回执](handoff.md)。
-

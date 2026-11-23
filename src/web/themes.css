@@ -18,8 +18,7 @@
   --current: #e0eee4;
   --current-hover: #d6e8db;
   --focus: #286c55;
-  --selection: #769a82;
-  --selection-text: #101e16;
+  --editor-selection: #769a82;
   --scroll-thumb: #6e8175;
   --success: #197047;
   --danger: #99352f;
@@ -64,8 +63,7 @@
   --current: #ecdcc5;
   --current-hover: #e4cbaa;
   --focus: #895018;
-  --selection: #ae875e;
-  --selection-text: #281d13;
+  --editor-selection: #ae875e;
   --scroll-thumb: #89755d;
   --success: #236439;
   --danger: #99392d;
@@ -110,8 +108,7 @@
   --current: #d3e6fc;
   --current-hover: #c5dcf6;
   --focus: #125ba5;
-  --selection: #7495ba;
-  --selection-text: #132b47;
+  --editor-selection: #7495ba;
   --scroll-thumb: #6e829a;
   --success: #176847;
   --danger: #9e353b;
@@ -156,8 +153,7 @@
   --current: #dfe4e8;
   --current-hover: #d6dee3;
   --focus: #45576d;
-  --selection: #8494a5;
-  --selection-text: #202933;
+  --editor-selection: #8494a5;
   --scroll-thumb: #797979;
   --success: #216740;
   --danger: #993330;
@@ -202,8 +198,7 @@
   --current: #344452;
   --current-hover: #405666;
   --focus: #88c4ff;
-  --selection: #587187;
-  --selection-text: #f4f8ff;
+  --editor-selection: #587187;
   --scroll-thumb: #78848d;
   --success: #84d9a3;
   --danger: #ffada7;
@@ -235,6 +230,7 @@
     --panel: Canvas;
     --text: CanvasText;
     --action: Highlight;
+    --on-action: HighlightText;
     --focus: Highlight;
     --edge: CanvasText;
     --direct-edge: Highlight;

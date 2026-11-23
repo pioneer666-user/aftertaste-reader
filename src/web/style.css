@@ -26,7 +26,7 @@ button, select { min-height: 40px; padding: 8px 13px; border: 1px solid var(--co
 button:hover, select:hover { background: var(--hover); border-color: var(--accent); }
 button:disabled { cursor: wait; opacity: .55; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-::selection { background: var(--selection); color: var(--selection-text); }
+::selection { background: var(--action); color: var(--on-action); }
 * { scrollbar-color: var(--scroll-thumb) var(--inset); scrollbar-width: thin; }
 a { color: var(--accent); text-underline-offset: .2em; }
 .skip-link { position: fixed; top: -80px; left: 12px; z-index: 10; padding: 12px; background: var(--paper); }
@@ -41,7 +41,7 @@ a { color: var(--accent); text-underline-offset: .2em; }
 .app-page-menu button:hover { border-color: transparent; background: var(--hover); }
 .app-header :is(button, select):focus-visible { outline-offset: -2px; }
 .app-page-menu button[aria-current="page"], .app-page-menu-toggle { background: var(--current); color: var(--accent); font-weight: 600; }
-.app-page-menu button[aria-current="page"]:hover, .app-page-menu-toggle:hover { border-color: transparent; background: var(--current-hover); }
+.app-page-menu button[aria-current="page"]:hover, .app-page-menu-toggle:hover { border-color: transparent; background: var(--current-hover); color: var(--action-hover); }
 .app-page-menu-toggle { display: flex; align-items: center; gap: 7px; min-height: 36px; max-width: 100%; padding-inline: 6px; }
 .app-page-menu-toggle span { overflow: hidden; text-overflow: ellipsis; }
 .app-page-menu-toggle::after { content: ''; flex: 0 0 5px; height: 5px; margin: -2px 2px 0 0; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }

@@ -58,6 +58,25 @@ async function matrix(name, subject, observe) {
     states[value] = { geometry, data };
     const image = await shot(name + '-' + value);
     const pairs = await textContrast(page, image, samples[name]);
+    if (name === 'reader') {
+      const currentTab = '.app-page-menu button[aria-current=page]';
+      await page.locator(currentTab).hover();
+      const hovered = await textContrast(page, await shot('current-hover-' + value), [currentTab]);
+      const source = '#x4y6az2y .source-line:first-child > span:nth-child(2)';
+      const line = page.locator(source).first();
+      await line.evaluate(el => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+      });
+      assert.ok((await page.evaluate(() => getSelection().toString())).trim());
+      const selected = await textContrast(page, await shot('source-selection-' + value), [source], { selection: true });
+      assert.equal(hovered.length, 1);
+      assert.equal(selected.length, 2);
+      pairs.push(...hovered, ...selected);
+      await page.evaluate(() => getSelection().removeAllRanges());
+    }
     assert.ok(pairs.length, 'No visible sample in ' + name);
     states[value].contrast = pairs;
     for (const pair of pairs) assert.ok(pair.ratio >= pair.minimum, JSON.stringify(pair));
@@ -114,6 +133,16 @@ try {
   assert.match(await manual.inputValue(), /x4y6az2y/u);
   await shot('clipboard-error');
   await choose('green');
+  await page.setViewportSize({ width: 1000, height: 520 });
+  const pane = page.locator('#reading');
+  const offset = await pane.evaluate(e => { e.scrollTop = 140; return e.scrollTop; });
+  assert.ok(offset > 0);
+  for (const value of ['black', 'green']) {
+    await choose(value);
+    assert.equal(await pane.evaluate(e => e.scrollTop), offset);
+  }
+  report.readingOffset = offset;
+  await page.setViewportSize({ width: 1440, height: 900 });
   await go('canvas');
   const graph = page.locator('#canvas-reading');
   await page.locator('.reader-navigation-toggle').press('Enter');
@@ -165,6 +194,11 @@ try {
       selection: await ink(quick.locator('.cm-selectionBackground').first(),'background-color') };
     await shot('quick-' + value);
   }
+  await page.emulateMedia({ forcedColors: 'active' });
+  const selectedRange = quick.locator('.cm-selectionBackground').first();
+  assert.equal(await ink(selectedRange, 'outline-style'), 'solid');
+  await shot('editor-forced-selection');
+  await page.emulateMedia({ forcedColors: 'none' });
   await quick.getByRole('button',{name:'预览',exact:true}).click();
   await quick.locator('a[href$="/resume"]').first().click();
   const step = page.locator('[data-reading-step=resume]:visible');

@@ -1,7 +1,7 @@
 // Sample the rendered screenshot so translucent surfaces, SVG corners and glass
 // are measured against the color actually behind the text.
-export async function textContrast(page, png, selectors) {
-  return page.evaluate(async ({ encoded, selectors }) => {
+export async function textContrast(page, png, selectors, { selection = false } = {}) {
+  return page.evaluate(async ({ encoded, selectors, selection }) => {
     const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
     const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
     const canvas = document.createElement('canvas');
@@ -32,7 +32,7 @@ export async function textContrast(page, png, selectors) {
       if (!rect || rect.left < 0 || rect.right > innerWidth || rect.top < 0 || rect.bottom > innerHeight) continue;
       const top = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
       if (!el.contains(top)) continue;
-      const rgb = getComputedStyle(node.parentElement).color.match(/[\d.]+/g).slice(0,3).map(Number);
+      const rgb = getComputedStyle(node.parentElement, selection ? '::selection' : null).color.match(/[\d.]+/g).slice(0,3).map(Number);
       const data = ctx.getImageData(Math.floor(rect.x), Math.floor(rect.y), Math.ceil(rect.width), Math.ceil(rect.height)).data;
       const colors = new Map();
       for (let i = 0; i < data.length; i += 4) {
@@ -43,6 +43,11 @@ export async function textContrast(page, png, selectors) {
       const distance = c => c.reduce((n,v,i) => n + Math.abs(v - rgb[i]), 0);
       const foreground = [...colors.keys()].map(key => key.split(',').map(Number)).sort((a,b) => distance(a) - distance(b))[0];
       result.push({ selector, foreground, cssInk: rgb, background, ratio: contrast(rgb, background), minimum: 4.5 });
+      if (selection) {
+        const adjacent = getComputedStyle(el.closest('.source-line').querySelector('.line-number')).backgroundColor.match(/\d+/g).map(Number);
+        result.push({ selector: 'source selection boundary', foreground: background, background: adjacent,
+          ratio: contrast(background, adjacent), minimum: 3 });
+      }
     }
     const card = document.querySelector('#canvas-reading [data-route-member][aria-pressed=true]');
     if (card?.checkVisibility() && selectors.includes('.route-read')) {
@@ -62,5 +67,5 @@ export async function textContrast(page, png, selectors) {
       }
     }
     return result;
-  }, { encoded: png.toString('base64'), selectors });
+  }, { encoded: png.toString('base64'), selectors, selection });
 }

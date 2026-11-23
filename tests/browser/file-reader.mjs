@@ -169,6 +169,7 @@ try {
         await rename(path.join(fixture.projectRoot, '.git'), path.join(fixture.projectRoot, 'git-hidden'));
         try {
           await file('rules.mjs').click();
+          await heading('src/rules.mjs').waitFor();
           await page.getByText('Fixed source unavailable', { exact: true }).waitFor();
           assert.ok(await page.locator('.fallback-markdown').innerText());
           await page.screenshot({ path: path.join(run, 'edge-git-unavailable.png'), fullPage: true });

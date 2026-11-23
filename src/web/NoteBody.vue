@@ -105,7 +105,7 @@ defineExpose({
 .note-body-editor .cm-editor .cm-cursor { border-left-color: var(--text); }
 .note-body-editor .cm-content { caret-color: var(--text); }
 .note-body-editor .cm-editor .cm-selectionBackground,
-.note-body-editor .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground { background: var(--selection); }
+.note-body-editor .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground { background: var(--editor-selection); }
 .note-body-editor .cm-scroller { overflow: auto; font: inherit; line-height: 1.65; }
 .note-body-editor .cm-content { padding: 8px 6px; }
 .note-reference, .markdown a.note-block-link[data-source] { display: inline-block; max-width: 100%; vertical-align: middle; padding: 3px 9px; border-inline-start: 3px solid var(--control-rim); border-radius: 3px; background: var(--current); color: var(--action); overflow-wrap: anywhere; white-space: pre-wrap; }
@@ -113,4 +113,7 @@ defineExpose({
 .note-reference small, .markdown a.note-block-link[data-source]::after { display: block; color: var(--secondary); font-size: 11px; }
 .markdown a.note-block-link[data-source]::after { content: attr(data-source); }
 .note-input .note-body-editor { height: 20rem; }
+@media (forced-colors: active) {
+  .note-body-editor .cm-selectionBackground { outline: 1px solid Highlight; outline-offset: -1px; }
+}
 </style>
