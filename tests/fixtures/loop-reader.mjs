@@ -27,7 +27,8 @@ export async function createLoopReaderProject(target) {
     explanation: '上传入口取出文件名。审计辅助函数从目录与文件名构建路径。',
     entry: 'upload',
     nodes: [
-      { id: 'upload', path: api, block_id: 'apiabc12', title: '上传文件名', explanation: '这里只取路径的末段。' },
+      { id: 'upload', path: api, block_id: 'apiabc12', title: '上传文件名', explanation: '这里只取路径的末段。',
+        library_uses: [{ id: standardLegend.id, reason: 'basename 取路径的末段作为上传文件名。' }] },
       { id: 'audit', path: audit, block_id: 'overview', title: '日志路径', explanation: '这里有文件名，需要拼出日志路径。' },
     ],
     edges: [{ from: 'upload', to: 'audit', reason: '对照取名和拼路径的两个操作。' }],

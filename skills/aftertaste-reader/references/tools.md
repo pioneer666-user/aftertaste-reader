@@ -161,7 +161,7 @@ const { file } = runSourceCli(['read', ...sourceArgs, '--path', sourcePath], max
 }
 ```
 
-闭环和节点 ID 最多 64 字符，使用小写字母、数字和分隔用的单连字符，闭环 ID 避开 Windows 设备名。路线至少涉及两个源码文件，所有节点可从入口沿边到达，推荐顺序覆盖每个节点一次。填写实际已讲解的文件与块 ID，节点可附 `hint`。有实际使用的库图例时加 `"legends": [{"id": "node-path", "paths": ["src/reader.mjs"]}]`，列出路线中选用该图例的文件。块讲解、行范围和图例正文由工具取得。
+闭环和节点 ID 最多 64 字符，使用小写字母、数字和分隔用的单连字符，闭环 ID 避开 Windows 设备名。路线至少涉及两个源码文件，所有节点可从入口沿边到达，推荐顺序覆盖每个节点一次。填写实际已讲解的文件与块 ID，节点可附 `hint`。有实际使用的库图例时加 `"legends": [{"id": "node-path", "paths": ["src/reader.mjs"]}]`，列出有固定版本用法的参与文件。在实际用库的节点填写 `"library_uses": [{"id": "node-path", "reason": "这个步骤怎样使用它，以及对结果的影响"}]`。每步每库一次，ID 与本步文件必须已在所选图例中。块讲解、行范围和图例正文由工具取得。
 
 用 `read-loop --project projectRoot --id 闭环ID` 读回 JSON。result.loop 是独立成品，result.sources 含本次取出的源码行，只在内存查看。给读者一份文本可用 `--format markdown` 输出讲解、关系、图例及源码引用。源码部分缺失时，工具仍会交回讲解，result.sourceCheck 为 unavailable，result.mechanicallyValid 为 false，并给出各失败引用。
 

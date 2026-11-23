@@ -87,6 +87,10 @@ test('图例按参与文件冻结，改原文和 HEAD 后读原版，缺一个�
   const invalidLegend = structuredClone(plan);
   invalidLegend.legends[0].id = 'missing-legend';
   failure(run(...createArgs(project, await inputFile(project, 'bad-legend', invalidLegend))), 'LOOP_LEGEND_INVALID');
+  const misplaced = structuredClone(plan);
+  misplaced.nodes[1].library_uses = [{ id: standardLegend.id, reason: '未选用该文件的用法' }];
+  failure(run(...createArgs(project, await inputFile(project, 'bad-step-use', misplaced))), 'LOOP_INPUT_INVALID', 2);
+  plan.nodes[0].library_uses = [{ id: standardLegend.id, reason: '提取文件名末段' }];
   success(run(...createArgs(project, await inputFile(project, 'with-legend', plan))));
   const before = success(readLoop(project));
   const bytes = await readFile(stored(project));

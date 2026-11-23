@@ -955,7 +955,7 @@ async function openDocument(path: string, { block = '', bookmark = '', mark = ''
   }
 }
 
-async function refresh() {
+async function refresh(listOnly = false) {
   const sequence = ++listSequence;
   const navigationAtRequest = navigationSequence;
   listLoading.value = true;
@@ -966,7 +966,7 @@ async function refresh() {
     projectRoot.value = data.projectRoot;
     documents.value = data.documents;
     problems.value = data.problems;
-    if (view.value === 'reader' && !restoring && !openingDocument.value &&
+    if (!listOnly && view.value === 'reader' && !restoring && !openingDocument.value &&
         (navigationAtRequest === navigationSequence || !selected.value)) await refreshReading();
   } catch (error) {
     if (sequence === listSequence) listError.value = failed(error);
@@ -1006,7 +1006,7 @@ async function changeLanguage(event: Event) {
 
 onMounted(() => {
   const target = blockTarget(window.location.hash);
-  if (target && 'stepId' in target) {
+  if (target) {
     void visitNoteTarget(target, true).then(problem => { if (problem) navigationProblem(problem); });
   } else if (window.location.hash === '#canvas-reading') {
     activatePage('canvas');
@@ -1018,7 +1018,7 @@ onMounted(() => {
   document.addEventListener('pointerdown', dismissProjectInfoOutside);
   document.documentElement.lang = language.value;
   document.title = `${t('brand')} · ${t('title')}`;
-  void refresh();
+  void refresh(!!target && 'documentPath' in target);
   void refreshBookmarks();
   void refreshMarks();
 });

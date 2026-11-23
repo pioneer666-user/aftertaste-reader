@@ -25,6 +25,7 @@ interface LoopNode {
   title: string;
   explanation: string;
   hint?: string;
+  library_uses?: { id: string; reason: string }[];
 }
 
 interface SavedNode extends LoopNode {
@@ -104,7 +105,15 @@ function readNode(data: Record<string, unknown>, v: Fields, field: string): Loop
   if (!isNodeId(data.id)) v.fail(field + '.id', 'ID');
   if (!isSourcePath(data.path)) v.fail(field + '.path', 'PATH');
   if (typeof data.block_id !== 'string' || !/^[a-z0-9]{8}$/u.test(data.block_id)) v.fail(field + '.block_id', 'BLOCK_ID');
-  return { id: data.id, path: data.path, block_id: data.block_id,
+  const seen = new Set<string>();
+  const uses = Object.hasOwn(data, 'library_uses') ? v.array(data.library_uses, field + '.library_uses').map((value, index) => {
+    const location = field + '.library_uses[' + index + ']';
+    const use = v.object(value, ['id', 'reason'], [], location);
+    if (!isLegendId(use.id)) v.fail(location + '.id', 'LEGEND_ID');
+    v.unique(seen, use.id, location + '.id');
+    return { id: use.id, reason: v.text(use.reason, location + '.reason') };
+  }) : undefined;
+  return { ...(uses && { library_uses: uses }), id: data.id, path: data.path, block_id: data.block_id,
     title: v.text(data.title, field + '.title'), explanation: v.text(data.explanation, field + '.explanation'),
     ...(Object.hasOwn(data, 'hint') ? { hint: v.text(data.hint, field + '.hint') } : {}) };
 }
@@ -152,11 +161,17 @@ function readRoute<Node extends LoopNode>(data: Record<string, unknown>, v: Fiel
     explanation: v.text(data.explanation, '$.explanation'), entry, nodes, edges, reading_order };
 }
 
+function checkStepUses(nodes: LoopNode[], paths: Map<string, Set<string>>, v: Fields) {
+  nodes.forEach((node, index) => node.library_uses?.forEach((use, useIndex) => {
+    if (!paths.get(use.id)?.has(node.path)) v.fail(`$.nodes[${index}].library_uses[${useIndex}]`, 'UNKNOWN_FILE_USE');
+  }));
+}
+
 export function parseLoopInput(value: unknown): LoopInput {
   const v: Fields = new Fields('LOOP_INPUT_INVALID');
   const data = v.object(value, ['format', ...routeKeys], ['legends'], '$');
   if (data.format !== loopInputFormat) v.fail('$.format', 'FORMAT');
-  const route = readRoute(data, v, (value, field) => readNode(v.object(value, nodeKeys, ['hint'], field), v, field));
+  const route = readRoute(data, v, (value, field) => readNode(v.object(value, nodeKeys, ['hint', 'library_uses'], field), v, field));
   const participants = new Set(route.nodes.map(node => node.path));
   const ids = new Set<string>();
   const legends = Object.hasOwn(data, 'legends') ? v.array(data.legends, '$.legends').map((value, index) => {
@@ -174,6 +189,7 @@ export function parseLoopInput(value: unknown): LoopInput {
     if (!paths.length) v.fail(field + '.paths', 'MISSING_USE');
     return { id: legend.id, paths };
   }) : [];
+  checkStepUses(route.nodes, new Map(legends.map(legend => [legend.id, new Set(legend.paths)])), v);
   return { ...route, legends };
 }
 
@@ -190,7 +206,7 @@ export function parseSavedLoop(raw: string, id: string): SavedLoop {
   }
   if (data.project_prefix !== '' && !isSourcePath(data.project_prefix)) v.fail('$.project_prefix', 'PATH');
   const route = readRoute<SavedNode>(data, v, (value, field) => {
-    const node = v.object(value, [...nodeKeys, 'block_explanation'], ['hint', 'lines'], field);
+    const node = v.object(value, [...nodeKeys, 'block_explanation'], ['hint', 'lines', 'library_uses'], field);
     const lines = readRange(node.lines);
     if (Object.hasOwn(node, 'lines') && !lines) v.fail(field + '.lines', 'RANGE');
     return { ...readNode(node, v, field), block_explanation: v.text(node.block_explanation, field + '.block_explanation'),
@@ -203,5 +219,6 @@ export function parseSavedLoop(raw: string, id: string): SavedLoop {
     v.fail(error.diagnostics[0]?.field ?? '$.legends', error.diagnostics[0]?.code ?? error.code);
   }
   if (legends.some(legend => legend.uses.length === 0)) v.fail('$.legends', 'MISSING_USE');
+  checkStepUses(route.nodes, new Map(legends.map(legend => [legend.id, new Set(legend.uses.map(use => use.path))])), v);
   return { format: loopFormat, id, source_commit: data.source_commit, project_prefix: data.project_prefix, ...route, legends };
 }

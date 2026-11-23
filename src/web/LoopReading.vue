@@ -172,6 +172,11 @@ onUnmounted(() => window.clearTimeout(closeTimer));
       <div class="markdown" v-html="renderMarkdown(loop.explanation)"></div>
       <p class="canvas-hint">{{ t('commit') }} <code>{{ loop.source_commit }}</code></p>
     </details>
+    <details v-for="legend in loop.legends" :key="legend.id">
+      <summary>{{ legend.name }}</summary>
+      <p>{{ legend.description }}</p>
+      <ul><li v-for="use in legend.uses" :key="use.path"><code>{{ use.path }}</code> · {{ use.reason }}</li></ul>
+    </details>
     <details>
       <summary>{{ t('loopOrder') }}</summary>
       <ol class="canvas-relations loop-order">
@@ -195,6 +200,10 @@ onUnmounted(() => window.clearTimeout(closeTimer));
         <div data-quote-field="hint" class="markdown loop-step-hint" v-html="renderMarkdown(step.hint)"></div>
       </template>
     </div>
+    <details v-for="use in step.library_uses" :key="step.id + use.id">
+      <summary>{{ loop.legends.find(legend => legend.id === use.id)?.name }}</summary>
+      <p>{{ use.reason }}</p>
+    </details>
     <button v-if="step.lines" ref="sourceTrigger" type="button" class="loop-source-trigger"
       :aria-expanded="sourceVisible" :aria-controls="sourceId" :aria-pressed="pinned"
       @mouseenter="openPreview" @mouseleave="schedulePreviewClose" @focus="focusPreview" @blur="schedulePreviewClose"

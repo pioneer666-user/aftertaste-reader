@@ -86,36 +86,167 @@ export function parseLayout(value: unknown, source: 'file' | 'request' = 'file',
     viewport: { x: coordinate(x, '$.layout.viewport.x'), y: coordinate(y, '$.layout.viewport.y'), zoom } };
 }
 
-export function defaultLayout(ids: readonly string[]): CanvasLayout {
-  return rearrange({ positions: {}, groups: [], viewport: { x: 0, y: 0, zoom: 1 } }, ids);
+export interface LayoutRelations {
+  edges: { from: string; to: string }[];
+  libraries: { id: string; targets: string[] }[];
+  order?: string[];
 }
 
-export function rearrange(layout: CanvasLayout, ids: readonly string[]): CanvasLayout {
-  const grouped = new Set(layout.groups.flatMap(group => group.members));
-  const columns = [...layout.groups.map(group => group.members), ...ids.filter(id => !grouped.has(id)).map(id => [id])];
-  const entries: [string, Point][] = [];
-  let y = 64;
-  for (let row = 0; row < columns.length; row += 3) {
-    const blocks = columns.slice(row, row + 3);
-    blocks.forEach((block, col) => block.forEach((id, index) => {
-      entries.push([id, { x: 30 + col * 270, y: y + index * 112 }]);
-    }));
-    y += Math.max(...blocks.map(block => block.length)) * 112 + 36;
+const columnWidth = 290;
+const rowHeight = 104;
+const initialViewport = { x: 0, y: 0, zoom: 1 };
+
+// Collapse strongly connected components before assigning longest-path layers.
+// Iterative DFS also handles long import chains without using the JS call stack.
+function layeredPositions(ids: readonly string[], relations: LayoutRelations): Map<string, Point> {
+  const libraries = new Set(relations.libraries.map(item => item.id));
+  const order = relations.order ?? [...ids].sort();
+  const nodes = order.filter(id => !libraries.has(id));
+  const outgoing = new Map(nodes.map(id => [id, [] as string[]]));
+  const incoming = new Map(nodes.map(id => [id, [] as string[]]));
+  for (const { from, to } of relations.edges) {
+    outgoing.get(from)!.push(to);
+    incoming.get(to)!.push(from);
   }
-  return { ...layout, positions: Object.fromEntries(entries), viewport: { x: 0, y: 0, zoom: 1 } };
+  const seen = new Set<string>();
+  const finished: string[] = [];
+  for (const root of nodes) {
+    if (seen.has(root)) continue;
+    seen.add(root);
+    const stack = [{ id: root, next: 0 }];
+    while (stack.length) {
+      const frame = stack[stack.length - 1]!;
+      const next = outgoing.get(frame.id)![frame.next++];
+      if (next === undefined) { finished.push(frame.id); stack.pop(); }
+      else if (!seen.has(next)) { seen.add(next); stack.push({ id: next, next: 0 }); }
+    }
+  }
+  const component = new Map<string, number>();
+  const groups: string[][] = [];
+  for (const root of finished.reverse()) {
+    if (component.has(root)) continue;
+    const index = groups.length;
+    groups.push([]);
+    const stack = [root];
+    component.set(root, index);
+    while (stack.length) {
+      for (const previous of incoming.get(stack.pop()!)!) {
+        if (!component.has(previous)) { component.set(previous, index); stack.push(previous); }
+      }
+    }
+  }
+  // Order inside cycles by the author's reading order, or by stable file path.
+  for (const id of nodes) groups[component.get(id)!]!.push(id);
+  const starts = groups.map(() => 0);
+  const layers = new Map<string, number>();
+  groups.forEach((members, index) => {
+    const end = starts[index]! + members.length;
+    members.forEach((id, offset) => {
+      layers.set(id, starts[index]! + offset);
+      for (const to of outgoing.get(id)!) {
+        const target = component.get(to)!;
+        if (target !== index) starts[target] = Math.max(starts[target]!, end);
+      }
+    });
+  });
+
+  const rows = new Map<number, number>();
+  const points = new Map<string, Point>();
+  const add = (id: string, layer: number) => {
+    const row = rows.get(layer) ?? 0;
+    points.set(id, { x: 72 + layer * columnWidth, y: 116 + row * rowHeight });
+    rows.set(layer, row + 1);
+  };
+  if (relations.order) {
+    for (const id of nodes) add(id, layers.get(id)!);
+  } else {
+    // Read backwards from the deepest consumers so related roots share nearby
+    // rows. The longest chain is visible together at the top of the file graph.
+    const byDepth = (a: string, b: string) => layers.get(b)! - layers.get(a)! || (a < b ? -1 : a > b ? 1 : 0);
+    const stack = [...nodes].sort(byDepth).reverse();
+    const visited = new Set<string>();
+    while (stack.length) {
+      const id = stack.pop()!;
+      if (visited.has(id)) continue;
+      visited.add(id);
+      add(id, layers.get(id)!);
+      for (const parent of incoming.get(id)!.sort(byDepth).reverse()) stack.push(parent);
+    }
+  }
+  // Use a separate row near the first referenced step. Libraries do not rank business steps.
+  for (const { id, targets } of [...relations.libraries].sort((a, b) => a.id < b.id ? -1 : 1)) {
+    const firstLayer = targets.reduce((first, target) => Math.min(first, layers.get(target)!), Infinity);
+    add(id, targets.length ? Math.max(0, firstLayer - 1) : 0);
+  }
+  return points;
+}
+
+export function defaultLayout(ids: readonly string[], relations: LayoutRelations = { edges: [], libraries: [] }): CanvasLayout {
+  return { positions: Object.fromEntries(layeredPositions(ids, relations)), groups: [], viewport: { ...initialViewport } };
+}
+
+export function rearrange(layout: CanvasLayout, ids: readonly string[], relations?: LayoutRelations): CanvasLayout {
+  const next = defaultLayout(ids, relations);
+  for (const library of relations?.libraries ?? []) {
+    if (!library.targets.length && relations?.order && Object.hasOwn(layout.positions, library.id)) {
+      next.positions[library.id] = layout.positions[library.id]!;
+    }
+  }
+  return { ...next, groups: layout.groups };
 }
 
 export function renewedPaths(ids: readonly string[], before: RemovalMarks, after: RemovalMarks): Set<string> {
   return new Set(ids.filter(id => Object.hasOwn(after, id) && before[id] !== after[id]));
 }
 
-export function reconcileLayout(layout: CanvasLayout, ids: readonly string[], renewed: ReadonlySet<string> = new Set()): CanvasLayout {
+export function reconcileLayout(layout: CanvasLayout, ids: readonly string[], renewed: ReadonlySet<string> = new Set(),
+  relations: LayoutRelations = { edges: [], libraries: [] }): CanvasLayout {
   const current = new Set(ids.filter(id => !renewed.has(id)));
   const missing = ids.filter(id => renewed.has(id) || !Object.hasOwn(layout.positions, id));
   // A re-add must land the same way even if a page already pruned deleted nodes.
   const anchors = renewed.size ? Object.entries(layout.positions).filter(([id]) => current.has(id)).map(([, point]) => point) :
     Object.values(layout.positions);
-  const placements = placeNewNodes(anchors, missing);
+  const placements = new Map<string, Point>();
+  if (missing.length) {
+    const ideal = layeredPositions(ids, relations);
+    const linked = new Map(ids.map(id => [id, [] as string[]]));
+    const connect = (from: string, to: string) => { linked.get(from)!.push(to); linked.get(to)!.push(from); };
+    relations.edges.forEach(({ from, to }) => connect(from, to));
+    relations.libraries.forEach(({ id, targets }) => targets.forEach(target => connect(id, target)));
+    const pending = new Set(missing);
+    const queue = [...ideal.keys()].filter(id => !pending.has(id));
+    const occupied = [...anchors];
+    function place(id: string, desired: Point) {
+      const x = desired.x;
+      let y = desired.y;
+      while (Math.abs(x) <= coordinateLimit && Math.abs(y) <= coordinateLimit &&
+        occupied.some(point => Math.abs(point.x - x) < nodeSize.width + 20 && Math.abs(point.y - y) < nodeSize.height + 20)) y += rowHeight;
+      const point = Math.abs(x) <= coordinateLimit && Math.abs(y) <= coordinateLimit ? { x, y } : outsidePoint(occupied);
+      placements.set(id, point);
+      occupied.push(point);
+      pending.delete(id);
+      queue.push(id);
+    }
+    let cursor = 0;
+    function extend() {
+      while (cursor < queue.length) {
+        const anchor = queue[cursor++]!;
+        const saved = placements.get(anchor) ?? layout.positions[anchor]!;
+        const reference = ideal.get(anchor)!;
+        for (const id of linked.get(anchor)!) {
+          if (!pending.has(id)) continue;
+          const offset = ideal.get(id)!;
+          place(id, { x: saved.x + offset.x - reference.x, y: saved.y + offset.y - reference.y });
+        }
+      }
+    }
+    extend();
+    for (const id of ideal.keys()) {
+      if (!pending.has(id)) continue;
+      place(id, outsidePoint(occupied));
+      extend();
+    }
+  }
   const positions = Object.fromEntries(ids.map(id => [id, current.has(id) && Object.hasOwn(layout.positions, id) ? layout.positions[id]! :
     placements.get(id)!]));
   const groups = layout.groups.map(group => ({ ...group, members: group.members.filter(id => current.has(id)) }))
@@ -123,8 +254,7 @@ export function reconcileLayout(layout: CanvasLayout, ids: readonly string[], re
   return { ...layout, positions, groups };
 }
 
-function placeNewNodes(existing: Point[], ids: string[]): Map<string, Point> {
-  if (!ids.length) return new Map();
+function outsidePoint(existing: Point[]): Point {
   let left = 0, right = 0, top = 0, bottom = 0;
   for (const point of existing) {
     left = Math.min(left, point.x);
@@ -132,11 +262,10 @@ function placeNewNodes(existing: Point[], ids: string[]): Map<string, Point> {
     top = Math.min(top, point.y);
     bottom = Math.max(bottom, point.y + nodeSize.height);
   }
-  const column = (x: number, y: number) => new Map(ids.map((id, i) => [id, { x, y: y + i * 112 }]));
-  if (right + 58 <= coordinateLimit) return column(right + 58, 64);
-  if (left - 270 >= -coordinateLimit) return column(left - 270, 64);
-  if (bottom + 58 + ids.length * 112 <= coordinateLimit) return column(30, bottom + 58);
-  if (top - 58 - ids.length * 112 >= -coordinateLimit) return column(30, top - 58 - ids.length * 112);
+  if (right + 58 <= coordinateLimit) return { x: right + 58, y: 64 };
+  if (left - 270 >= -coordinateLimit) return { x: left - 270, y: 64 };
+  if (bottom + 58 <= coordinateLimit) return { x: 30, y: bottom + 58 };
+  if (top - 112 >= -coordinateLimit) return { x: 30, y: top - 112 };
 
   // All four outer sides reach the coordinate limit. Use unoccupied slots in a central column.
   const blocked = new Set<number>();
@@ -147,10 +276,8 @@ function placeNewNodes(existing: Point[], ids: string[]): Map<string, Point> {
     for (let slot = first; slot <= last; slot++) blocked.add(slot);
   }
   let slot = 0;
-  return new Map(ids.map(id => {
-    while (blocked.has(slot)) slot++;
-    return [id, { x: 30, y: 64 + slot++ * 112 }];
-  }));
+  while (blocked.has(slot)) slot++;
+  return { x: 30, y: 64 + slot * 112 };
 }
 
 export function updateGroup(groups: CanvasGroup[], next: CanvasGroup): CanvasGroup[] {

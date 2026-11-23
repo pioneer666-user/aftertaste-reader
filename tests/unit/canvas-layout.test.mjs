@@ -69,3 +69,23 @@ test('已有排布逼近坐标边界时，新增位置仍有效且不重叠', ()
   assert.deepEqual(next.positions.new, { x: 30, y: 176 });
   assert.deepEqual(parseLayout(next), next);
 });
+
+test('分支在同层分行，汇合在所有来路右侧，环内保留身份，多根与孤点可复排', () => {
+  const ids = ['z', 'b', 'c', 'join', 'cycle', 'root', 'alone', 'lib'];
+  const edges = [['z','b'], ['z','c'], ['b','join'], ['c','join'], ['join','cycle'],
+    ['cycle','join'], ['cycle','cycle'], ['root','join']].map(([from,to]) => ({ from, to }));
+  const relations = { edges, libraries: [{ id: 'lib', targets: ['c'] }] };
+  const { positions: p } = defaultLayout(ids, relations);
+  assert.equal(p.b.x, p.c.x);
+  assert.notEqual(p.b.y, p.c.y);
+  assert.ok(p.z.x < p.b.x && p.b.x < p.join.x && p.root.x < p.join.x);
+  assert.notDeepEqual(p.join, p.cycle);
+  assert.deepEqual(defaultLayout([...ids].reverse(), { ...relations, edges: [...edges].reverse() }).positions, p);
+  assert.equal(new Set(Object.values(p).map(point => JSON.stringify(point))).size, ids.length);
+  const manual = defaultLayout(['z']);
+  manual.positions.z = { x: -617, y: 411 };
+  const next = reconcileLayout(manual, ids, undefined, relations);
+  assert.deepEqual(next.positions.z, manual.positions.z);
+  assert.ok(next.positions.b.x > -617 && next.positions.join.x > next.positions.b.x);
+  assert.notDeepEqual(next.positions.b, next.positions.c);
+});

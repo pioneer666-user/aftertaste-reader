@@ -82,7 +82,11 @@ export class LoopReaderService {
     const loop = parseSavedLoop(raw, id);
     const ids = new Set([...loop.reading_order, ...loop.legends.map(legend => legendKey(legend.id))]);
     const graphVersion = createHash('sha256').update(JSON.stringify([projectRoot, id, raw])).digest('hex');
-    return { loop, projectRoot, ids, graphVersion, nodeRemovals: {}, confirmed: new Set<string>() };
+    const relations = { order: [loop.entry, ...loop.reading_order.filter(id => id !== loop.entry)],
+      edges: loop.edges.map(({ from, to }) => ({ from, to })),
+      libraries: loop.legends.map(legend => ({ id: legendKey(legend.id),
+        targets: loop.nodes.filter(node => node.library_uses?.some(use => use.id === legend.id)).map(node => node.id) })) };
+    return { loop, projectRoot, ids, graphVersion, relations, nodeRemovals: {}, confirmed: new Set<string>() };
   }
 
   private target(id: string): LayoutTarget {
