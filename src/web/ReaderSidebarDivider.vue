@@ -102,9 +102,9 @@ function resizeFromKeyboard(event: KeyboardEvent) {
   width: 24px;
   height: 4px;
   border-radius: 2px;
-  background: #758b7d;
+  background: var(--control-rim);
 }
 .sidebar-divider:focus-visible { outline-offset: -2px; }
-.sidebar-divider:is(:hover, :focus-visible, [data-dragging])::before { border-color: #8aaf9a; }
+.sidebar-divider:is(:hover, :focus-visible, [data-dragging])::before { border-color: var(--control-rim); }
 .sidebar-divider:is(:hover, :focus-visible, [data-dragging])::after { background: var(--accent); }
 </style>

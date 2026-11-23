@@ -336,13 +336,14 @@ function renderEdges() {
     const library = libraryName !== undefined;
     const direct = !loopRoute && (from === selected.value || to === selected.value);
     const muted = !loopRoute && !!selected.value && !direct;
-    const color = library ? (direct ? '#675289' : '#817498') : (direct ? '#286347' : '#486357');
+    const color = library ? (direct ? 'var(--library-direct)' : 'var(--library-edge)')
+      : (direct ? 'var(--direct-edge)' : 'var(--edge)');
     return {
       id: nodeId(from) + '→' + nodeId(to), source: nodeId(from), target: nodeId(to), sourceHandle: 'out',
       targetHandle: from === to ? 'self' : 'in', type: 'dependency', focusable: !!loopRoute,
       data: { from: libraryName ?? from, to, reason, loop: !!loopRoute, direct },
       class: [library && 'library-use-edge', direct && 'direct-relation'].filter(Boolean).join(' '),
-      ...(!loopRoute && { style: { stroke: color, strokeWidth: direct ? 2.8 : 1.9, opacity: muted ? .43 : 1 } }),
+      ...(!loopRoute && { style: { stroke: color, strokeWidth: direct ? 2.8 : 1.9, opacity: muted ? .87 : 1 } }),
       markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color },
       ariaLabel: reason,
     };

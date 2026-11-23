@@ -214,8 +214,8 @@ async function follow(event: MouseEvent) {
   flex-direction: column;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 6px 24px rgb(0 0 0 / .13);
+  background: var(--paper);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--shadow-ink) 13%, transparent);
 }
 /* Leave the step text reachable while the reader appends another excerpt. */
 @media (min-width: 761px) {
@@ -237,7 +237,7 @@ async function follow(event: MouseEvent) {
 .quick-footer { flex: none; display: flex; align-items: end; gap: 5px; padding-inline-end: 12px; }
 .quick-footer:has(.quick-tags > *) { padding-block: 4px; }
 .quick-resize { flex: none; display: grid; place-items: center; width: 28px; height: 24px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: nesw-resize; touch-action: none; user-select: none; }
-.quick-resize:is(:hover, :focus-visible, :active) { color: var(--accent); background: #edf4ee; }
+.quick-resize:is(:hover, :focus-visible, :active) { color: var(--accent); background: var(--hover); }
 @media (pointer: coarse) {
   .quick-resize { width: 44px; height: 44px; }
 }
@@ -261,7 +261,7 @@ async function follow(event: MouseEvent) {
 .note-body-editor { height: min(200px, 45dvh); }
 .quick-title, .quick-search, .quick-tags input { min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
 .quick-title { flex: 1; font-size: 15px; font-weight: 600; border-color: transparent; }
-.quick-search { width: 100%; background: #f5f7f5; }
+.quick-search { width: 100%; background: var(--page); }
 .quick-list { max-height: min(16rem, 42dvh); overflow: auto; padding: 0; margin: 8px 0; list-style: none; }
 .quick-list button, .quick-new { width: 100%; text-align: start; border-color: transparent; }
 .quick-list button { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

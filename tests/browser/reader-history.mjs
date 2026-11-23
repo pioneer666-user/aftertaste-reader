@@ -228,9 +228,10 @@ async function checkGlassStyle() {
       actions, glyph: { width: glyph.width, height: glyph.height } };
   });
   assert.match(metrics.image, /linear-gradient/u);
-  const alphas = [...metrics.image.matchAll(/rgba\([^)]*,\s*([\d.]+)\)/gu)].map(match => Number(match[1]));
+  const alphaPattern = /(?:rgba\([^)]*,|color\(srgb[^)]*\/)\s*([\d.]+)\)/gu;
+  const alphas = [...metrics.image.matchAll(alphaPattern)].map(match => Number(match[1]));
   assert.ok(alphas.length >= 1 && alphas.every(alpha => alpha <= .6), metrics.image);
-  const tint = Number(metrics.color.match(/rgba\([^)]*,\s*([\d.]+)\)/u)?.[1]);
+  const tint = Number([...metrics.color.matchAll(alphaPattern)][0]?.[1]);
   assert.ok(tint >= 0 && tint <= .5, metrics.color);
   const blur = Number(metrics.backdrop.match(/blur\(([\d.]+)px\)/u)?.[1]);
   const saturation = Number(metrics.backdrop.match(/saturate\(([\d.]+)\)/u)?.[1]);
@@ -699,7 +700,7 @@ async function checkHeader(width, language) {
     await tick();
     const newNote = top().getByRole('button', { name: language === 'en' ? 'Note list' : '笔记列表', exact: true });
     assert.ok(await newNote.isVisible());
-    assert.equal(await newNote.locator('span').isVisible(), width > 950);
+    assert.equal(await newNote.locator('span').isVisible(), width > 1020);
     assert.ok(await newNote.evaluate(el => {
       const rect = el.getBoundingClientRect();
       return el.nextElementSibling.matches('.language-control') &&
@@ -842,7 +843,7 @@ async function checkTouch() {
       await page.setViewportSize({ width, height: 844 });
       const menu = top().locator(width <= 850 ? '.app-page-menu-toggle' : '[data-page="notes"]');
       await menu.waitFor();
-      for (const control of [menu, top().locator('.refresh-documents'), top().locator('.new-note'), language]) {
+      for (const control of [menu, top().locator('.refresh-documents'), top().locator('.new-note'), language, top().locator('.theme-picker > button')]) {
         assert.ok(await control.evaluate(el => {
           const r = el.getBoundingClientRect();
           return [r.left + 3, r.right - 3].every(x => el.contains(document.elementFromPoint(x, r.y + r.height / 2)));

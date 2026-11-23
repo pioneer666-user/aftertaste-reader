@@ -36,10 +36,10 @@ const perimeter = 'M24 1H188c10 0 15 0 19 4s4 9 4 19v8c0 10 0 15-4 19s-9 4-19 4H
 
 <style scoped>
 button.dependency-card {
-  --surface: #fdfefb;
-  --stroke: #97aa9e;
-  --ink: #203b2e;
-  --detail: #526759;
+  --surface: var(--paper);
+  --stroke: var(--control-rim);
+  --ink: var(--text);
+  --detail: var(--secondary);
   position: relative;
   isolation: isolate;
   display: grid;
@@ -55,10 +55,10 @@ button.dependency-card {
   outline: none;
 }
 button.package-card {
-  --surface: #f4f1fb;
-  --stroke: #a69bbb;
-  --ink: #493d67;
-  --detail: #655878;
+  --surface: var(--library-surface);
+  --stroke: var(--library-edge);
+  --ink: var(--library-ink);
+  --detail: var(--library-ink);
 }
 .card-outline {
   position: absolute;
@@ -71,15 +71,15 @@ button.package-card {
 }
 .card-surface { fill: var(--surface); stroke: var(--stroke); stroke-width: 1.35; }
 .dependency-card:hover .card-surface { stroke: var(--ink); }
-.dependency-card[aria-pressed="true"] .card-surface { fill: #eff8ef; stroke: #226448; stroke-width: 2.7; }
-.package-card[aria-pressed="true"] .card-surface { fill: #ece5fa; stroke: #675482; }
-.dependency-card[data-route-member] .card-surface { fill: #fff1c9; stroke: #946916; stroke-width: 3; }
-.dependency-card[data-route-member][aria-pressed="true"] .card-surface { stroke: #226448; stroke-width: 4; }
-.dependency-card[data-route-member] .card-name::before { content: '◆'; color: #916417; font-size: .7em; margin-right: .45em; }
+.dependency-card[aria-pressed="true"] .card-surface { fill: var(--current); stroke: var(--action); stroke-width: 2.7; }
+.package-card[aria-pressed="true"] .card-surface { fill: var(--library-picked); stroke: var(--library-ink); }
+.dependency-card[data-route-member] .card-surface { fill: var(--route-surface); stroke: var(--route-ink); stroke-width: 3; }
+.dependency-card[data-route-member][aria-pressed="true"] .card-surface { stroke: var(--action); stroke-width: 4; }
+.dependency-card[data-route-member] .card-name::before { content: '◆'; color: var(--route-ink); font-size: .7em; margin-right: .45em; }
 .card-focus, .card-pick { fill: none; stroke: none; }
-.dependency-card[data-box-selected="true"] .card-pick { stroke: #41765c; stroke-width: 7; stroke-dasharray: 5 4; }
+.dependency-card[data-box-selected="true"] .card-pick { stroke: var(--focus); stroke-width: 7; stroke-dasharray: 5 4; }
 button.dependency-card:focus-visible { outline: none; }
-.dependency-card:focus-visible .card-focus { stroke: #286aab; stroke-width: 8; }
+.dependency-card:focus-visible .card-focus { stroke: var(--focus); stroke-width: 8; }
 .dependency-card[data-box-selected="true"]:focus-visible .card-focus { stroke-width: 13; }
 .card-name, .card-directory {
   min-width: 0;
@@ -106,11 +106,11 @@ button.dependency-card:focus-visible { outline: none; }
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.reviewed-check { color: #51846a; width: 16px; height: 16px; }
+.reviewed-check { color: var(--success); width: 16px; height: 16px; }
 .dependency-card small { color: var(--detail); font-size: 12.5px; line-height: 15px; }
 .card-directory { grid-area: 2 / 1 / 3 / -1; }
 .dependency-card:has(.pending-label) .card-directory { grid-column-end: 2; }
-.dependency-card .pending-label { grid-area: 2 / 2; justify-self: end; color: #835a25; }
+.dependency-card .pending-label { grid-area: 2 / 2; justify-self: end; color: var(--warning); }
 @media (forced-colors: active) {
   .card-surface { fill: ButtonFace; stroke: ButtonText; }
   .dependency-card[aria-pressed="true"] .card-surface, .dependency-card:focus-visible .card-focus,

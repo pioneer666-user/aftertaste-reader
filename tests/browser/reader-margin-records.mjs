@@ -106,7 +106,7 @@ try {
   await stationary('close');
   await page.screenshot({ path: path.join(run,'annotation-only.png') });
   await mark.click();
-  for (const [status, glyph, color] of [['不理解','?','rgb(172, 53, 54)'], ['已理解','✓','rgb(25, 112, 71)'], ['未标记','○','rgb(105, 116, 111)']]) {
+  for (const [status, glyph, color] of [['不理解','?','rgb(153, 53, 47)'], ['已理解','✓','rgb(25, 112, 71)'], ['未标记','○','rgb(82, 100, 91)']]) {
     await button(status).click();
     await page.waitForFunction(s => document.querySelector('#zhidif44 [data-kind=mark]').ariaLabel.includes(s), status);
     const symbol = button(status).locator('.state-symbol');
@@ -156,13 +156,13 @@ try {
     assert.equal(await entry.getAttribute('aria-current'),'true');
   }
   await button('标注',page.locator('.app-header')).click();
-  const filter = page.getByRole('combobox',{name:'筛选标注'});
-  await filter.selectOption('not-understood');
+  const filter = page.getByRole('group',{name:'筛选标注'}).getByRole('button',{name:'不理解',exact:true});
+  await filter.click();
   const question = page.locator('#marks .bookmark-entry').filter({hasText:'为什么要先校验数量？'});
   await question.locator('..').locator('.record-visit').click();
   await page.locator('#mark-x4y6az2y:focus').getByText(/为什么要先校验数量？/u).waitFor();
   await page.locator('[data-history=back]').click();
-  assert.equal(await filter.inputValue(),'not-understood');
+  assert.equal(await filter.getAttribute('aria-pressed'),'true');
   assert.equal(await question.getAttribute('aria-current'),'true');
   await page.close();
   const touch = await browser.newPage({ viewport:{width:390,height:844}, hasTouch:true });

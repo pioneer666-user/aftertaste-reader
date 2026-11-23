@@ -42,6 +42,6 @@ const diagram = computed(() => {
       <path d="M0 0 4 2 0 4Z" fill="currentColor" />
     </marker></defs>
     <path v-for="(path, i) in diagram.paths" :key="i" :d="path" fill="none" stroke="currentColor" stroke-width="1.5" :marker-end="`url(#${arrow})`" />
-    <circle v-for="(point, i) in diagram.points" :key="i" :cx="point.x" :cy="point.y" r="2.7" fill="#f6faf5" stroke="currentColor" stroke-width="1.5" />
+    <circle v-for="(point, i) in diagram.points" :key="i" :cx="point.x" :cy="point.y" r="2.7" fill="var(--inset)" stroke="currentColor" stroke-width="1.5" />
   </svg>
 </template>

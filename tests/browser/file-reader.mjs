@@ -69,6 +69,7 @@ try {
       const comparison = (target = page) => target.locator('#reading .document-blocks');
       const projectInfo = page.locator('.project-info:popover-open');
       await file('rules.mjs').click();
+      await heading('src/rules.mjs').waitFor();
       await comparison().waitFor();
       assert.equal(await page.locator('.source-line').count(), 7);
       const lineNumberContrast = await page.locator('.line-number').first().evaluate(element => {
@@ -92,6 +93,7 @@ try {
       await page.keyboard.press('Escape');
       await projectInfo.waitFor({ state: 'hidden' });
       await file('service.mjs').click();
+      await heading('src/service.mjs').waitFor();
       await comparison().waitFor();
       assert.equal(await page.locator('.source-line').count(), 10);
       const pane = page.locator('.reading-pane');
@@ -147,6 +149,7 @@ try {
         await writeFile(rules, originalRules);
 
         await file('long.ts').click();
+        await heading('src/long.ts').waitFor();
         await comparison().waitFor();
         assert.equal(await page.locator('.source-line').count(), 61);
         assert.equal(await page.locator('.source-pane').count(), 1);
@@ -171,7 +174,12 @@ try {
           await page.screenshot({ path: path.join(run, 'edge-git-unavailable.png'), fullPage: true });
         } finally { await rename(path.join(fixture.projectRoot, 'git-hidden'), path.join(fixture.projectRoot, '.git')); }
 
-        await writeFile(rules, Buffer.from([0xff, 0xfe]));
+        // Corrupt the disposable file after listing so this exercises the document read error.
+        // If enumeration sees it first, the picker correctly skips the unreadable entry.
+        await page.route('**/api/document?path=*rules.mjs.md', async route => {
+          await writeFile(rules, Buffer.from([0xff, 0xfe]));
+          await route.continue();
+        }, { times: 1 });
         await page.getByRole('button', { name: 'Refresh documents' }).click();
         await page.getByRole('heading', { name: 'Could not read this explanation' }).waitFor();
         assert.equal(await page.locator('.fallback-markdown').count(), 0);
@@ -181,6 +189,7 @@ try {
         await page.getByRole('button', { name: 'Refresh documents' }).click();
         await comparison().waitFor();
         await file('service.mjs').click();
+        await heading('src/service.mjs').waitFor();
         await comparison().waitFor();
         await pane.evaluate(element => { element.scrollTop = 0; });
         await page.screenshot({ path: path.join(run, 'edge-desktop.png'), fullPage: true });

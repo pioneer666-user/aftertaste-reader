@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { theme } from './theme.js';
 import type { Point, Size, Viewport } from '../core/canvas-layout.js';
 
 interface GroupBox extends Point, Size { id: string }
@@ -12,8 +13,7 @@ const spacing = 24; // graph units
 const reach = 70; // pointer distances and ripple travel are in screen CSS pixels
 const releaseMs = 205;
 const rippleMs = 540;
-const outside = '#698173';
-const inside = '#807454';
+let outside: string, inside: string;
 let pointer: Point | undefined;
 let held = new Map<string, PushedDot>();
 const released = new Map<string, { dot: PushedDot; start: number }>();
@@ -101,8 +101,11 @@ function draw(now: number) {
   const size = Math.ceil(step * dpr);
   const scale = size / step;
   if (!inks || inks.size !== size || inks.scale !== scale) {
+    const style = getComputedStyle(canvas);
+    outside = style.getPropertyValue('--dot').trim();
+    inside = style.getPropertyValue('--group-dot').trim();
     inks = { size, scale, field: ink(ctx, size, radius * scale, outside),
-      group: ink(ctx, size, radius * scale, inside), wave: ink(ctx, size, (radius + 0.95) * scale, '#397a59') };
+      group: ink(ctx, size, radius * scale, inside), wave: ink(ctx, size, (radius + 0.95) * scale, style.getPropertyValue('--ripple').trim()) };
   }
   const transform = new DOMMatrix([1 / scale, 0, 0, 1 / scale, origin.x - step / 2, origin.y - step / 2]);
   for (const pattern of [inks.field, inks.group, inks.wave]) pattern.setTransform(transform);
@@ -180,6 +183,7 @@ function draw(now: number) {
 }
 
 watch(() => [props.viewport.x, props.viewport.y, props.viewport.zoom, props.quiet], () => { resetHover(); schedule(); });
+watch(theme, () => { inks = undefined; schedule(); });
 watch(() => props.groups, schedule, { deep: true });
 watch(() => props.active, resetMotion);
 onMounted(() => {

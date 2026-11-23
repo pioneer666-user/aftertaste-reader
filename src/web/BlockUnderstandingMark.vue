@@ -140,7 +140,7 @@ async function persist(edit: MarkEdit) {
 .annotation-text {
   margin: 0 0 8px;
   padding: 10px 12px;
-  background: #f2f6f2;
+  background: var(--inset);
   line-height: 1.5;
 }
 </style>
