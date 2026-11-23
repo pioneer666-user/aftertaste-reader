@@ -97,4 +97,18 @@ test('real reader lists both artifacts and publishes independent layouts with re
       assert.equal((await put(legendLoopId, requestBody(degraded, 100))).status, 200);
     } finally { await rename(object + '.off', object); }
   } finally { await server.close(); }
+
+  // The same Git commit also backs a reader opened directly on its src/ subproject.
+  const nestedRoot = path.join(project.projectRoot, 'src');
+  const nestedLoop = path.join(nestedRoot, 'docs/aftertaste/loops', orderId, 'current');
+  await mkdir(nestedLoop, { recursive: true });
+  const nested = await readJSON(artifact(project, orderId));
+  nested.project_prefix = 'src';
+  for (const node of nested.nodes) node.path = path.basename(node.path);
+  await writeFile(path.join(nestedLoop, 'loop.json'), JSON.stringify(nested));
+  const nestedReader = await startReader(nestedRoot, 0);
+  try {
+    const view = await (await fetch(nestedReader.url + route(orderId) + '/route')).json();
+    assert.deepEqual(view, { ok: true, title: nested.title, source_commit: project.commit, paths: ['service.mjs', 'rules.mjs'] });
+  } finally { await nestedReader.server.close(); }
 });

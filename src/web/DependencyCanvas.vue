@@ -124,6 +124,13 @@ const routeIssue = computed(() => {
   if (graph.source_commit !== route.value.source_commit) {
     return [t('routeVersion'), route.value.source_commit, '≠', graph.source_commit].join(' ');
   }
+  const problem = route.value.mappingProblem;
+  if (problem) {
+    const message = problemText(props.language, problem).message;
+    return problem.code === 'LOOP_PREFIX_MISMATCH'
+      ? [message, problem.context.saved || '.', '≠', problem.context.current || '.'].join(' ')
+      : message;
+  }
   const paths = new Set(graph.nodes.map(node => node.path));
   const missing = route.value.paths.filter(path => !paths.has(path));
   return missing.length ? t('routeMissing') + ' · ' + missing.join(', ') : '';
@@ -249,7 +256,9 @@ async function restorePosition(position: CanvasPosition, isCurrent = () => true)
   const target = changedSelection ? selected.value : position.selected;
   const available = !target || (ids.value.includes(target) && (!latest || readingIds(latest).includes(target)));
   selected.value = available ? target : loop.value?.loop.entry ?? '';
-  if (!changedSelection) selectedEdgeId.value = position.edge;
+  const edge = changedSelection ? selectedEdgeId.value : position.edge;
+  const edgeAvailable = !edge || getEdges.value.some(item => item.id === edge);
+  selectedEdgeId.value = edgeAvailable ? edge : '';
   if (groupEditor.value === beforeGroupEditor) groupEditor.value = false;
   await nextTick();
   if (!current()) return false;
@@ -259,7 +268,7 @@ async function restorePosition(position: CanvasPosition, isCurrent = () => true)
       viewport.value.zoom === beforeViewport.zoom) await setViewport(targetViewport);
   if (!current()) return false;
   if (inspector.value && !changedSelection) inspector.value.scrollTop = available ? position.detailScroll : 0;
-  return !!latest && available;
+  return !!latest && available && edgeAvailable;
 }
 
 defineExpose({ capturePosition, restorePosition });

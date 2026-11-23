@@ -343,6 +343,7 @@ const problems: Record<string, { zh: readonly [string, string]; en: readonly [st
   DOCUMENT_LIST_FAILED: { zh: ['资料条目或目录无法读取。', '检查 current 目录权限、类型和路径后刷新。'], en: ['A document entry or directory could not be read.', 'Check current directory permissions, entry types and paths, then refresh.'] },
   PROJECT_UNAVAILABLE: { zh: ['项目目录无法访问。', '检查项目目录存在性和访问权限。'], en: ['The project directory is unavailable.', 'Check that the project directory exists and is accessible.'] },
   PROJECT_PATH_UNSAFE: { zh: ['项目路径含链接或非普通目录。', '指定无链接祖先的真实项目目录。'], en: ['The project path contains a link or a non-directory entry.', 'Choose a real project directory with no linked ancestors.'] },
+  LOOP_PREFIX_MISMATCH: { zh: ['闭环与当前项目的仓库内路径不同。', '核对生成闭环时使用的项目目录。'], en: ['The loop and this project use different repository paths.', 'Check the project directory used to create the loop.'] },
   NOT_REPOSITORY: { zh: ['项目不在可读取的 Git 仓库中。', '核对原项目仓库位置和可读性。'], en: ['The project is not in a readable Git repository.', 'Check the original project repository location and access.'] },
   GIT_UNAVAILABLE: { zh: ['Git 程序不可用。', '检查 Git 安装与进程权限。'], en: ['Git is unavailable.', 'Check the Git installation and process permissions.'] },
   NO_COMMIT: { zh: ['Git 中没有可用提交。', '核对文档引用的原始提交。'], en: ['Git has no available commit.', 'Check the original commit referenced by the document.'] },

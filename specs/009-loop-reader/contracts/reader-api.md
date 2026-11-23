@@ -16,4 +16,4 @@ D031 的讲解直读、源码浮层和画布反馈使用现有 `GET /api/loops/:
 
 ## 参与文件
 
-`GET /api/loops/:id/route` 读取并核验当前闭环，返回 title、source_commit 和去重的 paths。读取失败沿用闭环诊断。
+`GET /api/loops/:id/route` 读取并核验当前闭环，返回 title、source_commit 和去重的 paths。服务按目标项目在 Git 工作区的实际前缀核对成品 project_prefix，位置失配或无法核实时另带 mappingProblem，仍可阅读成品。读取失败沿用闭环诊断。

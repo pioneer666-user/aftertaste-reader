@@ -102,11 +102,28 @@ try {
   await members(orderFiles);
   assert.equal(await dep.locator('[data-file="src/service.mjs"]').getAttribute('aria-pressed'), 'true');
   assert.equal(await view(), before);
+  // Remove only the inspected line while reading the loop; the graph and route are still usable.
+  await line.press('Enter');
+  await dep.locator('.edge-reason').waitFor();
+  await button(actions, '阅读此闭环').click();
+  await loop.waitFor();
+  const graphFile = path.join(project, 'docs/aftertaste/dependency-graph.json');
+  const graphRaw = await readFile(graphFile, 'utf8');
+  const graph = JSON.parse(graphRaw);
+  graph.edges = graph.edges.filter(edge => edge.dependent !== 'src/api.mjs');
+  await writeFile(graphFile, JSON.stringify(graph));
+  await button(page, '后退').click();
+  await line.waitFor({ state: 'detached' });
+  await page.locator('.position-notice').filter({ hasText: '无法回到原位置' }).waitFor();
+  assert.equal(await dep.locator('.edge-reason').count(), 0);
+  await members(orderFiles);
+  await writeFile(graphFile, graphRaw);
   await clear();
   await members([]);
 
   for (const [patch, diagnostic] of [
     [{ source_commit: 'a'.repeat(40) }, '源码版本不同'],
+    [{ project_prefix: 'sibling-project' }, 'sibling-project'],
     [{ nodes: original.nodes.map((node, i) => i === 0 ? { ...node, path: 'other/service.mjs' } : node) }, 'other/service.mjs'],
   ]) {
     await writeFile(model, JSON.stringify({ ...original, ...patch }));
