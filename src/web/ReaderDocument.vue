@@ -42,9 +42,27 @@ watch(() => props.result, async (result, _, onCleanup) => {
   highlightedSource.value = undefined;
   if (result?.renderMode === 'comparison' && result.sourcePath && result.sourceLines) {
     let current = true;
-    onCleanup(() => { current = false; });
+    onCleanup(() => {
+      current = false;
+      document.removeEventListener('selectionchange', applyHighlighting);
+    });
     const highlighted = await highlightSource(result.sourcePath, result.sourceLines);
-    if (current) highlightedSource.value = highlighted;
+    if (!current || !highlighted) return;
+
+    function applyHighlighting() {
+      // Keep the text nodes while the reader has an active native source selection.
+      const selection = window.getSelection();
+      if (selection && !selection.isCollapsed && selection.rangeCount) {
+        const range = selection.getRangeAt(0);
+        const source = blockRoot.value?.querySelectorAll('.source-scroll code') ?? [];
+        if (Array.from(source).some(code => range.intersectsNode(code))) return;
+      }
+      document.removeEventListener('selectionchange', applyHighlighting);
+      highlightedSource.value = highlighted;
+    }
+
+    document.addEventListener('selectionchange', applyHighlighting);
+    applyHighlighting();
   }
 }, { immediate: true });
 const sourceNameIndex = computed(() => sourcePath.value.lastIndexOf('/') + 1);

@@ -178,6 +178,43 @@ try {
     report.fallback = { blocked: rust, intact: true, nextFileHighlighted: true };
   });
 
+  await usePage(async page => {
+    const python = report.files['config.py'].chunks.find(chunk => /\/python-[\w-]+\.js$/u.test(chunk));
+    assert.ok(python, 'Python grammar request was absent from cold load');
+    const { promise: held, resolve: release } = Promise.withResolvers();
+    await page.route(origin + python, async route => {
+      await held;
+      return route.fallback();
+    });
+    const finished = page.waitForEvent('requestfinished', { predicate: req => new URL(req.url()).pathname === python });
+    try {
+      await openFile(page, 'config.py');
+      const text = sourceRows(page).first().locator('> span:nth-child(2)');
+      const expected = examples['config.py'].lines[0];
+      assert.equal(await text.locator('[class^="source-"]').count(), 0);
+      await text.evaluate(line => {
+        const range = document.createRange();
+        range.selectNodeContents(line);
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+      });
+      assert.equal(await page.evaluate(() => getSelection().toString()), expected);
+      release();
+      await finished;
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      assert.equal(await page.evaluate(() => getSelection().toString()), expected);
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
+      await page.keyboard.press('Control+C');
+      assert.equal(await page.evaluate(() => navigator.clipboard.readText()), expected);
+      await page.evaluate(() => getSelection().removeAllRanges());
+      await text.locator('.source-keyword').first().waitFor();
+      await readLines(page, examples['config.py'].lines);
+      report.coldSelection = { retained: true, copied: true, highlightedAfterClear: true };
+    } finally {
+      release();
+    }
+  });
+
   assert.deepEqual(report.outside, []);
   assert.deepEqual(report.writes, []);
   assert.deepEqual(report.errors, []);

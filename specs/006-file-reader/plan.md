@@ -201,7 +201,7 @@ D026 的原设计记录。现行入口与历史按下节。
 
 `scripts/source-languages.mjs` 在 Vite 构建时将 Linguist 文件名和扩展名关联与 Shiki 可用目录匹配。优先已知文件名和最长匹配后缀。扩展名保留大小写的精确匹配，兼容常见大写文件后缀。无足够依据的冲突回退纯文本，C/C++ 共用的 `.h` 使用 C++ 语法。可随本版分发的语言文件作为动态 JS 分块入包。阅读页的 CSP 仅额外允许 WebAssembly 编译，页面依旧只从本机加载脚本。
 
-`src/web/source-highlight.ts` 用 Oniguruma 按整篇源码着色，以文本片段表示样式并核对切分可逐行还原原文。`ReaderDocument.vue` 按现有行范围呈现片段。先显示原文，着色未成功保留原文，离开或切换后丢弃过期结果。五套 CSS 主题提供实际色值，切换时无需重新着色。验证用 [quickstart](quickstart.md#d047-固定源码高亮)和浏览器现有对比度辅助检查。既有阅读响应与资料契约适用。
+`src/web/source-highlight.ts` 用 Oniguruma 按整篇源码着色，以文本片段表示样式并核对切分可逐行还原原文。`ReaderDocument.vue` 按现有行范围呈现片段。先显示原文，着色未成功保留原文，离开或切换后丢弃过期结果。语法加载期间已经选取源码时，等选区清除或离开源码再呈现色彩。五套 CSS 主题提供实际色值，切换时无需重新着色。验证用 [quickstart](quickstart.md#d047-固定源码高亮)和浏览器现有对比度辅助检查。既有阅读响应与资料契约适用。
 
 ## Complexity Tracking
 
