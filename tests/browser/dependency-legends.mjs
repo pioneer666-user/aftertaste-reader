@@ -151,7 +151,7 @@ try {
     assert.deepEqual(movedLegend.layout.positions[audit], rearranged.layout.positions[audit]);
     await savedAction(page, () => button(page, '放大画布').click());
     const beforeGroupDrag = await disk();
-    await savedAction(page, () => drag(page, button(page, '路径工具'), 100, 60));
+    await savedAction(page, () => drag(page, page.locator('.group-handle[title="路径工具"]'), 100, 60));
     const afterGroupDrag = await disk();
     const moved = afterGroupDrag.layout.positions[legendId];
     const before = beforeGroupDrag.layout.positions[legendId];

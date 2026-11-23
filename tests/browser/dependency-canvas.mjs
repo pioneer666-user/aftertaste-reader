@@ -109,7 +109,7 @@ function visibleLayout() {
       viewport: { x: view.e, y: view.f, zoom: view.a },
       nodes: Object.fromEntries([...document.querySelectorAll('[data-file]')].map(element => [element.dataset.file, coordinates(element)])),
       groups: Object.fromEntries([...document.querySelectorAll('[data-group]')].map(element => [
-        element.querySelector('button').textContent, coordinates(element),
+        element.querySelector('.group-handle').textContent, coordinates(element),
       ])),
     };
   });
@@ -208,7 +208,7 @@ try {
   assert.ok(beforeGroup.positions[audit].x > bounds.x && beforeGroup.positions[audit].y > bounds.y &&
     beforeGroup.positions[audit].x + 212 < bounds.x + bounds.width &&
     beforeGroup.positions[audit].y + 56 < bounds.y + bounds.height, 'other group member lies inside this group');
-  await drag(page.getByRole('button', { name: '读服务', exact: true }), 36, 60);
+  await drag(page.locator('.group-handle[title="读服务"]'), 36, 60);
   const afterGroup = await saved();
   for (const id of [rules, service]) {
     equalWithin(afterGroup.positions[id].x - beforeGroup.positions[id].x, 30);

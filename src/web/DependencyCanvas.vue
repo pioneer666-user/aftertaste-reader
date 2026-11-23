@@ -280,7 +280,7 @@ function render() {
     ...current.groups.map((group): Node => {
       const { x, y, width, height } = groupBounds(current.positions, group.members, dimensions);
       return { id: groupNodeId(group.id), type: 'canvasGroup', position: { x, y }, dragHandle: '.group-handle',
-        zIndex: -1, data: { name: group.name }, style: { width: width + 'px', height: height + 'px' } };
+        data: { name: group.name }, style: { width: width + 'px', height: height + 'px' } };
     }),
     ...nodes.value.map((node): Node => ({
       id: nodeId(node.key), type: 'canvasFile', position: { ...current.positions[node.key]! }, data: node,
@@ -435,7 +435,7 @@ function applyGroup() {
   const group = { id: groupId.value || crypto.randomUUID(), name: groupName.value.trim(), members: [...members.value] };
   commitGroup(group);
   editGroup(group.id);
-  if (loopRoute) closeGroupEditor();
+  if (loopRoute || groupTrigger.value?.classList.contains('group-more')) closeGroupEditor();
 }
 
 function commitGroup(group: CanvasGroup) {
@@ -889,12 +889,11 @@ onUnmounted(() => {
           </template>
           <template #node-canvasGroup="{ data, id }">
             <div class="group-frame" :data-group="id">
-              <div v-if="loopId" class="loop-group-bar">
+              <div class="loop-group-bar">
                 <span class="group-handle" :title="data.name">{{ data.name }}</span>
                 <button type="button" class="group-more nodrag nopan" :aria-label="t('loopGroupActions') + ' · ' + data.name"
                   :disabled="!editable || !idle" :aria-expanded="menuGroup?.id === id.slice(6)" @click.stop="openGroupMenu(id.slice(6), $event)">⋯</button>
               </div>
-              <button v-else type="button" class="group-handle" :title="data.name" @click="openGroupEditor(id.slice(6), $event)">{{ data.name }}</button>
             </div>
           </template>
           <template #edge-dependency="edge"><DependencyEdge v-bind="edge" :active="selectedEdgeId === edge.id" @inspect="selectEdge(edge.id)" /></template>

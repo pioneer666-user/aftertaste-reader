@@ -221,7 +221,7 @@ async function samePath() {
         await saved(page);
         assert.deepEqual(await disk(project), beforePartial);
         await expectPoint(page, audit, beforePartial.layout.positions[audit]);
-        await page.getByRole('button', { name: 'Temporary', exact: true }).waitFor();
+        await button(page, '分组操作 · Temporary').waitFor();
         return { http: rejected.status(), recovered, temporary: beforePartial.layout };
       });
     }
@@ -269,7 +269,7 @@ async function retainReaddedDraft() {
         refreshDependency(page)]);
       await drag(page, node(page, audit), 98, 91);
       await group(page, 'Second latest');
-      await button(page, 'Second latest').waitFor();
+      await button(page, '分组操作 · Second latest').waitFor();
       const point = { x: current.layout.positions[audit].x + 98, y: current.layout.positions[audit].y + 91 };
       await expectPoint(page, audit, point);
       const graph = JSON.parse(full);
@@ -283,7 +283,7 @@ async function retainReaddedDraft() {
       await button(page, '刷新图并保留本页布局').click();
       await page.getByText(/LAYOUT_GRAPH_UNCONFIRMED/u).waitFor();
       await expectPoint(page, audit, point);
-      await button(page, 'Second latest').waitFor();
+      await button(page, '分组操作 · Second latest').waitFor();
       assert.deepEqual(await disk(project), first);
       await writeFile(project.graph, full);
       await savedAction(page, () => button(page, '刷新图并保留本页布局').click());
@@ -298,7 +298,7 @@ async function retainReaddedDraft() {
     const page = await openCanvas(context, url);
     await saved(page);
     await expectPoint(page, audit, final.layout.positions[audit]);
-    await button(page, 'Second latest').waitFor();
+    await button(page, '分组操作 · Second latest').waitFor();
     assert.deepEqual(await disk(project), final);
   });
   return final;

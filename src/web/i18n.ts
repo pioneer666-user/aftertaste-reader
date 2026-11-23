@@ -136,7 +136,7 @@ const chinese: Record<string, string> = {
   canvasMembers: "成员",
   canvasApplyGroup: "应用分组",
   canvasGroupHelp: "拖组名可移动成员。已分组的成员被勾选后会转入当前组。",
-  canvasGroupEditorHelp: "拖组名可移动成员。勾选其他组的成员会移组。取消勾选全部成员并应用可解散分组。",
+  canvasGroupEditorHelp: "拖组名可移动成员。勾选其他组的成员会移组。在组名旁的「⋯」中可解散分组。",
 };
 
 const english: Record<string, string> = {
@@ -275,7 +275,7 @@ const english: Record<string, string> = {
   canvasMembers: "Members",
   canvasApplyGroup: "Apply group",
   canvasGroupHelp: "Drag a group name to move its members. Adding a member moves it from its previous group.",
-  canvasGroupEditorHelp: "Drag a group name to move its members. Adding a member moves it from its previous group. Clear every member and apply to dissolve the group.",
+  canvasGroupEditorHelp: "Drag a group name to move its members. Adding a member moves it from its previous group. Use ⋯ beside the name to dissolve the group.",
 };
 
 export function translate(language: Language, key: string): string {

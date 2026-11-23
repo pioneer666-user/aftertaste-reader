@@ -47,7 +47,7 @@ const file = (page, source) => dep(page).locator(`[data-file="${source}"]`);
 const library = page => dep(page).locator(`[data-legend="${standardLegend.id}"]`);
 const groupAction = page => button(dep(page), '分组');
 const groupName = page => dep(page).locator('#canvas-selection-name');
-const frame = (page, name) => dep(page).locator('.group-frame').filter({ has: button(page, name) });
+const frame = (page, name) => dep(page).locator('.group-frame').filter({ has: button(page, '分组操作 · ' + name) });
 const selected = page => dep(page).locator('[data-box-selected="true"]');
 const transform = scope => scope.locator('.vue-flow__transformationpane').evaluate(element => getComputedStyle(element).transform);
 const saveResponse = (page, route) => page.waitForResponse(response =>
@@ -296,7 +296,8 @@ try {
   assert.equal(await transform(dep(page)), originalView);
   assert.equal(puts, 0);
   assert.deepEqual(await readFile(fixture.layout), passiveDisk);
-  await frame(page, '订单处理').locator('.group-handle').click();
+  await frame(page, '订单处理').locator('.group-more').click();
+  await button(dep(page), '改名').click();
   const oldEditor = dep(page).locator('.canvas-groups');
   const formerMember = oldEditor.getByRole('checkbox', { name: rules, exact: true });
   const oldGroupName = oldEditor.getByLabel('组名', { exact: true });
@@ -313,7 +314,7 @@ try {
   const renamed = await dependencyWrite(page, () => button(oldEditor, '应用分组').click());
   assert.deepEqual(renamed.layout.groups.map(group => [group.name, group.members]),
     grouped.layout.groups.map(group => [group.name === '订单处理' ? '订单处理（改名）' : group.name, group.members]));
-  await button(dep(page), '关闭分组').click();
+  await oldEditor.waitFor({ state: 'hidden' });
   assert.ok(contains(await bounds(frame(page, '鼠标创建')), auditBox), 'unselected file lies fully inside the new frame');
   const handle = await bounds(frame(page, '鼠标创建').locator('.group-handle'));
   const handleCenter = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 };
@@ -429,13 +430,21 @@ try {
   assertNear(shown.viewport, [edited.layout.viewport.x, edited.layout.viewport.y, edited.layout.viewport.zoom]);
   for (const [id, point] of Object.entries(edited.layout.positions)) assertNear(shown.positions[id], [point.x, point.y]);
   await screenshot(page, 'reopened');
-  await frame(page, '键盘编排').locator('.group-handle').press('Enter');
-  for (const name of [rules, service, audit, 'node:path · 标准库']) {
-    await dep(page).getByRole('checkbox', { name, exact: true }).press('Space');
-  }
-  const dissolved = await dependencyWrite(page, () => button(dep(page), '应用分组').press('Enter'));
+  const more = button(dep(page), '分组操作 · 键盘编排');
+  await more.press('Enter');
+  await page.keyboard.press('Escape');
+  assert.ok(await more.evaluate(el => el === document.activeElement));
+  await more.press('Enter');
+  await screenshot(page, 'group-menu');
+  const dissolve = dep(page).getByRole('button', { name: /解散分组.*节点保留在原位/u });
+  const dissolved = await dependencyWrite(page, () => dissolve.press('Enter'));
   assert.deepEqual(dissolved.layout, { ...edited.layout, groups: [] });
   await frame(page, '键盘编排').waitFor({ state: 'detached' });
+  await page.reload();
+  await button(header(page), '文件依赖图').click();
+  await dependencySaved(dep(page));
+  assert.equal(await dep(page).locator('.group-frame').count(), 0);
+  assert.deepEqual(await readJSON(fixture.layout), dissolved);
   assert.deepEqual(await readJSON(loopLayout(fixture, orderId)), loopDisk);
   assert.deepEqual(await Promise.all(protectedFiles.map(file => readFile(file))), protectedBefore);
   assert.deepEqual(report.errors, []);

@@ -92,7 +92,7 @@ try {
   await mapSync();
   assert.deepEqual(await readJSON(disk), seed);
   const startView = await view();
-  const group = canvas.locator('.group-frame').filter({ has: button(page, '订单处理') });
+  const group = canvas.locator('.group-frame').filter({ has: button(page, '分组操作 · 订单处理') });
   async function reverseBox(releaseControl) {
     const endCard = await card(service).boundingBox(), startCard = await card(rules).boundingBox();
     const from = { x: Math.ceil(endCard.x + endCard.width + 5), y: Math.ceil(endCard.y + endCard.height + 5) };
@@ -157,10 +157,11 @@ try {
   await page.locator('header [data-page="canvas"]:visible').click();
   await tool('select');
   await page.keyboard.up('Control');
-  const h = await button(group, '订单处理').boundingBox();
+  const handle = group.locator('.group-handle');
+  const h = await handle.boundingBox();
   const origin = { x: h.x + h.width / 2, y: h.y + h.height / 2 };
   const grouped = await saved(() => drag(origin, { x: origin.x + 25, y: origin.y + 18 }));
-  const endHandle = await button(group, '订单处理').boundingBox();
+  const endHandle = await handle.boundingBox();
   const dx = endHandle.x - h.x, dy = endHandle.y - h.y;
   assert.ok(dx > 18 && dy > 12, 'the group handle moved past the drag threshold');
   for (const [id, previous] of Object.entries(reversed.layout.positions)) {
