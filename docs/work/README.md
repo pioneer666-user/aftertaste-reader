@@ -56,5 +56,6 @@
 | D044 | [阅读器五套主题与全站用色核验](2026/11/D044-reader-themes/task.md) |
 | D045 | [首次安装回味，读通真实后端的一次收藏请求](2026/11/D045-alpha-first-run/task.md) |
 | D046 | [从左往右读懂后端请求：两图分层、紧凑文件树与讲解深度](2026/11/D046-alpha-reading-layout/task.md) |
+| D047 | [文件阅读页的固定源码语法高亮](2026/11/D047-source-syntax-highlighting/task.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。
