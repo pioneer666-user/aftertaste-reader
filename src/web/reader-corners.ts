@@ -133,6 +133,7 @@ export function paintReaderCorners(root: HTMLElement) {
       schedule();
     }, true);
   }
+  new MutationObserver(rescan).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   forcedColors.addEventListener('change', rescan);
   schedule();
 }

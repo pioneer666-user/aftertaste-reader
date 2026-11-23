@@ -141,14 +141,30 @@ async function checkNavigation(page) {
   assert.ok((await bounds(refresh)).x > (await bounds(button(header(page), pages.at(-1)))).x);
   assert.equal(await activePage(page).innerText(), pages[0]);
   const noteTab = button(header(page), '笔记');
-  const background = target => target.evaluate(element => getComputedStyle(element).backgroundColor);
-  const rest = await background(noteTab);
-  assert.notEqual(await background(activePage(page)), rest);
+  // Firefox paints the fill and focus ring in the SVG used as the button's border image.
+  async function paint(target) {
+    return target.evaluate(async element => {
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const style = getComputedStyle(element);
+      const id = element.style.getPropertyValue('--reader-corner-image').match(/#([\w-]+)/u)?.[1];
+      const paths = element.hasAttribute('data-reader-corner') && document.getElementById(id)?.children;
+      return { fill: paths ? paths[0].getAttribute('fill') : style.backgroundColor,
+        ring: paths ? paths[1]?.getAttribute('stroke') : style.outlineStyle === 'solid' ? style.outlineColor : undefined };
+    });
+  }
+  const rest = await paint(noteTab);
+  const current = await paint(activePage(page));
   await noteTab.hover();
-  assert.notEqual(await background(noteTab), rest);
+  const hover = await paint(noteTab);
+  assert.equal(new Set([rest.fill, current.fill, hover.fill]).size, 3);
+  await page.mouse.move(0, 0);
   await button(header(page), '标注').focus();
   await page.keyboard.press('Tab');
-  assert.ok(await noteTab.evaluate(element => element.matches(':focus-visible') && getComputedStyle(element).outlineStyle !== 'none'));
+  const focus = await paint(noteTab);
+  assert.equal(focus.fill, rest.fill);
+  assert.ok(await noteTab.evaluate(element => element.matches(':focus-visible')));
+  assert.ok(focus.ring && !['none', 'transparent', 'rgba(0, 0, 0, 0)', focus.fill].includes(focus.ring));
+  report.tabPaint = { rest, current, hover, focus };
   await screenshot(page, 'desktop-chinese');
 
   await language.selectOption('en');

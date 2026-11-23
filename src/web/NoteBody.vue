@@ -98,15 +98,22 @@ defineExpose({
 </script>
 <template><div ref="host" class="note-body-editor"></div></template>
 <style>
-.note-body-editor { border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.note-body-editor { border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
 .note-body-editor:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 .note-body-editor .cm-editor { height: 100%; }
 .note-body-editor .cm-editor.cm-focused { outline: none; }
+.note-body-editor .cm-editor .cm-cursor { border-left-color: var(--text); }
+.note-body-editor .cm-content { caret-color: var(--text); }
+.note-body-editor .cm-editor .cm-selectionBackground,
+.note-body-editor .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground { background: var(--editor-selection); }
 .note-body-editor .cm-scroller { overflow: auto; font: inherit; line-height: 1.65; }
 .note-body-editor .cm-content { padding: 8px 6px; }
-.note-reference, .markdown a.note-block-link[data-source] { display: inline-block; max-width: 100%; vertical-align: middle; padding: 3px 9px; border-inline-start: 3px solid #81aa96; border-radius: 3px; background: #edf5ef; color: #234c3c; overflow-wrap: anywhere; white-space: pre-wrap; }
+.note-reference, .markdown a.note-block-link[data-source] { display: inline-block; max-width: 100%; vertical-align: middle; padding: 3px 9px; border-inline-start: 3px solid var(--control-rim); border-radius: 3px; background: var(--current); color: var(--action); overflow-wrap: anywhere; white-space: pre-wrap; }
 .note-reference.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
-.note-reference small, .markdown a.note-block-link[data-source]::after { display: block; color: #496453; font-size: 11px; }
+.note-reference small, .markdown a.note-block-link[data-source]::after { display: block; color: var(--secondary); font-size: 11px; }
 .markdown a.note-block-link[data-source]::after { content: attr(data-source); }
 .note-input .note-body-editor { height: 20rem; }
+@media (forced-colors: active) {
+  .note-body-editor .cm-selectionBackground { outline: 1px solid Highlight; outline-offset: -1px; }
+}
 </style>

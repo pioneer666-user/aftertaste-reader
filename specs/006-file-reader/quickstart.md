@@ -84,3 +84,5 @@ D010 合成样例使用 tests/fixtures/reader-project.mjs 重建到全新隔离�
 ## D041 · 三页详情对齐
 
 以 [D041 验证与停点](../../docs/work/2026/11/D041-record-management-details/task.md#验证与停点) 的订单项目副本串行运行 `tests/browser/record-details.mjs` 和 `tests/browser/record-workbench.mjs`。测两种桌面宽度、窄窗、连续角、两区域恢复及只读回访。D038 固定构建只在隔离页套用同一 CSS 布局规则，核正文和引用。
+
+D044 使用 D043 订单独立副本，展开第 03 步并打开《订单步骤核对》，从顶栏切换深黑和浅绿。核同一篇正文、笔记引文、图上 ◆ 与选中边线，再重开站点。六页五主题验收按 SC-019。

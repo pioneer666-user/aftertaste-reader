@@ -53,7 +53,7 @@
 
 ## Phase 5 · User Story 3 - 语言切换 (Priority P2)
 
-**Goal** 全部界面双语，正文和位置保留，浏览器仅记语言。
+**Goal** 全部界面双语，正文和位置保留，浏览器记住语言。
 
 **Independent Test** 默认/保存/非法值/存储不可用和英文长文案。
 
@@ -273,6 +273,12 @@
 - [x] T082 [US10] 在 `src/web/RecordWorkbench.vue` 和 `src/web/style.css` 对齐三页详情并沿用 D029 轮廓（FR-017、020）。
 - [x] T083 [US10] 在 `tests/browser/record-details.mjs`、`tests/browser/record-workbench.mjs` 与 `tests/browser/reader-history.mjs` 串行复验几何、历史、窄窗、轮廓及 D038 组合（SC-015、018）。
 - [x] T084 更新 `docs/usage/file-reader.md`，固定候选交独审，通过后切换 4342 并交回 D041 回执。
+
+## D044 · User Story 13 - 在当前段落更换主题 (P1)
+
+- [x] T085 [US13] 固定订单浅绿对照，盘点 src/web 与外部绘制入口，在 src/web/themes.css 定义五个色板。
+- [x] T086 [US13] 在 App.vue、顶栏、两图和记录编辑器接通站点偏好及原位重画，实现 FR-021。
+- [x] T087 [US13] 在 tests/browser/reader-themes.mjs 及既有浏览器入口核 SC-019，更新 docs/usage/file-reader.md，冻结候选交独审。
 
 ## Dependencies & Execution Order
 

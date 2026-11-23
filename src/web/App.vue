@@ -20,6 +20,7 @@ import DependencyCanvas from './DependencyCanvas.vue';
 import DependencyDots from './DependencyDots.vue';
 import LoopThumbnail from './LoopThumbnail.vue';
 import { failed, request, requestDocument } from './reader-api.js';
+import ThemePicker from './ThemePicker.vue';
 import { problemText, readLanguage, saveLanguage, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { blockLabel } from './markdown.js';
@@ -1073,9 +1074,10 @@ onUnmounted(() => {
       <label class="language-control"><span>{{ t('language') }}</span>
         <select :value="language" :aria-label="t('language')" @change="changeLanguage"><option value="zh-CN">简体中文</option><option value="en">English</option></select>
       </label>
+      <ThemePicker :language="language" @selected="languageStatus = $event ? 'themeSaved' : 'themeUnsaved'" />
     </div>
   </header>
-  <p v-if="languageStatus" class="language-status" role="status">{{ t(languageStatus) }}</p>
+  <p v-if="languageStatus" :class="languageStatus === 'themeSaved' ? 'visually-hidden' : 'language-status'" role="status">{{ t(languageStatus) }}</p>
   <div v-if="positionNotice" class="position-notice">
     <p role="status">{{ positionNotice }}</p>
     <button type="button" @click="positionNotice = ''">{{ t('closePositionNotice') }}</button>

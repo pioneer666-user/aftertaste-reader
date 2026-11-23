@@ -97,12 +97,12 @@ function keyboard(event: KeyboardEvent) {
 </template>
 
 <style scoped>
-.dependency-minimap { display: block; width: 100%; height: var(--canvas-map-height); background: #f9fbf8; cursor: crosshair; touch-action: none; }
-.canvasGroup { fill: #e7eadb; stroke: #c9d0b8; stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.canvasFile { fill: #8eab9b; }
-.canvasLegend { fill: #a39ac4; }
-.selected { fill: #17624b; }
-.minimap-view { fill: #46856b0b; stroke: #42735d; stroke-width: 1.25px; vector-effect: non-scaling-stroke; cursor: grab; }
+.dependency-minimap { display: block; width: 100%; height: var(--canvas-map-height); background: var(--panel); cursor: crosshair; touch-action: none; }
+.canvasGroup { fill: var(--group-surface); stroke: var(--group-border); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.canvasFile { fill: var(--edge); }
+.canvasLegend { fill: var(--library-edge); }
+.selected { fill: var(--direct-edge); stroke: var(--direct-edge); stroke-width: 2px; vector-effect: non-scaling-stroke; }
+.minimap-view { fill: color-mix(in srgb, var(--action) 5%, transparent); stroke: var(--edge); stroke-width: 1.25px; vector-effect: non-scaling-stroke; cursor: grab; }
 .minimap-view:active { cursor: grabbing; }
 .dependency-minimap:focus-visible { outline-offset: -4px; }
 </style>
