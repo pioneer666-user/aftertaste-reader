@@ -6,6 +6,8 @@
 
 2026-11-23，首个公开 Alpha 已发布。下一位主脑从[公开 Alpha 后的真实使用体验交接](mainbrain-handoff.md)接手。
 
+同日，新主脑按作者要求整理本地分支。合并提交 `dc45eb6` 将公开 Alpha `9f31aec` 与交接 `55e7062` 一并纳入 `dev`。已核合并后的文件树与交接提交一致，两个分支尖端均在 `dev` 历史内。已删除本地分支 `codex/release-alpha-1`、`codex/docs-alpha-handoff`，仅有的工作树已切回 `dev`，收尾时工作区干净。远端 `main` 与发行标签 `v0.1.0-alpha.1` 仍指向 `9f31aec`。
+
 [从收藏按钮进入新版闭环](http://127.0.0.1:4359/#aftertaste-loop/question-bookmark-request/request) · [直接看分岔](http://127.0.0.1:4359/#aftertaste-loop/question-bookmark-request/choose-branch) · [看两条响应](http://127.0.0.1:4359/#aftertaste-loop/question-bookmark-request/send-http)
 
 [打开控制器的三个请求字段](http://127.0.0.1:4359/#aftertaste-block/docs%2Faftertaste%2Fcurrent%2Finternal%2Fcontroller%2Fcollection_controller.go.md/vmi6gwjc) · [打开文件依赖图](http://127.0.0.1:4359/#canvas-reading) · [对照 4357 原版](http://127.0.0.1:4357/#aftertaste-loop/question-bookmark-request/request)
