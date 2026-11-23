@@ -1,12 +1,14 @@
 {
   "name": "aftertaste-reader",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.1",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=24 <25"
   },
   "files": [
+    "THIRD-PARTY-NOTICES.md",
     "dist/**/*.js",
     "dist/web/index.html",
     "dist/web/assets/",
