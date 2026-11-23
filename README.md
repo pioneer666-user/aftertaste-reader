@@ -1,129 +1,67 @@
 # Aftertaste Reader · 回味
 
-帮助项目作者对照源码与讲解，逐步读懂自己的项目。当前已建立固定提交取源、单篇讲解骨架／校验和文件依赖图维护工具链，首版规格与开发规范继续作为后续实现依据。
+用浏览器对照 Git 固定提交的源码和 AI 讲解。可以逐文件读，也可以沿跨文件的闭环追一次请求如何传递、写入和返回。讲解、闭环与个人阅读记录保存在你的项目里。
 
-中文名为“回味”；英文名、`aftertaste-reader` 标识及路径保持不变。历史原话、任务与证据中的旧称保留用于追溯。
+## 首次安装
 
-本地逐文件阅读入口见[启动、停止与排错说明](docs/usage/file-reader.md)，可按块对照固定源码并切换中英文界面。D011 作者待验候选与合成样例见[回执](docs/work/2026/11/D011-file-reader/handoff.md)。
+准备 Node.js 24 LTS、npm、Git 2.45+、一个已有 Git 提交的本地项目，以及能读取本机文件和运行终端命令的 AI。确认 `node --version` 显示 `v24.x`，再用 `npm --version` 和 `git --version` 检查工具可用。
 
-## 固定提交取源开发入口
+拿到回味的 `aftertaste-reader-*.tgz` 后，在 PowerShell 执行以下命令。按提示粘贴包的完整路径，再输入项目目录。npm 联网安装运行依赖。工具安装在独立目录，项目保留在原来的位置。
 
-使用 Node.js 24 LTS、npm 和本地 Git 2.45+，在仓库根运行 `npm ci`、`npm run typecheck`、`npm run build`、`npm test`。构建后的命令入口为 `node dist/cli/main.js pin/read`，具体调用及历史子项目读取见 [002 quickstart](specs/002-fixed-source/quickstart.md)，共用用例在 `src/application/fixed-source.ts`。当前加固结果见 [D007 handoff](docs/work/2026/11/D007-fixed-source-hardening/handoff.md)，原交付见 [D006 handoff](docs/work/2026/11/D006-fixed-source/handoff.md)。
+```powershell
+$package = (Resolve-Path -LiteralPath (Read-Host '回味安装包的完整路径') -ErrorAction Stop).Path
+$tools = Join-Path $env:LOCALAPPDATA 'Aftertaste Reader'
+New-Item -ItemType Directory -Path $tools -Force | Out-Null
+npm install --prefix "$tools" --omit=dev "$package"
+if ($LASTEXITCODE -ne 0) { throw '安装失败，请查看 npm 输出。' }
+$project = (Resolve-Path -LiteralPath (Read-Host '要阅读的 Git 项目目录') -ErrorAction Stop).Path
+$installed = Join-Path $tools 'node_modules/aftertaste-reader'
+$skill = Join-Path $installed 'skills/aftertaste-reader/SKILL.md'
+$skill
+$project
+```
 
-## 单篇讲解文档开发入口
+把最后两行输出填入下面这句话，发给 AI。把引号里的困惑换成你真正想读的问题。
 
-构建后可调用 `node dist/cli/main.js create-document/validate-document`。AI 提供分块并填写正文，工具生成 ID 与结构、核固定提交的逐行覆盖及超大警告，结果单独报告填写状态和机械合法性。完整合成项目验证见 [003 quickstart](specs/003-document-blocks/quickstart.md)，参数与输出见 [CLI 契约](specs/003-document-blocks/contracts/cli.md)。
+> 请显式读取「Skill 完整路径」，为「Git 项目完整路径」生成回味讲解。我想先读「例如登录后的数据如何保存」。先只生成一小批，读过再继续。请告诉我怎样打开第一篇。
 
-## 文件依赖图开发入口
+AI 会确认缺失的范围和节奏，默认固定开始时的 HEAD。要读其他版本，可以同时给出本地 Git 提交。生成讲解后，可以请 AI “从已有讲解里找一条能回答我的问题的闭环路线”。看过路线后选定，AI 再保存。
 
-构建后可调用 `node dist/cli/main.js apply-graph/query-graph/validate-graph`。以 JSON 输入登记批次、按明确核对的使用者替换完整依赖列表、明确删除节点；查询区分未登记、未核对和已核对无依赖。工具只维护同一固定提交中的引用与关系，不自动分析依赖或生成讲解。完整参数见 [004 CLI 契约](specs/004-dependency-graph/contracts/cli.md)，可重跑合成示例见 [004 quickstart](specs/004-dependency-graph/quickstart.md)。
+## 日常打开与关闭
 
-## 普通文件讲解 Skill
+新开 PowerShell 时输入同一个项目目录。用安装后的 CLI 启动阅读器。
 
-显式读取 [aftertaste-reader](skills/aftertaste-reader/SKILL.md)，确认目标项目、阅读范围及逐批／连续节奏后，AI 连接现有工具生成讲解、补齐依赖并维护阅读方向。[使用说明](docs/usage/generation-skill.md) 提供开发树步骤，[D010 回执](docs/work/2026/11/D010-generation-skill/handoff.md) 提供实测和作者试读入口。安装／发布、网页与其他生成分支待后续任务。
+```powershell
+$tools = Join-Path $env:LOCALAPPDATA 'Aftertaste Reader'
+$cli = Join-Path $tools 'node_modules/aftertaste-reader/dist/cli/main.js'
+$project = (Resolve-Path -LiteralPath (Read-Host '要阅读的 Git 项目目录') -ErrorAction Stop).Path
+node "$cli" serve --project "$project"
+```
 
-## 开发协作入口（2026-11-16）
+在浏览器打开启动输出中的 `url`。从左栏选一篇讲解，或从顶栏「闭环阅读」打开已保存的闭环。即使断网，页面、字体和已有讲解也由本机提供，源码从原项目的 Git 提交读取。
 
-新主脑从 [D002 交接](docs/work/2026/11/D002-directory-layout/handoff.md)及 [D003 Spec Kit 接入与收束](docs/work/2026/11/D003-speckit-check/handoff.md)接续；文件落点看[目录职责](docs/development/directories.md)。正式需求、架构设计及后续更新必须按[官方 Spec Kit 技能／模板](docs/development/spec-kit.md)，偏离需告知。产品 Skill 与讲解 AI 指南在 [skills/aftertaste-reader](skills/aftertaste-reader/README.md)，按任务实验从 [experiments](experiments/README.md)进入。固定取源的实现与验证入口见上节。
+端口占用时可在启动命令后加 `--port 4318` 或指定另一个空闲端口。在启动终端按 Ctrl+C，看到 `status=stopped` 即已关闭。下次执行同一条启动命令，便可继续读同一项目。
 
-第一版开发规范见 [AGENTS.md](AGENTS.md)，按主脑／执行／审查三个角色协作；主脑持续维护规范，作者转交执行任务，执行调用独立审查子代理并交回回执。开发技能及项目适配见[技能入口](docs/development/skills.md)，本次范围与验证见 [D001 回执](docs/work/2026/11/D001-development-standards/handoff.md)。
+进一步操作见[阅读器使用说明](docs/usage/file-reader.md)和[生成讲解与闭环](docs/usage/generation-skill.md)。
 
-该规范建立开发方式，未实现产品或运行产品验收。下方设计交接与阶段记录保留追溯，当前产品要求继续从 08 进入。
+## 构建本地包
 
-## 设计交接（2026-11-16，U102—U103）
+维护者在干净的仓库检出中使用 Node.js 24 和唯一的锁文件。把包输出到独立目录，供读者安装。
 
-功能方向已收束，下一步制定开发规范；具体协议和实验仍需完成，不直接开始产品编码。请先读 [08 现行规格](specs/001-first-release/08-current-spec-and-acceptance.md)，技术选择见 [03 U102](specs/001-first-release/03-web-delivery.md)。旧分册中的未定／推荐按后续裁决理解，不重开 G1—G5。
+```powershell
+npm ci
+npm run typecheck
+$packageDir = Join-Path ([System.IO.Path]::GetTempPath()) 'aftertaste-pack'
+New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+npm pack --pack-destination "$packageDir"
+```
 
-- 更新中能有效导出当前状态就导出，不能则说明原因；笔记链接跟随当前文档，失效提示。
-- 闭环重做弃用旧路线和讲解、从头生成；回退由 AI 调用工具把更新前备份文档放回，不回退用户源码。
-- 授权 AI 选择：TypeScript + Vue 3 + Vite；Node.js 24 LTS + Fastify；命令与服务共用逻辑，Python 不作为产品必需依赖。Vue Flow 是首个画布实验组件。
-- 首版 Windows／Edge 主验，Chrome、Firefox 做适用兼容检查；npm 预构建包的安装方向已选，尚未发布或验证。原有源码只引用原则继续有效。
+`npm pack` 会先编译命令工具并构建页面。读者运行已经打包的成果，只需 Node.js、npm 和 Git。仓库中的包保持私有配置。
 
-作者本轮授权将产品设计分支合并到产品仓库 dev。该合并是文档基线交接，不代表页面、教学效果或产品验收通过；外层原话与交接仍在 tasks/AR1。
+## 开发与沿革
 
-## 当前入口（2026-11-16，U98）
+- [协作入口](AGENTS.md) · [现行规格](specs/001-first-release/08-current-spec-and-acceptance.md) · [项目待办](docs/product/backlog.md)
+- [Git 固定提交](specs/002-fixed-source/quickstart.md) · [讲解文档](specs/003-document-blocks/quickstart.md) · [文件依赖图](specs/004-dependency-graph/quickstart.md)
+- [开发规范交接](docs/work/2026/11/D002-directory-layout/handoff.md) · [Spec Kit 接入](docs/development/spec-kit.md) · [实验](experiments/README.md)
 
-**U101 源码原则**：文件文档、闭环及历史只保存固定源码引用，程序运行时从 Git 读取；读取失败给出错误，不另存源码兜底。只有用户明确勾选携带源码的导出 HTML 例外。此前闭环保存源码文本的设计已撤销；当前仍无产品实现，不存在已实现保存机制的迁移。
-
-首版采用本地阅读服务。2026-11-23，作者将单文件只读 HTML 导出排到首版发布后。U99—U100 已确认导出内容选项与只读交互，D-001 已由 U94 解决，U97 已确认闭环更新主流程。各项交付顺序见[首版现行规格与验收安排](specs/001-first-release/08-current-spec-and-acceptance.md#release-order)。
-
-目前只整理设计文档，尚未编写产品或实际 Skill、未运行实验。以下是保留的阶段记录，其中“未定”或“尚未确认”仅表示当时状态，不能覆盖后续确认。旧 6/16 检查不代表当前设计完成比例。
-
-## 历史阶段记录（保留追溯）
-
-> **⚠ D-001 · 作者明确暂缓（2026-11-14，U10）**
->
-> **网页运行方式尚未决定：单文件导出、本地服务，或服务兼导出。先讨论功能，再回来裁决。**
->
-> 当前入口：[Skill 设计讨论地图](specs/001-first-release/07-skill-design-map.md)，按 U59 盘点既有约定与仍需讨论的内容，尚未编写 Skill。下文保留阶段进展，各分册后续确认优先；未确认候选不自动获批。正式暂缓登记见[规格总入口](specs/001-first-release/spec.md)；没有作者明确指示，不新增待定项。
-
-当前确认结果：[文档块与讲解组织](specs/001-first-release/06-document-blocks.md)。U12 已认可取消纯源码块、区分三种理解记录，并授权 AI 确定超大阈值：源码超过 60 行或讲解超过 1,200 个非空白字符，只警告并告知用户。
-
-U14—U16 已认可连续源码范围、整文件完整覆盖，以及“文档路径＋块 ID”定位；块 ID 为 8 位随机小写字母和数字、同篇唯一，与阅读顺序分离。
-
-U17—U18 明确拆分、合并的内容由 AI 决定，Skill 提供操作规范；拆分、合并后的所有结果块生成新 ID，理解状态从“未标记”开始。
-
-U19 已认可对照块源码范围不重叠、每行恰好归属一个对照块，并按源码行号排列；纯讲解块可以穿插。
-
-U20 已认可 Markdown 只保存源码定位和讲解，由程序提取固定提交的源码；尽量让 AI 专注理解与解释，按确定规则完成的机械工作交给程序。具体要求见 [02](specs/001-first-release/02-document-layout.md)。
-
-U21 授权 AI 确定块级 Markdown 格式，采用成对注释标记与普通 Markdown 正文；辅助脚本生成骨架。结构模板与语言风格的分工建议见 [06](specs/001-first-release/06-document-blocks.md)，尚未实现脚本或模板。
-
-U22 已认可 AI 提供完整分块清单供脚本生成骨架、镜像命名推导源码路径、文档顶部记录 Git 提交。首版维护一套当前资料；更新需考虑关联影响并说明变化，更新历史与回顾的保存方式仍在讨论，见 [01](specs/001-first-release/01-source-version.md)。
-
-U23 明确默认展示最新完成更新的完整文档；更新记录用于回顾各次当时的 diff，不让用户从旧文档逐次拼出新版。同一文件连续更新仍须保留每次固定的前后差异，具体存储机制尚未决定。
-
-U29 已确认保存受影响文档更新前后完整 Markdown、以块身份匹配，源码变化也算块修改；首版差异只处理增删改，不建立拆分合并关联。需要旧记录删除入口；版本组织、清理天数和流程仍在讨论，不能默认只留两版或自动删除。
-
-U30 已确认每次记录独立保存前后文档，回顾不依赖下一条记录，删除某条不破坏其他条；具体记录格式、清理天数及源码快照仍未确定。
-
-U31 已确认由程序统一同步当前文档的源码提交字段，AI 不逐篇手改；仅同步提交信息、实际内容未变的文档不进入本次更新记录。
-
-U32 确认在完成更新的步骤同步源码提交信息；U33 要求 AI 以降低复杂度为优先主导后续方案。中断续接及目录调整仍在讨论，未开始实现。
-
-U34 已确认当前讲解在 docs/aftertaste/current 下镜像源码；更新说明采用固定格式勾选清单，程序对未完成项发出警告，并基本认可按文档准备和中断续接流程。U35 认可状态放在 history 的更新说明中；中途换目标应提醒而不强制先回退，提供回退能力供用户选择。复用未完成记录并更换目标仍是建议，详见 01；未实现命令或模板。
-
-## 当前文档
-
-U36 明确脚本与工具面向 AI 调用，需要沟通的信息交给 AI 转达。主动收尾脚本的提议及本轮建议见 [01](specs/001-first-release/01-source-version.md)；具体接口和中断重试尚未批准，未实现。
-
-U37—U38 已确认程序将 current 中本次实际变化的文档复制到历史 after，固定供回顾，不重复生成正文。允许进入阅读功能讨论；既有三种块理解状态不重开，其余功能先明确用途与范围。
-
-U39 补齐生成更新说明及单文档即时校验要求，逐文件操作建议见 01。真实阅读需求已记入 05：全局笔记记录以后处理的问题，不理解块待闭环再解释，块注释用于收藏回看；当前建议书签附可选备注，不默认再建独立待办功能。
-
-先读[规格总入口](specs/001-first-release/spec.md)。以下保留基础分册，并增加跨分册的 Skill 讨论索引；D-001 仍暂缓：
-
-1. [源码版本与更新依据](specs/001-first-release/01-source-version.md)：讲解对应哪一版源码、更新比较什么。
-2. [资料目录与文件映射](specs/001-first-release/02-document-layout.md)：docs/aftertaste、命名、定位和资料归属。
-3. [网页承载与技术选择](specs/001-first-release/03-web-delivery.md)：资料怎样进入阅读页，随后比较语言与框架。
-4. [阅读模式](specs/001-first-release/04-reading-modes.md)：保留已确认的两种模式，基础讨论后继续完善。
-5. [阅读记录与讲解反馈](specs/001-first-release/05-reading-feedback.md)：书签、注释与局部理解标记的方向和已确认部分。
-6. [文档块与讲解组织](specs/001-first-release/06-document-blocks.md)：已认可的块规则与本轮明确提出的建议分开记录。
-7. [Skill 设计讨论地图](specs/001-first-release/07-skill-design-map.md)：职责、既有决定、未完成接口及建议的讨论顺序；不预定 Skill 数量。
-
-[需求质量检查](specs/001-first-release/checklists/requirements.md)记录未解决项。文档顺序表示讨论顺序，不代表技术方案已批准。
-
-作者原文仍保存在外层实验仓库的[任务](../tasks/AR1-回甘首版需求设计/task.md)与[调整记录](../tasks/AR1-回甘首版需求设计/amendments.md)中，历史不搬移或重复抄写。这些链接在当前本机有效；独立克隆或发布前需处理原文交接。
-
-## 仓库状态
-
-2026-11-14 按作者 U4 初始化独立子 Git 仓库；初始提交 253c71a 保存此前的模式讨论文档。上层实验仓库忽略本目录，不使用 Git submodule。目前未配置远程或发布。首版按批准任务分项实现，已有开发树入口见上文。
-
-## Spec Kit 使用依据（2026-11-14 历史记录）
-
-以下保留最初的下载与使用背景。2026-11-16 已完成官方项目接入，当前安装、模板入口与文档维护要求以 [Spec Kit 接入说明](docs/development/spec-kit.md)和 [D003 回执](docs/work/2026/11/D003-speckit-check/handoff.md)为准；下文“未初始化”仅表示当时状态。
-
-2026-11-14 通过 GitHub 官方仓库的 releases/latest 核实，最新稳定版为 [v1.4.0](https://github.com/github/spec-kit/releases/tag/v1.4.0)，发布于 2026-11-10。本轮固定引用该版本，不使用本机旧的 1.0.4 资料包。
-
-当时下载的完整源码用于固定来源参考；2026-11-16 D005 停止维护该下载副本，版本、提交、原始压缩包校验值和按需维护 CLI 的方法统一见 [Spec Kit 接入说明](docs/development/spec-kit.md#固定来源与重建)，其中如实记录物理清理状态。日常使用已安装的[需求规格模板](.specify/templates/spec-template.md)、[需求澄清技能](.agents/skills/speckit-clarify/SKILL.md)和[技术设计模板](.specify/templates/plan-template.md)，无需另行维护完整上游源码。
-
-当时以中文手工整理需求、讨论记录和质量检查，参考官方结构，尚未形成完整官方 spec／plan 套件；当轮未安装全局 CLI、未初始化自动化命令环境，也未运行实现工作流。下载副本仅作为当时参考，没有混入本产品实现；上游 AGENTS.md 或示例不成为本项目全局指令。
-
-作者 U1 要求优先于工具默认流程：
-
-- 官方 specify 方法允许推测部分未明确需求；本项目涉及产品范围或体验的决定保留为待讨论，不推测为已确认。
-- 澄清按具体场景逐步进行，不以模板问题数量限制为理由宣布其余缺口已经解决。
-- 只有已确认的内容进入正式需求；AI 建议单独标记，作者原话不改写。
-- 当前文档只覆盖已讨论部分，不为填满模板虚构性能数字、兼容范围、交互和功能。
-- 需求未清楚、作者未决定进入实现前，不编写产品代码。
-- 按 U4 从底层约定开始讨论；所有设计决定与作者讨论或明确声明其性质，建议不能写成已批准要求。
+2026-11-16 的设计交接、仓库初始化和早期 AR1 原话索引保存在本仓库历史中，可用 `git show 8bd5e7b:README.md` 查阅。现行产品行为以当前规格和后续确认的任务为准。

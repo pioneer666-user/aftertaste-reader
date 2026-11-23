@@ -1,10 +1,10 @@
-# 当前开发树工具
+# 调用回味工具
 
-首次调用前读取本页。运行需要 Node.js 24 LTS 与本地 Git 2.45+。当前交付使用已构建开发树，安装／发布路径待交付任务验证。
+首次调用前读取本页。运行需要 Node.js 24 LTS 与本地 Git 2.45+。
 
 ## 定位与参数传递
 
-从实际读取到的 `SKILL.md` 父目录得到 skillRoot，当前开发树 toolRoot 是 `skillRoot/../..` 的绝对路径，CLI 是 `toolRoot/dist/cli/main.js`。核 package.json 和入口实际存在。缺构建时报告并按开发使用说明准备，勿从 cwd 猜工具位置。
+从实际读取到的 `SKILL.md` 父目录得到 skillRoot。在 npm 安装包和已构建开发树中，toolRoot 都是 `skillRoot/../..` 的绝对路径，CLI 都在 `toolRoot/dist/cli/main.js`。核实 toolRoot 的 `package.json` 名为 `aftertaste-reader`，并检查 CLI 入口存在。安装路径缺文件时请读者核对安装位置及安装包，开发树缺文件时先构建。以实际 Skill 路径为准，避免调用 cwd 或 PATH 中的同名工具。
 
 projectRoot 是用户目标项目绝对路径。pin 给 repositoryRoot、projectPrefix、commit，四项形成 fixed。子项目的 prefix 是 Git 仓库内前缀，根项目为空字符串。工具参数独立传 argv，特别是空 prefix 使用 Node child_process 的数组传递，避免 PowerShell 吞掉空参数或 JSON 引号。
 
@@ -198,7 +198,7 @@ function runValidation(args) {
 
 DOCUMENT_EXISTS 保留原文，按生成流程确认本次骨架归属。GRAPH_VERSION_MISMATCH 停止版本相关写入。GRAPH_CHANGED 重新读真实图后判断，勿盲重试。DOCUMENT_PATH_UNSAFE／GRAPH_PATH_UNSAFE 和其他失败带定位给用户，保留原资料。Git 错误不能自动修仓库、取新 HEAD 或换工作区。
 
-参数、路径或工具实现疑问可在当前 toolRoot 读 `src/cli/main.ts`、`src/application/` 和对应 adapters/core。源码读取问题沿固定来源诊断，检查工具代码也保留当前范围和资料保护。
+参数、路径或工具实现疑问可在当前 toolRoot 读 `dist/cli/main.js`、`dist/application/` 和对应 adapters/core。源码读取问题沿固定来源诊断，检查工具代码也保留当前范围和资料保护。
 
 <a id="revise-current"></a>
 ## 同提交修订
