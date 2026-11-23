@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { BaseEdge, getBezierPath } from '@vue-flow/core';
 import type { EdgeProps } from '@vue-flow/core';
 
-const props = defineProps<EdgeProps<{ reason: string; loop?: boolean }>>();
+const props = defineProps<EdgeProps<{ from: string; to: string; reason: string; loop?: boolean }> & { active: boolean }>();
+const emit = defineEmits<{ inspect: [] }>();
 const line = computed(() => {
   const { sourceX: x, sourceY: y, targetX: tx, targetY: ty } = props;
   const bezier = () => getBezierPath({ sourceX: x, sourceY: y, targetX: tx, targetY: ty,
@@ -27,6 +28,11 @@ const line = computed(() => {
 </script>
 
 <template>
-  <title>{{ data.reason }}</title>
-  <BaseEdge :id="id" :path="line" :marker-end="markerEnd" :style="style" />
+  <g :class="{ 'inspect-edge': !data.loop, 'inspected-edge': active }" :tabindex="data.loop ? undefined : 0"
+    :role="data.loop ? undefined : 'button'" :aria-label="data.loop ? undefined : data.from + ' → ' + data.to"
+    :aria-pressed="data.loop ? undefined : active" @click="!data.loop && emit('inspect')"
+    @keydown.enter.prevent="!data.loop && emit('inspect')" @keydown.space.prevent="!data.loop && emit('inspect')">
+    <title>{{ data.reason }}</title>
+    <BaseEdge :id="id" :path="line" :marker-end="markerEnd" :style="style" />
+  </g>
 </template>

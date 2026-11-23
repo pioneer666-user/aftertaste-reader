@@ -62,7 +62,8 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   } catch {
     throw new ReaderError('WEB_BUILD_UNAVAILABLE', '预构建阅读页面不可用。', '在产品根完成构建后重新启动。');
   }
-  const source = new FixedSourceService(new GitSourceRepository());
+  const repository = new GitSourceRepository();
+  const source = new FixedSourceService(repository);
   const documents = new DocumentService(source, new DocumentFileStore());
   const reader = new FileReaderService(project, new ReaderFileDirectory(), documents);
   const bookmarks = new BookmarkService(new BookmarkFileStore(project), documentPath => reader.read(documentPath));
@@ -72,7 +73,7 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   const canvas = new DependencyCanvasService(reader, graphStore, new LayoutFileStore(project));
   const loopStore = new LoopFileStore();
   const loops = new LoopReaderService(project, new LoopService(source, documents, new GraphService(source, graphStore), loopStore),
-    loopStore, relativePath => new LayoutFileStore(project, relativePath));
+    loopStore, relativePath => new LayoutFileStore(project, relativePath), repository);
   const contentPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; font-src 'self'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
   const server = Fastify({ logger: false, trustProxy: false, exposeHeadRoutes: false });
   server.addHook('onRequest', async (request, reply) => {
@@ -202,6 +203,10 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   server.get<{ Params: { id: string } }>('/api/loops/:id', async request => {
     if (Object.keys(request.query as object).length) throw new ReaderError('INVALID_ARGUMENT', '闭环读取参数无效。', '从本机阅读器打开闭环。');
     return { ok: true, ...await loops.read(request.params.id) };
+  });
+  server.get<{ Params: { id: string } }>('/api/loops/:id/route', async request => {
+    if (Object.keys(request.query as object).length) throw new ReaderError('INVALID_ARGUMENT', '闭环路径参数无效。', '从本机阅读器选择闭环。');
+    return { ok: true, ...await loops.route(request.params.id) };
   });
   server.put<{ Params: { id: string } }>('/api/loops/:id/layout', async request => {
     if (Object.keys(request.query as object).length || request.headers['content-type']?.split(';')[0]?.trim().toLowerCase() !== 'application/json') {

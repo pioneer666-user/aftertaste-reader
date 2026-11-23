@@ -21,7 +21,7 @@ const scope = () => page.locator('#canvas-reading');
 const file = id => scope().locator(`[data-file="${id}"]`);
 const button = (area, name) => area.getByRole('button', { name, exact: true });
 const ack = () => page.waitForResponse(response => response.url().endsWith('/api/dependency-layout') && response.request().method() === 'PUT');
-const frame = name => scope().locator('.group-frame').filter({ has: button(page, name) });
+const frame = name => scope().locator('.group-frame').filter({ has: button(page, '分组操作 · ' + name) });
 const tick = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 
 async function shot(name) {
@@ -312,10 +312,10 @@ async function checkOrdinarySave(name, action, evidenceName) {
 }
 
 async function checkRenameAndPan() {
-  await frame('管理新组').locator('.group-handle').click();
+  await frame('管理新组').locator('.group-more').click();
+  await button(scope(), '改名').click();
   await scope().locator('#canvas-group-name').fill('原组改名');
   await checkOrdinarySave('原组改名', () => button(scope(), '应用分组').press('Enter'), 'rename');
-  await button(scope(), '关闭分组').click();
   const area = await scope().locator('.graph-area').boundingBox();
   const x = area.x + area.width * 0.57, y = area.y + area.height - 70;
   await checkOrdinarySave('原组改名', async () => {

@@ -3,6 +3,7 @@ import { isLegendKey, legendKey } from '../core/dependency-graph.js';
 import { isNodeId, LoopError, parseSavedLoop } from '../core/loops.js';
 import { CanvasLayoutService } from './canvas-layout.js';
 import type { LayoutReading, LayoutStore, LayoutTarget } from './canvas-layout.js';
+import { SourceError, type SourceRepository } from './fixed-source.js';
 import { checkLoopId } from './loops.js';
 import type { LoopService, LoopStore, ReadingLoop } from './loops.js';
 import type { ReaderProblem } from './file-reader.js';
@@ -16,6 +17,13 @@ export interface LoopEntry {
   edges: { from: string; to: string }[];
 }
 
+export interface LoopRoute {
+  title: string;
+  source_commit: string;
+  paths: string[];
+  mappingProblem?: ReaderProblem;
+}
+
 export interface LoopCanvasReading extends LayoutReading {
   result: ReadingLoop;
 }
@@ -25,7 +33,7 @@ export class LoopReaderService {
 
   constructor(private readonly projectRoot: string, private readonly loops: LoopService,
     private readonly store: Pick<LoopStore, 'read'> & { listIds(projectRoot: string): Promise<string[]> },
-    private readonly layoutStore: (relativePath: string) => LayoutStore) {}
+    private readonly layoutStore: (relativePath: string) => LayoutStore, private readonly repository: Pick<SourceRepository, 'locate'>) {}
 
   async list(): Promise<{ loops: LoopEntry[]; problems: ReaderProblem[] }> {
     const loops: LoopEntry[] = [];
@@ -49,6 +57,24 @@ export class LoopReaderService {
       }
     }
     return { loops, problems };
+  }
+
+  async route(id: string): Promise<LoopRoute> {
+    checkLoopId(id);
+    const { raw } = await this.store.read(this.projectRoot, id);
+    const loop = parseSavedLoop(raw, id);
+    const route: LoopRoute = { title: loop.title, source_commit: loop.source_commit, paths: [...new Set(loop.nodes.map(node => node.path))] };
+    try {
+      const { projectPrefix } = await this.repository.locate(this.projectRoot);
+      if (loop.project_prefix !== projectPrefix) {
+        route.mappingProblem = { code: 'LOOP_PREFIX_MISMATCH', message: '闭环与当前项目的仓库内路径不同。', nextStep: '',
+          context: { saved: loop.project_prefix, current: projectPrefix } };
+      }
+    } catch (error) {
+      if (!(error instanceof SourceError)) throw error;
+      route.mappingProblem = { code: error.code, message: error.message, nextStep: error.nextStep, context: error.context };
+    }
+    return route;
   }
 
   private async graph(id: string) {

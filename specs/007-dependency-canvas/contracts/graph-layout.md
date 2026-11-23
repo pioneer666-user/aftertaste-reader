@@ -14,3 +14,7 @@
 D026 的画布界面约定见 [FR-010—013](../spec.md#functional-requirements)。框选和命名草稿均为临时页态，确认分组后仍使用上述 PUT 与原保存修订。图内容、布局格式、闭环接口及写入权限沿既有契约。
 
 D028 的工具和详情见 [FR-019—020](../spec.md#functional-requirements)。显隐浮层及恢复站内访问位置在当前页处理。布局编辑仍通过既有 PUT 与保存修订提交。
+
+## 参与文件与个人布局
+
+使用 [009 只读映射](../../009-loop-reader/contracts/reader-api.md#参与文件)与当前 graph.source_commit、nodes[].path 核对。所有导航均使用内存状态。

@@ -265,7 +265,7 @@ try {
   const afterDependency = canvas(reopened);
   await saved(afterDependency);
   await assertLayout(legend(afterDependency), dependencyFinal.layout.positions[legendId], dependencyFinal.layout.viewport);
-  await afterDependency.locator('.group-frame').getByRole('button', { name: '依赖图路径', exact: true }).waitFor();
+  await afterDependency.getByRole('button', { name: '分组操作 · 依赖图路径', exact: true }).waitFor();
   assert.deepEqual(await Promise.all([orderPath, legendPath, project.layout].map(readJSON)), [orderMoved, pathsFinal, dependencyFinal]);
   report.checks.push('new browser context and restarted service restored all three disk layouts');
 

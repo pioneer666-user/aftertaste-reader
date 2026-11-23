@@ -15,6 +15,7 @@ const loop = computed(() => props.reading.loop);
 const nodes = computed(() => new Map(loop.value.nodes.map(node => [node.id, node])));
 const step = computed(() => nodes.value.get(props.selected));
 const source = computed(() => props.reading.sources.find(item => item.node_id === props.selected));
+const incoming = computed(() => loop.value.edges.filter(edge => edge.to === props.selected));
 const choices = computed(() => loop.value.edges.filter(edge => edge.from === props.selected));
 const stepHeading = ref<HTMLElement>();
 const sourceTrigger = ref<HTMLButtonElement>();
@@ -208,6 +209,17 @@ onUnmounted(() => window.clearTimeout(closeTimer));
       </li>
     </ul>
     <p v-else class="canvas-hint loop-end">{{ t('loopEnd') }}</p>
+    <section v-if="incoming.length" class="loop-incoming">
+      <h3>{{ t('loopFrom') }}</h3>
+      <ul class="canvas-relations loop-connections">
+        <li v-for="edge in incoming" :key="edge.from">
+          <button type="button" :data-incoming="edge.from" @click="selectStep(edge.from)">
+            <strong>{{ nodes.get(edge.from)?.title }}</strong>
+            <span class="markdown loop-choice-reason" v-html="renderMarkdown(edge.reason)"></span>
+          </button>
+        </li>
+      </ul>
+    </section>
     <details :key="step.id" class="loop-original">
       <summary>{{ t('loopOriginal') }}</summary>
       <div class="markdown" v-html="renderMarkdown(step.block_explanation)"></div>

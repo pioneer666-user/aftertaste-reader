@@ -66,7 +66,9 @@ const outline = computed(() => result.value?.renderMode === 'comparison' ? resul
 })) : []);
 const activeBlock = ref('');
 const canvasOpened = ref(false);
-const canvasToolsOpen = ref(true);
+const canvasCatalogOpen = ref(false);
+type RouteChoice = Pick<LoopEntry, 'id' | 'title'>;
+const routeChoice = ref<RouteChoice>();
 type RecordPage = 'notes' | 'bookmarks' | 'marks';
 type RecordPosition = { listTop: number; detailTop: number; listOpen: boolean; narrow: boolean };
 const recordLists = reactive({ notes: !narrow.value, bookmarks: !narrow.value, marks: !narrow.value });
@@ -105,7 +107,7 @@ const pages = {
 };
 type Page = keyof typeof pages;
 type ReaderPosition = { page: 'reader'; path: string; block: string; top: number; offset: number; bookmark: string; mark: string };
-type Position = ReaderPosition | { page: 'canvas'; graph: CanvasPosition | undefined } |
+type Position = ReaderPosition | { page: 'canvas'; route: RouteChoice | undefined; graph: CanvasPosition | undefined } |
   { page: 'loops'; loop: string; graph: CanvasPosition | undefined; top: number } |
   { page: 'notes'; panes: RecordPosition; note: NotesPosition | undefined; top: number } |
   { page: 'bookmarks'; panes: RecordPosition; item: string; top: number } |
@@ -172,13 +174,18 @@ let handledScrollTop = 0;
 let peekTimer: number | undefined;
 
 const catalogOpen = ref(true);
+const drawerOpen = computed({
+  get: () => view.value === 'canvas' ? canvasCatalogOpen.value : catalogOpen.value,
+  set: (open: boolean) => {
+    if (view.value === 'canvas') canvasCatalogOpen.value = open;
+    else catalogOpen.value = open;
+  },
+});
 const catalog = ref<HTMLElement>();
 const auxiliary = computed(() => {
   if (view.value === 'reader') return { id: 'reader-navigation', open: navigationOpen.value, action: navigationAction.value };
-  if (view.value === 'loops') return { id: 'loop-navigation', open: catalogOpen.value,
-    action: catalogOpen.value ? 'closeLoopCatalog' : 'openLoopCatalog' };
-  if (view.value === 'canvas') return { id: 'dependency-tools', open: canvasToolsOpen.value,
-    action: canvasToolsOpen.value ? 'closeCanvasTools' : 'openCanvasTools' };
+  if (view.value === 'loops' || view.value === 'canvas') return { id: 'loop-navigation', open: drawerOpen.value,
+    action: drawerOpen.value ? 'closeLoopCatalog' : 'openLoopCatalog' };
   if (isRecordPage(view.value)) {
     const page = view.value;
     const labels = { notes: ['closeNoteList', 'openNoteList'], bookmarks: ['closeBookmarks', 'openBookmarks'],
@@ -190,10 +197,12 @@ const auxiliary = computed(() => {
 
 function toggleAuxiliary() {
   if (view.value === 'reader') void setNavigation(desktopPeek.value || !navigationOpen.value);
-  if (view.value === 'canvas') canvasToolsOpen.value = !canvasToolsOpen.value;
-  if (view.value === 'loops') {
-    catalogOpen.value = !catalogOpen.value;
-    if (catalogOpen.value) nextTick(() => catalog.value?.focus({ preventScroll: true }));
+  if (view.value === 'canvas' || view.value === 'loops') {
+    drawerOpen.value = !drawerOpen.value;
+    if (drawerOpen.value) {
+      if (view.value === 'canvas') void refreshLoopList(false);
+      nextTick(() => catalog.value?.focus({ preventScroll: true }));
+    }
   }
   const page = view.value;
   if (isRecordPage(page)) {
@@ -521,7 +530,7 @@ function loopCanvas(id: string) {
 function capturePosition(): Position {
   const top = window.scrollY;
   switch (view.value) {
-    case 'canvas': return { page: 'canvas', graph: canvas.value?.capturePosition() };
+    case 'canvas': return { page: 'canvas', route: routeChoice.value, graph: canvas.value?.capturePosition() };
     case 'loops': return { page: 'loops', top, loop: selectedLoop.value, graph: loopCanvas(selectedLoop.value)?.capturePosition() };
     case 'bookmarks': return { page: 'bookmarks', panes: recordPosition('bookmarks'), top, item: bookmarkItem.value };
     case 'marks': return { page: 'marks', panes: recordPosition('marks'), top, item: markItem.value, filter: markFilter.value };
@@ -628,6 +637,7 @@ async function restorePosition(position: Position, current: () => boolean) {
       break;
     }
     case 'canvas': {
+      routeChoice.value = position.route && { ...position.route };
       await nextTick();
       if (current() && position.graph && !await canvas.value?.restorePosition(position.graph, current) && current()) {
         navigationProblem(t('graphPositionUnavailable'));
@@ -743,11 +753,16 @@ async function loadLoops() {
   finally { loopsLoading.value = false; }
 }
 
-async function refreshLoopList() {
+async function refreshLoopList(recheck = true) {
   const sequence = navigationSequence;
+  const choice = routeChoice.value;
   await refreshLoops();
-  if (sequence === navigationSequence && !restoring && !loopListError.value &&
-      !loopEntries.value.some(loop => loop.id === selectedLoop.value)) showLoop('');
+  if (sequence !== navigationSequence || restoring) return;
+  if (view.value === 'canvas') {
+    if (choice && choice === routeChoice.value && (recheck || !loopEntries.value.some(entry => entry.id === choice.id))) {
+      routeChoice.value = { ...choice };
+    }
+  } else if (!loopListError.value && !loopEntries.value.some(loop => loop.id === selectedLoop.value)) showLoop('');
 }
 
 function showLoop(id: string) {
@@ -757,7 +772,7 @@ function showLoop(id: string) {
 }
 
 function closeCatalog() {
-  catalogOpen.value = false;
+  drawerOpen.value = false;
   navigationButton.value?.focus({ preventScroll: true });
 }
 
@@ -771,19 +786,35 @@ function leaveCatalogOnTab(event: KeyboardEvent) {
 
 function catalogEscape(event: KeyboardEvent) {
   if (event.target instanceof Element && event.target.closest('#quick-note')) return;
-  if (event.key !== 'Escape' || view.value !== 'loops' || !catalogOpen.value || document.querySelector(':popover-open')) return;
+  if (event.key !== 'Escape' || (view.value !== 'loops' && view.value !== 'canvas') || !drawerOpen.value || document.querySelector(':popover-open')) return;
   event.preventDefault();
   event.stopPropagation();
   closeCatalog();
 }
 
-function selectLoop(id: string) {
+function selectLoop(entry: LoopEntry) {
   if (restoring) {
     startNavigation();
     restoring = false;
   }
-  showLoop(id);
+  if (view.value === 'canvas') routeChoice.value = { id: entry.id, title: entry.title };
+  else showLoop(entry.id);
   closeCatalog();
+}
+
+async function readRoute() {
+  if (!routeChoice.value) return;
+  const id = routeChoice.value.id;
+  const previous = loopCanvas(id);
+  const position = previous?.capturePosition();
+  showLoop(id);
+  catalogOpen.value = false;
+  openPage('loops');
+  if (previous && position) {
+    const sequence = navigationSequence;
+    await nextTick();
+    await previous.restorePosition(position, () => sequence === navigationSequence && selectedLoop.value === id);
+  }
 }
 
 type DocumentData = { result: ReadingDocument; error?: never } | { result?: never; error: ReaderProblem };
@@ -938,6 +969,10 @@ async function changeLanguage(event: Event) {
 }
 
 onMounted(() => {
+  if (window.location.hash === '#canvas-reading') {
+    activatePage('canvas');
+    history[0] = capturePosition();
+  }
   navigationMedia.addEventListener('change', resizeNavigation);
   document.addEventListener('keydown', catalogEscape, true);
   document.addEventListener('keydown', dismissNavigationPreview);
@@ -1020,7 +1055,7 @@ onUnmounted(() => {
   <ProjectNotes :editor="notesEditor" v-show="view === 'notes'" :class="{ 'record-active': view === 'notes' }" ref="notes" :visible="view === 'notes'" :list-open="recordLists.notes"
     :language="language" @select="showDetail('notes')" :visit="visitNoteBlock" />
   <DependencyCanvas v-if="canvasOpened" v-show="view === 'canvas'" ref="canvas" :active="view === 'canvas'"
-    :tools-open="canvasToolsOpen" :opening-document="openingDocument" :language="language" @read="openDocument" />
+    :route-choice="routeChoice" :tools-covered="canvasCatalogOpen" @read-route="readRoute" @clear-route="routeChoice = undefined; navigationButton?.focus()" :opening-document="openingDocument" :language="language" @read="openDocument" />
   <div id="loop-workspace" v-show="view === 'loops'" class="loop-workspace" :class="{ 'loops-active': view === 'loops' }" tabindex="-1">
     <div v-if="!selectedLoop" class="loop-field">
       <DependencyDots :active="view === 'loops'" :quiet="false" :groups="[]" :viewport="{ x: 0, y: 0, zoom: 1 }" />
@@ -1029,32 +1064,34 @@ onUnmounted(() => {
         <p v-if="loopEntries.length || !catalogOpen">{{ t(catalogOpen ? 'loopStart' : 'loopStartClosed') }}</p>
       </div>
     </div>
-    <aside ref="catalog" id="loop-navigation" class="loop-catalog" :class="{ open: catalogOpen }" :inert="!catalogOpen"
-      :aria-label="t('loopCatalog')" tabindex="-1" @keydown.stop @keydown.tab="leaveCatalogOnTab" @keyup.stop @wheel.stop>
-      <header>
-        <h2>{{ t('loopCatalog') }} <small v-if="loopsLoaded">{{ loopEntries.length }}</small></h2>
-        <button type="button" :aria-label="t('loopRefresh')" :title="t('loopRefresh')" :disabled="loopsLoading" @click="refreshLoopList">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 5v5h-5M20 10a8 8 0 1 0-.8 6"/></svg>
-        </button>
-      </header>
-      <div class="loop-catalog-list">
-        <p v-if="loopsLoading" role="status">{{ t('loading') }}</p>
-        <p v-else-if="loopsLoaded && !loopEntries.length && !loopListError && !loopProblems.length">{{ t('loopEmpty') }}</p>
-        <section v-for="problem in (loopListError ? [loopListError, ...loopProblems] : loopProblems)" :key="problem.context.loopId ?? problem.code"
-          class="canvas-problem" role="alert">
-          <p>{{ problemText(language, problem).message }} {{ problemText(language, problem).nextStep }}</p>
-          <code>{{ problem.code }} {{ problem.context.loopId }} {{ problem.context.field }} {{ problem.context.reason }}</code>
-        </section>
-        <button v-for="entry in loopEntries" :key="entry.id" type="button" class="loop-catalog-item"
-          :data-loop="entry.id" :aria-current="entry.id === selectedLoop || undefined" @click="selectLoop(entry.id)">
-          <LoopThumbnail :entry="entry" />
-          <span class="loop-catalog-copy">
-            <strong>{{ entry.title }}</strong><span class="loop-catalog-goal">{{ entry.goal }}</span>
-            <small>{{ t('loopCounts').replace('{steps}', String(entry.steps.length)).replace('{files}', String(entry.fileCount)) }}</small>
-          </span>
-        </button>
-      </div>
-    </aside>
+    <Teleport :to="view === 'canvas' ? '#canvas-reading' : 'body'" :disabled="view !== 'canvas'">
+      <aside ref="catalog" id="loop-navigation" class="loop-catalog" :class="{ open: drawerOpen }" :inert="!drawerOpen"
+        :aria-label="t('loopCatalog')" tabindex="-1" @keydown.stop @keydown.tab="leaveCatalogOnTab" @keyup.stop @wheel.stop>
+        <header>
+          <h2>{{ t('loopCatalog') }} <small v-if="loopsLoaded">{{ loopEntries.length }}</small></h2>
+          <button type="button" :aria-label="t('loopRefresh')" :title="t('loopRefresh')" :disabled="loopsLoading" @click="refreshLoopList()">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 5v5h-5M20 10a8 8 0 1 0-.8 6"/></svg>
+          </button>
+        </header>
+        <div class="loop-catalog-list">
+          <p v-if="loopsLoading" role="status">{{ t('loading') }}</p>
+          <p v-else-if="loopsLoaded && !loopEntries.length && !loopListError && !loopProblems.length">{{ t('loopEmpty') }}</p>
+          <section v-for="problem in (loopListError ? [loopListError, ...loopProblems] : loopProblems)" :key="problem.context.loopId ?? problem.code"
+            class="canvas-problem" role="alert">
+            <p>{{ problemText(language, problem).message }} {{ problemText(language, problem).nextStep }}</p>
+            <code>{{ problem.code }} {{ problem.context.loopId }} {{ problem.context.field }} {{ problem.context.reason }}</code>
+          </section>
+          <button v-for="entry in loopEntries" :key="entry.id" type="button" class="loop-catalog-item"
+            :data-loop="entry.id" :aria-current="entry.id === (view === 'canvas' ? routeChoice?.id : selectedLoop) || undefined" @click="selectLoop(entry)">
+            <LoopThumbnail :entry="entry" />
+            <span class="loop-catalog-copy">
+              <strong>{{ entry.title }}</strong><span class="loop-catalog-goal">{{ entry.goal }}</span>
+              <small>{{ t('loopCounts').replace('{steps}', String(entry.steps.length)).replace('{files}', String(entry.fileCount)) }}</small>
+            </span>
+          </button>
+        </div>
+      </aside>
+    </Teleport>
     <DependencyCanvas v-for="id in openedLoops" v-show="selectedLoop === id" :key="id" ref="loop-canvases" :loop-id="id"
       :tools-covered="catalogOpen" :active="view === 'loops' && selectedLoop === id" :language="language" />
   </div>

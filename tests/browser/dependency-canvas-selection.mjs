@@ -47,7 +47,7 @@ const file = (page, source) => dep(page).locator(`[data-file="${source}"]`);
 const library = page => dep(page).locator(`[data-legend="${standardLegend.id}"]`);
 const groupAction = page => button(dep(page), '分组');
 const groupName = page => dep(page).locator('#canvas-selection-name');
-const frame = (page, name) => dep(page).locator('.group-frame').filter({ has: button(page, name) });
+const frame = (page, name) => dep(page).locator('.group-frame').filter({ has: button(page, '分组操作 · ' + name) });
 const selected = page => dep(page).locator('[data-box-selected="true"]');
 const transform = scope => scope.locator('.vue-flow__transformationpane').evaluate(element => getComputedStyle(element).transform);
 const saveResponse = (page, route) => page.waitForResponse(response =>
@@ -192,7 +192,7 @@ async function checkNavigation(page) {
   await page.setViewportSize(desktop);
   const bookmarkPage = button(header(page), '书签');
   await bookmarkPage.click();
-  await page.locator('#bookmarks .bookmark-heading button:enabled').waitFor();
+  await page.locator('#bookmarks .record-refresh:enabled').waitFor();
   const [refreshed] = await Promise.all([
     page.waitForResponse(response => response.url().endsWith('/api/bookmarks') && response.request().method() === 'GET'),
     bookmarkPage.click(),
@@ -226,20 +226,19 @@ try {
   await file(page, api).click();
   const summary = dep(page).locator('.canvas-summary');
   const detail = dep(page).locator('.canvas-details');
-  await button(summary, '查看关系').click();
-  await detail.getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
+  await button(dep(page), service + ' → ' + api).press('Enter');
+  await summary.getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
   await screenshot(page, 'file-detail');
-  await button(detail, service).click();
+  await file(page, service).click();
   await button(summary, '阅读讲解').click();
   await page.getByRole('heading', { level: 1, name: service }).waitFor();
   await button(header(page), '后退').click();
-  await summary.getByRole('heading', { name: service, exact: true }).waitFor();
+  await summary.getByRole('heading', { name: 'service.mjs', exact: true }).waitFor();
   assert.equal(await transform(dep(page)), originalView);
   assert.deepEqual(await bounds(area(page)), full);
-  await button(dep(page), '关闭详情').click();
+  await button(dep(page), '清除选择').click();
   assert.deepEqual(await bounds(area(page)), full);
   await library(page).click();
-  await button(summary, '查看关系').click();
   await detail.getByText(standardLegend.description, { exact: true }).waitFor();
   await button(dep(page), '清除选择').click();
   report.checks.push('画布首屏、API 关系读到 service 讲解及原视野返回、文件和库详情按需关闭');
@@ -297,7 +296,8 @@ try {
   assert.equal(await transform(dep(page)), originalView);
   assert.equal(puts, 0);
   assert.deepEqual(await readFile(fixture.layout), passiveDisk);
-  await frame(page, '订单处理').locator('.group-handle').click();
+  await frame(page, '订单处理').locator('.group-more').click();
+  await button(dep(page), '改名').click();
   const oldEditor = dep(page).locator('.canvas-groups');
   const formerMember = oldEditor.getByRole('checkbox', { name: rules, exact: true });
   const oldGroupName = oldEditor.getByLabel('组名', { exact: true });
@@ -314,7 +314,7 @@ try {
   const renamed = await dependencyWrite(page, () => button(oldEditor, '应用分组').click());
   assert.deepEqual(renamed.layout.groups.map(group => [group.name, group.members]),
     grouped.layout.groups.map(group => [group.name === '订单处理' ? '订单处理（改名）' : group.name, group.members]));
-  await button(dep(page), '关闭分组').click();
+  await oldEditor.waitFor({ state: 'hidden' });
   assert.ok(contains(await bounds(frame(page, '鼠标创建')), auditBox), 'unselected file lies fully inside the new frame');
   const handle = await bounds(frame(page, '鼠标创建').locator('.group-handle'));
   const handleCenter = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 };
@@ -333,13 +333,14 @@ try {
   const blank = { x: graph.x + 170, y: graph.y + graph.height - 150 };
   const panned = await dependencyWrite(page, () => drag(page, blank, { x: blank.x + 10, y: blank.y + 12 }));
   assert.notEqual(panned.layout.viewport.x, zoomed.layout.viewport.x);
-  const reverseStart = { x: Math.floor((await bounds(file(page, audit))).x + 8),
+  const reverseStart = { x: Math.floor(((await bounds(file(page, audit))).x + (await bounds(file(page, rules))).x) / 2),
     y: Math.ceil((await bounds(library(page))).y + (await bounds(library(page))).height + 10) };
   const nearEdge = { x: Math.floor(graph.x + graph.width - 2), y: Math.ceil(graph.y + 8) };
   assert.ok(page.viewportSize().width - nearEdge.x <= 24);
-  const railToggle = header(page).getByRole('button', { name: '收起依赖图工具', exact: true });
-  await railToggle.click();
-  await dep(page).locator('#dependency-tools').waitFor({ state: 'hidden' });
+  await button(header(page), '展开闭环目录').click();
+  await dep(page).locator('#loop-navigation').waitFor();
+  await page.keyboard.press('Escape');
+  await dep(page).locator('#loop-navigation').waitFor({ state: 'hidden' });
   await drag(page, reverseStart, nearEdge, { selecting: true });
   await assertSelected(page, [rules, service, api, legendId]);
   const edgeButton = await bounds(groupAction(page));
@@ -376,7 +377,6 @@ try {
   assert.deepEqual(retried.layout.viewport, panned.layout.viewport);
   report.checks.push('实际平移缩放后的逆向边缘命中、Ctrl+G、旧组移空、真实失败时保留草稿及可重试');
 
-  await button(header(page), '展开依赖图工具').click();
   await button(dep(page), '编辑分组').press('Enter');
   const picker = dep(page).locator('#canvas-group-picker');
   await picker.press('End');
@@ -430,13 +430,30 @@ try {
   assertNear(shown.viewport, [edited.layout.viewport.x, edited.layout.viewport.y, edited.layout.viewport.zoom]);
   for (const [id, point] of Object.entries(edited.layout.positions)) assertNear(shown.positions[id], [point.x, point.y]);
   await screenshot(page, 'reopened');
-  await frame(page, '键盘编排').locator('.group-handle').press('Enter');
-  for (const name of [rules, service, audit, 'node:path · 标准库']) {
-    await dep(page).getByRole('checkbox', { name, exact: true }).press('Space');
-  }
-  const dissolved = await dependencyWrite(page, () => button(dep(page), '应用分组').press('Enter'));
+  const more = button(dep(page), '分组操作 · 键盘编排');
+  await more.click();
+  await dep(page).locator('.loop-group-menu').waitFor();
+  await more.click();
+  await dep(page).locator('.loop-group-menu').waitFor({ state: 'hidden' });
+  assert.equal(await more.getAttribute('aria-expanded'), 'false');
+  await more.press('Enter');
+  await dep(page).getByRole('button', { name: /解散分组/u }).press('Tab');
+  assert.ok(await dep(page).locator('.dependency-minimap').evaluate(el => el === document.activeElement));
+  assert.equal(await more.getAttribute('aria-expanded'), 'false');
+  await more.press('Enter');
+  await page.keyboard.press('Escape');
+  assert.ok(await more.evaluate(el => el === document.activeElement));
+  await more.press('Enter');
+  await screenshot(page, 'group-menu');
+  const dissolve = dep(page).getByRole('button', { name: /解散分组.*节点保留在原位/u });
+  const dissolved = await dependencyWrite(page, () => dissolve.press('Enter'));
   assert.deepEqual(dissolved.layout, { ...edited.layout, groups: [] });
   await frame(page, '键盘编排').waitFor({ state: 'detached' });
+  await page.reload();
+  await button(header(page), '文件依赖图').click();
+  await dependencySaved(dep(page));
+  assert.equal(await dep(page).locator('.group-frame').count(), 0);
+  assert.deepEqual(await readJSON(fixture.layout), dissolved);
   assert.deepEqual(await readJSON(loopLayout(fixture, orderId)), loopDisk);
   assert.deepEqual(await Promise.all(protectedFiles.map(file => readFile(file))), protectedBefore);
   assert.deepEqual(report.errors, []);

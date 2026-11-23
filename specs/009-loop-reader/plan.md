@@ -76,3 +76,7 @@ tests/
 ```
 
 **Structure Decision**：维持单仓现有分层。通过应用层注入图身份和目标，使同一保存规则服务两个入口。
+
+## D042 · 依赖图与闭环往返
+
+底条与边缘把手共用 DependencyCanvas 的 panelOpen。右栏承载完整来路和出口；摘要保留直接换步。

@@ -109,7 +109,7 @@ function visibleLayout() {
       viewport: { x: view.e, y: view.f, zoom: view.a },
       nodes: Object.fromEntries([...document.querySelectorAll('[data-file]')].map(element => [element.dataset.file, coordinates(element)])),
       groups: Object.fromEntries([...document.querySelectorAll('[data-group]')].map(element => [
-        element.querySelector('button').textContent, coordinates(element),
+        element.querySelector('.group-handle').textContent, coordinates(element),
       ])),
     };
   });
@@ -160,9 +160,12 @@ try {
   assert.deepEqual((await drawnEdges.locator('title').allTextContents()).sort(), rawGraph.edges.map(edge => edge.reason).sort());
   await node(service).click();
   const selection = page.locator('.canvas-summary');
-  await selection.getByRole('button', { name: '查看关系' }).click();
-  assert.equal(await selection.locator('h2').innerText(), service);
-  for (const { reason } of rawGraph.edges) await page.locator('.canvas-details').getByText(reason, { exact: true }).waitFor();
+  assert.equal(await selection.locator('h2').getAttribute('title'), service);
+  for (const { dependency, dependent, reason } of rawGraph.edges) {
+    await page.getByRole('button', { name: dependency + ' → ' + dependent, exact: true }).press('Enter');
+    await selection.getByText(reason, { exact: true }).waitFor();
+  }
+  await node(service).click();
   await page.getByRole('button', { name: '放大画布' }).click();
   const beforeReading = await saved();
   const atReading = (await visibleLayout()).viewport;
@@ -205,7 +208,7 @@ try {
   assert.ok(beforeGroup.positions[audit].x > bounds.x && beforeGroup.positions[audit].y > bounds.y &&
     beforeGroup.positions[audit].x + 212 < bounds.x + bounds.width &&
     beforeGroup.positions[audit].y + 56 < bounds.y + bounds.height, 'other group member lies inside this group');
-  await drag(page.getByRole('button', { name: '读服务', exact: true }), 36, 60);
+  await drag(page.locator('.group-handle[title="读服务"]'), 36, 60);
   const afterGroup = await saved();
   for (const id of [rules, service]) {
     equalWithin(afterGroup.positions[id].x - beforeGroup.positions[id].x, 30);

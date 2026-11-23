@@ -75,9 +75,6 @@
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .canvas-rail-enter-active { transition: opacity var(--canvas-enter), translate var(--canvas-enter); }
-  .canvas-rail-leave-active { transition: opacity var(--canvas-leave), translate var(--canvas-leave); }
-  .canvas-rail-enter-from, .canvas-rail-leave-to { opacity: 0; translate: -9px; }
   .canvas-tool-label {
     transition: opacity var(--rail-label-duration) var(--canvas-ease-out),
       translate var(--rail-label-duration) var(--canvas-ease-out), visibility 0s linear var(--rail-label-visibility-delay);
@@ -514,7 +511,7 @@
 .loop-welcome strong { font-size: 25px; letter-spacing: .14em; color: #2c503e; }
 .loop-welcome p { margin: 0; font-size: 14px; }
 .loop-catalog {
-  position: absolute; z-index: 10; inset: 0 auto 0 0; width: var(--catalog-width);
+  position: absolute; z-index: 10; inset: 0 auto 0 0; width: var(--catalog-width, min(368px, calc(100% - 20px)));
   display: flex; flex-direction: column; background: #fbfcf8; border-right: 1px solid #bacbbf;
   transform: translateX(-100%); visibility: hidden;
 }
@@ -605,7 +602,7 @@
 .loop-group-menu small { color: var(--muted); }
 .loop-edit-panel { left: calc((100% - var(--reader-edge)) / 2); right: auto; transform: translateX(-50%); z-index: 5; width: min(24rem, calc(100% - 24px)); max-width: calc(100% - 24px); bottom: var(--dock-clearance); }
 .loop-relations {
-  left: 50%; right: auto; transform: translateX(-50%); display: flex; flex-flow: row wrap; align-items: center;
+  z-index: 4; left: 50%; right: auto; transform: translateX(-50%); display: flex; flex-flow: row wrap; align-items: center;
   justify-content: center; gap: 4px 10px; padding: 5px 10px; width: max-content;
   max-width: min(49rem, calc(100% - 28px)); color: var(--canvas-float-ink); font-size: 12px;
 }
@@ -613,14 +610,8 @@
 .loop-relation-side strong { flex: none; font-weight: 500; }
 .loop-relations button { min-width: 0; min-height: 28px; padding: 2px 6px; color: var(--accent); background: #f5faf5b8; border: 0; font-size: 12px; }
 .loop-relations button span { display: block; max-width: 16ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.loop-relations:has([aria-expanded="true"]) { display: grid; justify-content: stretch; width: min(36rem, calc(100% - 28px)); border-radius: 16px; padding: 10px 14px; background-color: #edf5eef2; }
-.loop-relations:has([aria-expanded="true"]) .loop-relation-side { display: grid; }
-.loop-relations:has([aria-expanded="true"]) .loop-relation-side button { text-align: start; padding: 5px 8px; }
-.loop-relations:has([aria-expanded="true"]) button span { max-width: none; white-space: normal; overflow-wrap: anywhere; }
-.loop-relation-side small { display: block; font-size: 12px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
-.loop-relations .loop-relation-details { background: transparent; text-decoration: underline; text-underline-offset: 2px; }
-.loop-canvas .graph-area { container-type: inline-size; }
-@container (max-width: 1380px) {
+.loop-relations .loop-relation-details { background: #e0ede2; font-weight: 600; }
+@media (max-width: 1380px) {
   .loop-relations { bottom: var(--dock-clearance); max-width: min(48rem, calc(100% - 120px)); }
 }
 @media (max-width: 760px) {
@@ -636,5 +627,31 @@
   .loop-overview-link { max-width: 48%; font-size: 13px; }
   .loop-canvas .canvas-node-hint { max-width: 45%; }
   .loop-relations { max-width: calc(100% - 20px); }
-  .loop-relations:has([aria-expanded="true"]) { max-height: calc(100% - var(--dock-clearance) - 48px); }
+}
+
+/* Route actions use the full canvas as their positioning frame. */
+.route-actions {
+  position: absolute; z-index: 2; inset: 12px auto auto 50%; transform: translateX(-50%);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px 10px;
+  width: max-content; max-width: min(45rem, calc(100% - 24px)); max-height: 40%; overflow: auto;
+  padding: 6px 10px; border: 1px solid #d5ba82; border-radius: 14px;
+  background: #fffaf0; color: #59431d; box-shadow: 0 3px 12px #54452219;
+}
+.route-actions strong { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+.route-actions button { min-height: 34px; }
+.route-actions .route-read { background: #385e48; border-color: #385e48; color: white; }
+.route-actions p { flex-basis: 100%; margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.inspect-edge { cursor: pointer; pointer-events: visibleStroke; }
+.inspect-edge:is(:focus-visible,.inspected-edge) .vue-flow__edge-path { stroke: #174f83 !important; stroke-width: 4px !important; opacity: 1 !important; }
+.canvas-summary:has(.edge-reason) { align-items: start; white-space: normal; }
+.canvas-summary:has(.edge-reason) h2, .canvas-summary .edge-reason { overflow-wrap: anywhere; white-space: pre-wrap; }
+@media (max-width: 760px) {
+  .route-actions strong { flex-basis: 100%; text-align: center; }
+  .loop-canvas .canvas-workspace:not(.reader-stowed) .loop-relations {
+    z-index: 6; bottom: 6px; max-height: 25%; background: var(--canvas-float-surface);
+  }
+  .loop-canvas .canvas-workspace:not(.reader-stowed):has(.loop-relations) .canvas-inspector { padding-bottom: 9rem; }
+}
+@media (pointer: coarse) {
+  .route-actions button, .loop-relations button { min-height: 44px; }
 }

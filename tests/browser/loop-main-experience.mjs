@@ -179,9 +179,10 @@ try {
   await pathLoop.locator('.canvas-rail').waitFor();
   await chooseLoop(page, orderId);
   await button(page, '文件依赖图').click();
-  assert.equal(await toggle.getAttribute('aria-controls'), 'dependency-tools');
+  assert.equal(await toggle.getAttribute('aria-controls'), 'loop-navigation');
   await toggle.click();
-  await page.locator('#dependency-tools').waitFor({ state: 'hidden' });
+  await page.locator('#loop-navigation').waitFor();
+  await page.locator('#dependency-tools').waitFor();
   await button(page, '闭环阅读').click();
   assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
   await loop.locator('.canvas-rail').waitFor();

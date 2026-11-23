@@ -142,6 +142,12 @@ description: "文件依赖图与布局保存实施清单"
 - [x] T049 [US7] 在 `src/web/canvas.css` 和 `src/web/DependencyMiniMap.vue` 按作者反馈调整依赖图贴边、浮条与摘要，并按 `specs/007-dependency-canvas/quickstart.md` 完成桌面和窄窗复验（FR-010、019—020，SC-017—018）。
 - [x] T050 固定候选提交独审。复核通过后按 D028 授权换版 4341，并在 `docs/work/2026/11/D028-reader-history-canvas-tools/handoff.md` 记录证据（SC-017—018）。
 
+## D042 · 依赖图与闭环往返
+
+- [x] T051 [US7] 在 src/application/loop-reader.ts、src/server/reader.ts 提供选中闭环的只读路径依据。
+- [x] T052 [US7] 在 src/web/App.vue、src/web/DependencyCanvas.vue、src/web/DependencyEdge.vue 实现目录、高亮、单边理由和一次回访。
+- [x] T053 [US7] 在 tests/browser/ 验两条路线、无效映射与竞态、两种窗口和布局保护，更新 docs/usage/file-reader.md。
+
 ## Dependencies & Execution Order
 
 T001 → T002 → US1 → US2 → US3 → T011—T012。每个故事先定义行为检查，再接通核心、服务和页面。US2 使用 US1 的项目图及页面，US3 使用 US2 的真实保存入口。测试与浏览器串行，无并行资源运行。

@@ -144,42 +144,12 @@ async function desktopProbe() {
 async function checkRailMotion() {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.mouse.move(8, 70);
-  const restX = (await tools().boundingBox()).x;
-  await tools().evaluate(rail => {
-    rail.d028Transitions = [];
-    for (const eventName of ['transitionrun', 'transitionend', 'transitioncancel']) {
-      rail.addEventListener(eventName, event => {
-        const part = event.target === rail ? 'rail' : event.target.matches('.canvas-tool-label') ? 'label' : '';
-        if (part && event.propertyName === 'opacity') {
-          const phase = rail.classList.contains('canvas-rail-leave-active') ? 'leave' :
-            rail.classList.contains('canvas-rail-enter-active') ? 'enter' : '';
-          const sample = kind => rail.d028Transitions.push({
-            part, phase, event: kind, opacity: Number(getComputedStyle(event.target).opacity),
-            x: event.target.getBoundingClientRect().x,
-          });
-          sample(event.type);
-          // Vue may finish a transition by timeout and clear the element before transitionend.
-          if (part === 'rail' && event.type === 'transitionrun') {
-            const observe = () => {
-              if (!rail.classList.contains(`canvas-rail-${phase}-active`)) return;
-              sample('frame');
-              requestAnimationFrame(observe);
-            };
-            requestAnimationFrame(observe);
-          }
-        }
-      }, { capture: true });
-    }
-  });
+  const railBox = await tools().boundingBox();
   await toggle().click();
-  await tools().waitFor({ state: 'hidden' });
-  assert.equal(await toggle().getAttribute('aria-expanded'), 'false');
+  await graph().locator('#loop-navigation').waitFor();
+  assert.deepEqual(await tools().boundingBox(), railBox);
   await toggle().click();
-  await page.waitForFunction(() => {
-    const rail = document.querySelector('#dependency-tools');
-    return getComputedStyle(rail).opacity === '1' && !rail.classList.contains('canvas-rail-enter-active');
-  });
-  assert.equal(await toggle().getAttribute('aria-expanded'), 'true');
+  await graph().locator('#loop-navigation').waitFor({ state: 'hidden' });
   const labels = tools().locator('.canvas-tool-label');
   const values = () => labels.evaluateAll(items => items.map(item => ({
     opacity: Number(getComputedStyle(item).opacity), visibility: getComputedStyle(item).visibility,
@@ -215,16 +185,6 @@ async function checkRailMotion() {
   await page.keyboard.press('Escape');
   await allHidden();
   assert.equal(await action.evaluate(element => document.activeElement === element), true, 'Escape retains keyboard focus');
-  const samples = await tools().evaluate(rail => rail.d028Transitions);
-  const normalRail = samples.filter(sample => sample.part === 'rail' && sample.event === 'frame');
-  for (const phase of ['leave', 'enter']) {
-    assert.ok(normalRail.some(sample => sample.phase === phase && sample.opacity > 0 && sample.opacity < 1 &&
-      sample.x < restX - .5), 'rail slides as it fades on ' + phase);
-  }
-  const normalLabel = samples.filter(sample => sample.part === 'label' && sample.event === 'transitionend');
-  assert.ok(normalLabel.some(sample => sample.opacity === 0));
-  assert.ok(normalLabel.some(sample => sample.opacity === 1));
-
   await toggle().evaluate(async control => {
     for (let count = 0; count < 6; count++) {
       control.click();
@@ -238,7 +198,7 @@ async function checkRailMotion() {
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await toggle().click();
-  await tools().waitFor({ state: 'hidden' });
+  await graph().locator('#loop-navigation').waitFor();
   await toggle().click();
   await tools().waitFor();
   await tools().hover();
@@ -248,8 +208,8 @@ async function checkRailMotion() {
   assert.ok(reduced.every(value => value.split(',').every(duration => parseFloat(duration) === 0)));
   await page.mouse.move(8, 70);
   assert.deepEqual(await values(), Array(4).fill({ opacity: 0, visibility: 'hidden' }));
-  report.motion = { rail: normalRail, labelEvents: normalLabel.length, reduced };
-  report.checks.push('rail changes actual opacity and horizontal position; hover and keyboard labels animate, are hoverable and Escape dismissible; no reduced-motion transitions');
+  report.motion = { railBox, reduced };
+  report.checks.push('rail stays in place while the catalog opens; hover and keyboard labels animate, are hoverable and Escape dismissible; no reduced-motion transitions');
 }
 
 async function checkGlassStyle() {
@@ -280,7 +240,7 @@ async function checkGlassStyle() {
   assert.ok(metrics.radius >= metrics.height / 2, 'compact horizontal summary has round ends');
   assert.equal(metrics.corner, metrics.railCorner, 'compact summary uses the same corner curve as the rail');
   assert.match(metrics.shadow, /inset/u);
-  assert.equal(metrics.actions.length, 3);
+  assert.equal(metrics.actions.length, 2);
   for (const [index, action] of metrics.actions.entries()) {
     assert.equal(action.border, '0px');
     assert.ok(action.width >= 32 && action.height >= 32);
@@ -296,7 +256,7 @@ async function checkGlassStyle() {
     });
     assert.deepEqual(fallback, { image: 'none', backdrop: 'none' });
   } finally { await page.emulateMedia({ forcedColors: 'none' }); }
-  report.checks.push('compact glass has translucent gradient, backdrop blur/saturation, edge highlight and shadow with an opaque forced-colors fallback; three separate borderless actions keep a full hit target');
+  report.checks.push('compact glass has translucent gradient, backdrop blur/saturation, edge highlight and shadow with an opaque forced-colors fallback; two separate borderless actions keep a full hit target');
 }
 
 async function captureGlass(restore) {
@@ -399,20 +359,17 @@ async function checkCanvas() {
   await checkGlassStyle();
   assert.match(await summary().innerText(), /依赖.*service\.mjs/su);
   assert.match(await summary().innerText(), /使用.*node:path/su);
-  await button(summary(), '查看关系').click();
-  await details().getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
-  await summary().getByRole('heading', { name: api, exact: true }).waitFor();
-  await details().getByText(standardLegend.uses[0].reason, { exact: true }).waitFor();
+  await button(graph(), service + ' → ' + api).press('Enter');
+  await summary().getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
+  await summary().getByRole('heading', { name: service + ' → ' + api, exact: true }).waitFor();
   assert.deepEqual(await geometry(), initial);
   await shot('desktop-api-details');
-  await button(summary(), '关闭详情').click();
-  await summary().waitFor();
+  await button(summary(), '清除选择').click();
   await graph().locator('[data-legend="node-path"]').click();
-  await button(summary(), '查看关系').click();
   await details().getByText(standardLegend.description, { exact: true }).waitFor();
   for (const use of standardLegend.uses) await details().getByText(use.reason, { exact: true }).waitFor();
   await shot('desktop-library-details');
-  await button(summary(), '关闭详情').click();
+  await button(summary(), '清除选择').click();
   assert.deepEqual(await geometry(), initial);
   assert.equal(await graph().locator('.canvas-inspector').count(), 0);
   await file(api).click();
@@ -841,11 +798,11 @@ async function checkNarrow() {
   await graph().locator('.dependency-minimap').waitFor();
   await checkCanvasFrame();
   await page.setViewportSize({ width: 390, height: 760 });
-  await button(summary(), '查看关系').click();
-  await details().getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
+  await button(graph(), service + ' → ' + api).press('Enter');
+  await summary().getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await shot('narrow-file-details');
-  await button(summary(), '关闭详情').click();
+  await button(summary(), '清除选择').click();
   await checkCanvasFrame();
   await saveLayout(() => button(dock(), '放大画布').click());
   await button(tools(), '编辑分组').click();
@@ -954,11 +911,11 @@ async function checkTouch() {
         const { width, height } = el.getBoundingClientRect();
         return { label: el.getAttribute('aria-label') ?? el.textContent, width, height };
       }));
-    assert.equal(controls.length, 12);
+    assert.equal(controls.length, 11);
     for (const item of controls) assert.ok(item.width >= 44 && item.height >= 44, JSON.stringify(item));
-    await button(summary(), '查看关系').tap();
-    await details().getByText('调用 createOrder 处理订单。', { exact: true }).waitFor();
-    await button(summary(), '关闭详情').tap();
+    await graph().locator('[data-legend="node-path"]').focus();
+    await page.keyboard.press('Enter');
+    await details().getByText(standardLegend.description, { exact: true }).waitFor();
     await summary().locator('.canvas-clear-detail').tap();
     await summary().waitFor({ state: 'hidden' });
     await page.setViewportSize({ width: 390, height: 430 });
