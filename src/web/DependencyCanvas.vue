@@ -29,7 +29,7 @@ import type { CanvasPosition } from './canvas-position.js';
 const props = defineProps<{
   language: Language; active: boolean; loopId?: string; routeChoice?: Pick<LoopEntry, 'id' | 'title'> | undefined; toolsCovered?: boolean; openingDocument?: string;
 }>();
-const emit = defineEmits<{ read: [documentPath: string]; readRoute: []; clearRoute: []; addToNotes: [quote: NoteQuote] }>();
+const emit = defineEmits<{ read: [documentPath: string]; readRoute: []; clearRoute: []; readingChoice: []; addToNotes: [quote: NoteQuote] }>();
 const t = (key: string) => translate(props.language, key);
 // The parent keys each retained canvas by graph, including its in-flight requests and draft.
 const loopRoute = props.loopId ? '/api/loops/' + encodeURIComponent(props.loopId) : '';
@@ -77,6 +77,9 @@ watch(() => props.routeChoice, async (choice, _, onCleanup) => {
   }
 }, { immediate: true, flush: 'sync' });
 const panelOpen = ref(false);
+watch([selected, selectedEdgeId, panelOpen], () => {
+  if (props.active && props.loopId) emit('readingChoice');
+}, { flush: 'sync' });
 const groupMenu = ref<HTMLElement>();
 const menuGroup = ref<CanvasGroup>();
 const groupNameInput = ref<HTMLInputElement>();

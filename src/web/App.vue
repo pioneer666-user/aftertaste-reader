@@ -119,6 +119,7 @@ const historyIndex = ref(0);
 const pageTops: Partial<Record<Page, number>> = {};
 const positionNotice = ref('');
 let navigationSequence = 0;
+let loopChoiceVersion = 0;
 let restoring = false;
 const openingDocument = ref('');
 const fileSwitch = ref<{ source: string; placeholder: boolean }>();
@@ -698,7 +699,8 @@ async function visitNoteTarget(target: NoteTarget, initial = false): Promise<str
   const { loopId, stepId } = target;
   const origin = capturePosition();
   const sequence = startNavigation();
-  const current = () => sequence === navigationSequence;
+  const choice = loopChoiceVersion;
+  const current = () => sequence === navigationSequence && choice === loopChoiceVersion;
   const existing = openedLoops.value.includes(loopId);
   if (!existing) openedLoops.value.push(loopId);
   await nextTick();
@@ -709,6 +711,7 @@ async function visitNoteTarget(target: NoteTarget, initial = false): Promise<str
     if (!current()) return;
     if (problem) return problem + ' ' + loopId + ' · ' + stepId;
   } catch (error) {
+    if (!current()) return;
     return problemText(language.value, failed(error)).message + ' ' + loopId + ' · ' + stepId;
   }
   rememberPosition(origin);
@@ -718,7 +721,9 @@ async function visitNoteTarget(target: NoteTarget, initial = false): Promise<str
   showLoop(loopId);
   catalogOpen.value = false;
   graph.openStep(stepId);
-  if (initial) history[0] = capturePosition();
+  if (initial || (origin.page === 'loops' && origin.loop === loopId && origin.graph?.selected === stepId)) {
+    history[historyIndex.value] = capturePosition();
+  }
   else pushPosition(capturePosition());
   if (!loopsLoaded.value) void refreshLoops();
 }
@@ -822,6 +827,7 @@ function catalogEscape(event: KeyboardEvent) {
 }
 
 function selectLoop(entry: LoopEntry) {
+  loopChoiceVersion++;
   if (restoring) {
     startNavigation();
     restoring = false;
@@ -1125,7 +1131,7 @@ onUnmounted(() => {
       </aside>
     </Teleport>
     <DependencyCanvas v-for="id in openedLoops" v-show="selectedLoop === id" :key="id" ref="loop-canvases" :loop-id="id"
-      @add-to-notes="quickNote?.addQuote($event)" :tools-covered="catalogOpen" :active="view === 'loops' && selectedLoop === id" :language="language" />
+      @reading-choice="loopChoiceVersion++" @add-to-notes="quickNote?.addQuote($event)" :tools-covered="catalogOpen" :active="view === 'loops' && selectedLoop === id" :language="language" />
   </div>
   <div v-show="view === 'reader'" class="workspace"
     :class="{ 'workspace-active': view === 'reader', 'with-navigation': !narrow && desktopOpen, 'file-switch-wait': fileSwitch?.placeholder }">

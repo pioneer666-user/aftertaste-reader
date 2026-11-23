@@ -180,6 +180,38 @@ try {
   await bench.locator('.note-visit-problem').waitFor();
   assert.equal((await notes()).find(n=>n.id===note.id).body,note.body);
   await writeFile(loopPath,JSON.stringify(artifact,null,2)+'\n');
+  await page.goto('about:blank');
+  await page.goto(server.url + '#aftertaste-loop/order-quantity/resume');
+  await lesson.waitFor();
+  const back = page.locator('[data-history=back]');
+  async function followResumeQuote() {
+    await page.locator('.new-note').click();
+    await panel.getByRole('searchbox').fill('订单步骤核对');
+    await panel.locator('.quick-list button').click();
+    await button(panel, '预览').click();
+    await panel.getByRole('link', {name: text, exact: true}).click();
+  }
+  assert.equal(await back.isEnabled(), false);
+  await followResumeQuote();
+  await panel.waitFor({state: 'hidden'});
+  assert.equal(await back.isEnabled(), false);
+  await pick('start');
+  const received = Promise.withResolvers(), release = Promise.withResolvers();
+  await page.route('**/api/loops/order-quantity', async route => {
+    const response = await route.fetch();
+    received.resolve();
+    await release.promise;
+    await route.fulfill({response});
+  }, {times: 1});
+  await followResumeQuote();
+  await received.promise;
+  try {
+    await loop.locator('[data-step-nav=next]').click();
+    await step('check').waitFor();
+  } finally { release.resolve(); }
+  await panel.waitFor({state: 'hidden'});
+  assert.equal(await step('check').isVisible(), true);
+  assert.equal(await back.isEnabled(), false);
   await context.close();
 
   const mobile = await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
