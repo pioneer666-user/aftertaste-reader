@@ -2,13 +2,15 @@
 
 ## 当前结论与入口
 
+2026-11-23，作者要求“合并到dev”。D046 已以合并提交 `7625ef95db32dd6695f045e803d5d19a1783a01f` 合入本地 `dev`，任务分支已按规范删除。合并授权不代表作者已完成体验验收，试读入口和独立安装继续保留。
+
 [从收藏按钮进入新版闭环](http://127.0.0.1:4359/#aftertaste-loop/question-bookmark-request/request) · [直接看分岔](http://127.0.0.1:4359/#aftertaste-loop/question-bookmark-request/choose-branch) · [看两条响应](http://127.0.0.1:4359/#aftertaste-loop/question-bookmark-request/send-http)
 
 [打开控制器的三个请求字段](http://127.0.0.1:4359/#aftertaste-block/docs%2Faftertaste%2Fcurrent%2Finternal%2Fcontroller%2Fcollection_controller.go.md/vmi6gwjc) · [打开文件依赖图](http://127.0.0.1:4359/#canvas-reading) · [对照 4357 原版](http://127.0.0.1:4357/#aftertaste-loop/question-bookmark-request/request)
 
 - 文件图按被依赖文件到使用文件排，闭环从入口沿业务边向右分层。画布默认留淡线，指向卡片或键盘聚焦提亮直接来路、出口及关联库。触屏点选也能查关系。旧位置优先，新增节点沿关系补位，重新布局保组。
 - 14 篇文件目录改为单行。试讲用空白偏好重写控制器、收藏服务与整条闭环；其余 12 篇同提交正文复用。作者可依次体验长名文件好不好找、密图中能否看清一跳关系、读过分支后能否解释两种返回。
-- 成果候选 `a670cff460b75745fa5b0c3861e9ef64514d0eac`，批准[任务书](task.md) `6531723` 及[作者执行中调整](amendments.md)，基线 `dev@1fa27a2`。独审结果见[原文](review.md)。本地分支 `codex/fix-alpha-reading-layout` 保留供验收。作者待试读，合入 dev 与公开发布另由作者决定。
+- 成果候选 `a670cff460b75745fa5b0c3861e9ef64514d0eac`，批准[任务书](task.md) `6531723` 及[作者执行中调整](amendments.md)，基线 `dev@1fa27a2`。独审结果见[原文](review.md)。原任务分支 `codex/fix-alpha-reading-layout` 已合入并删除，候选 SHA 与独审记录保留供追溯。作者待试读。
 
 ## 依据与验证
 
