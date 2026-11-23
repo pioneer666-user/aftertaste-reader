@@ -6,30 +6,42 @@
   "engines": {
     "node": ">=24 <25"
   },
+  "files": [
+    "dist/**/*.js",
+    "dist/web/index.html",
+    "dist/web/assets/",
+    "dist/web/third-party-licenses.md",
+    "skills/aftertaste-reader/SKILL.md",
+    "skills/aftertaste-reader/references/*.md",
+    "!skills/aftertaste-reader/references/README.md",
+    "skills/aftertaste-reader/assets/templates/*.md",
+    "!skills/aftertaste-reader/assets/templates/README.md"
+  ],
   "scripts": {
     "typecheck": "tsc --noEmit && vue-tsc --noEmit -p tsconfig.web.json",
-    "build": "tsc && vite build",
+    "build": "tsc && node scripts/build-web.mjs",
+    "prepack": "npm run build",
     "test:browser": "node tests/browser/file-reader.mjs",
     "test:browser:canvas": "node tests/browser/dependency-canvas.mjs",
     "test": "node --test --test-concurrency=1 tests/unit/*.test.mjs tests/integration/*.test.mjs"
   },
   "devDependencies": {
-    "@types/node": "24.10.1",
-    "typescript": "5.9.3",
-    "@vitejs/plugin-vue": "6.0.11",
-    "vite": "8.3.8",
-    "vue-tsc": "3.3.14",
-    "playwright": "1.65.1"
-  },
-  "dependencies": {
     "@codemirror/commands": "6.11.1",
     "@codemirror/state": "6.7.6",
     "@codemirror/view": "6.43.15",
-    "mdast-util-from-markdown": "2.1.0",
-    "fastify": "5.12.8",
-    "vue": "3.5.45",
-    "markdown-it": "15.0.3",
     "@fontsource/inter": "5.2.8",
-    "@vue-flow/core": "1.48.2"
+    "@types/node": "24.10.1",
+    "@vitejs/plugin-vue": "6.0.11",
+    "@vue-flow/core": "1.48.2",
+    "markdown-it": "15.0.3",
+    "playwright": "1.65.1",
+    "typescript": "5.9.3",
+    "vite": "8.3.8",
+    "vue": "3.5.45",
+    "vue-tsc": "3.3.14"
+  },
+  "dependencies": {
+    "fastify": "5.12.8",
+    "mdast-util-from-markdown": "2.1.0"
   }
 }

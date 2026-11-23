@@ -1,8 +1,8 @@
 # Quickstart · 逐文件源码对照阅读
 
-需要 Node 24、Git 2.45+ 及已安装的根 npm 依赖。正式源码构建后由一个服务提供页面，无需另起 Vite。
+需要 Node 24、Git 2.45+。首用时按 [README](../../README.md#首次安装)安装预构建包，用 [日常启动命令](../../README.md#日常打开与关闭)打开指定项目。页面、脚本和字体均由同一回环服务提供。按 [D045 实验](../../experiments/D045-alpha-first-run/README.md)从独立安装目录启动、打开真实讲解并关停重开。
 
-在产品根执行 npm run typecheck、npm run build，再执行 node dist/cli/main.js serve --project <目标项目绝对路径>。默认地址 http://127.0.0.1:4317，端口占用可指定 --port。终端 Ctrl+C 关闭，看到 stopped 后可重启。
+以下开发回归使用产品根的锁定依赖，执行 `npm run typecheck`、`npm run build`，再执行 `node dist/cli/main.js serve --project <目标项目绝对路径>`。从启动输出读取地址。端口占用可指定 `--port`。终端 Ctrl+C 关闭，看到 `stopped` 后可重启。
 
 D010 合成样例使用 tests/fixtures/reader-project.mjs 重建到全新隔离目录，复制 D010 两篇原件并核固定提交。实际作者入口、可复制命令与资源归属见 [D011 handoff](../../docs/work/2026/11/D011-file-reader/handoff.md)。
 
