@@ -4,6 +4,8 @@
 
 2026-11-23，作者要求“合并到dev”。D046 已以合并提交 `7625ef95db32dd6695f045e803d5d19a1783a01f` 合入本地 `dev`，任务分支已按规范删除。随后作者试读反馈“感觉已经没什么特别大的问题了，虽然我还是能找到很多小问题，但是不应该阻止首版先用着”，接受当前体验作为公开 Alpha 的起点。试读入口和独立安装继续保留。
 
+2026-11-23，首个公开 Alpha 已发布。下一位主脑从[公开 Alpha 后的真实使用体验交接](mainbrain-handoff.md)接手。
+
 [从收藏按钮进入新版闭环](http://127.0.0.1:4359/#aftertaste-loop/question-bookmark-request/request) · [直接看分岔](http://127.0.0.1:4359/#aftertaste-loop/question-bookmark-request/choose-branch) · [看两条响应](http://127.0.0.1:4359/#aftertaste-loop/question-bookmark-request/send-http)
 
 [打开控制器的三个请求字段](http://127.0.0.1:4359/#aftertaste-block/docs%2Faftertaste%2Fcurrent%2Finternal%2Fcontroller%2Fcollection_controller.go.md/vmi6gwjc) · [打开文件依赖图](http://127.0.0.1:4359/#canvas-reading) · [对照 4357 原版](http://127.0.0.1:4357/#aftertaste-loop/question-bookmark-request/request)
