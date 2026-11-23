@@ -1,0 +1,43 @@
+# D042 · 从依赖图读订单闭环
+
+## 当前结论与入口
+
+**产品候选 `b963913`，独立复核通过，待作者试读。** [直接打开订单依赖图](http://127.0.0.1:4343/#canvas-reading) · [高亮实图](order-highlight.png) · [步骤讲解实图](order-lesson.png) · [独立审查原文](review.md)
+
+1. 点顶栏左侧的闭环目录，选「订单数量校验怎样决定集合会不会改变」。看看能否一眼认出 `src/service.mjs` 和 `src/rules.mjs`。可以再点其中一个文件，比较当前选中与路线高亮。
+2. 点画布正上方的「阅读此闭环」，选择「规则转换并检查边界」。看看能否自然发现底部「展开讲解」，再分别沿成功和失败出口读下去。
+3. 点顶栏「后退」一次，看看能否在原来的视野和文件选择上接着读。点「清除高亮」即可结束这次选取。
+
+接单起点为 `codex/feat-loop-route-highlights@712e0be`，产品基线为 `dev@50111ad`。首轮候选 `4caf11b`，最终受审产品提交 `b9639132b1829bd7b65d3fab673b201d757c6a90`。本地任务分支保留，回执、复核原文及两张实图另作归档提交。未合入 dev，未推送或发布。[批准任务](task.md)
+
+## 实现与验证
+
+**文件与连线。** 依赖图直接复用闭环目录和缩影，左浮条和小地图保留。高亮依据为成品步骤的项目相对路径、固定提交及实际仓库内项目前缀。点线或用 Tab 聚焦后按 Enter／空格可读完整两端和原因，点库图例可读介绍与逐文件用法。两种图继续各自保存个人排布。成品、依赖图、个人资料的磁盘格式均沿用原协议。[使用说明](../../../../usage/file-reader.md)
+
+**回访与讲解。** 顶部操作按所选 ID 打开正式闭环。底条和右把手共用同一个阅读栏，底条可沿边换步，右栏可查全部来路、出口及理由。回访重新核对当前图和闭环，失效回访有提示。目录、选路线、开合及清除都在页内完成。
+
+| 自测 | 实际结果 |
+| --- | --- |
+| `npm.cmd run typecheck`、`npm.cmd run build` | Windows，Node 24.11.1。最终候选均通过。Vite 有构建块体积提示，构建产出可直接运行。 |
+| `node tests/browser/loop-route-highlights.mjs` | 用最终固定构建与各自的新订单副本，串行通过 Edge 158.0.4370.33、Chrome 157.0.8103.80、Firefox 159.0。订单点亮 service／rules；路径工具点亮 `src/api.mjs`、`support/audit.mjs`。回到原图后 3 条文件边、2 条库使用线仍在，文件选择及视口一致。三个浏览器各自记录 0 个布局 PUT。 |
+| 路线边界与实际呈现 | 覆盖同名异路径、重复步骤路径、旧提交可读、缺路径、错误前缀、条目读取失败、迟到响应、失效边及中英文长标题。桌面与窄窗的操作区中心分别为 720 和 195 CSS px，距各自画布顶边均为 12 px。完成鼠标点线、键盘选目录、两种订单出口和一次后退。 |
+| `node --test --test-concurrency=1 tests/integration/loop-reader.test.mjs` | 最终构建通过。真实服务返回五步的两条去重路径；有效子项目 `src` 使用自身相对路径；缺失成品返回诊断。原测试中的独立布局、修订及冲突保护也通过。 |
+| 相关界面回归 | 按改动阶段在 Edge 串行运行 `dependency-canvas.mjs`、`dependency-canvas-selection.mjs`、`dependency-legends.mjs`、`loop-catalog.mjs`、`loop-reading-panel.mjs`、`loop-main-experience.mjs`、`reader-history.mjs`，各有通过记录。含第三出口的长理由可在 390 px 触控模拟中读完及选步，阅读栏收展 33 帧的图、节点、视口、小地图和底条几何一致。R1 修复后重跑受影响的三浏览器路线与服务用例。 |
+
+回归中更新了旧按钮和书签刷新选择器。框选脚本改从常驻工具条外的空白处起拖，仍须圈中指定四项。闭环脚本按 CSS 计算矩阵的六位有效数字比对四位数坐标，磁盘排布仍作精确比较。测试命令从仓库根执行，Node 使用 `.local/D009/runtime/node.exe`，最终检查设置 `AFTERTASTE_BUILD=.local/D042/build-reviewed`、`AFTERTASTE_TEST_TASK=D042/self`。每个路线脚本复制共用订单输入，异常样例只修改自己的副本。[执行记录](../../../../../.local/D042/self/) · [Edge 最终数据](../../../../../.local/D042/self/route-edge-FZ3PoA/report.json) · [窄窗讲解](../../../../../.local/D042/self/panel-UFUatC/narrow-reading.png)
+
+**设计与审查。** 按 Spec Kit specify、plan、tasks 的实际模板增量维护 007、009，校正 006 FR-011、016。复用原有技术栈、目录组件和阅读历史。analyze 核对本单 5 项范围到 007 T051—053、009 T033—034 的映射，implement 前主功能目录各 16/16 项 checklist 已勾选，无遗留阻塞。页面沿用 Impeccable 的既有交互与实图检查，执行使用 Ponytail full。首轮 Ponytail Review 对正常订单链路复验通过，发现前缀失配仍误亮、已删除的边后退时缺提示。两项各修复一轮，原审查者用两份新副本确认关闭，已交还写入。[007 规格](../../../../../specs/007-dependency-canvas/spec.md) · [009 规格](../../../../../specs/009-loop-reader/spec.md) · [两轮原文](review.md)
+
+**待亲验。** 2026-11-23 原反馈为「用户很大概率看不到右边的能展开介绍」。本次就高亮辨识、讲解入口与回访交作者试读。成功与失败两支的教学效果仍由作者判断。触屏采用浏览器模拟；实体触屏、读屏器和后续跨提交更新／恢复流程未验。
+
+## 试读资源
+
+作者入口使用独立的订单项目副本，Git 源码提交为 `4be951b2bf9aae434e0acc3e1aeab3e4e0cf0734`。服务固定读取 `.local/D042/build-reviewed`，前端资源为 `index-AjZq6qPB.js` 和 `index-DuMfSx-I.css`。已从实际网址直入、展开、后退，布局 PUT 为零。验后逐一核对原项目与试读副本的 15 个资料文件，SHA-256 全部一致。4341、4342 均未操作。
+
+交回时监听 `127.0.0.1:4343` 的本次 Node 进程为 `19684`。保留到作者试读结束，后续只在核实进程仍属于本入口时关闭。若入口已停止，可从仓库根复用原构建和试读副本启动：
+
+```powershell
+& .local/D009/runtime/node.exe .local/D042/build-reviewed/cli/main.js serve --project (Resolve-Path -LiteralPath '.local/D042/preview/project').Path --port 4343
+```
+
+在试读中主动拖动或分组会保存到这份副本。后续恢复入口时保留它，避免覆盖作者新排布。
