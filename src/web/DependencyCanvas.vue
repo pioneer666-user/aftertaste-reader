@@ -5,6 +5,9 @@ import type { Edge, Node, NodeDragEvent, ViewportTransform } from '@vue-flow/cor
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
 import './canvas.css';
+import { alignBounds } from '../core/canvas-alignment.js';
+import type { AlignmentGuide } from '../core/canvas-alignment.js';
+import { canvasRoutes } from '../core/canvas-routing.js';
 import DependencyEdge from './DependencyEdge.vue';
 import DependencyMiniMap from './DependencyMiniMap.vue';
 import DependencyDots from './DependencyDots.vue';
@@ -144,6 +147,12 @@ const mapNodes = computed(() => getNodes.value.map(node => ({
   id: node.id, type: node.type ?? '', selected: !!selected.value && node.data.key === selected.value,
   x: node.position.x, y: node.position.y, width: node.dimensions.width, height: node.dimensions.height,
 })));
+const routes = computed(() => canvasRoutes(
+  new Map(getNodes.value.filter(node => node.type !== 'canvasGroup').map(node => [
+    node.id, { ...node.position, ...(node.dimensions.width ? node.dimensions : nodeSize) },
+  ])), getEdges.value,
+));
+const guides = shallowRef<AlignmentGuide[]>([]);
 const dotGroups = computed(() => mapNodes.value.filter(node => node.type === 'canvasGroup').map(node => ({
   ...node, id: node.id.slice(6),
 })));
@@ -701,6 +710,7 @@ function selectionKeys(event: KeyboardEvent) {
 
 watch(() => props.active, active => {
   if (active) return;
+  interruptDrag();
   ctrlHeld.value = false;
   newGroups.clear();
   savedGroupId.value = '';
@@ -729,7 +739,15 @@ function trackControl(event: KeyboardEvent) {
   ctrlHeld.value = event.type === 'keydown' && !editing;
 }
 
-function releaseControl() { ctrlHeld.value = false; }
+function interruptDrag() {
+  if (!dragging.value) return;
+  guides.value = [];
+  dragging.value = false;
+  dragGroup = undefined;
+  render();
+}
+
+function releaseControl() { ctrlHeld.value = false; interruptDrag(); }
 
 function mapNavigate(next: ViewportTransform, commit: boolean) {
   if (!editable.value) return;
@@ -758,30 +776,38 @@ watchPostEffect(onCleanup => {
 function startDrag({ node }: NodeDragEvent) {
   if (!editable.value || !layout.value) return;
   dragging.value = true;
-  const group = visibleGroups.value.find(item => groupNodeId(item.id) === node.id);
+  const group = layout.value.groups.find(item => groupNodeId(item.id) === node.id);
   if (group) dragGroup = { group, origin: { ...node.position }, layout: layout.value };
 }
 
 function previewDrag({ node }: NodeDragEvent) {
   if (!dragging.value || !layout.value) return;
+  const owner = visibleGroups.value.find(group => group.members.includes(node.data.key));
+  const excluded = new Set([node.id, ...(owner ? [groupNodeId(owner.id)] : []),
+    ...(dragGroup?.group.members.map(nodeId) ?? [])]);
+  const targets = getNodes.value.filter(item => !excluded.has(item.id)).map(item => ({ ...item.position, ...item.dimensions }));
+  const { position, guides: hits } = alignBounds({ ...node.position, ...node.dimensions }, targets, viewport.value.zoom);
+  guides.value = hits;
+  updateNode(node.id, { position });
   if (dragGroup) {
-    const moved = moveMembers(dragGroup.layout.positions, dragGroup.group.members, dragGroup.origin, node.position);
+    const moved = moveMembers(dragGroup.layout.positions, dragGroup.group.members, dragGroup.origin, position);
     for (const [id, point] of Object.entries(moved)) updateNode(nodeId(id), { position: point });
-  } else {
-    const id = node.data.key as string;
-    const group = visibleGroups.value.find(item => item.members.includes(id));
-    if (!group) return;
-    const positions = { ...layout.value.positions, [id]: node.position };
-    const { x, y, width, height } = groupBounds(positions, group.members, dimensions);
-    updateNode(groupNodeId(group.id), { position: { x, y }, style: { width: width + 'px', height: height + 'px' } });
+  } else if (owner) {
+    const positions = { ...layout.value.positions, [node.data.key]: position };
+    const { x, y, width, height } = groupBounds(positions, owner.members, dimensions);
+    updateNode(groupNodeId(owner.id), { position: { x, y }, style: { width: width + 'px', height: height + 'px' } });
   }
 }
 
 function endDrag(event: NodeDragEvent) {
-  if (!dragging.value || !layout.value) return;
+  if (!layout.value) return;
+  if (!dragging.value) { render(); return; }
   previewDrag(event);
-  const nodes = dragGroup?.group.members ?? [event.node.data.key as string];
-  const positions = { ...layout.value.positions, ...Object.fromEntries(nodes.map(id => [id, { ...findNode(nodeId(id))!.position }])) };
+  const moved = dragGroup
+    ? moveMembers(dragGroup.layout.positions, dragGroup.group.members, dragGroup.origin, findNode(event.node.id)!.position)
+    : { [event.node.data.key]: { ...findNode(event.node.id)!.position } };
+  const positions = { ...layout.value.positions, ...moved };
+  guides.value = [];
   dragGroup = undefined;
   dragging.value = false;
   changed({ ...layout.value, positions });
@@ -894,7 +920,7 @@ onUnmounted(() => {
         :data-tool="effectiveTool" tabindex="0" @keydown="selectionKeys"
         @pointerover="pointAtCard" @pointerleave="hoverNode = ''" @focusin="focusCard" @focusout="focusNode = ''"
         @pointerdown.capture="beginPointer" @pointermove="moveSelection" @pointerup="finishSelection"
-        @pointercancel="cancelPointer" @lostpointercapture="cancelPointer">
+        @pointercancel="cancelPointer($event); interruptDrag()" @lostpointercapture="cancelPointer">
         <section v-if="routeChoice" class="route-actions" :inert="toolsCovered" :aria-label="t('loopCatalog')">
           <strong>{{ route?.title ?? routeChoice.title }}</strong>
           <button v-if="route" type="button" class="route-read" @click="emit('readRoute')">{{ t('readRoute') }}</button>
@@ -969,8 +995,14 @@ onUnmounted(() => {
               </div>
             </div>
           </template>
-          <template #edge-dependency="edge"><DependencyEdge v-bind="edge" :lit="litNode === edge.source || litNode === edge.target" :active="!litNode && selectedEdgeId === edge.id" @inspect="selectEdge(edge.id)" /></template>
+          <template #edge-dependency="edge"><DependencyEdge v-bind="edge" :line="routes.get(edge.id)" :lit="litNode === edge.source || litNode === edge.target" :active="!litNode && selectedEdgeId === edge.id" @inspect="selectEdge(edge.id)" /></template>
         </VueFlow>
+        <svg v-if="guides.length" class="canvas-alignment" aria-hidden="true">
+          <g :transform="`translate(${viewport.x} ${viewport.y}) scale(${viewport.zoom})`">
+            <line v-for="(guide, index) in guides" :key="index" :x1="guide.from.x" :y1="guide.from.y"
+              :x2="guide.to.x" :y2="guide.to.y" vector-effect="non-scaling-stroke" />
+          </g>
+        </svg>
         <div v-if="menuGroup" ref="groupMenu" class="loop-group-menu" @keydown.esc.stop.prevent="closeGroupEditor"
           @focusout="leaveGroupMenu">
           <button type="button" @click="openGroupEditor(menuGroup.id, undefined, 'name')">{{ t('loopRename') }}</button>
