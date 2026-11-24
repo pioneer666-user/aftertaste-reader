@@ -19,3 +19,5 @@ node tests/fixtures/loop-authoring.mjs $trial
 生成目录下的 `order-quantity.md` 可以直接阅读，CLI 保存的成品位于同一目录下 `project/docs/aftertaste/loops/order-quantity/current/loop.json`。生成选线对照 [D015 试讲过程](../../docs/work/2026/11/D015-loop-authoring/sample/session.md)。
 
 按 [CLI 协议](contracts/cli.md)在新进程读同一闭环。集成用例覆盖原讲解与图例改写及 HEAD 前进、原提交引用暂不可用、失效块与悬空边、重复 ID 和一次中断后的重试。Markdown 试读仅落盘解释与源码定位。
+
+已有路线但首次未选讲法的真实会话，按 [D050 行为用例](../../tests/skills/generation.md#项目讲法)独立验证。另以无讲法的会话直接重读已保存闭环。

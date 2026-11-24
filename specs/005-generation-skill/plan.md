@@ -6,6 +6,8 @@
 
 ## Summary
 
+**D050 增量** `teaching.md` 共用项目讲法定义和对话停等条件，`feedback.md` 沿已有写入边界将选择合并进项目偏好。普通生成和闭环入口各接入该规则，CLI 调用保持原协议。按安装包实际对话验证，见 [行为检查](../../tests/skills/generation.md#项目讲法)。
+
 **D046 增量** 共用 teaching 指南在目标块说明取值、条件、具体实现与结果，沿用已有偏好和固定源码规则。
 
 以一个产品 Skill 入口连接现有 CLI。共用约束、教法、偏好、工具分别维护，generation 组织分批流程。AI 决定文件和块的语义，工具保留固定来源、ID、覆盖和图写入规则。通过隔离合成项目的实际代理调用与机械复核提供试读证据。
@@ -41,6 +43,8 @@
 | V 官方结构 | 已读固定版技能，实际 resolve spec / setup-plan | 保留官方栏目，继续实际 setup-tasks / analyze / implement 前置 |
 
 两次门禁均无冲突。官方路径脚本的 BRANCH 是功能目录名，真实 Git 分支以 `git branch --show-current` 核验。每阶段前后检查 hooks，当前不存在 extensions.yml。
+
+D050 沿批准的三种讲法，写入限于经确认的目标项目 Markdown。共用单一方法和偏好，固定来源及 CLI 校验由已有实现担任。验证区分真实会话、机械读回、独审和作者试读。沿现有方案结构增量维护。
 
 ## Project Structure
 
