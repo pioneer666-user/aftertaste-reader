@@ -199,7 +199,10 @@ try {
   });
   assert.deepEqual(pathsEdited.layout.groups[0].members, [legendId]);
   assert.deepEqual(pathsGrouped.layout.groups[0].members, ['audit', legendId]);
-  const reordered = await saveAction(page, paths, legendRoute + '/layout', legendPath, () => button(paths, '重新布局').click());
+  const reordered = await saveAction(page, paths, legendRoute + '/layout', legendPath, async () => {
+    await button(paths, '重新布局').click();
+    await button(paths.getByRole('dialog'), '重新布局').click();
+  });
   assert.deepEqual(reordered.layout.groups, pathsEdited.layout.groups);
   const movedGroup = await saveAction(page, paths, legendRoute + '/layout', legendPath,
     () => drag(page, paths.locator('.group-handle').filter({ hasText: '闭环路径' }), 80, 55));
@@ -237,7 +240,10 @@ try {
       await addGroup(dependency, '依赖图路径', [audit, 'node:path · 标准库']);
     });
   await button(dependency, '关闭分组').click();
-  const arranged = await saveAction(page, dependency, dependencyRoute, project.layout, () => button(dependency, '重新布局').click());
+  const arranged = await saveAction(page, dependency, dependencyRoute, project.layout, async () => {
+    await button(dependency, '重新布局').click();
+    await button(dependency.getByRole('dialog'), '重新布局').click();
+  });
   const depLegend = await saveAction(page, dependency, dependencyRoute, project.layout, () => drag(page, legend(dependency), 57, 61));
   assert.notDeepEqual(depLegend.layout.positions[legendId], arranged.layout.positions[legendId]);
   await saveAction(page, dependency, dependencyRoute, project.layout, () => drag(page, dependency.locator('.graph-area'), 65, 18, [0.9, 0.85]));

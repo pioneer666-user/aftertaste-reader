@@ -109,7 +109,12 @@ try {
     for (const use of standardLegend.uses) await detail(page).getByText(use.reason, { exact: true }).waitFor();
     await page.getByLabel('Interface language').selectOption('zh-CN');
 
-    await legend(page, thirdParty.id).click();
+    const thirdCard = legend(page, thirdParty.id);
+    const box = await thirdCard.boundingBox();
+    const pane = await page.locator('.graph-area').boundingBox();
+    const pans = Math.ceil(Math.max(0, pane.x + 60 - box.x) / (pane.width * .2));
+    for (let i = 0; i < pans; i++) await savedAction(page, () => page.locator('.dependency-minimap').press('ArrowLeft'));
+    await thirdCard.click();
     await summary(page).getByRole('heading', { name: rules, exact: true }).waitFor();
     await summary(page).getByText('第三方库', { exact: true }).waitFor();
     assert.equal(await file(page, rules).getAttribute('aria-pressed'), 'false');
@@ -140,7 +145,10 @@ try {
     assert.deepEqual(reassigned.layout.groups.find(group => group.name === '同名对象').members, [rules]);
     await button(page, '关闭分组').click();
     await button(page, '清除选择').click();
-    await savedAction(page, () => button(page, '重新布局').click());
+    await savedAction(page, async () => {
+      await button(page, '重新布局').click();
+      await button(page.getByRole('dialog'), '重新布局').click();
+    });
     const rearranged = await disk();
     assert.deepEqual(rearranged.layout.groups, reassigned.layout.groups);
     assert.notDeepEqual(rearranged.layout.positions[legendId], reassigned.layout.positions[legendId]);

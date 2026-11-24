@@ -80,3 +80,7 @@ node tests/browser/loop-reader.mjs
 ## D043 订单试读
 
 打开 order-quantity 的 resume 步，选择「建立对象这一步还没有改变集合」，复制后核 JSON，再加入笔记。从浮层及工作台重开引文。按 [D043 任务](../../docs/work/2026/11/D043-reading-qa-and-revision/task.md) 分别只问、同意补例和明确改写；对比文件与闭环 current、个人资料。
+
+## D049 · 步骤连线和密集分支
+
+按[共用双图检查](../007-dependency-canvas/quickstart.md#d049--双图遮线与重排)在输入样例闭环中查看入口到汇总的直达线，确认重排后对照最左库列和三个并列样例子列。

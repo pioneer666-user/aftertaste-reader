@@ -43,3 +43,7 @@ D014 构建后串行执行 `node --test tests/integration/dependency-legends.tes
 ## D042 · 依赖图与闭环往返
 
 运行 `node tests/browser/loop-route-highlights.mjs`。从两条订单路线发起替换，核原图边和视野。模拟旧版本、缺失与迟到的读取。点库与线查理由，再进闭环并后退，观察布局 PUT。
+
+## D049 · 双图遮线与重排
+
+构建后运行 `node tests/browser/canvas-reading-layout.mjs`。脚本从仓内样例生成隔离项目，在两图比较遮挡卡内部的同一块像素，切换选择、拖图例与组、取消和确认重排，并对照两份布局文件。密集闭环记录 18 个并列样例的子列位置和净空。运行 `node tests/browser/canvas-routing-alignment.mjs` 复核分岔、贴边箭头与组吸附。

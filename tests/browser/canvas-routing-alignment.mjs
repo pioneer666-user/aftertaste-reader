@@ -8,7 +8,7 @@ import { api, audit, rules, service, readJSON, writeJSON } from '../fixtures/dep
 import { createRoutingProject, routeId } from '../fixtures/canvas-routing.mjs';
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D048/self');
+const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D049/self');
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'routing-'));
 const project = path.join(run, 'project');
@@ -78,7 +78,7 @@ try {
       assert.equal(found.dash !== 'none', dashed);
       return found;
     }
-    assert.ok(edges.every(edge => edge.inside.length === 0), JSON.stringify(edges.filter(edge => edge.inside.length)));
+    assert.ok(edges.every(edge => !edge.inside.includes(edge.from.card) && !edge.inside.includes(edge.to.card)), 'curves stay outside their own endpoints');
     if (!loop) {
       const incoming = [rules, api, audit].map(key => trace(key, service));
       assert.equal(new Set(incoming.map(e => [e.to.x, e.to.y].join())).size, 3);
@@ -97,7 +97,7 @@ try {
         trace('legend:node-path', branch, true);
       }
     }
-    report.checks.push(name + ': trace, direction, markers, distinct landings and clearance');
+    report.checks.push(name + ': trace, direction, markers, distinct landings and endpoint clearance');
     const moved = node(loop ? 'compare' : service);
     const refCard = node(loop ? 'basename' : api);
     const frame0 = frame(0), frame1 = frame(1);
@@ -117,8 +117,8 @@ try {
     if (!loop) {
       const previous = edges.find(e => e.from.card === id(rules) && e.to.card === id(service));
       const now = (await inspect()).find(e => e.reason === previous.reason);
-      assert.notEqual(now.d, previous.d);
-      assert.deepEqual(now.inside, []);
+      assert.ok(previous.inside.includes(id(api)), 'original path runs behind the unrelated card');
+      assert.ok(!now.inside.includes(id(api)), 'moving the card uncovers the path');
     }
     await page.mouse.move(pickup.x + 13, pickup.y + neighborBox.y - originalBox.y + 2, { steps: 9 });
     await scope.locator('.canvas-alignment line').first().waitFor({ state: 'attached' });

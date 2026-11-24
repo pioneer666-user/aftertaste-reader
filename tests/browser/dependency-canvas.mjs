@@ -185,7 +185,9 @@ try {
 
   await drag(node(rules), 24, 168);
   await saved();
-  await drag(node(audit), -438, 78);
+  const left = await node(rules).boundingBox(), right = await node(service).boundingBox();
+  const outsider = await node(audit).boundingBox();
+  await drag(node(audit), (left.x + right.x) / 2 - outsider.x, (left.y + right.y) / 2 - outsider.y);
   await saved();
   await addGroup('读服务', [rules, service]);
   await addGroup('看审计', [audit]);
@@ -210,9 +212,10 @@ try {
     beforeGroup.positions[audit].y + 56 < bounds.y + bounds.height, 'other group member lies inside this group');
   await drag(page.locator('.group-handle[title="读服务"]'), 36, 60);
   const afterGroup = await saved();
-  for (const id of [rules, service]) {
-    equalWithin(afterGroup.positions[id].x - beforeGroup.positions[id].x, 30);
-    equalWithin(afterGroup.positions[id].y - beforeGroup.positions[id].y, 50);
+  for (const [axis, screenDelta] of [['x', 36], ['y', 60]]) {
+    const delta = afterGroup.positions[rules][axis] - beforeGroup.positions[rules][axis];
+    equalWithin(delta * beforeGroup.viewport.zoom, screenDelta, 5);
+    equalWithin(afterGroup.positions[service][axis] - beforeGroup.positions[service][axis], delta);
   }
   assert.deepEqual(afterGroup.positions[audit], beforeGroup.positions[audit]);
   assert.deepEqual(afterGroup.groups, beforeGroup.groups);
@@ -220,6 +223,7 @@ try {
   report.checks.groupDrag = { before: beforeGroup, after: afterGroup };
 
   await page.getByRole('button', { name: '重新布局' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '重新布局' }).click();
   const rearranged = await saved();
   assert.deepEqual(rearranged.groups, afterGroup.groups);
   assert.notDeepEqual(rearranged.positions, afterGroup.positions);
@@ -354,8 +358,11 @@ try {
   assert.equal(Object.hasOwn(updated.positions, audit), false);
   assert.deepEqual(updated.groups, lastSaved.groups.filter(group => !group.members.includes(audit)));
   assert.equal(await page.locator('.vue-flow__edge-path[marker-end]').count(), 3);
-  const selfLoop = page.locator('.vue-flow__edge').filter({ has: page.locator('title').getByText('self', { exact: true }) });
-  assert.match(await selfLoop.locator('.vue-flow__edge-path').getAttribute('d'), / C .* Q /u);
+  const selfLoop = page.locator('.vue-flow__edge').filter({ hasText: /^self$/ });
+  assert.ok(await selfLoop.locator('.vue-flow__edge-path').evaluate(p => {
+    const box = p.getBBox();
+    return p.getTotalLength() > 56 && box.width > 30 && box.height > 30;
+  }));
   compareVisible(await visibleLayout(), updated);
   report.checks.graphUpdate = { incompletePreserved: true, validPartialPreserved: true, after: updated, selfAndCycle: true };
 
