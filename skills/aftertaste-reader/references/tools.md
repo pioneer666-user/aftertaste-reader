@@ -143,7 +143,7 @@ const { file } = runSourceCli(['read', ...sourceArgs, '--path', sourcePath], max
 
 ## 闭环
 
-用户选定路线后，使用 `create-loop` + sourceArgs + `--id 闭环ID --input UTF-8输入文件绝对路径`。成品路径在 result.path。布置节点及讲解时可参考以下最小合成输入。
+按[闭环讲解的前置条件](loops.md#提出完整路线)确认路线和项目讲法，再使用 `create-loop` + sourceArgs + `--id 闭环ID --input UTF-8输入文件绝对路径`。成品路径在 result.path。布置节点及讲解时可参考以下最小合成输入。
 
 ```json
 {
