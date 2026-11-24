@@ -1,0 +1,60 @@
+<div id="ar-step-note-preview" class="viz-dotted-background">
+  <style>
+    #ar-step-note-preview {color-scheme:light dark;container-type:inline-size}
+    #ar-step-note-preview .ar-figure {--ink:light-dark(#2b3833,#e3eae3);--soft:light-dark(#52645b,#afc1b6);--line:light-dark(#899d8e,#82968a);--paper:light-dark(#fffdf6,#262f2b);--card:light-dark(#f9fcf8,#222d28);--key:light-dark(#40765f,#95c6ab);color:var(--ink);font:14px/1.5 system-ui,"Microsoft YaHei",sans-serif;padding:18px 14px 24px}
+    #ar-step-note-preview h3 {margin:0 0 20px;font:500 15px/1.5 system-ui,sans-serif}
+    #ar-step-note-preview .ar-route {display:grid;grid-template-columns:minmax(72px,.9fr) minmax(14px,.23fr) minmax(120px,1.25fr) minmax(14px,.23fr) minmax(68px,.85fr);align-items:center;max-width:670px}
+    #ar-step-note-preview .ar-node {padding:10px 9px;background:var(--card);border:1px solid var(--line);border-radius:10px;display:grid;align-content:center;gap:2px;min-height:50px;box-sizing:border-box}
+    #ar-step-note-preview .ar-node b {font-weight:550}
+    #ar-step-note-preview .ar-node small {color:var(--soft);font-size:12px}
+    #ar-step-note-preview .ar-main {border-color:var(--key)}
+    #ar-step-note-preview .ar-arrow {height:1px;background:var(--line);position:relative}
+    #ar-step-note-preview .ar-arrow::after {content:"";position:absolute;right:1px;top:-3px;width:6px;height:6px;transform:rotate(-45deg);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+    #ar-step-note-preview .ar-annotation {grid-column:3 / 6;width:min(100%,240px);min-width:0;position:relative;padding-top:18px;box-sizing:border-box}
+    #ar-step-note-preview .ar-annotation::before {content:"";position:absolute;left:13px;top:0;height:18px;border-left:1px solid var(--key)}
+    #ar-step-note-preview details {background:var(--paper);border-left:3px solid var(--key);border-radius:2px 6px 6px 2px;color:var(--ink)}
+    #ar-step-note-preview summary {cursor:pointer;color:var(--soft);font-size:12px;padding:7px 10px;width:fit-content}
+    #ar-step-note-preview .ar-note-body {padding:0 11px 9px;overflow-wrap:anywhere}
+    #ar-step-note-preview p {margin:0 0 5px}
+    #ar-step-note-preview code {font:0.94em ui-monospace,monospace;color:var(--ink)}
+    #ar-step-note-preview a {font-size:12px;color:var(--key);text-underline-offset:3px}
+    @container (max-width:400px) {
+      #ar-step-note-preview .ar-figure{padding:13px 4px}
+      #ar-step-note-preview .ar-route{grid-template-columns:minmax(54px,.9fr) 12px minmax(94px,1.35fr) 12px minmax(54px,.9fr)}
+      #ar-step-note-preview .ar-node {padding:6px;font-size:13px}
+    }
+  </style>
+  <section class="ar-figure" aria-label="收藏请求的节点与挂在下方的说明">
+    <h3>收藏请求 · 成功后原样重发</h3>
+    <div class="ar-route">
+      <div class="ar-node"><b>查询收藏关系</b></div>
+      <div class="ar-arrow" aria-hidden="true"></div>
+      <div class="ar-node ar-main"><b>核对目标状态</b><small>已经收藏</small></div>
+      <div class="ar-arrow" aria-hidden="true"></div>
+      <div class="ar-node"><b>提前返回</b></div>
+      <div class="ar-annotation">
+        <details open>
+          <summary>节点说明</summary>
+          <div class="ar-note-body"><p>两次请求都传 <code>true</code>。第二次查询时，<strong>收藏关系已经存在</strong>，所以服务跳过新增。</p>
+          <a href="https://github.com/apache/answer/blob/3f1ed50f6776452c11b6ffdbdc767cd1887d629b/internal/service/collection/collection_service.go#L57-L63" target="_blank" rel="noopener noreferrer">查看判断依据 · 第 57–63 行 ↗</a></div>
+        </details>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('ar-step-note-preview');
+  const note = root.querySelector('details');
+  function restore(state) {
+    note.open = state?.privateContent?.expanded !== false;
+  }
+  restore(window.openai?.widgetState);
+  root.querySelector('summary').addEventListener('click', () => {
+    setTimeout(() => window.openai?.setWidgetState?.({ modelContent: null, privateContent: { expanded: note.open } })?.catch(() => {}), 0);
+  });
+  window.addEventListener('openai:set_globals', e => {
+    if (e.detail?.globals && 'widgetState' in e.detail.globals) restore(e.detail.globals.widgetState);
+  });
+})();
+</script>
