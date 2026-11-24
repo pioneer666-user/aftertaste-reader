@@ -148,17 +148,10 @@
   pointer-events: none;
   z-index: 1;
 }
-:is(.dependency-canvas, .loop-canvas) .vue-flow__handle:not(.self-handle)::after {
-  content: '';
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border: 1px solid var(--paper);
-  border-radius: 50%;
-  background: var(--edge);
-  transform: translate(-50%, -50%);
+.canvas-alignment {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none;
+  stroke: var(--focus); stroke-width: 1; stroke-dasharray: 2 3;
 }
-:is(.dependency-canvas, .loop-canvas) .vue-flow__node-canvasLegend .vue-flow__handle::after { background: var(--library-edge); }
 .file-node { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; width: 100%; height: 100%; border-color: var(--control-rim); padding: 5px 10px; gap: 4px; text-align: left; cursor: grab; font-size: 14px; }
 .file-node span { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-node small { color: var(--muted); font-size: 12px; }

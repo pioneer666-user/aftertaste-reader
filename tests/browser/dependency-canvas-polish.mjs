@@ -96,11 +96,12 @@ async function readGraph() {
   for (const edge of graph.edges) {
     const drawn = connected.find(line => line.reason === edge.reason);
     assert.ok(drawn, edge.reason);
-    assert.match(drawn.d, /[Cc]/u);
     assert.notEqual(drawn.marker, 'none');
     const target = await file(edge.dependent).boundingBox();
-    assert.ok(Math.abs(drawn.x - target.x) < 5 && Math.abs(drawn.y - target.y - target.height / 2) < 5,
-      'arrow meets left port of ' + edge.dependent);
+    const dx = drawn.x - target.x, dy = drawn.y - target.y;
+    assert.ok((Math.min(Math.abs(dx), Math.abs(dx - target.width)) < 5 && dy >= 0 && dy <= target.height) ||
+      (Math.min(Math.abs(dy), Math.abs(dy - target.height)) < 5 && dx >= 0 && dx <= target.width),
+      'arrow meets the visible boundary of ' + edge.dependent);
   }
   assert.equal(await scope().locator('.library-use-edge.direct-relation').count(), 0);
   const dashed = await scope().locator('.library-use-edge .vue-flow__edge-path').evaluateAll(paths =>
@@ -115,7 +116,7 @@ async function readGraph() {
   assert.equal(await transform(), view);
   assert.equal(await selectedFile.getAttribute('aria-pressed'), 'true');
   await button(scope(), '清除选择').click();
-  report.checks.push({ read: '79%, actual hover/rest/entry pixels, 3 incident curves, arrow endpoints, library dashes, read and return', affected });
+  report.checks.push({ read: '79%, actual hover/rest/entry pixels, 3 incident paths, arrow endpoints, library dashes, read and return', affected });
 }
 
 // The strip stays outside the group's tinted area, even if a visible error moves

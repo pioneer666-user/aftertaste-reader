@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { alignBounds } from '../../dist/core/canvas-alignment.js';
 import { defaultLayout, groupBounds, moveMembers, reconcileLayout, rearrange, updateGroup, parseLayout } from '../../dist/core/canvas-layout.js';
 
 const a = 'src/a.mjs';
@@ -88,4 +89,22 @@ test('分支在同层分行，汇合在所有来路右侧，环内保留身份�
   assert.deepEqual(next.positions.z, manual.positions.z);
   assert.ok(next.positions.b.x > -617 && next.positions.join.x > next.positions.b.x);
   assert.notDeepEqual(next.positions.b, next.positions.c);
+});
+
+
+test('屏幕吸附距离随倍率保持一致，两个轴均能拖离', () => {
+  for (const axis of ['x', 'y']) {
+    const cross = axis === 'x' ? 'y' : 'x';
+    for (const zoom of [.25, .51, .88, 1, 1.73, 2]) {
+      const target = { x: -53, y: 72, width: 212, height: 112 };
+      for (const sign of [-1, 1]) {
+        for (const pixels of [0, 1.5, 4.9, 5.1, 7]) {
+          const moving = { ...target, [axis]: target[axis] + sign * pixels / zoom, [cross]: target[cross] + (axis === 'x' ? target.height : target.width) + 50 };
+          const { position, guides } = alignBounds(moving, [target], zoom);
+          assert.ok(Math.abs(position[axis] - (pixels < 5 ? target[axis] : moving[axis])) < 1e-9);
+          assert.equal(guides.some(guide => guide.from[axis] === guide.to[axis]), pixels < 5);
+        }
+      }
+    }
+  }
 });

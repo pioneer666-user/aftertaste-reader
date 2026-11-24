@@ -76,6 +76,8 @@ try {
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     try {
+      // Cross the node pickup threshold at a known point before interpolating the drag.
+      await page.mouse.move(from.x + 2, from.y);
       await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 6 });
       await midway?.();
       await page.mouse.move(to.x, to.y, { steps: 6 });
@@ -160,14 +162,14 @@ try {
   near(await translate(), -2, .1);
   const dragBox = await draggedNode.boundingBox();
   const dragFrom = { x: dragBox.x + dragBox.width / 2, y: dragBox.y + dragBox.height / 2 };
-  const dragTo = { x: dragFrom.x + 24, y: dragFrom.y + 16 };
+  const dragTo = { x: dragFrom.x + 24, y: dragFrom.y + 36 };
   const moved = await save(() => drag(dragFrom, dragTo, async () => {
     await draggedNode.evaluate(element => element.closest('.vue-flow__node')?.classList.contains('dragging')).then(value => assert.equal(value, true));
     assert.equal(await translate(), 0, 'dragging cancels visual lift');
   }));
   // Vue Flow's default node drag threshold accounts for the two-pixel pickup delta.
   near(moved.layout.positions.resume.x - seed.layout.positions.resume.x, 24, 2);
-  near(moved.layout.positions.resume.y - seed.layout.positions.resume.y, 16, 2);
+  near(moved.layout.positions.resume.y - seed.layout.positions.resume.y, 36, 2);
   await page.mouse.move(12, 90);
   await page.waitForTimeout(180);
   assert.equal(await translate(), 0);
