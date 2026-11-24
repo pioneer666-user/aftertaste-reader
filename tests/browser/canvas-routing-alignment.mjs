@@ -142,7 +142,9 @@ try {
       await page.mouse.move(x, y);
       await page.mouse.down();
       await page.mouse.move(x + 3, y);
-      await page.mouse.move(x + 16, y + delta + 2, { steps: 12 });
+      // The step card bottom is 4.2 screen pixels below the neighboring group top.
+      const approach = loop && label === 'card-group' ? -1 : 2;
+      await page.mouse.move(x + 16, y + delta + approach, { steps: 12 });
       await tick();
       const guides = scope.locator('.canvas-alignment line');
       await screenshot(label);
@@ -194,6 +196,38 @@ try {
     near(actual.x, expected.x, 'reopen x'); near(actual.y, expected.y, 'reopen y');
     assert.equal(await scope.locator('.canvas-alignment').count(), 0);
     report.checks.push(name + ': zoom, reopen, independent layouts');
+    if (!loop) continue;
+    for (const axis of ['x', 'y']) {
+      const seed = await readJSON(disk);
+      const positions = { choose: { x: 120, y: 185 }, basename: axis === 'x' ? { x: 440, y: 185 } : { x: 120, y: 340 },
+        join: { x: 530, y: 435 }, compare: { x: 780, y: 205 }, 'legend:node-path': { x: 190, y: 495 } };
+      await writeJSON(disk, { ...seed, layout: { ...initial, positions } });
+      await page.reload();
+      await scope.locator('.loop-reader-toggle[aria-expanded="true"]').click();
+      const branch = node('basename');
+      const source = await wrap(node('choose')).boundingBox(), before = await wrap(branch).boundingBox();
+      const size = axis === 'x' ? 'width' : 'height';
+      const delta = source[axis] + source[size] - before[axis];
+      const x = before.x + 48, y = before.y + before.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + 3, y);
+      await page.mouse.move(x + 3 + (axis === 'x' ? delta : 0), y + (axis === 'y' ? delta : 0), { steps: 10 });
+      await scope.locator('.canvas-alignment line').first().waitFor({ state: 'attached' });
+      const ack = page.waitForResponse(r => r.request().method() === 'PUT' && r.url().endsWith('/layout'));
+      await page.mouse.up();
+      assert.equal((await ack).status(), 200);
+      near((await wrap(branch).boundingBox())[axis], source[axis] + source[size], 'flush cards');
+      await node('choose').hover();
+      await tick();
+      const path = (await inspect()).find(e => e.reason === '看上传入口。');
+      assert.ok(path.length > 25 && path.lit);
+      assert.equal(path.from.card, id('choose')); assert.equal(path.to.card, id('basename'));
+      assert.notEqual(path.arrow, 'none');
+      assert.deepEqual(path.inside, []);
+      await screenshot('touch-' + axis);
+      report.checks.push(name + ': touching on ' + axis + ', visible branch arrow, length ' + path.length.toFixed(1));
+    }
   }
   assert.deepEqual(report.errors, []);
 } catch (error) { report.failure = error.stack; throw error; }

@@ -16,6 +16,12 @@ function facing(a: CardBounds, b: CardBounds): [Side, Side] {
   const dy = b.y + b.height / 2 - a.y - a.height / 2;
   const xGap = Math.abs(dx) - (a.width + b.width) / 2;
   const yGap = Math.abs(dy) - (a.height + b.height) / 2;
+  // Touching facing ports leave no room for a readable arrow. Use exposed
+  // sides, with the reverse relationship on the opposite side of the pair.
+  if (Math.max(xGap, yGap) < 10) {
+    const outside = xGap >= yGap ? (dx >= 0 ? 'top' : 'bottom') : (dy >= 0 ? 'right' : 'left');
+    return [outside, outside];
+  }
   if (xGap >= yGap) return dx >= 0 ? ['right', 'left'] : ['left', 'right'];
   return dy >= 0 ? ['bottom', 'top'] : ['top', 'bottom'];
 }
@@ -153,7 +159,7 @@ export function canvasRoutes(cards: Map<string, CardBounds>, links: readonly Lin
   for (const { link, a, b, start, end } of endpoints) {
     const p = start.point, q = end.point;
     const gap = Math.abs(start.normal.x ? p.x - q.x : p.y - q.y);
-    const reach = a === b ? 85 : Math.min(gap * .48, 120);
+    const reach = start.normal === end.normal ? 36 : Math.min(gap * .48, 120);
     const c = along(p, start.normal, reach), d = along(q, end.normal, reach);
     let path = 'M ' + xy(p) + ' C ' + xy(c) + ' ' + xy(d) + ' ' + xy(q);
     // A self-loop goes outside both straight sides, around the top-right corner.
