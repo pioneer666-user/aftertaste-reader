@@ -8,7 +8,7 @@ import { api, audit, rules, service, readJSON, writeJSON } from '../fixtures/dep
 import { createRoutingProject, routeId } from '../fixtures/canvas-routing.mjs';
 
 const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D048/self');
+const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D049/self');
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'routing-'));
 const project = path.join(run, 'project');
@@ -78,7 +78,7 @@ try {
       assert.equal(found.dash !== 'none', dashed);
       return found;
     }
-    assert.ok(edges.every(edge => edge.inside.length === 0), JSON.stringify(edges.filter(edge => edge.inside.length)));
+    assert.ok(edges.every(edge => !edge.inside.includes(edge.from.card) && !edge.inside.includes(edge.to.card)), 'curves stay outside their own endpoints');
     if (!loop) {
       const incoming = [rules, api, audit].map(key => trace(key, service));
       assert.equal(new Set(incoming.map(e => [e.to.x, e.to.y].join())).size, 3);
@@ -97,7 +97,7 @@ try {
         trace('legend:node-path', branch, true);
       }
     }
-    report.checks.push(name + ': trace, direction, markers, distinct landings and clearance');
+    report.checks.push(name + ': trace, direction, markers, distinct landings and endpoint clearance');
     const moved = node(loop ? 'compare' : service);
     const refCard = node(loop ? 'basename' : api);
     const frame0 = frame(0), frame1 = frame(1);
@@ -117,8 +117,8 @@ try {
     if (!loop) {
       const previous = edges.find(e => e.from.card === id(rules) && e.to.card === id(service));
       const now = (await inspect()).find(e => e.reason === previous.reason);
-      assert.notEqual(now.d, previous.d);
-      assert.deepEqual(now.inside, []);
+      assert.ok(previous.inside.includes(id(api)), 'original path runs behind the unrelated card');
+      assert.ok(!now.inside.includes(id(api)), 'moving the card uncovers the path');
     }
     await page.mouse.move(pickup.x + 13, pickup.y + neighborBox.y - originalBox.y + 2, { steps: 9 });
     await scope.locator('.canvas-alignment line').first().waitFor({ state: 'attached' });
@@ -197,9 +197,9 @@ try {
     assert.equal(await scope.locator('.canvas-alignment').count(), 0);
     report.checks.push(name + ': zoom, reopen, independent layouts');
     if (!loop) continue;
-    for (const axis of ['x', 'y']) {
+    for (const [axis, offset] of [['x', 0], ['y', 0], ['x', 44], ['y', 180]]) {
       const seed = await readJSON(disk);
-      const positions = { choose: { x: 120, y: 185 }, basename: axis === 'x' ? { x: 440, y: 185 } : { x: 120, y: 340 },
+      const positions = { choose: { x: 120, y: 185 }, basename: axis === 'x' ? { x: 440, y: 185 + offset } : { x: 120 + offset, y: 340 },
         join: { x: 530, y: 435 }, compare: { x: 780, y: 205 }, 'legend:node-path': { x: 190, y: 495 } };
       await writeJSON(disk, { ...seed, layout: { ...initial, positions } });
       await page.reload();
@@ -225,8 +225,8 @@ try {
       assert.equal(path.from.card, id('choose')); assert.equal(path.to.card, id('basename'));
       assert.notEqual(path.arrow, 'none');
       assert.deepEqual(path.inside, []);
-      await screenshot('touch-' + axis);
-      report.checks.push(name + ': touching on ' + axis + ', visible branch arrow, length ' + path.length.toFixed(1));
+      await screenshot('touch-' + axis + '-' + offset);
+      report.checks.push(name + ': touching on ' + axis + ', offset ' + offset + ', visible branch arrow, length ' + path.length.toFixed(1));
     }
   }
   assert.deepEqual(report.errors, []);

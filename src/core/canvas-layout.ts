@@ -92,13 +92,12 @@ export interface LayoutRelations {
   order?: string[];
 }
 
-const columnWidth = 290;
+const maxRows = 6;
 const rowHeight = 104;
-const initialViewport = { x: 0, y: 0, zoom: 1 };
 
 // Collapse strongly connected components before assigning longest-path layers.
 // Iterative DFS also handles long import chains without using the JS call stack.
-function layeredPositions(ids: readonly string[], relations: LayoutRelations): Map<string, Point> {
+function layeredPositions(ids: readonly string[], relations: LayoutRelations) {
   const libraries = new Set(relations.libraries.map(item => item.id));
   const order = relations.order ?? [...ids].sort();
   const nodes = order.filter(id => !libraries.has(id));
@@ -150,12 +149,11 @@ function layeredPositions(ids: readonly string[], relations: LayoutRelations): M
     });
   });
 
-  const rows = new Map<number, number>();
-  const points = new Map<string, Point>();
+  const bands = new Map<number, string[]>();
   const add = (id: string, layer: number) => {
-    const row = rows.get(layer) ?? 0;
-    points.set(id, { x: 72 + layer * columnWidth, y: 116 + row * rowHeight });
-    rows.set(layer, row + 1);
+    const members = bands.get(layer);
+    if (members) members.push(id);
+    else bands.set(layer, [id]);
   };
   if (relations.order) {
     for (const id of nodes) add(id, layers.get(id)!);
@@ -173,16 +171,42 @@ function layeredPositions(ids: readonly string[], relations: LayoutRelations): M
       for (const parent of incoming.get(id)!.sort(byDepth).reverse()) stack.push(parent);
     }
   }
-  // Use a separate row near the first referenced step. Libraries do not rank business steps.
-  for (const { id, targets } of [...relations.libraries].sort((a, b) => a.id < b.id ? -1 : 1)) {
-    const firstLayer = targets.reduce((first, target) => Math.min(first, layers.get(target)!), Infinity);
-    add(id, targets.length ? Math.max(0, firstLayer - 1) : 0);
+  const hidden = [];
+  for (const { id, targets } of [...relations.libraries].sort((a, b) => a.id.localeCompare(b.id))) {
+    if (relations.order && !targets.length) hidden.push(id);
+    else add(id, -1);
   }
-  return points;
+
+  // Balance each band over short columns. Each column straddles the same midline.
+  const points = new Map<string, Point>();
+  let tallest = 1;
+  let widest = 1;
+  for (const band of bands.values()) {
+    const columns = Math.ceil(band.length / maxRows);
+    tallest = Math.max(tallest, Math.ceil(band.length / columns));
+    widest = Math.max(widest, columns);
+  }
+  let x = 72;
+  const pitch = 82, within = 32, between = 108;
+  for (const [, band] of [...bands].sort(([a], [b]) => a - b)) {
+    const columns = Math.ceil(band.length / maxRows);
+    let index = 0;
+    for (let col = 0; col < columns; col++) {
+      const rows = Math.ceil((band.length - index) / (columns - col));
+      for (let row = 0; row < rows; row++) {
+        points.set(band[index++]!, { x, y: 80 + ((tallest - rows) / 2 + row) * pitch });
+      }
+      x += nodeSize.width + (col + 1 === columns ? between : within);
+    }
+  }
+  // File-only loop legends keep a layout identity without reserving visible space.
+  hidden.forEach((id, i) => points.set(id, { x, y: 80 + i * pitch }));
+  return { points, zoom: widest > 1 ? .78 : 1 };
 }
 
 export function defaultLayout(ids: readonly string[], relations: LayoutRelations = { edges: [], libraries: [] }): CanvasLayout {
-  return { positions: Object.fromEntries(layeredPositions(ids, relations)), groups: [], viewport: { ...initialViewport } };
+  const { points, zoom } = layeredPositions(ids, relations);
+  return { positions: Object.fromEntries(points), groups: [], viewport: { x: 0, y: 0, zoom } };
 }
 
 export function rearrange(layout: CanvasLayout, ids: readonly string[], relations?: LayoutRelations): CanvasLayout {
@@ -208,7 +232,7 @@ export function reconcileLayout(layout: CanvasLayout, ids: readonly string[], re
     Object.values(layout.positions);
   const placements = new Map<string, Point>();
   if (missing.length) {
-    const ideal = layeredPositions(ids, relations);
+    const { points: ideal } = layeredPositions(ids, relations);
     const linked = new Map(ids.map(id => [id, [] as string[]]));
     const connect = (from: string, to: string) => { linked.get(from)!.push(to); linked.get(to)!.push(from); };
     relations.edges.forEach(({ from, to }) => connect(from, to));

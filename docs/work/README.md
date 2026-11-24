@@ -58,5 +58,6 @@
 | D046 | [从左往右读懂后端请求：两图分层、紧凑文件树与讲解深度](2026/11/D046-alpha-reading-layout/task.md) |
 | D047 | [文件阅读页的固定源码语法高亮](2026/11/D047-source-syntax-highlighting/task.md) |
 | D048 | [双图连线与卡片、整组拖动对齐](2026/11/D048-canvas-routing-alignment/task.md) |
+| D049 | [双图连线穿行、重排确认与居中分层](2026/11/D049-canvas-reading-layout/task.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。

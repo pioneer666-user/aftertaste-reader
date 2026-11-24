@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch, watchPostEffect } from 'vue';
-import { Handle, MarkerType, Position, VueFlow, useVueFlow } from '@vue-flow/core';
+import { getMarkerId, Handle, MarkerType, Position, VueFlow, useVueFlow } from '@vue-flow/core';
 import type { Edge, Node, NodeDragEvent, ViewportTransform } from '@vue-flow/core';
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
@@ -46,9 +46,8 @@ const layout = shallowRef<CanvasLayout>();
 const selected = ref('');
 const hoverNode = ref('');
 const focusNode = ref('');
-const touchSelection = ref(false);
-const litNode = computed(() => hoverNode.value || focusNode.value ||
-  (touchSelection.value && selected.value ? nodeId(selected.value) : ''));
+const litNode = computed(() => hoverNode.value || focusNode.value);
+const rearrangeDialog = ref<HTMLDialogElement>();
 
 function cardId(target: EventTarget | null) {
   return target instanceof Element ? target.closest('.file-node')?.closest<HTMLElement>('.vue-flow__node')?.dataset.id ?? '' : '';
@@ -56,12 +55,10 @@ function cardId(target: EventTarget | null) {
 
 function pointAtCard(event: PointerEvent) {
   if (event.pointerType === 'touch') return;
-  touchSelection.value = false;
   hoverNode.value = cardId(event.target);
 }
 function beginPointer(event: PointerEvent) {
-  touchSelection.value = event.pointerType === 'touch';
-  if (touchSelection.value) { hoverNode.value = ''; focusNode.value = ''; }
+  if (event.pointerType === 'touch') { hoverNode.value = ''; focusNode.value = ''; }
   startSelection(event);
 }
 function focusCard(event: FocusEvent) {
@@ -69,7 +66,7 @@ function focusCard(event: FocusEvent) {
   if (focusNode.value) hoverNode.value = '';
 }
 watch(() => props.active, active => {
-  if (!active) { hoverNode.value = ''; focusNode.value = ''; touchSelection.value = false; }
+  if (!active) { hoverNode.value = ''; focusNode.value = ''; }
 });
 const groupId = ref('');
 const groupName = ref('');
@@ -375,7 +372,7 @@ function render() {
 function renderEdges() {
   const edge = (from: string, to: string, reason: string, libraryName?: string): Edge => {
     const library = libraryName !== undefined;
-    const direct = !loopRoute && (from === selected.value || to === selected.value);
+    const direct = from === selected.value || to === selected.value;
     const color = library ? (direct ? 'var(--library-direct)' : 'var(--library-edge)')
       : (direct ? 'var(--direct-edge)' : 'var(--edge)');
     return {
@@ -398,7 +395,8 @@ function renderEdges() {
         edge(legendKey(use.id), node.id, use.reason, legends.value.find(legend => legend.id === use.id)!.name)))]);
 }
 
-watch(selected, () => { if (!loopRoute) renderEdges(); });
+watch(selected, renderEdges);
+const foregroundEdges = computed(() => getEdges.value.filter(edge => edge.data.direct));
 
 async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
   if (loading.value || saving.value || !idle.value || box.value || (dirty.value && mode === 'normal')) return;
@@ -710,6 +708,7 @@ function selectionKeys(event: KeyboardEvent) {
 
 watch(() => props.active, active => {
   if (active) return;
+  rearrangeDialog.value?.close();
   interruptDrag();
   ctrlHeld.value = false;
   newGroups.clear();
@@ -835,6 +834,8 @@ async function zoom(factor: number) {
 }
 
 async function relayout() {
+  if (!rearrangeDialog.value?.open) return;
+  rearrangeDialog.value.close();
   if (!editable.value || !idle.value || !layout.value || !reading.value) return;
   clearSelection();
   changed(rearrange(layout.value, ids.value, reading.value.relations));
@@ -886,11 +887,20 @@ onUnmounted(() => {
     </div>
 
     <div v-if="!loopId || reading" v-show="!loopId || hasNodes" class="canvas-workspace" :class="{ 'reader-stowed': loopId && !panelOpen }">
+      <dialog ref="rearrangeDialog" class="rearrange-dialog" :aria-labelledby="flowId + '-rearrange-title'"
+        :aria-describedby="flowId + '-rearrange-body'" @keydown.esc.stop>
+        <h2 :id="flowId + '-rearrange-title'">{{ t('canvasRearrangeTitle') }}</h2>
+        <p :id="flowId + '-rearrange-body'"><strong>{{ loop?.loop.title ?? t('dependencyCanvas') }}</strong> · {{ t('canvasRearrangeBody') }}</p>
+        <div class="canvas-actions">
+          <button type="button" autofocus @click="rearrangeDialog?.close()">{{ t('canvasCancelGroup') }}</button>
+          <button type="button" @click="relayout">{{ t('canvasRearrange') }}</button>
+        </div>
+      </dialog>
       <div ref="toolsRail" :inert="toolsCovered" :id="loopId ? flowId + '-tools' : 'dependency-tools'" class="canvas-rail" role="group"
         :aria-label="t('canvasTools')" :data-labels-dismissed="labelsDismissed || undefined"
         @pointerenter="labelsDismissed = false" @focusin="labelsDismissed = false">
         <button type="button" :aria-label="t('canvasRearrange')"
-          :disabled="!hasNodes || !editable || !idle || !!box" @click="relayout">
+          :disabled="!hasNodes || !editable || !idle || !!box" @click="rearrangeDialog?.showModal()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h12M16 12h5M9 18h12M3 4h4v4H3zM3 10h11v4H3zM3 16h4v4H3z" /></svg>
           <span class="canvas-tool-label" aria-hidden="true" @click.stop.prevent>{{ t('canvasRearrange') }}</span>
         </button>
@@ -994,6 +1004,13 @@ onUnmounted(() => {
                   @blur="leaveGroupMenu" @click.stop="openGroupMenu(id.slice(6), $event)">⋯</button>
               </div>
             </div>
+          </template>
+          <template #zoom-pane>
+            <svg v-if="foregroundEdges.length" class="foreground-edges" aria-hidden="true">
+              <path v-for="edge in foregroundEdges" :key="edge.id" :d="routes.get(edge.id)"
+                :class="{ 'library-use': edge.source.startsWith('legend:') }"
+                :marker-end="`url('#${getMarkerId(edge.markerEnd, flowId)}')`" />
+            </svg>
           </template>
           <template #edge-dependency="edge"><DependencyEdge v-bind="edge" :line="routes.get(edge.id)" :lit="litNode === edge.source || litNode === edge.target" :active="!litNode && selectedEdgeId === edge.id" @inspect="selectEdge(edge.id)" /></template>
         </VueFlow>

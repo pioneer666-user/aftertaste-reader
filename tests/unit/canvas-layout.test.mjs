@@ -92,6 +92,32 @@ test('分支在同层分行，汇合在所有来路右侧，环内保留身份�
 });
 
 
+test('多列图例、入口、18 个分支和汇合点各层居中，分列不改变逻辑层', () => {
+  const middle = Array.from({ length: 18 }, (_, i) => 'branch-' + i);
+  const roots = ['first', 'second'];
+  const edges = middle.flatMap((id, i) => [{ from: roots[i % 2], to: id }, { from: id, to: 'join' }]);
+  for (const size of [0, 3, 13]) {
+    const libraries = Array.from({ length: size }, (_, i) => ({ id: 'lib-' + i, targets: ['first', 'second'] }));
+    const ids = [...roots, ...middle, 'join', ...libraries.map(lib => lib.id)];
+    const layout = defaultLayout(ids, { edges, libraries });
+    const p = layout.positions;
+    const xs = list => [...new Set(list.map(id => p[id].x))].sort((a, b) => a - b);
+    const bands = [libraries.map(lib => lib.id), roots, middle, ['join']].filter(b => b.length);
+    assert.equal(xs(middle).length, 3);
+    assert.equal(xs(bands[0])[0], 72);
+    const midline = p.join.y + 28;
+    for (const [i, band] of bands.entries()) {
+      for (const x of xs(band)) {
+        const ys = band.filter(id => p[id].x === x).map(id => p[id].y).sort((a, b) => a - b);
+        assert.equal((ys[0] + ys.at(-1) + 56) / 2, midline);
+        assert.ok(ys.every((y, row) => !row || y - ys[row - 1] > 56));
+      }
+      if (i) assert.ok(xs(band)[0] - xs(bands[i - 1]).at(-1) - 212 > xs(middle)[1] - xs(middle)[0] - 212);
+    }
+    assert.deepEqual(rearrange(layout, ids, { edges, libraries }), layout);
+  }
+});
+
 test('屏幕吸附距离随倍率保持一致，两个轴均能拖离', () => {
   for (const axis of ['x', 'y']) {
     const cross = axis === 'x' ? 'y' : 'x';

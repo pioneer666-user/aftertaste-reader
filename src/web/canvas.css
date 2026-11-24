@@ -661,3 +661,18 @@
 @media (max-width: 500px) and (max-height: 480px) {
   :is(.dependency-canvas, .loop-canvas) { --canvas-map-height: clamp(32px, calc(100dvh - 384px), 88px); }
 }
+
+/* The original edge owns the hit area under cards. Only the selected ink is raised. */
+.foreground-edges {
+  position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 1;
+  fill: none; stroke: var(--direct-edge); stroke-width: 2.8;
+}
+.foreground-edges .library-use { stroke: var(--library-direct); stroke-dasharray: 5 3; }
+.rearrange-dialog {
+  max-width: min(26rem, calc(100vw - 32px)); padding: 22px; border-radius: 12px;
+  color: var(--text); background: var(--paper); border: 1px solid var(--line);
+}
+.rearrange-dialog::backdrop { background: rgb(0 0 0 / 35%); }
+.rearrange-dialog h2 { margin: 0; font-size: 1.15rem; }
+.rearrange-dialog p { margin: 12px 0 18px; line-height: 1.6; }
+.rearrange-dialog .canvas-actions { justify-content: flex-end; }
