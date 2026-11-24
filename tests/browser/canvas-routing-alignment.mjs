@@ -197,9 +197,9 @@ try {
     assert.equal(await scope.locator('.canvas-alignment').count(), 0);
     report.checks.push(name + ': zoom, reopen, independent layouts');
     if (!loop) continue;
-    for (const axis of ['x', 'y']) {
+    for (const [axis, offset] of [['x', 0], ['y', 0], ['x', 44], ['y', 180]]) {
       const seed = await readJSON(disk);
-      const positions = { choose: { x: 120, y: 185 }, basename: axis === 'x' ? { x: 440, y: 185 } : { x: 120, y: 340 },
+      const positions = { choose: { x: 120, y: 185 }, basename: axis === 'x' ? { x: 440, y: 185 + offset } : { x: 120 + offset, y: 340 },
         join: { x: 530, y: 435 }, compare: { x: 780, y: 205 }, 'legend:node-path': { x: 190, y: 495 } };
       await writeJSON(disk, { ...seed, layout: { ...initial, positions } });
       await page.reload();
@@ -225,8 +225,8 @@ try {
       assert.equal(path.from.card, id('choose')); assert.equal(path.to.card, id('basename'));
       assert.notEqual(path.arrow, 'none');
       assert.deepEqual(path.inside, []);
-      await screenshot('touch-' + axis);
-      report.checks.push(name + ': touching on ' + axis + ', visible branch arrow, length ' + path.length.toFixed(1));
+      await screenshot('touch-' + axis + '-' + offset);
+      report.checks.push(name + ': touching on ' + axis + ', offset ' + offset + ', visible branch arrow, length ' + path.length.toFixed(1));
     }
   }
   assert.deepEqual(report.errors, []);

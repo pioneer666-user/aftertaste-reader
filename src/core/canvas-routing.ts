@@ -61,9 +61,6 @@ export function canvasRoutes(cards: Map<string, CardBounds>, links: readonly Lin
   const paths = new Map<string, string>();
   for (const { link, a, b, start, end } of endpoints) {
     const p = start.point, q = end.point;
-    const gap = Math.abs(start.normal.x ? p.x - q.x : p.y - q.y);
-    const reach = start.normal === end.normal ? 36 : Math.min(gap * .48, 120);
-    const c = along(p, start.normal, reach), d = along(q, end.normal, reach);
     if (a === b) {
       // Round the two outside corners, keeping both ends tangent to the card.
       const right = p.x + 30, top = q.y - 30;
@@ -72,7 +69,18 @@ export function canvasRoutes(cards: Map<string, CardBounds>, links: readonly Lin
         `L ${right},${top + 12} Q ${right},${top} ${right - 12},${top}`,
         `L ${q.x + 12},${top} Q ${q.x},${top} ${q.x},${top + 12} L ${xy(q)}`,
       ].join(' '));
+    } else if (start.normal === end.normal) {
+      // An offset pair can touch along just part of a side. Turn beyond both
+      // faces so the approach cannot cut through the nearer corner.
+      const n = start.normal;
+      const offset = (q.x - p.x) * n.x + (q.y - p.y) * n.y;
+      const out = along(p, n, 6 + Math.max(0, offset));
+      const into = along(q, n, 6 + Math.max(0, -offset));
+      paths.set(link.id, `M ${xy(p)} L ${xy(out)} C ${xy(along(out, n, 28))} ${xy(along(into, n, 28))} ${xy(into)} L ${xy(q)}`);
     } else {
+      const gap = Math.abs(start.normal.x ? p.x - q.x : p.y - q.y);
+      const reach = Math.min(gap * .48, 120);
+      const c = along(p, start.normal, reach), d = along(q, end.normal, reach);
       paths.set(link.id, 'M ' + xy(p) + ' C ' + xy(c) + ' ' + xy(d) + ' ' + xy(q));
     }
   }
