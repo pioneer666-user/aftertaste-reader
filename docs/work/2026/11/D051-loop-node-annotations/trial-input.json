@@ -1,0 +1,61 @@
+{
+  "format": "aftertaste-loop-input/v1",
+  "title": "带前导零的数量能下单吗？",
+  "goal": "跟着同一份空订单集合，看数量文本在哪一步决定能否追加订单。",
+  "explanation": "假设两次调用各从空集合开始，分别传入 `\"04\"` 和 `\"4.5\"`。服务先把数量交给规则。前者转成整数 4，服务继续建单并追加。后者转成小数，规则抛出异常，调用在追加之前结束。",
+  "entry": "check",
+  "nodes": [
+    {
+      "id": "check",
+      "path": "src/rules.mjs",
+      "block_id": "x4y6az2y",
+      "title": "转换后再判断数量",
+      "explanation": "先用 Number 把输入转成数值，再查它是否是 1 到 9 之间的整数。规则在这里决定服务还能不能拿到一个可用的数量。",
+      "annotation": "`\"04\"` 转成 **4**，落在允许范围内。`\"4.5\"` 也能转成数字，却过不了整数检查。"
+    },
+    {
+      "id": "build",
+      "path": "src/service.mjs",
+      "block_id": "m3vuiqzi",
+      "title": "用返回的 4 建立订单",
+      "explanation": "转换后的数值回到服务，成为新订单的数量。假设集合起初为空，这一刻建好的订单编号是 1，集合本身仍为空。"
+    },
+    {
+      "id": "reject",
+      "path": "src/rules.mjs",
+      "block_id": "x4y6az2y",
+      "title": "小数触发异常",
+      "explanation": "4.5 未通过整数检查，规则在返回数量前抛出异常。服务里创建和追加订单的语句都走不到。"
+    },
+    {
+      "id": "append",
+      "path": "src/service.mjs",
+      "block_id": "cj9208pf",
+      "title": "追加后返回同一份订单",
+      "explanation": "服务把新订单追加到调用者传入的集合。调用者拿到这个对象，也能在集合的第一项看到它。"
+    }
+  ],
+  "edges": [
+    {
+      "from": "check",
+      "to": "build",
+      "reason": "数量满足整数和范围要求，规则返回数值 4。"
+    },
+    {
+      "from": "check",
+      "to": "reject",
+      "reason": "数值 4.5 含小数部分，规则走抛错分支。"
+    },
+    {
+      "from": "build",
+      "to": "append",
+      "reason": "订单已建好，服务下一步把它加入集合。"
+    }
+  ],
+  "reading_order": [
+    "check",
+    "build",
+    "append",
+    "reject"
+  ]
+}
