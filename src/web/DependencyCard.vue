@@ -73,8 +73,9 @@ button.package-card {
 .dependency-card:hover .card-surface { stroke: var(--ink); }
 .dependency-card[aria-pressed="true"] .card-surface { fill: var(--current); stroke: var(--action); stroke-width: 2.7; }
 .package-card[aria-pressed="true"] .card-surface { fill: var(--library-picked); stroke: var(--library-ink); }
-.dependency-card[data-route-member] .card-surface { fill: var(--route-surface); stroke: var(--route-ink); stroke-width: 3; }
-.dependency-card[data-route-member][aria-pressed="true"] .card-surface { stroke: var(--action); stroke-width: 4; }
+.dependency-card[data-route-member] .card-surface { fill: var(--paper); stroke: var(--route-ink); stroke-width: 1.8;
+  filter: drop-shadow(0 0 2px var(--route-glow)) drop-shadow(0 0 5px color-mix(in srgb, var(--route-glow) 60%, transparent)); }
+.dependency-card[data-route-member][aria-pressed="true"] .card-surface { fill: var(--current); stroke: var(--action); stroke-width: 3; }
 .card-focus, .card-pick { fill: none; stroke: none; }
 .dependency-card[data-box-selected="true"] .card-pick { stroke: var(--focus); stroke-width: 7; stroke-dasharray: 5 4; }
 button.dependency-card:focus-visible { outline: none; }

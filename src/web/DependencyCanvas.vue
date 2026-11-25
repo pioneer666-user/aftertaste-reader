@@ -528,7 +528,7 @@ function renderEdges() {
         reason: relation.reason, label: relation.label, accent, direct, onRoute },
       class: [library && 'library-use-edge', direct && 'direct-relation'].filter(Boolean).join(' '),
       style: { stroke: ink, strokeWidth: direct ? 2.8 : 1.9 },
-      markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: ink },
+      markerEnd: { type: MarkerType.ArrowClosed, markerUnits: 'userSpaceOnUse', width: 30, height: 30, color: ink },
       ariaLabel: relation.reason,
     };
   };

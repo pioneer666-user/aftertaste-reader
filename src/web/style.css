@@ -238,7 +238,7 @@ h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.45; margin: 0 0 18px; ove
 .file-name { flex: 0 0 auto; max-width: 100%; font-weight: 650; }
 .commit, code, pre, .repair-text { font-family: Consolas, "Cascadia Code", monospace; }
 .check-status { margin: 17px 0 0; color: var(--action); font-size: 12px; }
-.notice { padding: 13px 16px; background: var(--warning-surface); color: var(--warning); border: 1px solid var(--route-ink); font-size: 14px; line-height: 1.7; margin: 18px 0 0; }
+.notice { padding: 13px 16px; background: var(--warning-surface); color: var(--warning); border: 1px solid var(--warning-rim); font-size: 14px; line-height: 1.7; margin: 18px 0 0; }
 .notice p { margin: 0 0 4px; }
 .source-pane { background: var(--inset); min-width: 0; border-right: 1px solid var(--line); padding: 24px 0 30px; }
 .pane-label { margin: 0 0 18px; font-size: 12px; color: var(--muted); font-weight: 400; display: flex; gap: 12px; align-items: baseline; }

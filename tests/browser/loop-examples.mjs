@@ -94,6 +94,11 @@ try {
   await page.locator('[data-theme-choice=black]').click();
   await picker.selectOption(examples[1].name);
   await route(1);
+  const glow = await loop.locator('.route-band').evaluate(el => getComputedStyle(el).filter);
+  assert.match(glow, /blur/);
+  const surface = loop.locator('[data-step=reject]');
+  assert.notEqual(await surface.evaluate(el => getComputedStyle(el).boxShadow), 'none');
+  assert.equal(await loop.locator('marker').evaluateAll(markers => markers.every(m => m.getAttribute('markerUnits') === 'userSpaceOnUse')), true);
   const fork = await loop.locator('.foreground-edges > g:not(.edge-label)').evaluateAll(groups => groups.map(g => {
     const stroke = g.querySelector('path:last-of-type'), style = getComputedStyle(stroke);
     return { route: !!g.querySelector('.route-band'), width: parseFloat(style.strokeWidth), color: style.stroke,
@@ -135,6 +140,7 @@ try {
   await dep.locator('[data-file="src/service.mjs"]').click();
   assert.deepEqual(await members(), ['src/rules.mjs', 'src/service.mjs']);
   const dependencyEdge = dep.locator('[data-edge="file:src%2Frules.mjs→file:src%2Fservice.mjs"]');
+  assert.notEqual(await dep.locator('[data-route-member] .card-surface').first().evaluate(el => getComputedStyle(el).filter), 'none');
   await dependencyEdge.press('Enter');
   assert.match(await dep.locator('.edge-reason').innerText(), /数量/u);
   assert.equal(await dep.locator('[data-route-edge],.route-band').count(), 0);
