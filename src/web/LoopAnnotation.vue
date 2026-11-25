@@ -4,7 +4,7 @@ import type { SavedNode } from '../core/loops.js';
 import { translate, type Language } from './i18n.js';
 import { renderMarkdown } from './markdown.js';
 
-const props = defineProps<{ step: SavedNode; language: Language; open: boolean; raised: boolean }>();
+const props = defineProps<{ step: SavedNode; language: Language; open: boolean; raised: boolean; paneWidth: number }>();
 const emit = defineEmits<{ toggle: [open: boolean]; read: [source: boolean] }>();
 const t = (key: string) => translate(props.language, key);
 const attachment = ref<HTMLElement>();
@@ -27,19 +27,21 @@ watchPostEffect(onCleanup => {
   const area = card?.closest('.graph-area');
   const pane = card?.closest('.vue-flow__transformationpane');
   if (!note || !card || !area || !pane || !props.open || !props.raised) return;
+  const paneWidth = props.paneWidth;
   const obstacles = area.closest('.canvas-workspace')!.querySelectorAll('.loop-relations, .canvas-dock');
   const place = () => {
     const anchor = card.getBoundingClientRect(), frame = area.getBoundingClientRect();
     const scale = anchor.width / card.offsetWidth;
     if (!scale) return;
-    if (anchor.right <= frame.left || anchor.left >= frame.right || anchor.bottom <= frame.top || anchor.top >= frame.bottom) {
+    const right = frame.left + paneWidth;
+    if (anchor.right <= frame.left || anchor.left >= right || anchor.bottom <= frame.top || anchor.top >= frame.bottom) {
       note.classList.remove('above');
       note.style.removeProperty('left');
       note.style.removeProperty('--stem-x');
       return;
     }
     const width = note.offsetWidth * scale;
-    const left = Math.max(frame.left + 4, Math.min(anchor.left, frame.right - width - 4));
+    const left = Math.max(frame.left + 4, Math.min(anchor.left, right - width - 4));
     let bottom = frame.bottom;
     for (const item of obstacles) {
       const obstacle = item.getBoundingClientRect();

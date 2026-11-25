@@ -39,6 +39,26 @@ try {
   const state = () => graph.locator('.vue-flow__node,.vue-flow__transformationpane').evaluateAll(els => els.map(el => el.style.transform));
   const shot = name => page.screenshot({ path: path.join(run, name + '.png') });
   await card('check').waitFor();
+  for (const width of [800, 950]) {
+    await page.setViewportSize({ width, height: 900 });
+    await goto('aftertaste-loop/quantity-branches/check');
+    await graph.locator('.loop-reader-toggle[aria-expanded="true"]').waitFor();
+    await open('check', false);
+    const initial = await state(), initialPuts = puts;
+    await card('check').click({ position: { x: 12, y: 25 } });
+    await open('check', true);
+    assert.equal(await panel.getAttribute('aria-expanded'), 'true');
+    for (const part of ['.annotation-preview', '.annotation-link']) {
+      assert.ok(await note('check').locator(part).evaluate(el => {
+        const r = el.getBoundingClientRect();
+        return el.contains(document.elementFromPoint(r.right - 2, r.top + r.height / 2));
+      }), part + ' must remain reachable beside the open reading panel at ' + width);
+    }
+    assert.deepEqual(await state(), initial); assert.equal(puts, initialPuts);
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await goto('aftertaste-loop/quantity-branches/check');
+  await card('check').waitFor();
   await stow();
   await open('check', true);
   assert.equal(await note('check').locator('strong').innerText(), '0');

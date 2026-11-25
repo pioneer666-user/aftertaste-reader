@@ -239,6 +239,8 @@ const noteEdgeBounds = computed(() => {
   }
   return bounds;
 });
+const annotationPaneWidth = computed(() =>
+  paneSize.value.width - (panelOpen.value ? inspector.value?.offsetWidth ?? 0 : 0));
 // The annotation lives outside the measured card, so its disclosure never moves ports or writes layout.
 const defaultOpenNotes = computed(() => {
   const open = new Set<string>();
@@ -250,7 +252,7 @@ const defaultOpenNotes = computed(() => {
     if (!step.annotation) continue;
     const p = positions[step.id]!;
     const right = p.x + 240, top = p.y + nodeSize.height, bottom = top + 208;
-    if (right * zoom + x > paneSize.value.width || bottom * zoom + y > paneSize.value.height) continue;
+    if (right * zoom + x > annotationPaneWidth.value || bottom * zoom + y > paneSize.value.height) continue;
     const overlaps = (q: Point, width: number, height: number) =>
       q.x < right && q.x + width > p.x && q.y < bottom && q.y + height > top;
     if ([...visibleKeys.value].some(id => id !== step.id && overlaps(positions[id]!, nodeSize.width, nodeSize.height))) continue;
@@ -1045,7 +1047,7 @@ onUnmounted(() => {
               <small class="loop-node-number">{{ String(data.order + 1).padStart(2, '0') }}<template v-if="data.entry"> · {{ t('loopEntry') }}</template></small>
               <span>{{ data.label }}</span>
             </button>
-            <LoopAnnotation v-if="loopId && data.step.annotation" :step="data.step" :language="language"
+            <LoopAnnotation v-if="loopId && data.step.annotation" :step="data.step" :language="language" :pane-width="annotationPaneWidth"
               :open="noteChoices.get(data.key) ?? defaultOpenNotes.has(data.key)" :raised="raisedNote === data.key"
               @toggle="setNote(data.key, $event)" @read="readAnnotation(data.key, $event)" />
             <Handle id="out" type="source" :position="Position.Right" />
