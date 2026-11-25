@@ -45,6 +45,24 @@ test('完整依赖仅替换指定使用者，范围外新引用未核对，空�
   }
 });
 
+test('逐边标注在替换、校验和查询间独立往返，非法字段指向所属关系', () => {
+  for (const fields of [{}, { label: '<取值>' }, { color: 'theme' }, { label: '返回 4', color: 'green' }]) {
+    const use = { path: 'a.ts', reason: '提供数量', ...fields };
+    const actions = { reviews: [{ ...review('b.ts'), dependencies: [use] }],
+      legendUpserts: [{ id: 'number', kind: 'standard', name: 'Number', description: '转换', uses: [use] }] };
+    const { graph } = apply(empty(), actions);
+    assert.deepEqual(apply(graph, actions).graph, graph);
+    const saved = rules.parseGraph(JSON.stringify(graph));
+    assert.deepEqual(saved.legends[0].uses, [use]);
+    assert.deepEqual(rules.queryGraph(saved, 'b.ts').dependencies,
+      [{ dependency: 'a.ts', dependent: 'b.ts', reason: use.reason, ...fields }]);
+  }
+  for (const fields of [{ label: ' ' }, { label: 'a\nb' }, { label: 4 }, { color: '#142' }, { colour: 'red' }]) {
+    assert.throws(() => apply(empty(), { reviews: [{ ...review('b.ts'), dependencies: [{ path: 'a.ts', reason: 'r', ...fields }] }] }),
+      e => e.diagnostics[0].field.startsWith('$.reviews[0].dependencies[0]'));
+  }
+});
+
 test('明确删除反馈移除边与受影响存续者，降级被动失边状态，重复删除幂等', () => {
   const original = apply(empty(), { reviews: [review('service.ts', ['schema.ts', 'other.ts']), review('router.ts', ['service.ts']), review('schema.ts', ['schema.ts'])] }).graph;
   const { graph, removedEdges, affectedDependents } = apply(original, { remove: ['schema.ts'] });

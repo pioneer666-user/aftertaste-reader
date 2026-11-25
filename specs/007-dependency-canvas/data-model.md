@@ -6,7 +6,7 @@ D009 图协议定义内容、身份及更新方式。路径在该图内唯一且
 
 ## Library legend
 
-同一 `dependency-graph.json` 的可选 `legends` 数组保存当前图的库图例。每项包含稳定的 `id`、`kind`（`standard` 或 `third-party`）、`name`、`description` 及 `uses`（若干 `{path, reason}`，每个路径唯一且必须已登记）。同一图中 ID 唯一，显示名可重复。介绍和理由按原文呈现。具体校验与更新见 [图工具契约](../004-dependency-graph/contracts/cli.md#库图例)。
+同一 `dependency-graph.json` 的可选 `legends` 数组保存当前图的库图例。每项包含稳定的 `id`、`kind`（`standard` 或 `third-party`）、`name`、`description` 及 `uses`（每项含 `path`、`reason` 和选填的 `label`、`color`，每个路径唯一且必须已登记）。同一图中 ID 唯一，显示名可重复。介绍和理由按原文呈现。具体校验与更新见 [图工具契约](../004-dependency-graph/contracts/cli.md#库图例)。
 
 图例的布局键为 `legend:<id>`，与 Git 文件路径的语法互斥。节点名单由文件路径和图例键共同组成。两类对象使用同一移动、编组、保组重排、坐标、正式移除凭据和草稿对账规则。只更新介绍或用法不改变身份，使用文件被正式移除时对应关联随图发布删除。
 

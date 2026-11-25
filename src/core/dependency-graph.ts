@@ -1,3 +1,4 @@
+import { edgeAnnotationKeys, readEdgeAnnotation, type EdgeAnnotation } from './edge-annotation.js';
 import { isSourcePath } from './source-path.js';
 
 export const graphFormat = 'aftertaste-dependency-graph/v1';
@@ -29,8 +30,8 @@ export function readRemovalMarks(value: unknown): RemovalMarks | undefined {
 }
 
 export interface GraphNode { readonly path: string; readonly analysis: 'unreviewed' | 'reviewed' }
-export interface GraphEdge { readonly dependency: string; readonly dependent: string; readonly reason: string }
-export interface LibraryUse { readonly path: string; readonly reason: string }
+export interface GraphEdge extends EdgeAnnotation { readonly dependency: string; readonly dependent: string; readonly reason: string }
+export interface LibraryUse extends EdgeAnnotation { readonly path: string; readonly reason: string }
 export interface LibraryLegend {
   readonly id: string;
   readonly kind: 'standard' | 'third-party';
@@ -54,7 +55,7 @@ export function canvasIds(graph: DependencyGraph): string[] {
 export interface GraphReview {
   readonly path: string;
   readonly analysis: 'reviewed';
-  readonly dependencies: readonly { readonly path: string; readonly reason: string }[];
+  readonly dependencies: readonly LibraryUse[];
 }
 export interface GraphUpdate {
   readonly format: typeof updateFormat;
@@ -119,6 +120,9 @@ class Fields {
     if (typeof value !== 'string' || !value.isWellFormed() || value.trim() === '') this.fail('GRAPH_REASON', field);
     return value;
   }
+  annotation(data: Record<string, unknown>, field: string) {
+    return readEdgeAnnotation(data, field, (location, reason) => this.fail(reason, location));
+  }
   unique(seen: Set<string>, key: string, field: string): void {
     if (seen.has(key)) this.fail('GRAPH_DUPLICATE', field, { key });
     seen.add(key);
@@ -134,10 +138,10 @@ function readLegend(value: unknown, v: Fields, field: string, partial: boolean):
   const seen = new Set<string>();
   const uses = Object.hasOwn(data, 'uses') ? v.array(data.uses, field + '.uses').map((entry, index): LibraryUse => {
     const location = `${field}.uses[${index}]`;
-    const use = v.object(entry, ['path', 'reason'], [], location);
+    const use = v.object(entry, ['path', 'reason'], edgeAnnotationKeys, location);
     const path = v.path(use.path, location + '.path');
     v.unique(seen, path, location + '.path');
-    return { path, reason: v.reason(use.reason, location + '.reason') };
+    return { path, reason: v.reason(use.reason, location + '.reason'), ...v.annotation(use, location) };
   }) : undefined;
   return { id, ...(kind === 'standard' || kind === 'third-party' ? { kind } : {}),
     ...(Object.hasOwn(data, 'name') ? { name: v.reason(data.name, field + '.name') } : {}),
@@ -191,14 +195,14 @@ export function parseGraph(raw: string): DependencyGraph {
   const pairs = new Set<string>();
   const edges = v.array(data.edges, '$.edges').map((value, index): GraphEdge => {
     const field = `$.edges[${index}]`;
-    const edge = v.object(value, ['dependency', 'dependent', 'reason'], [], field);
+    const edge = v.object(value, ['dependency', 'dependent', 'reason'], edgeAnnotationKeys, field);
     const dependency = v.path(edge.dependency, `${field}.dependency`);
     const dependent = v.path(edge.dependent, `${field}.dependent`);
     for (const [key, filePath] of [['dependency', dependency], ['dependent', dependent]]) {
       if (!paths.has(filePath!)) v.fail('GRAPH_REFERENCE', `${field}.${key}`, { path: filePath! });
     }
     v.unique(pairs, JSON.stringify([dependency, dependent]), field);
-    return { dependency, dependent, reason: v.reason(edge.reason, `${field}.reason`) };
+    return { dependency, dependent, reason: v.reason(edge.reason, `${field}.reason`), ...v.annotation(edge, field) };
   });
   const legends = Object.hasOwn(data, 'legends') ? parseLibraryLegends(data.legends, paths) : undefined;
   return { format: graphFormat, source_commit: data.source_commit, nodes, edges, ...(legends ? { legends } : {}) };
@@ -233,11 +237,11 @@ export function parseUpdate(value: unknown): GraphUpdate {
     const seen = new Set<string>();
     const dependencies = v.array(review.dependencies, `${field}.dependencies`).map((value, index) => {
       const location = `${field}.dependencies[${index}]`;
-      const entry = v.object(value, ['path', 'reason'], [], location);
+      const entry = v.object(value, ['path', 'reason'], edgeAnnotationKeys, location);
       const dependency = v.path(entry.path, `${location}.path`);
       v.unique(seen, dependency, `${location}.path`);
       referenced.add(dependency);
-      return { path: dependency, reason: v.reason(entry.reason, `${location}.reason`) };
+      return { path: dependency, reason: v.reason(entry.reason, `${location}.reason`), ...v.annotation(entry, location) };
     });
     return { path: filePath, analysis: 'reviewed', dependencies };
   });
@@ -278,9 +282,9 @@ export function applyGraph(original: DependencyGraph, update: GraphUpdate): {
   let edges = original.edges.filter(edge => !users.has(edge.dependent));
   for (const review of update.reviews) {
     nodes.set(review.path, { path: review.path, analysis: 'reviewed' });
-    for (const dependency of review.dependencies) {
-      register(dependency.path);
-      edges.push({ dependency: dependency.path, dependent: review.path, reason: dependency.reason });
+    for (const { path, ...relation } of review.dependencies) {
+      register(path);
+      edges.push({ dependency: path, dependent: review.path, ...relation });
     }
   }
   const removed = new Set(update.remove);

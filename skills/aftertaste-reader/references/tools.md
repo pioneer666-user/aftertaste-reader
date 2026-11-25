@@ -139,6 +139,8 @@ const { file } = runSourceCli(['read', ...sourceArgs, '--path', sourcePath], max
 }
 ```
 
+文件依赖、逐文件库用法、闭环步骤边和逐步库用法采用同一组选填字段。`label` 是非空白的单行普通文字。`color` 可写 `theme`、`red` 或 `green`；省略即用当前主题。两项都可省略，每条关系仍须写 `reason`。完整列表替换时带回仍适用的标注。
+
 首次登记给出稳定 ID、类别、名称与介绍。ID 由 1—80 个小写字母、数字、点、下划线或连字符组成，首字符为字母或数字。类别为 standard 或 third-party。后续更新只提交 ID 和有变化的字段。uses 一旦提供就替换该图例所有使用关系，空数组可清空。路径必须已在合并后的图中登记，每个文件最多一条使用关系。用 `legendRemove: ["node-path"]` 正式移除图例，由画布协调清理它的布局。query-legends 查看实例，validate-graph 校验结构与端点。读者在网页可查看和摆放，内容变更由工具提交。
 
 ## 闭环
