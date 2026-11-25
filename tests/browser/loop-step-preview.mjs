@@ -52,6 +52,18 @@ try {
   await point('build');
   assert.match(await preview.innerText(), /假设集合起初为空.*集合本身仍为空/u);
   assert.equal(await card('build').getAttribute('title'), null);
+  // Frame the card from below so the group action lands directly above its upper left corner.
+  await graph.getByRole('button', { name: '选择工具', exact: true }).click();
+  const groupCard = await rect(card('build'));
+  await page.mouse.move(groupCard.right + 16, groupCard.bottom + 18);
+  await page.mouse.down(); await page.mouse.move(groupCard.left - 16, groupCard.top - 54, { steps: 8 }); await page.mouse.up();
+  const group = graph.locator('.canvas-group-float button').first();
+  await group.waitFor(); await point('build');
+  assert.ok(await group.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+  }), 'the group action remains reachable beside the step preview');
+  await group.click(); await graph.locator('.canvas-selection-form input').waitFor();
   await open(previewId);
   await point('build', false);
   await empty(); await page.waitForTimeout(380); assert.equal(await preview.count(), 0);

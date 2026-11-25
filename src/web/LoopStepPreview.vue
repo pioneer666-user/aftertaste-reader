@@ -16,7 +16,8 @@ onMounted(() => {
   const area = card.closest('.graph-area')!, workspace = area.closest('.canvas-workspace')!;
   // Screen-space dimensions keep the type size constant through canvas zoom.
   const selector = '.canvas-rail, .canvas-dock, .loop-canvas-heading > *, .loop-relations, .loop-reader-toggle, ' +
-    '.loop-annotation.expanded, .canvas-workspace:not(.reader-stowed) .canvas-inspector, .canvas-tools[open] .canvas-tools-menu, .example-panel:popover-open, .switch-directions button, .loop-source-panel';
+    '.canvas-group-float, .loop-group-menu, .loop-annotation.expanded, .canvas-workspace:not(.reader-stowed) .canvas-inspector, ' +
+    '.canvas-tools[open] .canvas-tools-menu, .example-panel:popover-open, .switch-directions button, .loop-source-panel';
   let frame = 0, displayed = false;
   const resize = new ResizeObserver(schedule);
   function schedule() { if (!frame) frame = requestAnimationFrame(place); }
