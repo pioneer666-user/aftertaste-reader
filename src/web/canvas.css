@@ -559,6 +559,11 @@
   content: ''; position: absolute; right: 3px; top: 12px; bottom: 12px; width: 4px; border-radius: 4px; background: var(--control-rim);
 }
 .loop-reader-toggle span { opacity: 0; }
+.loop-reader-toggle[aria-expanded="true"] {
+  top: 5px; transform: translateX(calc(100% + 8px)); width: 44px; height: 36px; border-radius: 6px;
+}
+.loop-reader-toggle[aria-expanded="true"] span { opacity: 1; }
+.loop-reader-toggle[aria-expanded="true"]::after { display: none; }
 .loop-reader-toggle:is(:hover,:focus-visible) { background: var(--canvas-float-surface); }
 .loop-reader-toggle:is(:hover,:focus-visible) span { opacity: 1; }
 .loop-reader-toggle:is(:hover,:focus-visible)::after { opacity: 0; }
@@ -613,9 +618,6 @@
   .loop-welcome.beside-catalog { visibility: hidden; }
   .loop-canvas .canvas-workspace { --reader-width: min(30rem, 100%); }
   .loop-canvas .canvas-inspector { z-index: 5; }
-  .loop-canvas .canvas-workspace:not(.reader-stowed) .loop-reader-toggle {
-    right: calc(var(--reader-width) - 44px); top: 0; transform: none; width: 44px; height: 46px;
-  }
   .loop-canvas .graph-area { height: 100%; }
   .loop-edit-panel { left: 50%; top: 8px; bottom: auto; max-height: calc(100% - 16px); }
   .loop-canvas-heading { inset: 6px 8px auto; }
