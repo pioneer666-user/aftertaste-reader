@@ -32,13 +32,28 @@ export function readRemovalMarks(value: unknown): RemovalMarks | undefined {
 export interface GraphNode { readonly path: string; readonly analysis: 'unreviewed' | 'reviewed' }
 export interface GraphEdge extends EdgeAnnotation { readonly dependency: string; readonly dependent: string; readonly reason: string }
 export interface LibraryUse extends EdgeAnnotation { readonly path: string; readonly reason: string }
+export interface SwitchLegend {
+  readonly type: 'switch';
+  readonly id: string;
+  readonly question: string;
+  readonly nodes: readonly string[];
+  readonly edges: readonly { from: string; to: string }[];
+}
 export interface LibraryLegend {
+  readonly type?: 'library';
   readonly id: string;
   readonly kind: 'standard' | 'third-party';
   readonly name: string;
   readonly description: string;
   readonly uses: readonly LibraryUse[];
 }
+export type GraphLegend = LibraryLegend | SwitchLegend;
+export function isLibrary(legend: GraphLegend): legend is LibraryLegend { return legend.type !== 'switch'; }
+
+export function isSwitchDefinition(value: unknown): value is SwitchLegend {
+  return !!value && typeof value === 'object' && 'type' in value && value.type === 'switch';
+}
+
 type LegendPatch = Pick<LibraryLegend, 'id'> & Partial<Omit<LibraryLegend, 'id'>>;
 
 export interface DependencyGraph {
@@ -46,7 +61,7 @@ export interface DependencyGraph {
   readonly source_commit: string;
   readonly nodes: readonly GraphNode[];
   readonly edges: readonly GraphEdge[];
-  readonly legends?: readonly LibraryLegend[];
+  readonly legends?: readonly GraphLegend[];
 }
 
 export function canvasIds(graph: DependencyGraph): string[] {
@@ -62,7 +77,7 @@ export interface GraphUpdate {
   readonly register: readonly string[];
   readonly reviews: readonly GraphReview[];
   readonly remove: readonly string[];
-  readonly legendUpserts: readonly LegendPatch[];
+  readonly legendUpserts: readonly (LegendPatch | SwitchLegend)[];
   readonly legendRemove: readonly string[];
 }
 export interface GraphDiagnostic {
@@ -131,8 +146,9 @@ class Fields {
 
 function readLegend(value: unknown, v: Fields, field: string, partial: boolean): LegendPatch {
   const keys = ['kind', 'name', 'description', 'uses'];
-  const data = v.object(value, partial ? ['id'] : ['id', ...keys], partial ? keys : [], field);
+  const data = v.object(value, partial ? ['id'] : ['id', ...keys], partial ? [...keys, 'type'] : ['type'], field);
   const id = v.legendId(data.id, field + '.id');
+  if ('type' in data && data.type !== 'library') v.fail('GRAPH_LEGEND_TYPE', field + '.type');
   const { kind } = data;
   if (Object.hasOwn(data, 'kind') && kind !== 'standard' && kind !== 'third-party') v.fail('GRAPH_LEGEND_KIND', field + '.kind');
   const seen = new Set<string>();
@@ -143,7 +159,7 @@ function readLegend(value: unknown, v: Fields, field: string, partial: boolean):
     v.unique(seen, path, location + '.path');
     return { path, reason: v.reason(use.reason, location + '.reason'), ...v.annotation(use, location) };
   }) : undefined;
-  return { id, ...(kind === 'standard' || kind === 'third-party' ? { kind } : {}),
+  return { id, ...(data.type === 'library' ? { type: 'library' } : {}), ...(kind === 'standard' || kind === 'third-party' ? { kind } : {}),
     ...(Object.hasOwn(data, 'name') ? { name: v.reason(data.name, field + '.name') } : {}),
     ...(Object.hasOwn(data, 'description') ? { description: v.reason(data.description, field + '.description') } : {}),
     ...(uses ? { uses } : {}) };
@@ -154,7 +170,7 @@ function completeLegend(patch: LegendPatch, v: Fields, field: string): LibraryLe
   if (kind === undefined) v.fail('GRAPH_FIELDS', field + '.kind');
   if (name === undefined) v.fail('GRAPH_FIELDS', field + '.name');
   if (description === undefined) v.fail('GRAPH_FIELDS', field + '.description');
-  return { id, kind, name, description, uses };
+  return { id, ...(patch.type && { type: patch.type }), kind, name, description, uses };
 }
 
 function checkUses(uses: readonly LibraryUse[], paths: { has(path: string): boolean }, v: Fields, field: string) {
@@ -163,15 +179,66 @@ function checkUses(uses: readonly LibraryUse[], paths: { has(path: string): bool
   });
 }
 
-export function parseLibraryLegends(value: unknown, paths: ReadonlySet<string>): LibraryLegend[] {
+export function readSwitch(value: unknown, field: string, fail: (field: string, reason: string) => never): SwitchLegend {
+  const object = (item: unknown, keys: string[], location: string) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item) ||
+        Object.keys(item).length !== keys.length || keys.some(key => !Object.hasOwn(item, key))) fail(location, 'GRAPH_FIELDS');
+    return item as Record<string, unknown>;
+  };
+  const data = object(value, ['id', 'type', 'question', 'nodes', 'edges'], field);
+  if (!isLegendId(data.id)) return fail(field + '.id', 'GRAPH_LEGEND_ID');
+  if (data.type !== 'switch') return fail(field + '.type', 'GRAPH_LEGEND_TYPE');
+  if (typeof data.question !== 'string' || !data.question.isWellFormed() || !data.question.trim()) return fail(field + '.question', 'GRAPH_REASON');
+  if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) return fail(field, 'GRAPH_FIELDS');
+  const seen = new Set<string>();
+  const nodes = Array.from(data.nodes, (id: unknown, i) => {
+    if (typeof id !== 'string' || !id) return fail(field + '.nodes[' + i + ']', 'GRAPH_REFERENCE');
+    if (seen.has(id)) return fail(field + '.nodes[' + i + ']', 'GRAPH_DUPLICATE');
+    seen.add(id);
+    return id;
+  });
+  seen.clear();
+  const edges = Array.from(data.edges, (item, i) => {
+    const location = field + '.edges[' + i + ']';
+    const { from, to } = object(item, ['from', 'to'], location);
+    if (typeof from !== 'string' || typeof to !== 'string') return fail(location, 'GRAPH_REFERENCE');
+    const key = JSON.stringify([from, to]);
+    if (seen.has(key)) return fail(location, 'GRAPH_DUPLICATE');
+    seen.add(key);
+    return { from, to };
+  });
+  if (!nodes.length && !edges.length) return fail(field, 'GRAPH_EMPTY_TARGETS');
+  return { type: 'switch', id: data.id, question: data.question, nodes, edges };
+}
+
+export function checkSwitchTargets(legend: SwitchLegend, field: string, nodes: ReadonlySet<string>, pairs: ReadonlySet<string>,
+  fail: (field: string, reason: string) => never) {
+  legend.nodes.forEach((id, i) => { if (!nodes.has(id)) fail(field + '.nodes[' + i + ']', 'GRAPH_REFERENCE'); });
+  legend.edges.forEach(({ from, to }, i) => {
+    if (!pairs.has(JSON.stringify([from, to]))) fail(field + '.edges[' + i + ']', 'GRAPH_REFERENCE');
+  });
+}
+
+export function parseLegends(value: unknown, paths: ReadonlySet<string>): GraphLegend[] {
   const v = new Fields('GRAPH_INVALID');
   const ids = new Set<string>();
   return v.array(value, '$.legends').map((entry, index) => {
     const field = `$.legends[${index}]`;
-    const legend = completeLegend(readLegend(entry, v, field, false), v, field);
+    const legend = isSwitchDefinition(entry) ? readSwitch(entry, field, (f, r) => v.fail(r, f))
+      : completeLegend(readLegend(entry, v, field, false), v, field);
     v.unique(ids, legend.id, field + '.id');
-    checkUses(legend.uses, paths, v, field);
+    if (isLibrary(legend)) checkUses(legend.uses, paths, v, field);
     return legend;
+  });
+}
+
+function checkGraphSwitches(legends: readonly GraphLegend[], paths: ReadonlySet<string>, pairs: Set<string>, v: Fields,
+  fields?: ReadonlyMap<string, string>) {
+  for (const legend of legends.filter(isLibrary)) {
+    for (const use of legend.uses) pairs.add(JSON.stringify([legendKey(legend.id), use.path]));
+  }
+  legends.forEach((legend, i) => {
+    if (!isLibrary(legend)) checkSwitchTargets(legend, fields?.get(legend.id) ?? `$.legends[${i}]`, paths, pairs, (f, r) => v.fail(r, f, { id: legend.id }));
   });
 }
 
@@ -204,7 +271,8 @@ export function parseGraph(raw: string): DependencyGraph {
     v.unique(pairs, JSON.stringify([dependency, dependent]), field);
     return { dependency, dependent, reason: v.reason(edge.reason, `${field}.reason`), ...v.annotation(edge, field) };
   });
-  const legends = Object.hasOwn(data, 'legends') ? parseLibraryLegends(data.legends, paths) : undefined;
+  const legends = Object.hasOwn(data, 'legends') ? parseLegends(data.legends, paths) : undefined;
+  if (legends) checkGraphSwitches(legends, paths, pairs, v);
   return { format: graphFormat, source_commit: data.source_commit, nodes, edges, ...(legends ? { legends } : {}) };
 }
 
@@ -251,7 +319,7 @@ export function parseUpdate(value: unknown): GraphUpdate {
   const ids = new Set<string>();
   const legendUpserts = (Object.hasOwn(data, 'legendUpserts') ? v.array(data.legendUpserts, '$.legendUpserts') : []).map((entry, index) => {
     const field = `$.legendUpserts[${index}]`;
-    const patch = readLegend(entry, v, field, true);
+    const patch = isSwitchDefinition(entry) ? readSwitch(entry, field, (f, r) => v.fail(r, f)) : readLegend(entry, v, field, true);
     v.unique(ids, patch.id, field + '.id');
     return patch;
   });
@@ -293,16 +361,26 @@ export function applyGraph(original: DependencyGraph, update: GraphUpdate): {
   update.remove.forEach(filePath => nodes.delete(filePath));
   affected.forEach(filePath => nodes.set(filePath, { path: filePath, analysis: 'unreviewed' }));
   edges = edges.filter(edge => !removed.has(edge.dependency) && !removed.has(edge.dependent));
-  const legends = new Map<string, LibraryLegend>((original.legends ?? []).map(legend => [legend.id, {
+  const legends = new Map<string, GraphLegend>((original.legends ?? []).map(legend => [legend.id, isLibrary(legend) ? {
     ...legend, uses: legend.uses.filter(use => !removed.has(use.path)),
-  }]));
+  } : legend]));
   update.legendRemove.forEach(id => legends.delete(id));
   const fields = new Fields('GRAPH_INPUT_INVALID');
+  const locations = new Map((original.legends ?? []).map((item, i) => [item.id, `$.legends[${i}]`]));
   update.legendUpserts.forEach((patch, index) => {
     const field = `$.legendUpserts[${index}]`;
+    locations.set(patch.id, field);
+    const previous = legends.get(patch.id);
+    if (previous && (previous.type === 'switch') !== (patch.type === 'switch')) fields.fail('GRAPH_LEGEND_TYPE', field + '.type');
+    if (patch.type === 'switch') {
+      legends.set(patch.id, patch);
+      return;
+    }
     if (patch.uses) checkUses(patch.uses, nodes, fields, field);
-    legends.set(patch.id, completeLegend({ ...legends.get(patch.id), ...patch }, fields, field));
+    legends.set(patch.id, completeLegend({ ...(previous && isLibrary(previous) ? previous : {}), ...patch }, fields, field));
   });
+  checkGraphSwitches([...legends.values()], new Set(nodes.keys()),
+    new Set(edges.map(edge => JSON.stringify([edge.dependency, edge.dependent]))), fields, locations);
   return { graph: { format: graphFormat, source_commit: original.source_commit,
     nodes: [...nodes.values()].sort((a, b) => compare(a.path, b.path)), edges: edges.sort(edgeOrder),
     ...(legends.size ? { legends: [...legends.values()].sort((a, b) => compare(a.id, b.id)) } : {}) },

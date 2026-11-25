@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { isLegendKey, legendKey } from '../core/dependency-graph.js';
+import { isLegendKey, isLibrary, legendKey } from '../core/dependency-graph.js';
 import { isNodeId, LoopError, parseSavedLoop } from '../core/loops.js';
 import { CanvasLayoutService } from './canvas-layout.js';
 import type { LayoutReading, LayoutStore, LayoutTarget } from './canvas-layout.js';
@@ -82,10 +82,11 @@ export class LoopReaderService {
     const loop = parseSavedLoop(raw, id);
     const ids = new Set([...loop.reading_order, ...loop.legends.map(legend => legendKey(legend.id))]);
     const graphVersion = createHash('sha256').update(JSON.stringify([projectRoot, id, raw])).digest('hex');
-    const relations = { order: [loop.entry, ...loop.reading_order.filter(id => id !== loop.entry)],
+    const switches = loop.legends.filter(legend => !isLibrary(legend)).map(legend => legendKey(legend.id));
+    const relations = { ...(switches.length && { switches }), order: [loop.entry, ...loop.reading_order.filter(id => id !== loop.entry)],
       annotatedSteps: loop.nodes.filter(node => node.annotation).map(node => node.id),
       edges: loop.edges.map(({ from, to }) => ({ from, to })),
-      libraries: loop.legends.map(legend => ({ id: legendKey(legend.id),
+      libraries: loop.legends.filter(isLibrary).map(legend => ({ id: legendKey(legend.id),
         targets: loop.nodes.filter(node => node.library_uses?.some(use => use.id === legend.id)).map(node => node.id) })) };
     return { loop, projectRoot, ids, graphVersion, relations, nodeRemovals: {}, confirmed: new Set<string>() };
   }

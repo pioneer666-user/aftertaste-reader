@@ -84,3 +84,7 @@ node tests/browser/loop-reader.mjs
 ## D049 · 步骤连线和密集分支
 
 按[共用双图检查](../007-dependency-canvas/quickstart.md#d049--双图遮线与重排)在输入样例闭环中查看入口到汇总的直达线，确认重排后对照最左库列和三个并列样例子列。
+
+## D053 · 两图试读
+
+在仓库根运行 `npm run build`，再执行 `node tests/browser/switch-legends.mjs`。脚本以隔离的固定源码项目验证两图。此分册核对的场景为从 check 展开两步，定位、返回、收起，再从 reject 深链读固定源码。

@@ -60,7 +60,7 @@ export class CanvasLayoutService {
         revision = saved.revision;
         const renewed = renewedPaths(ordered, saved.nodeRemovals, nodeRemovals);
         const positions = saved.layout.positions;
-        reconciled = renewed.size > 0 || Object.keys(positions).length !== ids.size ||
+        reconciled = !!saved.layout.expanded?.some(id => !graph.relations.switches?.includes(id)) || renewed.size > 0 || Object.keys(positions).length !== ids.size ||
           ordered.some(id => !Object.hasOwn(positions, id));
         layout = reconciled ? reconcileLayout(saved.layout, ordered, renewed, graph.relations) : saved.layout;
         if (reconciled && !graphProblem) checkRemovals(target, saved.layout, ids, confirmed);
@@ -122,11 +122,14 @@ export class CanvasLayoutService {
     const checkVersion = (current: string) => {
       if (current !== graphVersion) throw new CanvasError('LAYOUT_GRAPH_CHANGED', '图身份或内容已变化。', '刷新以读取当前图。', { graphPath });
     };
-    const { ids, confirmed, nodeRemovals, graphVersion: currentVersion } = await target.readGraph();
+    const { ids, confirmed, nodeRemovals, graphVersion: currentVersion, relations } = await target.readGraph();
     checkVersion(currentVersion);
     if (Object.keys(candidate.positions).length !== ids.size ||
         Object.keys(candidate.positions).some(id => !ids.has(id))) {
       throw new CanvasError('LAYOUT_INVALID', '坐标名单与当前图不一致。', '刷新布局后重试。', { layoutPath, field: '$.layout.positions' });
+    }
+    if (candidate.expanded?.some(id => !relations.switches?.includes(id))) {
+      throw new CanvasError('LAYOUT_INVALID', '展开状态引用了非开关成员。', '刷新布局后重试。', { layoutPath, field: '$.layout.expanded' });
     }
     const raw = await target.store.read();
     let saved;

@@ -15,3 +15,7 @@ fixture 在 .local/D009/run-*/ 建合成 Git 仓库与子项目，从不同 cwd 
 正式测试验证 G01—G05：空图版本身份、项目映射、未登记与未核对/已核对无依赖、局部替换与循环、删除及降级、坏图保留、固定 A 不受 HEAD/工作区影响、缺对象仍可查询且检查失败。存储注入覆盖碰撞、部分写入、link/rename 失败、发布后清理失败和链接绕界；断言原图字节、输入和无关资料。
 
 受共用目录/取源改动影响，另串行运行现有 tests/unit/fixed-source.test.mjs、tests/integration/fixed-source.test.mjs、tests/integration/document-blocks.test.mjs。不涉及服务/浏览器，作者体验不适用。实际执行与未验证平台以 D009 handoff 为准，不将本指南当成功记录。
+
+## D053 · 两图试读
+
+在仓库根运行 `npm run build`，再执行 `node tests/browser/switch-legends.mjs`。脚本以隔离的固定源码项目验证两图。此分册核对的场景为校验后查询 audit-trail，核实际有向端点并重复提交。

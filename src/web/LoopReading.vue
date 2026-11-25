@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, watch, watchPostEffect } from 'vue';
+import { isLibrary } from '../core/dependency-graph.js';
 import type { ReadingLoop } from '../application/loops.js';
 import { problemText, translate } from './i18n.js';
 import type { Language } from './i18n.js';
@@ -15,6 +16,7 @@ const props = withDefaults(defineProps<{ reading: ReadingLoop; language: Languag
 const emit = defineEmits<{ select: [id: string]; addToNotes: [quote: NoteQuote] }>();
 const t = (key: string) => translate(props.language, key);
 const loop = computed(() => props.reading.loop);
+const libraries = computed(() => loop.value.legends.filter(isLibrary));
 const nodes = computed(() => new Map(loop.value.nodes.map(node => [node.id, node])));
 const step = computed(() => nodes.value.get(props.selected));
 const source = computed(() => props.reading.sources.find(item => item.node_id === props.selected));
@@ -181,7 +183,7 @@ onUnmounted(() => window.clearTimeout(closeTimer));
       <div class="markdown" v-html="renderMarkdown(loop.explanation)"></div>
       <p class="canvas-hint">{{ t('commit') }} <code>{{ loop.source_commit }}</code></p>
     </details>
-    <details v-for="legend in loop.legends" :key="legend.id">
+    <details v-for="legend in libraries" :key="legend.id">
       <summary>{{ legend.name }}</summary>
       <p>{{ legend.description }}</p>
       <ul><li v-for="use in legend.uses" :key="use.path"><code>{{ use.path }}</code> · {{ use.reason }}</li></ul>
@@ -214,7 +216,7 @@ onUnmounted(() => window.clearTimeout(closeTimer));
       </template>
     </div>
     <details v-for="use in step.library_uses" :key="step.id + use.id">
-      <summary>{{ loop.legends.find(legend => legend.id === use.id)?.name }}</summary>
+      <summary>{{ libraries.find(legend => legend.id === use.id)?.name }}</summary>
       <p>{{ use.reason }}</p>
     </details>
     <button v-if="step.lines" ref="sourceTrigger" type="button" class="loop-source-trigger"

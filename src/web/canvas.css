@@ -692,3 +692,28 @@
 
 /* Let an explicitly opened note sit above neighboring hand-placed cards. */
 .loop-canvas .vue-flow__node:has(.loop-annotation.raised) { z-index: 2 !important; }
+
+.switch-question {
+  display: block; width: max-content; max-width: 320px;
+  font: inherit; font-size: 15px; text-align: start; color: var(--text); border: 0;
+  background: color-mix(in srgb, var(--direct-edge) 5%, var(--paper));
+  padding: 5px 9px; cursor: grab; overflow-wrap: anywhere;
+}
+.switch-question span { text-decoration: underline dotted; text-underline-offset: 4px; }
+.switch-question:hover span { text-decoration-style: solid; }
+.switch-question small { margin-inline-start: 9px; color: var(--muted); white-space: nowrap; }
+.switch-question:focus-visible, .switch-question[data-box-selected] { outline: 2px solid var(--direct-edge); outline-offset: 2px; }
+.switch-directions { position: absolute; inset: 0 auto 0 0; pointer-events: none; z-index: 4; }
+.switch-directions button {
+  pointer-events: auto; position: absolute; border: 1px solid var(--line); border-radius: 7px;
+  padding: 5px 9px; background: var(--paper); color: var(--text); cursor: pointer;
+}
+.switch-directions [data-direction="Left"] { left: 8px; top: 44%; }
+.switch-directions [data-direction="Right"] { right: 8px; top: 44%; }
+.switch-directions [data-direction="Top"] { top: 8px; left: 50%; transform: translateX(-50%); }
+.switch-directions [data-direction="Bottom"] { bottom: 10px; left: 50%; transform: translateX(-50%); }
+.switch-return { bottom: 16px; left: 50%; transform: translateX(-50%); }
+.switch-directions:has([data-direction="Bottom"]) .switch-return { bottom: 52px; }
+.switch-pulse { outline: 2px solid var(--direct-edge); outline-offset: 2px; }
+.edge-ink.switch-pulse { outline: none; }
+.edge-ink.switch-pulse .vue-flow__edge-path { opacity: 1; }

@@ -25,3 +25,7 @@ D043 从笔记打开步骤时使用当前闭环的既有 GET。以闭环 ID 和�
 详情 GET 的 `result.loop` 随各自的关系携带 `label` 和 `color`。两图 GET 均附分层输入 `relations`，包含有向边端点 `edges` 与库的画布键和目标 `libraries: [{id,targets}]`。闭环另附入口优先的 `order`。旧图仅有文件用法时目标为空；完整个人坐标及组成员仍按原契约往返。
 
 GET /api/loops/:id 的 result.loop.nodes 可有 annotation；依据对应 node_id 的 result.sources 显示固定行或原诊断。折展和选步均无布局写入。
+
+## D053 · 留在原视野展开两步
+
+复用依赖图个人布局契约。开关取自本闭环 current/loop.json，展开写本闭环 layout.json。

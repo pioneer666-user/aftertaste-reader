@@ -78,3 +78,7 @@ tests/integration/loops.test.mjs
 ```
 
 **Structure Decision** 纯规则管结构及引用关系，用例负责校验与取源，适配器管目录和发布。CLI 提供 JSON 及无需持久源码的 Markdown 读回。
+
+## D053 · 为闭环自拟一个问句
+
+在 `src/core/loops.ts` 接入现有读写流程。开关包含 id、type=switch、question、nodes（步骤 id）、edges（{from,to} 对）。至少一个目标，库选择沿用 id、paths。 复用原固定源码、布局修订和候选验证机制。

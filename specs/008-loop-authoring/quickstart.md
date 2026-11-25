@@ -21,3 +21,7 @@ node tests/fixtures/loop-authoring.mjs $trial
 按 [CLI 协议](contracts/cli.md)在新进程读同一闭环。集成用例覆盖原讲解与图例改写及 HEAD 前进、原提交引用暂不可用、失效块与悬空边、重复 ID 和一次中断后的重试。Markdown 试读仅落盘解释与源码定位。
 
 已有路线但首次未选讲法的真实会话，按 [D050 行为用例](../../tests/skills/generation.md#项目讲法)独立验证。另以无讲法的会话直接重读已保存闭环。
+
+## D053 · 两图试读
+
+在仓库根运行 `npm run build`，再执行 `node tests/browser/switch-legends.mjs`。脚本以隔离的固定源码项目验证两图。此分册核对的场景为读回 quantity-outcomes 的问句、两个步骤及固定源码。

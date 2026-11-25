@@ -82,3 +82,7 @@ src/cli/main.ts                      # 三个图入口
 ## Complexity Tracking
 
 无原则违反，不新增通用存储或图框架。
+
+## D053 · 从问句了解次要依赖
+
+在 `src/core/dependency-graph.ts` 接入现有读写流程。legendUpserts 用 type=switch 提交完整 question、nodes、edges。库沿用原局部更新；legendRemove 可移除任一类型。 复用原固定源码、布局修订和候选验证机制。

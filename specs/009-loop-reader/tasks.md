@@ -138,3 +138,7 @@ US2 在 US1 的已保存读回上增加图例。US3 复用已具备阅读与图�
 ### Incremental Delivery
 
 兼容已有成品和依赖图，独审完成后交作者试读。
+
+## D053 · 留在原视野展开两步
+
+- [x] T038 [US4] 在 `src/web/DependencyCanvas.vue` 落实 FR-014，沿对应契约串行验证 SC-014。

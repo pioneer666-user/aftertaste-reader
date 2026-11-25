@@ -20,8 +20,10 @@ import LoopAnnotation from './LoopAnnotation.vue';
 import LoopReading from './LoopReading.vue';
 import { groupBounds, maxZoom, minZoom, moveMembers, nodeSize, rearrange, reconcileLayout, renewedPaths, updateGroup } from '../core/canvas-layout.js';
 import type { CanvasGroup, CanvasLayout, Point } from '../core/canvas-layout.js';
-import { canvasIds, isLegendKey, legendKey } from '../core/dependency-graph.js';
-import type { LibraryLegend } from '../core/dependency-graph.js';
+import { switchVisibility } from '../core/switch-visibility.js';
+import SwitchDirections from './SwitchDirections.vue';
+import { canvasIds, isLibrary, isLegendKey, legendKey } from '../core/dependency-graph.js';
+import type { LibraryLegend, SwitchLegend } from '../core/dependency-graph.js';
 import type { CanvasReading } from '../application/dependency-canvas.js';
 import type { LayoutWrite } from '../application/canvas-layout.js';
 import type { LoopCanvasReading, LoopEntry, LoopRoute } from '../application/loop-reader.js';
@@ -211,7 +213,7 @@ const stepNavigation = computed(() => {
   );
   return actions.map(action => ({ ...action, title: [t(action.label), graph.nodes.find(node => node.id === action.id)?.title].filter(Boolean).join(' · ') }));
 });
-const nodes = computed(() => loop.value ?
+const allNodes = computed(() => loop.value ?
   loop.value.loop.nodes.map(node => ({ key: node.id, label: node.title, step: node, entry: node.id === loop.value?.loop.entry,
     order: loop.value?.loop.reading_order.indexOf(node.id) ?? -1 })) :
   (dependency.value?.graph.nodes ?? []).map(node => ({ key: node.path, label: node.path, analysis: node.analysis })));
@@ -224,13 +226,81 @@ const selectedFileName = computed(() => {
   return dependency.value?.graph.nodes.some(node => node.path !== path && basename(node.path) === name) ? path : name;
 });
 const legends = computed(() => loop.value?.loop.legends ?? dependency.value?.graph.legends ?? []);
-const visibleLegends = computed(() => legends.value.filter(legend => !loop.value ||
+const libraries = computed(() => legends.value.filter(isLibrary));
+const switches = computed(() => legends.value.filter((item): item is SwitchLegend => !isLibrary(item)));
+const expanded = computed(() => layout.value?.expanded ?? []);
+const visibility = computed(() => switchVisibility(switches.value, expanded.value));
+const nodes = computed(() => allNodes.value.filter(node => visibility.value.node(node.key)));
+const visibleLegends = computed(() => legends.value.filter(legend => !isLibrary(legend) || !loop.value ||
   reading.value?.relations.libraries.some(item => item.id === legendKey(legend.id) && item.targets.length)));
+const legendLabel = (legend: typeof legends.value[number]) => isLibrary(legend) ? legend.name + ' · ' + legendKind(legend.kind) : legend.question;
+const edgeId = (from: string, to: string) => nodeId(from) + '→' + nodeId(to);
+function switchChange(legend: SwitchLegend) {
+  const key = legendKey(legend.id);
+  const open = expanded.value.includes(key);
+  const next = open ? expanded.value.filter(id => id !== key) : [...expanded.value, key];
+  const after = switchVisibility(switches.value, next);
+  const nodes = legend.nodes.filter(id => visibility.value.node(id) !== after.node(id));
+  const changedNodes = new Set(nodes);
+  const edges = legend.edges.filter(({ from, to }) => visibility.value.edge(from, to) !== after.edge(from, to) &&
+    !changedNodes.has(from) && !changedNodes.has(to)).map(e => edgeId(e.from, e.to));
+  return { next, open, nodes, edges };
+}
+const switchHints = computed(() => new Map(switches.value.map(legend => {
+  const { open, nodes, edges } = switchChange(legend);
+  const count = nodes.length || edges.length;
+  const unit = nodes.length || (!edges.length && legend.nodes.length) ? (loop.value ? 'Steps' : 'Files') : 'Relations';
+  return [legend.id, t(open ? 'switchClose' : 'switchOpen') + ' ' + count + ' ' + t('switch' + unit)];
+})));
+const disclosure = shallowRef<{ id: string; nodes: string[]; edges: string[] }>();
+const pulse = shallowRef(new Set<string>());
+let pulseTimer: ReturnType<typeof setTimeout>;
+function toggleSwitch(legend: SwitchLegend) {
+  if (!editable.value || !layout.value || dragging.value) return;
+  const change = switchChange(legend);
+  clearSelection();
+  changed({ ...layout.value, expanded: change.next });
+  disclosure.value = change.open ? undefined : { id: legend.id, nodes: change.nodes,
+    edges: change.edges };
+  clearTimeout(pulseTimer);
+  pulse.value = new Set(change.open ? [] : [...change.nodes.map(nodeId), ...change.edges]);
+  pulseTimer = setTimeout(() => { pulse.value = new Set(); }, 1300);
+  render();
+  if (selectedEdgeId.value && !getEdges.value.some(edge => edge.id === selectedEdgeId.value)) selectedEdgeId.value = '';
+}
+function focusSwitch(id: string) {
+  const source = graphArea.value?.querySelector<HTMLButtonElement>('[data-legend="' + CSS.escape(id) + '"]');
+  (source ?? graphArea.value)?.focus({ preventScroll: true });
+}
+function revealStep(id: string) {
+  if (!layout.value || visibility.value.node(id)) return;
+  const legend = switches.value.find(item => item.nodes.includes(id));
+  if (legend) {
+    changed({ ...layout.value, expanded: [...expanded.value, legendKey(legend.id)] });
+    render();
+  }
+}
 const visibleKeys = computed(() => new Set([...nodes.value.map(node => node.key), ...visibleLegends.value.map(legend => legendKey(legend.id))]));
 const visibleGroups = computed(() => (layout.value?.groups ?? []).map(group =>
   ({ ...group, members: group.members.filter(id => visibleKeys.value.has(id)) })).filter(group => group.members.length));
 // Short bounds along the actual curves also cover bottom ports, returns and library links.
 const curves = computed(() => new Map(Array.from(routes.value, ([id, line]) => [id, sampleCurve(line)])));
+const disclosedPoints = computed(() => {
+  const current = disclosure.value;
+  if (!current) return [];
+  const points = current.nodes.flatMap(id => {
+    const node = findNode(nodeId(id));
+    return node ? [{ unit: loop.value ? 'Steps' : 'Files', points: [{
+      x: node.position.x + node.dimensions.width / 2, y: node.position.y + node.dimensions.height / 2,
+    }] }] : [];
+  });
+  for (const id of current.edges) {
+    const curve = curves.value.get(id);
+    if (curve) points.push({ unit: 'Relations', points: Array.from({ length: curve.segments.length + 1 }, (_, i) =>
+      curve.path.getPointAtLength(curve.length * i / curve.segments.length)) });
+  }
+  return points;
+});
 const noteEdgeBounds = computed(() => Array.from(curves.value.values()).flatMap(curve => curve.segments));
 const annotationPaneWidth = computed(() =>
   paneSize.value.width - (loopRoute && panelOpen.value ? inspector.value?.offsetWidth ?? 0 : 0));
@@ -242,14 +312,14 @@ const defaultOpenNotes = computed(() => {
   const { x, y, zoom } = viewport.value;
   const groupHeaders = visibleGroups.value.map(group => groupBounds(positions, group.members, dimensions));
   for (const step of loop.value.loop.nodes) {
-    if (!step.annotation) continue;
+    if (!step.annotation || !visibility.value.node(step.id)) continue;
     const p = positions[step.id]!;
     const right = p.x + 240, top = p.y + nodeSize.height, bottom = top + 208;
     if (right * zoom + x > annotationPaneWidth.value || bottom * zoom + y > paneSize.value.height) continue;
     const overlaps = (q: Point, width: number, height: number) =>
       q.x < right && q.x + width > p.x && q.y < bottom && q.y + height > top;
     if ([...visibleKeys.value].some(id => id !== step.id && overlaps(positions[id]!, nodeSize.width, nodeSize.height))) continue;
-    if (loop.value.loop.nodes.some(other => other.annotation && other.id !== step.id &&
+    if (loop.value.loop.nodes.some(other => other.annotation && visibility.value.node(other.id) && other.id !== step.id &&
       overlaps(positions[other.id]!, 240, nodeSize.height + 208))) continue;
     if (noteEdgeBounds.value.some(line => line.x < right && line.x + line.width > p.x &&
       line.y < bottom && line.y + line.height > top + 18)) continue;
@@ -258,8 +328,8 @@ const defaultOpenNotes = computed(() => {
   }
   return open;
 });
-const selectedLegend = computed(() => legends.value.find(legend => legendKey(legend.id) === selected.value));
-const usedLibraries = computed(() => legends.value.filter(legend => legend.uses.some(use => use.path === selected.value)));
+const selectedLegend = computed(() => libraries.value.find(legend => legendKey(legend.id) === selected.value));
+const usedLibraries = computed(() => libraries.value.filter(legend => legend.uses.some(use => use.path === selected.value)));
 const hasNodes = computed(() => ids.value.length > 0);
 const documentPath = computed(() => dependency.value?.documents.find(entry => entry.sourcePath === selected.value)?.documentPath);
 const readingExplanation = computed(() => !!documentPath.value && props.openingDocument === documentPath.value);
@@ -289,7 +359,7 @@ const hasSelection = computed(() => !!selectedNode.value || !!selectedLegend.val
 const selectionRect = computed(() => box.value && rectangle(box.value.start, box.value.end));
 const picked = computed(() => new Set(boxMembers.value));
 const transfers = computed(() => {
-  const labels = new Map(legends.value.map(legend => [legendKey(legend.id), legend.name + ' · ' + legendKind(legend.kind)]));
+  const labels = new Map(legends.value.map(legend => [legendKey(legend.id), legendLabel(legend)]));
   return (layout.value?.groups ?? []).flatMap(group =>
     group.members.filter(id => picked.value.has(id)).map(id => ({ id, label: labels.get(id) ?? id, group: group.name })));
 });
@@ -353,6 +423,7 @@ async function restorePosition(position: CanvasPosition, isCurrent = () => true)
   const changedSelection = selected.value !== beforeSelection || selectedEdgeId.value !== beforeEdge;
   const target = changedSelection ? selected.value : position.selected;
   const available = !target || (ids.value.includes(target) && (!latest || readingIds(latest).includes(target)));
+  if (available && target && loop.value) revealStep(target);
   selected.value = available ? target : loop.value?.loop.entry ?? '';
   const edge = changedSelection ? selectedEdgeId.value : position.edge;
   const edgeAvailable = !edge || getEdges.value.some(item => item.id === edge);
@@ -418,7 +489,7 @@ function render() {
     ...visibleLegends.value.map((legend): Node => ({
       id: legendKey(legend.id), type: 'canvasLegend', position: { ...current.positions[legendKey(legend.id)]! },
       data: { ...legend, key: legendKey(legend.id) },
-      style: { width: nodeSize.width + 'px', height: nodeSize.height + 'px' },
+      ...(isLibrary(legend) && { style: { width: nodeSize.width + 'px', height: nodeSize.height + 'px' } }),
     })),
   ]);
   renderEdges();
@@ -428,7 +499,7 @@ function renderEdges() {
   const titles = new Map(loop.value?.loop.nodes.map(node => [node.id, node.title]));
   const edge = (from: string, to: string, relation: EdgeAnnotation & { reason: string }, libraryName?: string): Edge => {
     const library = libraryName !== undefined;
-    const id = nodeId(from) + '→' + nodeId(to);
+    const id = edgeId(from, to);
     const direct = !selectedEdgeId.value && (from === selected.value || to === selected.value);
     const accent = relation.color === 'red' ? 'var(--danger)' : relation.color === 'green' ? 'var(--success)'
       : library ? 'var(--library-direct)' : 'var(--direct-edge)';
@@ -438,7 +509,7 @@ function renderEdges() {
     return {
       id, source: nodeId(from), target: nodeId(to), sourceHandle: 'out',
       targetHandle: from === to ? 'self' : 'in', type: 'dependency', focusable: true, domAttributes: { tabindex: -1 },
-      data: { from: libraryName ?? titles.get(from) ?? from, to: titles.get(to) ?? to,
+      data: { fromKey: from, toKey: to, from: libraryName ?? titles.get(from) ?? from, to: titles.get(to) ?? to,
         reason: relation.reason, label: relation.label, accent, direct },
       class: [library && 'library-use-edge', direct && 'direct-relation'].filter(Boolean).join(' '),
       style: { stroke: ink, strokeWidth: direct ? 2.8 : 1.9 },
@@ -447,13 +518,14 @@ function renderEdges() {
     };
   };
   const graph = dependency.value?.graph;
-  setEdges(graph ? [
+  const edges = graph ? [
     ...graph.edges.map(item => edge(item.dependency, item.dependent, item)),
-    ...legends.value.flatMap(legend => legend.uses.map(use => edge(legendKey(legend.id), use.path, use, legend.name))),
+    ...libraries.value.flatMap(legend => legend.uses.map(use => edge(legendKey(legend.id), use.path, use, legend.name))),
   ].sort((a, b) => Number(a.data.direct) - Number(b.data.direct)) :
     [...(loop.value?.loop.edges ?? []).map(item => edge(item.from, item.to, item)),
       ...(loop.value?.loop.nodes ?? []).flatMap(node => (node.library_uses ?? []).map(use =>
-        edge(legendKey(use.id), node.id, use, legends.value.find(legend => legend.id === use.id)!.name)))]);
+        edge(legendKey(use.id), node.id, use, libraries.value.find(legend => legend.id === use.id)!.name)))];
+  setEdges(edges.filter(item => visibility.value.edge(item.data.fromKey, item.data.toKey)));
 }
 
 watch([selected, selectedEdgeId, focusedEdgeId], renderEdges);
@@ -611,6 +683,7 @@ function outsideTools(event: PointerEvent) {
 }
 
 function selectDetail(id: string) {
+  revealStep(id);
   menuGroup.value = undefined;
   groupEditor.value = false;
   selectedEdgeId.value = '';
@@ -741,7 +814,7 @@ function finishSelection(event: PointerEvent) {
   const end = boxPoint(event, pane);
   const bounds = rectangle(box.value.start, end);
   box.value = undefined;
-  boxMembers.value = Array.from(area.querySelectorAll<HTMLButtonElement>('.file-node')).flatMap(node => {
+  boxMembers.value = Array.from(area.querySelectorAll<HTMLButtonElement>('.file-node, .switch-question')).flatMap(node => {
     const rect = node.getBoundingClientRect();
     const id = node.dataset.file ?? node.dataset.step ?? (node.dataset.legend ? legendKey(node.dataset.legend) : undefined);
     return id && rect.left >= pane.left + bounds.x && rect.top >= pane.top + bounds.y &&
@@ -875,7 +948,9 @@ function previewDrag({ node }: NodeDragEvent) {
   updateNode(node.id, { position });
   if (dragGroup) {
     const moved = moveMembers(dragGroup.layout.positions, dragGroup.group.members, dragGroup.origin, position);
-    for (const [id, point] of Object.entries(moved)) updateNode(nodeId(id), { position: point });
+    for (const [id, point] of Object.entries(moved)) {
+      if (visibleKeys.value.has(id)) updateNode(nodeId(id), { position: point });
+    }
   } else if (owner) {
     const positions = { ...layout.value.positions, [node.data.key]: position };
     const { x, y, width, height } = groupBounds(positions, owner.members, dimensions);
@@ -941,6 +1016,7 @@ onMounted(() => {
   initialLoad = load();
 });
 onUnmounted(() => {
+  clearTimeout(pulseTimer);
   window.removeEventListener('keydown', trackControl);
   window.removeEventListener('keyup', trackControl, true);
   window.removeEventListener('blur', releaseControl);
@@ -1061,11 +1137,11 @@ onUnmounted(() => {
           <template #node-canvasFile="{ data }">
             <Handle id="in" type="target" :position="Position.Left" />
             <Handle id="self" class="self-handle" type="target" :position="Position.Top" />
-            <DependencyCard v-if="!loopId" :label="data.key" :kind="data.analysis" :data-file="data.key" :data-route-member="routeFiles.has(data.key) || undefined"
+            <DependencyCard v-if="!loopId" :label="data.key" :kind="data.analysis" :class="{ 'switch-pulse': pulse.has(nodeId(data.key)) }" :data-file="data.key" :data-route-member="routeFiles.has(data.key) || undefined"
               :aria-description="routeFiles.has(data.key) ? t('routeMember') : undefined"
               :status="t(data.analysis === 'unreviewed' ? 'canvasReviewPending' : 'canvasReviewed')"
               :aria-pressed="selected === data.key" :data-box-selected="picked.has(data.key) || undefined" @click="selectDetail(data.key)" />
-            <button v-else type="button" class="file-node loop-node" :data-step="data.key" :aria-pressed="selected === data.key"
+            <button v-else type="button" class="file-node loop-node" :class="{ 'switch-pulse': pulse.has(nodeId(data.key)) }" :data-step="data.key" :aria-pressed="selected === data.key"
               :data-box-selected="picked.has(data.key) || undefined" :title="data.label" @click="selectCard(data.key, !!data.step.annotation)">
               <small class="loop-node-number">{{ String(data.order + 1).padStart(2, '0') }}<template v-if="data.entry"> · {{ t('loopEntry') }}</template></small>
               <span>{{ data.label }}</span>
@@ -1076,14 +1152,17 @@ onUnmounted(() => {
             <Handle id="out" type="source" :position="Position.Right" />
           </template>
           <template #node-canvasLegend="{ data }">
-            <DependencyCard v-if="!loopId" :label="data.name" kind="library" :status="legendKind(data.kind)" :data-legend="data.id"
+            <button v-if="data.type === 'switch'" type="button" class="switch-question" :data-legend="data.id"
+              :data-box-selected="picked.has(data.key) || undefined" :aria-expanded="expanded.includes(data.key)"
+              @click.stop="toggleSwitch(data)"><span>{{ data.question }}</span><small>{{ switchHints.get(data.id) }}</small></button>
+            <DependencyCard v-else-if="!loopId" :label="data.name" kind="library" :status="legendKind(data.kind)" :data-legend="data.id"
               :aria-pressed="selected === data.key" :data-box-selected="picked.has(data.key) || undefined" @click="selectDetail(data.key)" />
             <button v-else type="button" class="file-node library-node" :data-legend="data.id" :aria-pressed="selected === data.key"
               :data-box-selected="picked.has(data.key) || undefined" :title="data.name" @click="selectDetail(data.key)">
               <span>{{ data.name }}</span>
               <small>{{ legendKind(data.kind) }}</small>
             </button>
-            <Handle id="out" type="source" :position="Position.Right" />
+            <Handle v-if="data.type !== 'switch'" id="out" type="source" :position="Position.Right" />
           </template>
           <template #node-canvasGroup="{ data, id }">
             <div class="group-frame" :data-group="id">
@@ -1111,9 +1190,13 @@ onUnmounted(() => {
             </svg>
           </template>
           <template #edge-dependency="edge"><DependencyEdge v-bind="edge" :line="routes.get(edge.id)"
-            :lit="litNode === edge.source || litNode === edge.target" :active="selectedEdgeId === edge.id"
+            :class="{ 'switch-pulse': pulse.has(edge.id) }" :lit="litNode === edge.source || litNode === edge.target" :active="selectedEdgeId === edge.id"
             @keydown.esc.stop="selectedEdge && closeEdge()" @keyboard-focus="focusedEdgeId = $event ? edge.id : ''" @inspect="selectEdge(edge.id)" /></template>
         </VueFlow>
+        <SwitchDirections v-if="switches.length" v-show="active" :source="disclosure?.id"
+          :targets="disclosedPoints" :viewport="viewport" :width="annotationPaneWidth" :height="paneSize.height"
+          :language="language" @navigate="mapNavigate($event, true)"
+          @return-focus="focusSwitch" />
         <svg v-if="guides.length" class="canvas-alignment" aria-hidden="true">
           <g :transform="`translate(${viewport.x} ${viewport.y}) scale(${viewport.zoom})`">
             <line v-for="(guide, index) in guides" :key="index" :x1="guide.from.x" :y1="guide.from.y"
@@ -1269,7 +1352,7 @@ onUnmounted(() => {
               <input v-model="members" type="checkbox" :value="node.key" />{{ node.label }}
             </label>
             <label v-for="legend in visibleLegends" :key="legendKey(legend.id)" class="canvas-member">
-              <input v-model="members" type="checkbox" :value="legendKey(legend.id)" />{{ legend.name }} · {{ legendKind(legend.kind) }}
+              <input v-model="members" type="checkbox" :value="legendKey(legend.id)" />{{ legendLabel(legend) }}
             </label>
           </fieldset>
           <button type="submit" :disabled="!editable || !idle || (members.length ? !groupName.trim() : (!!loopId || !groupId))">{{ t('canvasApplyGroup') }}</button>

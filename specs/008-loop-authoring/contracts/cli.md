@@ -8,9 +8,9 @@
 create-loop --project <absolute> --repository <absolute> --prefix <project-prefix> --commit <full-oid> --id <loop-id> --input <json-file>
 ```
 
-文件为 UTF-8 JSON。根字段 `format:"aftertaste-loop-input/v1"`、`title`、`goal`、`explanation`、`nodes`、`entry`、`edges`、`reading_order` 必填。节点、边和顺序见[数据模型](../data-model.md)。可选 `legends` 为 `[{id,paths:[sourcePath,...]}]`，逐图例明确选取的用法。节点可附 `library_uses: [{id,reason,label?,color?}]`；解析输入和读回均检查库与本步路径，JSON 与 Markdown 均保留本步用法与步骤连线各自的理由和标注。格式字段、正文与行号由各自的输入方或程序填充。未知字段、重复项和悬空引用拒绝。
+文件为 UTF-8 JSON。根字段 `format:"aftertaste-loop-input/v1"`、`title`、`goal`、`explanation`、`nodes`、`entry`、`edges`、`reading_order` 必填。节点、边和顺序见[数据模型](../data-model.md)。可选 `legends` 可混列库选择与本图开关。库选择写作 `{id,paths:[sourcePath,...]}`，逐库明确本路线使用的文件。节点可附 `library_uses: [{id,reason,label?,color?}]`；解析输入和读回均检查库与本步路径，JSON 与 Markdown 均保留本步用法与步骤连线各自的理由和标注。格式字段、正文与行号由各自的输入方或程序填充。未知字段、重复项和悬空引用拒绝。
 
-程序检查完整固定映射及提交，参与文档须通过原文档机械校验、与固定提交一致、被选块有正文。所选图例及用途必须存在于对应版本依赖图。成功返回 `{ok:true,result:{id,path,source_commit,mechanicallyValid:true,teachingQuality:"unchecked"}}`。
+程序检查完整固定映射及提交，参与文档须通过原文档机械校验、与固定提交一致、被选块有正文。所选库及其用法必须存在于对应版本依赖图。成功返回 `{ok:true,result:{id,path,source_commit,mechanicallyValid:true,teachingQuality:"unchecked"}}`。
 
 ## read-loop
 
@@ -32,3 +32,7 @@ Markdown 模式输出目标、串讲、顺序、来源定位、已存块解释�
 D043 的 revise-step 以固定提交、原文件 SHA-256、闭环 ID、步骤 ID 和字段为条件，stdin 仅为该字段的新讲解。成品与固定源码校验后同目录安全替换，重新读回核对。具体调用见[修订命令](../../../skills/aftertaste-reader/references/tools.md#revise-current)。
 
 create-loop 的 nodes[i].annotation 接受可选非空 Markdown 字符串。read-loop 在 JSON 中原样返回，在 Markdown 中于该步列出「节点说明」。缺字段的 v1 成品仍可读。
+
+## D053 · 为闭环自拟一个问句
+
+开关包含 id、type=switch、question、nodes（步骤 id）、edges（{from,to} 对）。至少一个目标，库选择沿用 id、paths。

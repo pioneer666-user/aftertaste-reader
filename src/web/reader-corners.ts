@@ -122,7 +122,7 @@ export function paintReaderCorners(root: HTMLElement) {
   const rescan = () => { scan = true; schedule(); };
   new MutationObserver(rescan).observe(root, {
     childList: true, characterData: true, subtree: true, attributes: true,
-    attributeFilter: ['class', 'aria-current', 'aria-expanded', 'aria-pressed', 'data-current-directory', 'disabled'],
+    attributeFilter: ['class', 'aria-current', 'aria-expanded', 'aria-pressed', 'data-box-selected', 'data-current-directory', 'disabled'],
   });
   // The focus indicator can belong to an ancestor, as on the source sheet.
   for (const type of ['pointerover', 'pointerout', 'focusin', 'focusout', 'toggle']) {
