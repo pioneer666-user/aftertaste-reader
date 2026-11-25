@@ -17,6 +17,7 @@ import DependencyCard from './DependencyCard.vue';
 import LoopRelations from './LoopRelations.vue';
 import type { NoteQuote } from '../core/notes.js';
 import LoopAnnotation from './LoopAnnotation.vue';
+import LoopExamplePicker from './LoopExamplePicker.vue';
 import LoopReading from './LoopReading.vue';
 import { groupBounds, maxZoom, minZoom, moveMembers, nodeSize, rearrange, reconcileLayout, renewedPaths, updateGroup } from '../core/canvas-layout.js';
 import type { CanvasGroup, CanvasLayout, Point } from '../core/canvas-layout.js';
@@ -1092,6 +1093,8 @@ onUnmounted(() => {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6m3 0h2v2m0 3v6m0 3v2h-2m-3 0H9m-3 0H4v-2m0-3V9m0-3V4h2m2 5h5v5H8zM13 11h3v5h-5v-2" /></svg>
           <span class="canvas-tool-label" aria-hidden="true" @click.stop.prevent>{{ t('canvasEditGroup') }}</span>
         </button>
+        <LoopExamplePicker v-if="loop?.loop.examples?.length" :id="flowId + '-examples'" v-model="exampleName"
+          :examples="loop.loop.examples" :language="language" :active="active && !toolsCovered" />
         <button type="button" :aria-label="t('canvasRefresh')"
           :aria-busy="loading" :disabled="loading || saving || dirty || !idle || !!box" @click="load()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5m-5 5a8 8 0 0 0 14 5l2-2m0 5v-5h-5" /></svg>
@@ -1124,15 +1127,8 @@ onUnmounted(() => {
         <div v-else :class="{ 'loop-canvas-heading': loop }">
           <button v-if="loop" type="button" class="loop-overview-link" :title="loop.loop.title" :inert="toolsCovered"
             :aria-label="t('loopOpenOverview') + ' · ' + loop.loop.title" @click="panelOpen = true; clearDetail()">{{ loop.loop.title }}</button>
-          <label v-if="loop?.loop.examples?.length" class="loop-example" :inert="toolsCovered">
-            <span>{{ t('exampleRoute') }}</span>
-            <select v-model="exampleName" :aria-label="t('exampleRoute')" :title="example?.name">
-              <option value="">{{ t('exampleAll') }}</option>
-              <option v-for="item in loop.loop.examples" :key="item.name" :value="item.name">{{ item.name }}</option>
-            </select>
-            <small v-if="example">{{ example.scenario }}</small>
-          </label>
-          <p v-else class="canvas-node-hint">{{ t('canvasNodeHint') }}</p>
+          <span v-if="example" class="example-caption" :title="example.name">{{ example.name }}</span>
+          <p v-else-if="!loop?.loop.examples?.length" class="canvas-node-hint">{{ t('canvasNodeHint') }}</p>
         </div>
         <div v-if="boxAnchor" ref="selectionPanel" class="selection-float canvas-group-float">
           <button v-if="!naming" type="button" class="selection-float-action" aria-keyshortcuts="Control+G"

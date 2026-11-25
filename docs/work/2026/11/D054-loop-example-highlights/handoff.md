@@ -26,6 +26,10 @@
 
 同输入重新打包并离线安装；用 R2 最终包在 Edge、Chrome、Firefox 串行跑双图浏览器检查。实测额外覆盖卡片阴影、SVG 柔光、箭头尺寸单位及键盘沿线焦点。[浅色成功路线](../../../../../.local/D054/browser-kt1WZT/success.png) · [深色失败分岔](../../../../../.local/D054/browser-kt1WZT/fork-dark.png) · [依赖图成员与选线](../../../../../.local/D054/browser-kt1WZT/dependency.png)。Chrome 截图在 `.local/D054/browser-vH5Eli/`，Firefox 在 `.local/D054/browser-FjHrCH/`。按五套主题令牌计算，路线实色相对画布底色对比度为 5.13∶1 至 11.65∶1，仅代表这组色值。未做大图帧率或低配设备基准。源码协议、输入与 CLI 沿用 R1 证据。
 
+### A2 工具栏试读检查
+
+首次 Edge 执行记录在 `.local/D054/browser-ae9o94/`。键盘打开示例菜单并按向下键后，焦点回到已选第一项。此时面板已打开；延后送达的 toggle 回调会再次聚焦已选项。本轮改由原生弹出时的 autofocus 定位当前项，选例没有延后改焦点的回调。另一次 Edge 在窗口变窄后即时测量未取得正确位置，截图时已就位（`browser-swPXwK`）。用三个本机浏览器核实原生 popover 的 CSS 锚定位随按钮排布，改由该机制计算位置，去掉监听器，再按原断言与双图流程重验。
+
 ## 资源与交回
 
 作者试读使用 R2 最终安装包，SHA-256 `7F5E44DC2BCAFD28EFA28B7B58D5A22C9A0C97AA4D27A83BD9900098DBBAEBC9`。服务监听 `127.0.0.1:4358`，PID `12684`，以 `.local/D054/r2-final/install/` 的包读取 `.local/D054/r2-final/project/` 独立资料。试读期间保留该服务和目录。重启前确认端口空闲，从仓库根运行：

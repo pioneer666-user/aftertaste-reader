@@ -386,7 +386,8 @@
   }
   .canvas-rail > :nth-child(2) { --label-row: 1; }
   .canvas-rail > :nth-child(3) { --label-row: 2; }
-  .canvas-rail > .canvas-tools { --label-row: 3; }
+  .canvas-rail > .canvas-tools, .canvas-rail:has(.example-tool) > :nth-child(4) { --label-row: 3; }
+  .canvas-rail:has(.example-tool) > .canvas-tools { --label-row: 4; }
   /* Keep the visible label reachable along the rail edge from any tool row. */
   .canvas-tool-label::before {
     inset-block-end: auto; width: 9px;
@@ -544,13 +545,13 @@
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
 }
 .loop-canvas-heading .canvas-node-hint { position: static; max-width: 48%; }
-.loop-example {
-  pointer-events: auto; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center;
-  gap: 4px 8px; max-width: min(55%, 26rem); min-width: 0; padding: 4px 8px;
-  border-radius: 8px; background: var(--paper); border: 1px solid var(--canvas-float-rim); color: var(--secondary); font-size: 12px;
+.loop-canvas-heading:has(.example-caption) { justify-content: flex-start; align-items: center; }
+.example-caption {
+  max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--route-ink); font-size: 13px; font-weight: 600;
 }
-.loop-example select { min-width: 0; max-width: 100%; font: inherit; font-weight: 600; color: var(--text); background: var(--paper); }
-.loop-example small { grid-column: 1 / -1; font: inherit; max-height: 4.5em; overflow: auto; overflow-wrap: anywhere; }
+.loop-canvas .canvas-workspace:has(.example-tool) { --rail-half-height: calc(2.5 * var(--canvas-rail-hit) + 9px); }
+.canvas-rail:has(.example-panel:popover-open) .canvas-tool-label { display: none; }
 .loop-node[data-route-member] {
   background: var(--paper); border: 1.5px solid var(--route-ink);
   box-shadow: 0 0 3px var(--route-glow), 0 0 13px color-mix(in srgb, var(--route-glow) 62%, transparent);

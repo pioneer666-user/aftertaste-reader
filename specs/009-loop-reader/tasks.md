@@ -145,4 +145,4 @@ US2 在 US1 的已保存读回上增加图例。US3 复用已具备阅读与图�
 
 ## D054
 
-- [x] T039 [US5] 在 `src/web/DependencyCanvas.vue` 落实 FR-015。选「04」仅标记 check → build → append，切到「4.5」仅标记 check → reject。问句收起或展开时均核对节点、线、开关和选例前后布局。（SC-015）
+- [x] T039 [US5] 在 `src/web/DependencyCanvas.vue` 和 `src/web/LoopExamplePicker.vue` 落实 FR-015。核左侧图标、选例后回焦、键盘切换和按图显示工具。选「04」仅标记 check → build → append，切到「4.5」仅标记 check → reject。问句收起或展开时均核对节点、线、开关和选例前后布局。（SC-015）
