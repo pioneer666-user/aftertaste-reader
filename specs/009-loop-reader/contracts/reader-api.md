@@ -29,3 +29,7 @@ GET /api/loops/:id 的 result.loop.nodes 可有 annotation；依据对应 node_i
 ## D053 · 留在原视野展开两步
 
 复用依赖图个人布局契约。开关取自本闭环 current/loop.json，展开写本闭环 layout.json。
+
+## D054
+
+见[本批数据模型](../data-model.md#d054)。选「04」仅标记 check → build → append，切到「4.5」仅标记 check → reject。问句收起或展开时均核对节点、线、开关和选例前后布局。

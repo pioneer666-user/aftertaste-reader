@@ -18,3 +18,7 @@
 ## D053 · 留在原视野展开两步
 
 复用依赖图个人布局契约。开关取自本闭环 current/loop.json，展开写本闭环 layout.json。
+
+## D054
+
+读取接口在 result.loop 中携带 008 定义的可选 examples。示例选择属于本图内存状态；问句的 expanded 和布局 PUT 只记录读者主动操作。

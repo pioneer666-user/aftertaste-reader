@@ -27,3 +27,7 @@
 ## D053 · 为闭环自拟一个问句
 
 开关包含 id、type=switch、question、nodes（步骤 id）、edges（{from,to} 对）。至少一个目标，库选择沿用 id、paths。
+
+## D054
+
+输入与成品可省略 `examples`，或提供数组。每项为 `{name, scenario, steps}`，名称非空且在列表中唯一；scenario 是非空情景文本，含辨认输入和必要前提；steps 是至少一个本图 ID 的有序数组，可重复。每次转移必须命中同向教学边。CLI 错误含 inputPath、带下标字段与原因。

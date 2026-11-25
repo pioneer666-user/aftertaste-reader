@@ -82,3 +82,7 @@ tests/integration/loops.test.mjs
 ## D053 · 为闭环自拟一个问句
 
 在 `src/core/loops.ts` 接入现有读写流程。开关包含 id、type=switch、question、nodes（步骤 id）、edges（{from,to} 对）。至少一个目标，库选择沿用 id、paths。 复用原固定源码、布局修订和候选验证机制。
+
+## D054
+
+在现有 readRoute 中复用已核实的步骤和出边表检查输入与成品；保存保留列表顺序，Markdown 按该顺序读回。整图 reading_order 保持独立。

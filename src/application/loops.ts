@@ -175,6 +175,13 @@ export function loopMarkdown(result: ReadingLoop): string {
     const blockKey = `${node.path}:${node.block_id}`;
     if (!blocks.has(blockKey)) blocks.set(blockKey, { reference: ref, explanation: node.block_explanation });
   }
+  if (loop.examples?.length) {
+    parts.push('## 示例路线');
+    for (const example of loop.examples) {
+      parts.push('### ' + oneLine(example.name), example.scenario,
+        example.steps.map(id => title(id) + ' ' + inlineCode(id)).join(' → '));
+    }
+  }
   parts.push('## 关系', loop.edges.map(edge => `- **${title(edge.from)} → ${title(edge.to)}**${edgeNote(edge)}\n\n  ${edge.reason.trim().replace(/\r\n|\r|\n/gu, '\n  ')}`).join('\n\n'));
   if (loop.legends.length) {
     parts.push('## 图例');

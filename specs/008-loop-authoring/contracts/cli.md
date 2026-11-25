@@ -36,3 +36,7 @@ create-loop 的 nodes[i].annotation 接受可选非空 Markdown 字符串。read
 ## D053 · 为闭环自拟一个问句
 
 开关包含 id、type=switch、question、nodes（步骤 id）、edges（{from,to} 对）。至少一个目标，库选择沿用 id、paths。
+
+## D054
+
+见[本批数据模型](../data-model.md#d054)。从安装包制作并用 JSON、Markdown 读回顺序和前提。无示例仍可读，失效步骤、跳边或逆向引用指出输入位置，失败不发布。

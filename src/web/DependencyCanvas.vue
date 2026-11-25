@@ -17,10 +17,11 @@ import DependencyCard from './DependencyCard.vue';
 import LoopRelations from './LoopRelations.vue';
 import type { NoteQuote } from '../core/notes.js';
 import LoopAnnotation from './LoopAnnotation.vue';
+import LoopExamplePicker from './LoopExamplePicker.vue';
 import LoopReading from './LoopReading.vue';
 import { groupBounds, maxZoom, minZoom, moveMembers, nodeSize, rearrange, reconcileLayout, renewedPaths, updateGroup } from '../core/canvas-layout.js';
 import type { CanvasGroup, CanvasLayout, Point } from '../core/canvas-layout.js';
-import { switchVisibility } from '../core/switch-visibility.js';
+import { relationKey, switchVisibility } from '../core/switch-visibility.js';
 import SwitchDirections from './SwitchDirections.vue';
 import { canvasIds, isLibrary, isLegendKey, legendKey } from '../core/dependency-graph.js';
 import type { LibraryLegend, SwitchLegend } from '../core/dependency-graph.js';
@@ -178,8 +179,21 @@ const routeIssue = computed(() => {
   const missing = route.value.paths.filter(path => !paths.has(path));
   return missing.length ? t('routeMissing') + ' · ' + missing.join(', ') : '';
 });
-const routeFiles = computed(() => new Set(routeIssue.value ? [] : route.value?.paths));
 const loop = computed(() => reading.value && 'result' in reading.value ? reading.value.result : undefined);
+const exampleName = ref('');
+const example = computed(() => loop.value?.loop.examples?.find(item => item.name === exampleName.value));
+const highlight = computed(() => {
+  const steps = example.value?.steps ?? [];
+  const nodes = loop.value ? steps : routeIssue.value ? [] : route.value?.paths;
+  const edges = new Set<string>();
+  for (let i = 1; i < steps.length; i++) edges.add(relationKey(steps[i - 1]!, steps[i]!));
+  return { nodes: new Set(nodes), edges };
+});
+function memberAttributes(key: string) {
+  return highlight.value.nodes.has(key) ? {
+    'data-route-member': true, 'aria-description': t(loop.value ? 'exampleMember' : 'routeMember'),
+  } : {};
+}
 const readingPanel = ref<InstanceType<typeof LoopReading>>();
 const noteChoices = ref(new Map<string, boolean>());
 const raisedNote = ref('');
@@ -229,7 +243,8 @@ const legends = computed(() => loop.value?.loop.legends ?? dependency.value?.gra
 const libraries = computed(() => legends.value.filter(isLibrary));
 const switches = computed(() => legends.value.filter((item): item is SwitchLegend => !isLibrary(item)));
 const expanded = computed(() => layout.value?.expanded ?? []);
-const visibility = computed(() => switchVisibility(switches.value, expanded.value));
+const visibleWith = (open: readonly string[]) => switchVisibility(switches.value, open, example.value ? highlight.value : undefined);
+const visibility = computed(() => visibleWith(expanded.value));
 const nodes = computed(() => allNodes.value.filter(node => visibility.value.node(node.key)));
 const visibleLegends = computed(() => legends.value.filter(legend => !isLibrary(legend) || !loop.value ||
   reading.value?.relations.libraries.some(item => item.id === legendKey(legend.id) && item.targets.length)));
@@ -239,7 +254,7 @@ function switchChange(legend: SwitchLegend) {
   const key = legendKey(legend.id);
   const open = expanded.value.includes(key);
   const next = open ? expanded.value.filter(id => id !== key) : [...expanded.value, key];
-  const after = switchVisibility(switches.value, next);
+  const after = visibleWith(next);
   const nodes = legend.nodes.filter(id => visibility.value.node(id) !== after.node(id));
   const changedNodes = new Set(nodes);
   const edges = legend.edges.filter(({ from, to }) => visibility.value.edge(from, to) !== after.edge(from, to) &&
@@ -500,20 +515,21 @@ function renderEdges() {
   const edge = (from: string, to: string, relation: EdgeAnnotation & { reason: string }, libraryName?: string): Edge => {
     const library = libraryName !== undefined;
     const id = edgeId(from, to);
+    const onRoute = highlight.value.edges.has(relationKey(from, to));
     const direct = !selectedEdgeId.value && (from === selected.value || to === selected.value);
     const accent = relation.color === 'red' ? 'var(--danger)' : relation.color === 'green' ? 'var(--success)'
-      : library ? 'var(--library-direct)' : 'var(--direct-edge)';
-    const ink = relation.color === 'red' || relation.color === 'green' || direct ||
+      : onRoute ? 'var(--route-ink)' : library ? 'var(--library-direct)' : 'var(--direct-edge)';
+    const ink = relation.color === 'red' || relation.color === 'green' || direct || onRoute ||
       id === selectedEdgeId.value || id === focusedEdgeId.value ? accent
       : library ? 'var(--library-edge)' : 'var(--edge)';
     return {
       id, source: nodeId(from), target: nodeId(to), sourceHandle: 'out',
       targetHandle: from === to ? 'self' : 'in', type: 'dependency', focusable: true, domAttributes: { tabindex: -1 },
       data: { fromKey: from, toKey: to, from: libraryName ?? titles.get(from) ?? from, to: titles.get(to) ?? to,
-        reason: relation.reason, label: relation.label, accent, direct },
+        reason: relation.reason, label: relation.label, accent, direct, onRoute },
       class: [library && 'library-use-edge', direct && 'direct-relation'].filter(Boolean).join(' '),
       style: { stroke: ink, strokeWidth: direct ? 2.8 : 1.9 },
-      markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: ink },
+      markerEnd: { type: MarkerType.ArrowClosed, markerUnits: 'userSpaceOnUse', width: 30, height: 30, color: ink },
       ariaLabel: relation.reason,
     };
   };
@@ -528,12 +544,16 @@ function renderEdges() {
   setEdges(edges.filter(item => visibility.value.edge(item.data.fromKey, item.data.toKey)));
 }
 
+watch(exampleName, () => {
+  render();
+  if (selectedEdgeId.value && !getEdges.value.some(edge => edge.id === selectedEdgeId.value)) selectedEdgeId.value = '';
+});
 watch([selected, selectedEdgeId, focusedEdgeId], renderEdges);
 const foregroundEdges = computed(() => getEdges.value.filter(edge =>
-  edge.data.direct || edge.id === selectedEdgeId.value || edge.id === focusedEdgeId.value)
+  edge.data.onRoute || edge.data.direct || edge.id === selectedEdgeId.value || edge.id === focusedEdgeId.value)
   .sort((a, b) => Number(a.id === selectedEdgeId.value) - Number(b.id === selectedEdgeId.value)));
 const edgeLabels = computed(() => {
-  const candidates = getEdges.value.filter(edge => edge.data.label && (edge.data.direct ||
+  const candidates = getEdges.value.filter(edge => edge.data.label && (edge.data.direct || edge.data.onRoute ||
     edge.id === selectedEdgeId.value || edge.id === focusedEdgeId.value ||
     edge.source === litNode.value || edge.target === litNode.value))
     .sort((a, b) => Number(b.id === selectedEdgeId.value) - Number(a.id === selectedEdgeId.value));
@@ -583,6 +603,7 @@ async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
       savedGroupId.value = '';
     }
     reading.value = next;
+    if (exampleName.value && !example.value) exampleName.value = '';
     revision = next.revision;
     pending = undefined;
     dirty.value = !next.layoutProblem && (!!carry || next.reconciled);
@@ -1072,6 +1093,8 @@ onUnmounted(() => {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6m3 0h2v2m0 3v6m0 3v2h-2m-3 0H9m-3 0H4v-2m0-3V9m0-3V4h2m2 5h5v5H8zM13 11h3v5h-5v-2" /></svg>
           <span class="canvas-tool-label" aria-hidden="true" @click.stop.prevent>{{ t('canvasEditGroup') }}</span>
         </button>
+        <LoopExamplePicker v-if="loop?.loop.examples?.length" :id="flowId + '-examples'" v-model="exampleName"
+          :examples="loop.loop.examples" :language="language" :active="active && !toolsCovered" />
         <button type="button" :aria-label="t('canvasRefresh')"
           :aria-busy="loading" :disabled="loading || saving || dirty || !idle || !!box" @click="load()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5m-5 5a8 8 0 0 0 14 5l2-2m0 5v-5h-5" /></svg>
@@ -1104,7 +1127,8 @@ onUnmounted(() => {
         <div v-else :class="{ 'loop-canvas-heading': loop }">
           <button v-if="loop" type="button" class="loop-overview-link" :title="loop.loop.title" :inert="toolsCovered"
             :aria-label="t('loopOpenOverview') + ' · ' + loop.loop.title" @click="panelOpen = true; clearDetail()">{{ loop.loop.title }}</button>
-          <p class="canvas-node-hint">{{ t('canvasNodeHint') }}</p>
+          <span v-if="example" class="example-caption" :title="example.name">{{ example.name }}</span>
+          <p v-else-if="!loop?.loop.examples?.length" class="canvas-node-hint">{{ t('canvasNodeHint') }}</p>
         </div>
         <div v-if="boxAnchor" ref="selectionPanel" class="selection-float canvas-group-float">
           <button v-if="!naming" type="button" class="selection-float-action" aria-keyshortcuts="Control+G"
@@ -1137,11 +1161,10 @@ onUnmounted(() => {
           <template #node-canvasFile="{ data }">
             <Handle id="in" type="target" :position="Position.Left" />
             <Handle id="self" class="self-handle" type="target" :position="Position.Top" />
-            <DependencyCard v-if="!loopId" :label="data.key" :kind="data.analysis" :class="{ 'switch-pulse': pulse.has(nodeId(data.key)) }" :data-file="data.key" :data-route-member="routeFiles.has(data.key) || undefined"
-              :aria-description="routeFiles.has(data.key) ? t('routeMember') : undefined"
+            <DependencyCard v-if="!loopId" :label="data.key" :kind="data.analysis" :class="{ 'switch-pulse': pulse.has(nodeId(data.key)) }" :data-file="data.key" v-bind="memberAttributes(data.key)"
               :status="t(data.analysis === 'unreviewed' ? 'canvasReviewPending' : 'canvasReviewed')"
               :aria-pressed="selected === data.key" :data-box-selected="picked.has(data.key) || undefined" @click="selectDetail(data.key)" />
-            <button v-else type="button" class="file-node loop-node" :class="{ 'switch-pulse': pulse.has(nodeId(data.key)) }" :data-step="data.key" :aria-pressed="selected === data.key"
+            <button v-else type="button" class="file-node loop-node" :class="{ 'switch-pulse': pulse.has(nodeId(data.key)) }" :data-step="data.key" v-bind="memberAttributes(data.key)" :aria-pressed="selected === data.key"
               :data-box-selected="picked.has(data.key) || undefined" :title="data.label" @click="selectCard(data.key, !!data.step.annotation)">
               <small class="loop-node-number">{{ String(data.order + 1).padStart(2, '0') }}<template v-if="data.entry"> · {{ t('loopEntry') }}</template></small>
               <span>{{ data.label }}</span>
@@ -1177,6 +1200,7 @@ onUnmounted(() => {
           <template #zoom-pane>
             <svg v-if="foregroundEdges.length || edgeLabels.length" class="foreground-edges" aria-hidden="true">
               <g v-for="edge in foregroundEdges" :key="edge.id" :style="{ color: edge.data.accent }">
+                <path v-if="edge.data.onRoute" class="route-band" :d="routes.get(edge.id)" />
                 <path v-if="edge.id === focusedEdgeId" class="edge-focus-ring" :d="routes.get(edge.id)" />
                 <path :d="routes.get(edge.id)" :class="{ 'library-use': edge.source.startsWith('legend:'), 'selected-curve': edge.id === selectedEdgeId }"
                   :marker-end="`url('#${getMarkerId(edge.markerEnd, flowId)}')`" />
@@ -1190,7 +1214,8 @@ onUnmounted(() => {
             </svg>
           </template>
           <template #edge-dependency="edge"><DependencyEdge v-bind="edge" :line="routes.get(edge.id)"
-            :class="{ 'switch-pulse': pulse.has(edge.id) }" :lit="litNode === edge.source || litNode === edge.target" :active="selectedEdgeId === edge.id"
+            :class="{ 'switch-pulse': pulse.has(edge.id) }" :aria-description="edge.data.onRoute ? t('exampleMember') : undefined" :data-route-edge="edge.data.onRoute || undefined"
+            :lit="litNode === edge.source || litNode === edge.target" :active="selectedEdgeId === edge.id"
             @keydown.esc.stop="selectedEdge && closeEdge()" @keyboard-focus="focusedEdgeId = $event ? edge.id : ''" @inspect="selectEdge(edge.id)" /></template>
         </VueFlow>
         <SwitchDirections v-if="switches.length" v-show="active" :source="disclosure?.id"
