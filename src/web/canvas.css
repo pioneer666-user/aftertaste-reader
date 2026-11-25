@@ -696,9 +696,9 @@
 .switch-question {
   display: block; width: max-content; max-width: 320px;
   font: inherit; font-size: 15px; text-align: start; color: var(--text); border: 0;
+  background: color-mix(in srgb, var(--direct-edge) 5%, var(--paper));
   padding: 5px 9px; cursor: grab; overflow-wrap: anywhere;
 }
-.switch-question, .switch-question:hover { background: color-mix(in srgb, var(--direct-edge) 5%, transparent); }
 .switch-question span { text-decoration: underline dotted; text-underline-offset: 4px; }
 .switch-question:hover span { text-decoration-style: solid; }
 .switch-question small { margin-inline-start: 9px; color: var(--muted); white-space: nowrap; }
