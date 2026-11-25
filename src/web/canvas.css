@@ -696,7 +696,7 @@
 .switch-question {
   display: block; width: max-content; max-width: 320px;
   font: inherit; font-size: 15px; text-align: start; color: var(--text); border: 0;
-  background: color-mix(in srgb, var(--direct-edge) 5%, var(--paper)); border-radius: 5px;
+  background: color-mix(in srgb, var(--direct-edge) 5%, transparent); border-radius: 5px;
   padding: 5px 9px; cursor: grab; overflow-wrap: anywhere;
 }
 .switch-question span { text-decoration: underline dotted; text-underline-offset: 4px; }
