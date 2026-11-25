@@ -8,7 +8,7 @@
 create-loop --project <absolute> --repository <absolute> --prefix <project-prefix> --commit <full-oid> --id <loop-id> --input <json-file>
 ```
 
-文件为 UTF-8 JSON。根字段 `format:"aftertaste-loop-input/v1"`、`title`、`goal`、`explanation`、`nodes`、`entry`、`edges`、`reading_order` 必填。节点、边和顺序见[数据模型](../data-model.md)。可选 `legends` 为 `[{id,paths:[sourcePath,...]}]`，逐图例明确选取的用法。节点可附 `library_uses: [{id,reason}]`；解析输入和读回均检查库与本步路径，Markdown 在对应步骤显示用途。格式字段、正文与行号由各自的输入方或程序填充。未知字段、重复项和悬空引用拒绝。
+文件为 UTF-8 JSON。根字段 `format:"aftertaste-loop-input/v1"`、`title`、`goal`、`explanation`、`nodes`、`entry`、`edges`、`reading_order` 必填。节点、边和顺序见[数据模型](../data-model.md)。可选 `legends` 为 `[{id,paths:[sourcePath,...]}]`，逐图例明确选取的用法。节点可附 `library_uses: [{id,reason,label?,color?}]`；解析输入和读回均检查库与本步路径，JSON 与 Markdown 均保留本步用法与步骤连线各自的理由和标注。格式字段、正文与行号由各自的输入方或程序填充。未知字段、重复项和悬空引用拒绝。
 
 程序检查完整固定映射及提交，参与文档须通过原文档机械校验、与固定提交一致、被选块有正文。所选图例及用途必须存在于对应版本依赖图。成功返回 `{ok:true,result:{id,path,source_commit,mechanicallyValid:true,teachingQuality:"unchecked"}}`。
 

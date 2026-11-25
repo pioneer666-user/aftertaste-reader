@@ -147,6 +147,11 @@ function inlineCode(value: string): string {
   return fence.length === 1 ? `${fence}${value}${fence}` : `${fence} ${value} ${fence}`;
 }
 
+function edgeNote({ label, color }: import('../core/edge-annotation.js').EdgeAnnotation): string {
+  return [label && inlineCode(label), color && ({ red: '红色', green: '绿色', theme: '主题色' })[color]]
+    .filter(Boolean).map(part => ' · ' + part).join('');
+}
+
 export function loopMarkdown(result: ReadingLoop): string {
   const { loop, sources } = result;
   const nodes = new Map(loop.nodes.map(node => [node.id, node]));
@@ -160,7 +165,7 @@ export function loopMarkdown(result: ReadingLoop): string {
     const ref = [inlineCode(node.path), `块 ${inlineCode(node.block_id)}`,
       node.lines ? `第 ${node.lines.start}–${node.lines.end} 行` : '纯讲解'].join(' · ');
     parts.push(`### ${index + 1}. ${title(nodeId)}`, ref, node.explanation);
-    for (const use of node.library_uses ?? []) parts.push(`**${oneLine(loop.legends.find(legend => legend.id === use.id)!.name)}** ${use.reason}`);
+    for (const use of node.library_uses ?? []) parts.push(`**${oneLine(loop.legends.find(legend => legend.id === use.id)!.name)}**${edgeNote(use)} ${use.reason}`);
     if (node.annotation) parts.push('**节点说明**', node.annotation);
     if (node.hint) parts.push(`**提示** ${node.hint}`);
     const problem = problems.get(nodeId);
@@ -168,12 +173,12 @@ export function loopMarkdown(result: ReadingLoop): string {
     const blockKey = `${node.path}:${node.block_id}`;
     if (!blocks.has(blockKey)) blocks.set(blockKey, { reference: ref, explanation: node.block_explanation });
   }
-  parts.push('## 关系', loop.edges.map(edge => `- **${title(edge.from)} → ${title(edge.to)}**\n\n  ${edge.reason.trim().replace(/\r\n|\r|\n/gu, '\n  ')}`).join('\n\n'));
+  parts.push('## 关系', loop.edges.map(edge => `- **${title(edge.from)} → ${title(edge.to)}**${edgeNote(edge)}\n\n  ${edge.reason.trim().replace(/\r\n|\r|\n/gu, '\n  ')}`).join('\n\n'));
   if (loop.legends.length) {
     parts.push('## 图例');
     for (const legend of loop.legends) {
       parts.push(`### ${oneLine(legend.name)}`, legend.description, legend.uses.map(use =>
-        `- ${inlineCode(use.path)} · ${use.reason.trim().replace(/\r\n|\r|\n/gu, '\n  ')}`).join('\n'));
+        `- ${inlineCode(use.path)}${edgeNote(use)} · ${use.reason.trim().replace(/\r\n|\r|\n/gu, '\n  ')}`).join('\n'));
     }
   }
   parts.push('## 保存的原块讲解');

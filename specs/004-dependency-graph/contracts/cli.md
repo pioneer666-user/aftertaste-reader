@@ -25,6 +25,8 @@ apply 的 JSON 文件绝对路径可在项目外，只是 AI 明确指定输入�
 
 明确核对无依赖用 analysis=reviewed、dependencies=[]；未完成者不提交 reviews，仅 register。删除用 remove=[指定路径]。三个动作可同份输入，但删除与登记/核对/引用冲突时失败，输入不变。缺图时明确 apply 才可初始化，query/validate 不建目录或空图。
 
+局部输入的 `reviews[].dependencies[]` 与 `legendUpserts[].uses[]` 接受[关系标注](../data-model.md#dependencygraph)。apply 保存、validate 校验，query-graph 和 query-legends 分别按原边读回。
+
 ## 库图例
 
 `apply-graph` 可接收 `legendUpserts` 和 `legendRemove`，可单独提交或与文件更新同批。图的可选 `legends` 数组只保存本图的实例及其关联。下面提交一个标准库图例。

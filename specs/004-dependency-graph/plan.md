@@ -6,6 +6,8 @@
 
 ## Summary
 
+解析图和局部更新时共用连线标注校验，按使用者替换依赖时携带该条关系的完整字段。
+
 提供 apply-graph、query-graph、validate-graph 三个 CLI 入口，共用图结构校验与使用者完整列表替换规则。沿既定 UTF-8 JSON 图与分层，先核固定依据、旧图及候选，再同目录完整发布。AI 判断依赖，工具不分析语义。
 
 ## Technical Context

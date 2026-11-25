@@ -644,8 +644,19 @@
   .edge-ink .vue-flow__edge-path { transition: opacity 100ms ease-out; }
 }
 .inspect-edge { cursor: pointer; pointer-events: visibleStroke; }
-.graph-area:not(.node-relations-active) .inspect-edge:focus-visible .vue-flow__edge-path,
-.inspect-edge.inspected-edge .vue-flow__edge-path { stroke: var(--focus) !important; stroke-width: 4px !important; opacity: 1 !important; }
+.inspect-edge .vue-flow__edge-interaction { vector-effect: non-scaling-stroke; }
+@media (pointer: coarse) {
+  .inspect-edge .vue-flow__edge-interaction { stroke-width: 42px; }
+}
+.graph-area .inspect-edge:focus { outline: none; }
+.foreground-edges .edge-focus-ring { stroke: var(--focus); stroke-width: 8; stroke-dasharray: 3 3; }
+.foreground-edges .selected-curve { stroke-width: 3.8; }
+.foreground-edges circle { fill: currentColor; stroke: var(--paper); stroke-width: 1; }
+.edge-label { stroke: none; }
+.edge-label rect { fill: color-mix(in srgb, currentColor 8%, var(--paper)); }
+.edge-label text { fill: currentColor; font: 600 12px system-ui, sans-serif; }
+.edge-details .detail-edge-label { font-weight: 600; color: var(--text); }
+.edge-details .canvas-summary-heading { min-width: 0; }
 .canvas-summary:has(.edge-reason) { align-items: start; white-space: normal; }
 .canvas-summary:has(.edge-reason) h2, .canvas-summary .edge-reason { overflow-wrap: anywhere; white-space: pre-wrap; }
 @media (max-width: 760px) {
@@ -667,9 +678,9 @@
 /* The original edge owns the hit area under cards. Only the selected ink is raised. */
 .foreground-edges {
   position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 1;
-  fill: none; stroke: var(--direct-edge); stroke-width: 2.8;
+  fill: none; stroke: currentColor; stroke-width: 2.8;
 }
-.foreground-edges .library-use { stroke: var(--library-direct); stroke-dasharray: 5 3; }
+.foreground-edges .library-use { stroke-dasharray: 5 3; }
 .rearrange-dialog {
   max-width: min(26rem, calc(100vw - 32px)); padding: 22px; border-radius: 12px;
   color: var(--text); background: var(--paper); border: 1px solid var(--line);

@@ -8,6 +8,8 @@ import './canvas.css';
 import { alignBounds } from '../core/canvas-alignment.js';
 import type { AlignmentGuide } from '../core/canvas-alignment.js';
 import { canvasRoutes } from '../core/canvas-routing.js';
+import { placeEdgeLabels, sampleCurve } from './edge-labels.js';
+import type { EdgeAnnotation } from '../core/edge-annotation.js';
 import DependencyEdge from './DependencyEdge.vue';
 import DependencyMiniMap from './DependencyMiniMap.vue';
 import DependencyDots from './DependencyDots.vue';
@@ -88,6 +90,7 @@ const detailHeading = ref<HTMLElement>();
 const inspector = ref<HTMLElement>();
 const groupTrigger = shallowRef<HTMLElement>();
 const selectedEdgeId = ref('');
+const focusedEdgeId = ref('');
 const selectedEdge = computed(() => getEdges.value.find(edge => edge.id === selectedEdgeId.value));
 const route = shallowRef<LoopRoute>();
 const routeProblem = ref<ReaderProblem>();
@@ -222,25 +225,10 @@ const visibleKeys = computed(() => new Set([...nodes.value.map(node => node.key)
 const visibleGroups = computed(() => (layout.value?.groups ?? []).map(group =>
   ({ ...group, members: group.members.filter(id => visibleKeys.value.has(id)) })).filter(group => group.members.length));
 // Short bounds along the actual curves also cover bottom ports, returns and library links.
-const noteEdgeBounds = computed(() => {
-  if (!loop.value?.loop.nodes.some(step => step.annotation)) return [];
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  const bounds = [];
-  for (const curve of routes.value.values()) {
-    path.setAttribute('d', curve);
-    const length = path.getTotalLength();
-    const segments = Math.min(48, Math.max(1, Math.ceil(length / 32)));
-    let a = path.getPointAtLength(0);
-    for (let i = 1; i <= segments; i++) {
-      const b = path.getPointAtLength(length * i / segments);
-      bounds.push({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) });
-      a = b;
-    }
-  }
-  return bounds;
-});
+const curves = computed(() => new Map(Array.from(routes.value, ([id, line]) => [id, sampleCurve(line)])));
+const noteEdgeBounds = computed(() => Array.from(curves.value.values()).flatMap(curve => curve.segments));
 const annotationPaneWidth = computed(() =>
-  paneSize.value.width - (panelOpen.value ? inspector.value?.offsetWidth ?? 0 : 0));
+  paneSize.value.width - (loopRoute && panelOpen.value ? inspector.value?.offsetWidth ?? 0 : 0));
 // The annotation lives outside the measured card, so its disclosure never moves ports or writes layout.
 const defaultOpenNotes = computed(() => {
   const open = new Set<string>();
@@ -432,33 +420,50 @@ function render() {
 }
 
 function renderEdges() {
-  const edge = (from: string, to: string, reason: string, libraryName?: string): Edge => {
+  const titles = new Map(loop.value?.loop.nodes.map(node => [node.id, node.title]));
+  const edge = (from: string, to: string, relation: EdgeAnnotation & { reason: string }, libraryName?: string): Edge => {
     const library = libraryName !== undefined;
-    const direct = from === selected.value || to === selected.value;
-    const color = library ? (direct ? 'var(--library-direct)' : 'var(--library-edge)')
-      : (direct ? 'var(--direct-edge)' : 'var(--edge)');
+    const id = nodeId(from) + '→' + nodeId(to);
+    const direct = !selectedEdgeId.value && (from === selected.value || to === selected.value);
+    const accent = relation.color === 'red' ? 'var(--danger)' : relation.color === 'green' ? 'var(--success)'
+      : library ? 'var(--library-direct)' : 'var(--direct-edge)';
+    const ink = relation.color === 'red' || relation.color === 'green' || direct ||
+      id === selectedEdgeId.value || id === focusedEdgeId.value ? accent
+      : library ? 'var(--library-edge)' : 'var(--edge)';
     return {
-      id: nodeId(from) + '→' + nodeId(to), source: nodeId(from), target: nodeId(to), sourceHandle: 'out',
-      targetHandle: from === to ? 'self' : 'in', type: 'dependency', focusable: !!loopRoute,
-      data: { from: libraryName ?? from, to, reason, loop: !!loopRoute, direct },
+      id, source: nodeId(from), target: nodeId(to), sourceHandle: 'out',
+      targetHandle: from === to ? 'self' : 'in', type: 'dependency', focusable: true, domAttributes: { tabindex: -1 },
+      data: { from: libraryName ?? titles.get(from) ?? from, to: titles.get(to) ?? to,
+        reason: relation.reason, label: relation.label, accent, direct },
       class: [library && 'library-use-edge', direct && 'direct-relation'].filter(Boolean).join(' '),
-      ...(!loopRoute && { style: { stroke: color, strokeWidth: direct ? 2.8 : 1.9 } }),
-      markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color },
-      ariaLabel: reason,
+      style: { stroke: ink, strokeWidth: direct ? 2.8 : 1.9 },
+      markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: ink },
+      ariaLabel: relation.reason,
     };
   };
   const graph = dependency.value?.graph;
   setEdges(graph ? [
-    ...graph.edges.map(({ dependency, dependent, reason }) => edge(dependency, dependent, reason)),
-    ...legends.value.flatMap(legend => legend.uses.map(use => edge(legendKey(legend.id), use.path, use.reason, legend.name))),
+    ...graph.edges.map(item => edge(item.dependency, item.dependent, item)),
+    ...legends.value.flatMap(legend => legend.uses.map(use => edge(legendKey(legend.id), use.path, use, legend.name))),
   ].sort((a, b) => Number(a.data.direct) - Number(b.data.direct)) :
-    [...(loop.value?.loop.edges ?? []).map(({ from, to, reason }) => edge(from, to, reason)),
+    [...(loop.value?.loop.edges ?? []).map(item => edge(item.from, item.to, item)),
       ...(loop.value?.loop.nodes ?? []).flatMap(node => (node.library_uses ?? []).map(use =>
-        edge(legendKey(use.id), node.id, use.reason, legends.value.find(legend => legend.id === use.id)!.name)))]);
+        edge(legendKey(use.id), node.id, use, legends.value.find(legend => legend.id === use.id)!.name)))]);
 }
 
-watch(selected, renderEdges);
-const foregroundEdges = computed(() => getEdges.value.filter(edge => edge.data.direct));
+watch([selected, selectedEdgeId, focusedEdgeId], renderEdges);
+const foregroundEdges = computed(() => getEdges.value.filter(edge =>
+  edge.data.direct || edge.id === selectedEdgeId.value || edge.id === focusedEdgeId.value)
+  .sort((a, b) => Number(a.id === selectedEdgeId.value) - Number(b.id === selectedEdgeId.value)));
+const edgeLabels = computed(() => {
+  const candidates = getEdges.value.filter(edge => edge.data.label && (edge.data.direct ||
+    edge.id === selectedEdgeId.value || edge.id === focusedEdgeId.value ||
+    edge.source === litNode.value || edge.target === litNode.value))
+    .sort((a, b) => Number(b.id === selectedEdgeId.value) - Number(a.id === selectedEdgeId.value));
+  if (!candidates.length) return [];
+  const obstacles = mapNodes.value.map(node => ({ ...node, height: node.type === 'canvasGroup' ? 40 : node.height }));
+  return placeEdgeLabels(candidates, curves.value, obstacles, viewport.value, annotationPaneWidth.value, paneSize.value.height);
+});
 
 async function load(mode: 'normal' | 'refresh' | 'discard' = 'normal') {
   if (loading.value || saving.value || !idle.value || box.value || (dirty.value && mode === 'normal')) return;
@@ -610,8 +615,16 @@ async function focusRelationship(id: string) {
 }
 
 function selectEdge(id: string) {
-  selectDetail('');
+  if (!loopRoute) selectDetail('');
+  groupEditor.value = false;
+  menuGroup.value = undefined;
   selectedEdgeId.value = id;
+}
+
+function closeEdge() {
+  const id = selectedEdgeId.value;
+  selectedEdgeId.value = '';
+  graphArea.value?.querySelector<SVGElement>('[data-edge="' + CSS.escape(id) + '"]')?.focus({ preventScroll: true });
 }
 
 async function openGroupEditor(id: string, event?: MouseEvent, field?: 'name' | 'members') {
@@ -1034,7 +1047,7 @@ onUnmounted(() => {
           :disable-keyboard-a11y="true" :pan-on-drag="editable" :zoom-on-scroll="editable && !box" :zoom-on-pinch="editable && !box"
           :zoom-on-double-click="false" :prevent-scrolling="editable"
           @init="init" @node-drag-start="startDrag" @node-drag="previewDrag" @node-drag-stop="endDrag"
-          @move-start="moving = !paneDragging" @move-end="moved" @pane-click="clearDetail">
+          @move-start="moving = !paneDragging" @move-end="moved" @pane-click="selectedEdge ? closeEdge() : clearDetail()">
           <template #node-canvasFile="{ data }">
             <Handle id="in" type="target" :position="Position.Left" />
             <Handle id="self" class="self-handle" type="target" :position="Position.Top" />
@@ -1073,13 +1086,23 @@ onUnmounted(() => {
             </div>
           </template>
           <template #zoom-pane>
-            <svg v-if="foregroundEdges.length" class="foreground-edges" aria-hidden="true">
-              <path v-for="edge in foregroundEdges" :key="edge.id" :d="routes.get(edge.id)"
-                :class="{ 'library-use': edge.source.startsWith('legend:') }"
-                :marker-end="`url('#${getMarkerId(edge.markerEnd, flowId)}')`" />
+            <svg v-if="foregroundEdges.length || edgeLabels.length" class="foreground-edges" aria-hidden="true">
+              <g v-for="edge in foregroundEdges" :key="edge.id" :style="{ color: edge.data.accent }">
+                <path v-if="edge.id === focusedEdgeId" class="edge-focus-ring" :d="routes.get(edge.id)" />
+                <path :d="routes.get(edge.id)" :class="{ 'library-use': edge.source.startsWith('legend:'), 'selected-curve': edge.id === selectedEdgeId }"
+                  :marker-end="`url('#${getMarkerId(edge.markerEnd, flowId)}')`" />
+                <circle v-if="edge.id === selectedEdgeId" :cx="curves.get(edge.id)?.start.x" :cy="curves.get(edge.id)?.start.y" r="4" />
+              </g>
+              <g v-for="item in edgeLabels" :key="'label-' + item.id" class="edge-label" :style="{ color: item.color }"
+                :transform="'translate(' + item.x + ' ' + item.y + ') scale(' + 1 / viewport.zoom + ')'">
+                <rect :x="-item.width / 2" y="-10" :width="item.width" height="20" rx="5" />
+                <text text-anchor="middle" dy="4">{{ item.label }}</text>
+              </g>
             </svg>
           </template>
-          <template #edge-dependency="edge"><DependencyEdge v-bind="edge" :line="routes.get(edge.id)" :lit="litNode === edge.source || litNode === edge.target" :active="!litNode && selectedEdgeId === edge.id" @inspect="selectEdge(edge.id)" /></template>
+          <template #edge-dependency="edge"><DependencyEdge v-bind="edge" :line="routes.get(edge.id)"
+            :lit="litNode === edge.source || litNode === edge.target" :active="selectedEdgeId === edge.id"
+            @keydown.esc.stop="selectedEdge && closeEdge()" @keyboard-focus="focusedEdgeId = $event ? edge.id : ''" @inspect="selectEdge(edge.id)" /></template>
         </VueFlow>
         <svg v-if="guides.length" class="canvas-alignment" aria-hidden="true">
           <g :transform="`translate(${viewport.x} ${viewport.y}) scale(${viewport.zoom})`">
@@ -1120,12 +1143,25 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
-      <LoopRelations v-if="loop && selected && !selectedLegend && !groupEditor" :loop="loop.loop" :selected="selected"
+      <section v-if="selectedEdge && !groupEditor" class="canvas-panel canvas-panel-compact edge-details"
+        :class="{ 'loop-relations': loopId }" :aria-label="t('canvasRelationshipDetails')" :inert="toolsCovered" @keydown.esc.stop="closeEdge">
+        <div class="canvas-summary">
+          <div class="canvas-summary-heading">
+            <h2>{{ selectedEdge.data.from }} → {{ selectedEdge.data.to }}</h2>
+            <p v-if="selectedEdge.data.label" class="detail-edge-label">{{ selectedEdge.data.label }}</p>
+            <p class="edge-reason">{{ selectedEdge.data.reason }}</p>
+          </div>
+          <div class="canvas-summary-actions"><button type="button" class="canvas-clear-detail" :aria-label="t('canvasClearSelection')" @click="closeEdge">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button></div>
+        </div>
+      </section>
+      <LoopRelations v-else-if="loop && selected && !selectedLegend && !groupEditor" :loop="loop.loop" :selected="selected"
         :panel-open="panelOpen" :language="language" @toggle="panelOpen = !panelOpen" :inert="toolsCovered" @select="selectDetail" />
       <button v-if="loop" type="button" class="loop-reader-toggle" :aria-expanded="panelOpen" :aria-controls="flowId + '-inspector'"
         :aria-label="t(panelOpen ? 'loopCollapse' : 'loopExpand')" :inert="toolsCovered"
         @click="panelOpen = !panelOpen"><span aria-hidden="true">{{ panelOpen ? '›' : '‹' }}</span></button>
-      <component :is="loopId ? 'aside' : 'div'" v-if="loopId || (hasSelection && !groupEditor)" ref="inspector"
+      <component :is="loopId ? 'aside' : 'div'" v-if="loopId || (hasSelection && !selectedEdge && !groupEditor)" ref="inspector"
         :id="loopId ? flowId + '-inspector' : undefined" :aria-hidden="loopId && !panelOpen || undefined"
         :class="loopId ? 'canvas-inspector' : ['canvas-panel', { 'canvas-panel-compact': !!selectedNode }]">
         <nav v-if="loop" class="loop-step-nav" :aria-label="t('loopOrder')" :inert="toolsCovered || !panelOpen">
@@ -1141,14 +1177,13 @@ onUnmounted(() => {
         </nav>
         <LoopReading v-if="loop" ref="readingPanel" :reading="loop" :language="language" :selected="selected" :active="active" :panel-open="panelOpen" :legend-selected="!!selectedLegend" @select="selectDetail" @add-to-notes="emit('addToNotes', $event)" />
         <template v-if="!loopId && hasSelection && !groupEditor">
-          <section class="canvas-summary" :aria-label="t(selectedEdge ? 'canvasRelationshipDetails' : selectedNode ? 'canvasSelected' : 'canvasSelectedLibrary')"
+          <section class="canvas-summary" :aria-label="t(selectedNode ? 'canvasSelected' : 'canvasSelectedLibrary')"
             @keydown.esc.stop="clearDetail()">
             <div class="canvas-summary-heading">
               <h2 ref="detailHeading" tabindex="-1" :title="selectedNode?.path">
-                {{ selectedEdge ? selectedEdge.data.from + ' → ' + selectedEdge.data.to : selectedNode ? selectedFileName : selectedLegend?.name }}
+                {{ selectedNode ? selectedFileName : selectedLegend?.name }}
               </h2>
-              <p v-if="selectedEdge" class="edge-reason">{{ selectedEdge.data.reason }}</p>
-              <p v-else-if="selectedNode">
+              <p v-if="selectedNode">
                 {{ t(nodeStatus) }}<template v-if="!documentPath"> · {{ t(dependency?.documentsUnavailable ? 'canvasDocumentsUnavailable' : 'canvasNoDocument') }}</template>
               </p>
               <p v-else-if="selectedLegend">{{ legendKind(selectedLegend.kind) }}</p>

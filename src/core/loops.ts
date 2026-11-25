@@ -1,3 +1,4 @@
+import { edgeAnnotationKeys, readEdgeAnnotation, type EdgeAnnotation } from './edge-annotation.js';
 import { GraphError, isLegendId, parseLibraryLegends } from './dependency-graph.js';
 import type { LibraryLegend } from './dependency-graph.js';
 import { readRange } from './document-blocks.js';
@@ -26,7 +27,7 @@ interface LoopNode {
   explanation: string;
   hint?: string;
   annotation?: string;
-  library_uses?: { id: string; reason: string }[];
+  library_uses?: ({ id: string; reason: string } & EdgeAnnotation)[];
 }
 
 export interface SavedNode extends LoopNode {
@@ -45,7 +46,7 @@ interface Route<Node> {
   explanation: string;
   entry: string;
   nodes: Node[];
-  edges: { from: string; to: string; reason: string }[];
+  edges: ({ from: string; to: string; reason: string } & EdgeAnnotation)[];
   reading_order: string[];
 }
 
@@ -96,6 +97,9 @@ class Fields {
     return value;
   }
 
+  annotation(data: Record<string, unknown>, field: string) {
+    return readEdgeAnnotation(data, field, (location, reason) => this.fail(location, reason));
+  }
   unique(seen: Set<string>, key: string, field: string): void {
     if (seen.has(key)) this.fail(field, 'DUPLICATE');
     seen.add(key);
@@ -109,10 +113,10 @@ function readNode(data: Record<string, unknown>, v: Fields, field: string): Loop
   const seen = new Set<string>();
   const uses = Object.hasOwn(data, 'library_uses') ? v.array(data.library_uses, field + '.library_uses').map((value, index) => {
     const location = field + '.library_uses[' + index + ']';
-    const use = v.object(value, ['id', 'reason'], [], location);
+    const use = v.object(value, ['id', 'reason'], edgeAnnotationKeys, location);
     if (!isLegendId(use.id)) v.fail(location + '.id', 'LEGEND_ID');
     v.unique(seen, use.id, location + '.id');
-    return { id: use.id, reason: v.text(use.reason, location + '.reason') };
+    return { id: use.id, reason: v.text(use.reason, location + '.reason'), ...v.annotation(use, location) };
   }) : undefined;
   return { ...(uses && { library_uses: uses }), id: data.id, path: data.path, block_id: data.block_id,
     title: v.text(data.title, field + '.title'), explanation: v.text(data.explanation, field + '.explanation'),
@@ -138,13 +142,13 @@ function readRoute<Node extends LoopNode>(data: Record<string, unknown>, v: Fiel
   const outgoing = new Map<string, Set<string>>();
   const edges = v.array(data.edges, '$.edges').map((value, index) => {
     const field = '$.edges[' + index + ']';
-    const edge = v.object(value, ['from', 'to', 'reason'], [], field);
+    const edge = v.object(value, ['from', 'to', 'reason'], edgeAnnotationKeys, field);
     const from = nodeId(edge.from, field + '.from');
     const to = nodeId(edge.to, field + '.to');
     const targets = outgoing.get(from) ?? new Set<string>();
     v.unique(targets, to, field);
     outgoing.set(from, targets);
-    return { from, to, reason: v.text(edge.reason, field + '.reason') };
+    return { from, to, reason: v.text(edge.reason, field + '.reason'), ...v.annotation(edge, field) };
   });
   const reached = new Set([entry]);
   for (const from of reached) for (const to of outgoing.get(from) ?? []) reached.add(to);
