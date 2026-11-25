@@ -1,0 +1,141 @@
+<section id="edge-reading-proposal" class="viz-dotted-background" aria-label="数量校验闭环，选例子看路线，点线看关系">
+  <style>
+    #edge-reading-proposal {color-scheme:light dark;--page:light-dark(#f4f5f4,#212529);--panel:light-dark(#fff,#292e32);--ink:light-dark(#2b333a,#ebeff2);--small:light-dark(#56636c,#b7c1cb);--rim:light-dark(#aab4ba,#64717b);--faint:light-dark(#c5cbce,#4d565e);--active:light-dark(#425f76,#a6cde7);--tint:light-dark(#eaf0f4,#323f49);font:14px/1.5 system-ui,"Microsoft YaHei",sans-serif;color:var(--ink);padding:12px 8px 14px;box-sizing:border-box;container-type:inline-size}
+    #edge-reading-proposal header {display:flex;flex-wrap:wrap;gap:7px 14px;align-items:center;margin-bottom:2px}
+    #edge-reading-proposal header strong {font-weight:550}
+    #edge-reading-proposal nav {display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+    #edge-reading-proposal button {font:inherit;color:var(--small);background:var(--panel);border:1px solid var(--rim);border-radius:7px;padding:4px 9px}
+    #edge-reading-proposal button[aria-pressed="true"] {color:var(--active);background:var(--tint);border-color:var(--active)}
+    #edge-reading-proposal .map {width:100%;display:block;overflow:visible}
+    #edge-reading-proposal .tile {fill:var(--panel);stroke:var(--rim)}
+    #edge-reading-proposal .tile-name {font-size:14px;font-weight:550;fill:var(--ink)}
+    #edge-reading-proposal .sub {font-size:11px;fill:var(--small)}
+    #edge-reading-proposal .base,#edge-reading-proposal .halo,#edge-reading-proposal .hit {fill:none;stroke-linecap:round;stroke-linejoin:round}
+    #edge-reading-proposal .link {color:var(--faint)}
+    #edge-reading-proposal .link.on,#edge-reading-proposal .link:hover,#edge-reading-proposal .link:focus-visible {color:var(--active)}
+    #edge-reading-proposal .base {stroke:currentColor;stroke-width:1.6px}
+    #edge-reading-proposal .on .base {stroke-width:2.4px}
+    #edge-reading-proposal .chosen .base,#edge-reading-proposal .link:hover .base {stroke-width:3.4px}
+    #edge-reading-proposal .halo {stroke:transparent;stroke-width:8px}
+    #edge-reading-proposal .link:focus-visible {outline:none}
+    #edge-reading-proposal .link:focus-visible .halo {stroke:var(--active)}
+    #edge-reading-proposal .link:focus-visible .base {stroke:var(--panel);stroke-width:2px}
+    #edge-reading-proposal .hit {stroke:transparent;stroke-width:25px;pointer-events:stroke}
+    #edge-reading-proposal .tag-bg {fill:var(--panel);stroke:var(--rim);stroke-width:.7px}
+    #edge-reading-proposal .tag-text {fill:var(--active);font:500 12px/1.2 system-ui,"Microsoft YaHei",sans-serif}
+    #edge-reading-proposal footer {width:fit-content;max-width:100%;margin:auto;color:var(--small);box-sizing:border-box;background:var(--panel);border:1px solid var(--rim);padding:7px 12px;border-radius:8px;font-size:13px}
+    @media(pointer:coarse){#edge-reading-proposal button {min-height:44px} #edge-reading-proposal .hit {stroke-width:42px}}
+    @media(forced-colors:active){#edge-reading-proposal .link:focus-visible .halo {stroke:Highlight} #edge-reading-proposal .link:focus-visible .base {stroke:Canvas}}
+  </style>
+  <header><strong>数量校验</strong><nav aria-label="教学示例">
+    <button type="button" class="cursor-interaction" data-mode="all">全图</button>
+    <button type="button" class="cursor-interaction" data-mode="integer">例子 "04"</button>
+    <button type="button" class="cursor-interaction" data-mode="decimal">例子 "4.5"</button>
+  </nav></header>
+  <svg class="map" role="group" aria-label="判断数量后，成功经建立订单到追加，失败走抛出异常"></svg>
+  <footer aria-live="polite"></footer>
+</section>
+<script>
+(() => {
+  const root = document.getElementById("edge-reading-proposal");
+  const map = root.querySelector(".map");
+  const detail = root.querySelector("footer");
+  const ns = "http://www.w3.org/2000/svg";
+  const links = [
+    {id:"valid",from:0,to:1,mode:"integer",label:"数量 4",reason:"规则返回数值 4，服务用它建立订单。"},
+    {id:"invalid",from:0,to:2,mode:"decimal",label:"整数判断为假",reason:"4.5 未通过整数判断，规则在返回数量前抛出异常。"},
+    {id:"save",from:1,to:3,mode:"integer",label:"",reason:"订单在上一步建好，走到追加这一步，集合才发生变化。"}
+  ];
+  const nodes = [["规则","转换后判断数量"],["服务","建立订单"],["规则","抛出异常"],["服务","追加订单"]];
+  let mode = "integer", selected = "", width = 0;
+  const shapes = new Map();
+  const el = (parent, tag, attrs, words) => {
+    const item = document.createElementNS(ns,tag);
+    for (const [key,value] of Object.entries(attrs)) item.setAttribute(key,value);
+    if (words !== undefined) item.textContent = words;
+    parent.appendChild(item);
+    return item;
+  };
+  function sync() {
+    root.querySelectorAll("[data-mode]").forEach(btn => btn.setAttribute("aria-pressed",String(btn.dataset.mode === mode)));
+    for (const edge of links) {
+      const item = shapes.get(edge.id);
+      if (!item) continue;
+      const chosen = selected === edge.id;
+      const onRoute = mode === edge.mode;
+      item.target.classList.toggle("on",chosen || onRoute);
+      item.target.classList.toggle("chosen",chosen);
+      item.dot.style.display = chosen ? "" : "none";
+      item.tag.style.display = edge.label && (onRoute || (mode === "all" && chosen)) ? "" : "none";
+      item.target.setAttribute("aria-pressed",String(chosen));
+    }
+    const edge = links.find(item => item.id === selected);
+    detail.textContent = edge
+      ? (mode !== "all" && mode !== edge.mode ? "当前例子跳过此线。另一个例子中，" + edge.reason : edge.reason)
+      : mode === "integer" ? '示例输入 "04"　·　数量转成 4，随后建立并追加订单。'
+      : mode === "decimal" ? '示例输入 "4.5"　·　判断后抛出异常，集合仍为空。'
+      : "点一条连线，查看它连接这两步的原因。";
+  }
+  function save() {
+    if (window.openai?.setWidgetState) window.openai.setWidgetState({modelContent:{mode,selected},privateContent:null}).catch(() => {});
+  }
+  function restore(state) {
+    const choice = state?.modelContent;
+    if (!choice || !["all","integer","decimal"].includes(choice.mode)) return;
+    mode = choice.mode;
+    selected = links.some(edge => edge.id === choice.selected) ? choice.selected : "";
+    sync();
+  }
+  function draw() {
+    const w = Math.round(map.getBoundingClientRect().width);
+    if (w < 1 || w === width) return;
+    width = w;
+    const narrow = w < 565, h = narrow ? 290 : 184;
+    map.style.height = h + "px";
+    map.setAttribute("viewBox","0 0 " + w + " " + h);
+    map.replaceChildren();
+    shapes.clear();
+    const card = narrow ? Math.min(132,(w-36)/2) : Math.min(137,w*.21);
+    const pos = narrow
+      ? [[w/2,31],[w*.25,166],[w*.75,166],[w*.25,260]]
+      : [[card/2+2,93],[w*.535,44],[w*.535,143],[w-card/2-2,44]];
+    links.forEach(edge => {
+      const [x1,y1]=pos[edge.from], [x2,y2]=pos[edge.to];
+      const x = narrow ? x1 + (edge.from===0 ? (edge.to===1 ? -14 : 14) : 0) : x1+card/2;
+      const y = narrow ? y1+22 : y1 + (edge.from===0 ? (edge.to===1 ? -5 : 5) : 0);
+      const endX = narrow ? x2 : x2-card/2-2, endY = narrow ? y2-24 : y2;
+      const a = narrow ? (y+endY)/2 : (x+endX)/2;
+      const d = narrow ? "M "+x+" "+y+" C "+x+" "+a+" "+endX+" "+a+" "+endX+" "+endY : "M "+x+" "+y+" C "+a+" "+y+" "+a+" "+endY+" "+endX+" "+endY;
+      const target = el(map,"a",{href:"#"+edge.id,role:"button","aria-label":nodes[edge.from][1]+"到"+nodes[edge.to][1],"class":"link cursor-interaction"});
+      el(target,"path",{d,"class":"halo"});
+      const path = el(target,"path",{d,"class":"base"});
+      el(target,"path",{d:narrow ? "M -4 -7 L 0 0 L 4 -7 Z" : "M -7 -4 L 0 0 L -7 4 Z",transform:"translate("+endX+" "+endY+")",fill:"currentColor"});
+      const dot = el(target,"circle",{cx:x,cy:y,r:3.5,fill:"currentColor"});
+      el(target,"path",{d,"class":"hit"});
+      const mid = path.getPointAtLength(path.getTotalLength()*.5);
+      const tag = el(target,"g",{transform:"translate("+mid.x+" "+(mid.y-(narrow ? 0 : 15))+")"});
+      const tagWidth = edge.id === "invalid" ? 88 : 56;
+      el(tag,"rect",{x:-tagWidth/2,y:-10,width:tagWidth,height:20,rx:5,"class":"tag-bg"});
+      el(tag,"text",{y:4,"text-anchor":"middle","class":"tag-text"},edge.label);
+      shapes.set(edge.id,{target,tag,dot});
+      const pick = event => { event.preventDefault(); selected = edge.id; sync(); save(); };
+      target.addEventListener("click",pick);
+      target.addEventListener("keydown",event => { if (event.key===" ") pick(event); });
+    });
+    nodes.forEach(([sub,name],index) => {
+      const [x,y] = pos[index];
+      el(map,"rect",{x:x-card/2,y:y-22,width:card,height:44,rx:9,"class":"tile"});
+      el(map,"text",{x:x-card/2+9,y:y-4,"class":"sub"},sub);
+      el(map,"text",{x:x-card/2+9,y:y+13,"class":"tile-name"},name);
+    });
+    sync();
+  }
+  root.querySelectorAll("[data-mode]").forEach(btn => btn.addEventListener("click",() => { mode=btn.dataset.mode; selected=""; sync(); save(); }));
+  map.addEventListener("click",event => { if (event.target === map) { selected=""; sync(); save(); } });
+  root.addEventListener("keydown",event => { if (event.key === "Escape" && selected) { selected=""; sync(); save(); } });
+  restore(window.openai?.widgetState);
+  window.addEventListener("openai:set_globals",event => restore(event.detail?.globals?.widgetState));
+  draw();
+  new ResizeObserver(draw).observe(map);
+})();
+</script>
