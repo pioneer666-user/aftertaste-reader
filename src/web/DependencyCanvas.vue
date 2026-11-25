@@ -7,7 +7,7 @@ import '@vue-flow/core/dist/theme-default.css';
 import './canvas.css';
 import { alignBounds } from '../core/canvas-alignment.js';
 import type { AlignmentGuide } from '../core/canvas-alignment.js';
-import { canvasRoutes } from '../core/canvas-routing.js';
+import { type CardBounds, canvasRoutes } from '../core/canvas-routing.js';
 import { placeEdgeLabels, sampleCurve } from './edge-labels.js';
 import type { EdgeAnnotation } from '../core/edge-annotation.js';
 import DependencyEdge from './DependencyEdge.vue';
@@ -181,6 +181,11 @@ const loop = computed(() => reading.value && 'result' in reading.value ? reading
 const readingPanel = ref<InstanceType<typeof LoopReading>>();
 const noteChoices = ref(new Map<string, boolean>());
 const raisedNote = ref('');
+const noteOffsets = ref(new Map<string, CardBounds>());
+function noteBounds(id: string, offset: CardBounds | undefined) {
+  if (offset) noteOffsets.value.set(id, offset);
+  else noteOffsets.value.delete(id);
+}
 function setNote(id: string, open: boolean) {
   noteChoices.value.set(id, open);
   raisedNote.value = open ? id : '';
@@ -461,7 +466,12 @@ const edgeLabels = computed(() => {
     edge.source === litNode.value || edge.target === litNode.value))
     .sort((a, b) => Number(b.id === selectedEdgeId.value) - Number(a.id === selectedEdgeId.value));
   if (!candidates.length) return [];
-  const obstacles = mapNodes.value.map(node => ({ ...node, height: node.type === 'canvasGroup' ? 40 : node.height }));
+  const obstacles: CardBounds[] = [];
+  for (const node of mapNodes.value) {
+    obstacles.push({ ...node, height: node.type === 'canvasGroup' ? 40 : node.height });
+    const note = noteOffsets.value.get(node.id);
+    if (note) obstacles.push({ ...note, x: node.x + note.x, y: node.y + note.y });
+  }
   return placeEdgeLabels(candidates, curves.value, obstacles, viewport.value, annotationPaneWidth.value, paneSize.value.height);
 });
 
@@ -1062,7 +1072,7 @@ onUnmounted(() => {
             </button>
             <LoopAnnotation v-if="loopId && data.step.annotation" :step="data.step" :language="language" :pane-width="annotationPaneWidth"
               :open="noteChoices.get(data.key) ?? defaultOpenNotes.has(data.key)" :raised="raisedNote === data.key"
-              @toggle="setNote(data.key, $event)" @read="readAnnotation(data.key, $event)" />
+              @bounds="noteBounds(nodeId(data.key), $event)" @toggle="setNote(data.key, $event)" @read="readAnnotation(data.key, $event)" />
             <Handle id="out" type="source" :position="Position.Right" />
           </template>
           <template #node-canvasLegend="{ data }">

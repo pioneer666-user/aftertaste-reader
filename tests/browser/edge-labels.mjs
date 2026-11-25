@@ -183,6 +183,27 @@ try {
     await label.waitFor();
     await close();
   }
+  // A hand-placed vertical branch leaves room below the expanded note (D052 independent review).
+  const manual = await readJSON(loopLayout);
+  Object.assign(manual.layout.positions, { check: { x: 120, y: 110 }, build: { x: 120, y: 407 },
+    reject: { x: 525, y: 60 }, append: { x: 530, y: 360 }, 'legend:number': { x: 120, y: -50 } });
+  await writeJSON(loopLayout, manual);
+  await go('aftertaste-loop/' + quantityId + '/check');
+  await toggle.click();
+  await check.click();
+  const note = graph.locator('.loop-annotation .annotation-paper');
+  const tag = graph.locator('.edge-label').filter({ hasText: '返回 4' }).locator('rect');
+  const clearOfNote = async () => {
+    await tag.waitFor();
+    const n = await note.boundingBox(), l = await tag.boundingBox();
+    assert.ok(!overlap({ left: n.x, right: n.x + n.width, top: n.y, bottom: n.y + n.height },
+      { left: l.x, right: l.x + l.width, top: l.y, bottom: l.y + l.height }), 'visible note and label must not overlap');
+  };
+  await clearOfNote(); await shot('note-clearance');
+  await note.locator('.annotation-summary').click(); await clearOfNote();
+  await note.locator('.annotation-summary').click(); await clearOfNote();
+  await saved(() => graph.getByRole('button', { name: '缩小画布', exact: true }).click());
+  await clearOfNote();
   assert.deepEqual(errors, []);
   console.log('Both charts, all themes, mouse/keyboard/touch, branch source, dense fallback, drag and read-only checks passed.');
 } finally { await browser?.close(); await reader.server.close(); }

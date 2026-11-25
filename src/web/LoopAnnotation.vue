@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watchPostEffect } from 'vue';
+import type { CardBounds } from '../core/canvas-routing.js';
 import type { SavedNode } from '../core/loops.js';
 import { translate, type Language } from './i18n.js';
 import { renderMarkdown } from './markdown.js';
 
 const props = defineProps<{ step: SavedNode; language: Language; open: boolean; raised: boolean; paneWidth: number }>();
-const emit = defineEmits<{ toggle: [open: boolean]; read: [source: boolean] }>();
+const emit = defineEmits<{ toggle: [open: boolean]; read: [source: boolean]; bounds: [offset: CardBounds | undefined] }>();
 const t = (key: string) => translate(props.language, key);
 const attachment = ref<HTMLElement>();
 const body = ref<HTMLElement>();
@@ -19,6 +20,18 @@ watchPostEffect(onCleanup => {
   observer.observe(element);
   if (element.firstElementChild) observer.observe(element.firstElementChild);
   onCleanup(() => observer.disconnect());
+});
+// Local offsets keep label clearance attached to a dragged card at any viewport scale.
+watchPostEffect(onCleanup => {
+  const note = attachment.value;
+  if (!note) return;
+  const measure = () => emit('bounds', { x: note.offsetLeft, y: note.offsetTop, width: note.offsetWidth, height: note.offsetHeight });
+  const resize = new ResizeObserver(measure);
+  resize.observe(note);
+  const move = new MutationObserver(measure);
+  move.observe(note, { attributes: true, attributeFilter: ['class', 'style'] });
+  measure();
+  onCleanup(() => { resize.disconnect(); move.disconnect(); emit('bounds', undefined); });
 });
 // Only an explicitly opened note may need to dodge the edge of a hand-placed view.
 watchPostEffect(onCleanup => {
