@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>D053 · 文字开关图例试读</title>
+  <style>body{max-width:736px;margin:24px auto;padding:0 8px;color-scheme:light dark;background:Canvas}.cursor-interaction{cursor:pointer}</style>
+</head>
+<body>
+<section id="ar-text-legend" aria-label="闭环图与文件依赖图的文字开关试读">
+  <style>
+    #ar-text-legend {color-scheme:light dark;container-type:inline-size;--base:light-dark(#f7f8f5,#202621);--card:light-dark(#fefefc,#2b322c);--text:light-dark(#25312d,#e0e8df);--muted:light-dark(#53635a,#b1bfb2);--rim:light-dark(#aeb9b0,#677569);--dot:light-dark(#c9d1c8,#39433b);--plain:light-dark(#808e83,#94a096);--key:light-dark(#315e51,#a1d1b6);--key-tint:light-dark(#eef5ef,#2d3b33);--danger:light-dark(#9d4938,#efab95);--rule:light-dark(#c5cdc4,#4a574b);font:14px/1.5 system-ui,"Microsoft YaHei",sans-serif;color:var(--text)}
+    #ar-text-legend * {box-sizing:border-box}
+    #ar-text-legend [hidden] {display:none!important}
+    #ar-text-legend .bar {display:flex;align-items:center;flex-wrap:wrap;gap:12px 22px;padding:4px 6px 9px}
+    #ar-text-legend .bar h3 {font:550 17px/1.4 system-ui,"Microsoft YaHei",sans-serif;margin:0}
+    #ar-text-legend .tabs {display:flex;gap:16px;align-items:center}
+    #ar-text-legend button {font:inherit;color:var(--text);background:transparent;border:0}
+    #ar-text-legend button:focus-visible {outline:2px solid var(--key);outline-offset:3px;border-radius:2px}
+    #ar-text-legend [role=tab] {padding:5px 1px;border-bottom:2px solid transparent;color:var(--muted)}
+    #ar-text-legend [role=tab][aria-selected=true] {color:var(--key);border-color:var(--key);font-weight:550}
+    #ar-text-legend .canvas {position:relative;width:100%;height:264px;background-color:var(--base);background-image:radial-gradient(var(--dot) .85px,transparent .95px);background-size:18px 18px;background-position:8px 10px;border-block:1px solid var(--rule);isolation:isolate;overflow:clip;touch-action:pan-y}
+    #ar-text-legend .world {position:absolute;inset:0}
+    #ar-text-legend .wires {position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+    #ar-text-legend .wire {fill:none;stroke:var(--plain);stroke-width:1.55;stroke-linecap:round}
+    #ar-text-legend .key .wire {stroke:var(--key);stroke-width:2}
+    #ar-text-legend .red .wire {stroke:var(--danger);stroke-width:2}
+    #ar-text-legend .value {font:500 12px system-ui,"Microsoft YaHei",sans-serif;fill:var(--key);paint-order:stroke;stroke:var(--base);stroke-width:6px;stroke-linejoin:round}
+    #ar-text-legend .red .value {fill:var(--danger)}
+    #ar-text-legend .node {position:absolute;z-index:1;transform:translate(-50%,-50%);width:22%;max-width:160px;min-height:55px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:2px;padding:7px 10px;background:var(--card);border:1px solid var(--rim);border-radius:11px}
+    #ar-text-legend .node[data-selected] {border-color:var(--key);background:var(--key-tint)}
+    #ar-text-legend .node small {font:12px/1.35 system-ui,sans-serif;color:var(--muted);overflow-wrap:anywhere}
+    #ar-text-legend .node b {font:550 14px/1.4 system-ui,"Microsoft YaHei",sans-serif;color:var(--text);overflow-wrap:anywhere}
+    #ar-text-legend .files .node b {font-family:ui-monospace,Consolas,monospace}
+    #ar-text-legend .left {left:14%;top:94px}
+    #ar-text-legend .mid {left:52%;top:60px}
+    #ar-text-legend .right {left:86%;top:60px}
+    #ar-text-legend .lower {left:126%;top:172px}
+    #ar-text-legend .files .left,#ar-text-legend .files .right,#ar-text-legend .files .mid {top:66px}
+    #ar-text-legend .files .lower {left:14%;top:184px}
+    #ar-text-legend .near {left:55%;top:147px}
+    #ar-text-legend .legend-card {position:absolute;z-index:2;width:max-content;max-width:calc(100% - 12px);color:var(--key);border-radius:5px;background:color-mix(in srgb,var(--key) 4%,var(--card) 96%);user-select:none;touch-action:none;cursor:grab}
+    #ar-text-legend .legend-card.moving,#ar-text-legend .legend-card.moving button {cursor:grabbing}
+    #ar-text-legend .legend {display:flex;align-items:baseline;flex-wrap:wrap;gap:1px 10px;min-height:30px;padding:4px 8px;text-align:left;color:inherit}
+    #ar-text-legend .beacon,#ar-text-legend .return {position:absolute;z-index:3;background:var(--card);border-radius:7px;border:1px solid var(--rim);padding:5px 9px;color:var(--key);font-size:13px}
+    #ar-text-legend .beacon {right:5px;transform:translateY(-50%);border-color:transparent;background:var(--key-tint)}
+    #ar-text-legend .return {bottom:7px;left:8px}
+    #ar-text-legend .label {text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:4px;font-weight:500}
+    #ar-text-legend .legend:hover .label {text-decoration-style:solid}
+    #ar-text-legend .legend:focus-visible .label {text-decoration-line:underline;text-decoration-style:double;text-decoration-thickness:1.5px}
+    #ar-text-legend .quantity {font-size:12px;color:var(--muted);white-space:nowrap}
+    #ar-text-legend .node.found {outline:2px solid var(--key);outline-offset:4px}
+    #ar-text-legend g.found .wire {stroke-width:4px}
+    #ar-text-legend .sr {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    @media(prefers-reduced-motion:no-preference){#ar-text-legend .appearing {animation:legend-in .15s ease-out} @keyframes legend-in{from{opacity:0}to{opacity:1}}}
+    @media(pointer:coarse){#ar-text-legend .legend,#ar-text-legend .beacon,#ar-text-legend .return{min-height:44px}}
+    @container(max-width:520px){
+      #ar-text-legend .canvas{height:284px}
+      #ar-text-legend .node{width:26%;min-height:58px;padding:6px;border-radius:8px}
+      #ar-text-legend .node b{font-size:13px}
+      #ar-text-legend .node small{font-size:11px}
+      #ar-text-legend .left{left:14%;top:76px}
+      #ar-text-legend .mid{left:50%;top:68px}
+      #ar-text-legend .right{left:86%;top:68px}
+      #ar-text-legend .lower{left:126%;top:170px}
+      #ar-text-legend .files .lower{left:23%;top:157px}
+    }
+  </style>
+  <header class="bar">
+    <h3>重读已保存的闭环</h3>
+    <div class="tabs" role="tablist" aria-label="试读图">
+      <button class="cursor-interaction" type="button" role="tab" id="ar-switch-loop" aria-controls="ar-loop-panel" aria-selected="true" data-view="loop">闭环图</button>
+      <button class="cursor-interaction" type="button" role="tab" id="ar-switch-deps" aria-controls="ar-deps-panel" aria-selected="false" data-view="deps">文件依赖图</button>
+    </div>
+  </header>
+  <div class="canvas" id="ar-loop-panel" role="tabpanel" aria-labelledby="ar-switch-loop" data-map="loop">
+    <svg class="wires" aria-hidden="true">
+      <defs>
+        <marker id="ar-tip-green" fill="var(--key)" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker>
+        <marker id="ar-tip-grey" fill="var(--plain)" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker>
+        <marker id="ar-tip-red" fill="var(--danger)" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker>
+      </defs>
+      <g class="key" data-wire="check build"><path class="wire" marker-end="url(#ar-tip-green)"/></g>
+      <g data-wire="build append"><path class="wire" marker-end="url(#ar-tip-grey)"/></g>
+      <g class="red" id="ar-reject-wire" data-wire="build unavailable" data-folded hidden><path class="wire" marker-end="url(#ar-tip-red)"/></g>
+      <g id="ar-reading-wire" data-wire="unavailable reject" data-folded hidden><path class="wire" marker-end="url(#ar-tip-grey)"/></g>
+    </svg>
+    <div class="node left" data-node="check"><small>读者操作</small><b>打开闭环步骤</b></div>
+    <div class="node mid" data-node="build" data-selected><small>源码引用</small><b>按提交读取源码</b></div>
+    <div class="node right" data-node="append"><small>读取成功</small><b>显示对应代码行</b></div>
+    <div class="node near" id="ar-unavailable" data-node="unavailable" data-folded hidden><small>读取失败</small><b>提示源码不可用</b></div>
+    <div class="node lower" id="ar-reject-node" data-node="reject" data-folded hidden><small>仍可阅读</small><b>查看已保存的讲解</b></div>
+    <div class="legend-card">
+      <button type="button" class="legend cursor-interaction" aria-expanded="false" aria-controls="ar-unavailable ar-reject-node ar-reject-wire ar-reading-wire"><span class="label">如果 Git 里的版本读不到呢？</span><span class="quantity">展开 2 步</span></button>
+    </div>
+  </div>
+  <div class="canvas files" id="ar-deps-panel" role="tabpanel" aria-labelledby="ar-switch-deps" data-map="deps" hidden>
+    <svg class="wires" aria-hidden="true">
+      <defs>
+        <marker id="ar-file-tip" fill="var(--plain)" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker>
+        <marker id="ar-file-key" fill="var(--key)" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z"/></marker>
+      </defs>
+      <g data-wire="rules service"><path class="wire" marker-end="url(#ar-file-tip)"/></g>
+      <g data-wire="service api"><path class="wire" marker-end="url(#ar-file-tip)"/></g>
+      <g class="key" id="ar-audit-wire" data-wire="audit service" data-folded><path class="wire" marker-end="url(#ar-file-key)"/></g>
+    </svg>
+    <div class="node left" data-node="rules"><small>src/</small><b>rules.mjs</b></div>
+    <div class="node mid" data-node="service" data-selected><small>src/</small><b>service.mjs</b></div>
+    <div class="node right" data-node="api"><small>src/</small><b>api.mjs</b></div>
+    <div class="node lower" data-node="audit"><small>support/</small><b>audit.mjs</b></div>
+    <div class="legend-card">
+      <button type="button" class="legend cursor-interaction" aria-expanded="false" aria-controls="ar-audit-wire"><span class="label">谁用到了审计模块？</span><span class="quantity">展开 1 条关系</span></button>
+    </div>
+  </div>
+  <span class="sr" aria-live="polite"></span>
+</section>
+<script>
+(() => {
+  const root = document.getElementById("ar-text-legend");
+  const maps = Array.from(root.querySelectorAll("[data-map]"));
+  const tabs = Array.from(root.querySelectorAll("[data-view]"));
+  const status = root.querySelector(".sr");
+  const state = {view:"loop",loop:false,deps:false};
+  const scene = {loop:{x:.07,y:.77,pan:0,home:null},deps:{x:.54,y:.77,pan:0,home:null}};
+  const clamp = (n,min,max) => Math.max(min,Math.min(max,n));
+  function control(map,cls,label) {
+    const btn=document.createElement("button");
+    btn.type="button"; btn.className=cls+" cursor-interaction"; btn.textContent=label; btn.hidden=true;
+    map.appendChild(btn); return btn;
+  }
+  for (const map of maps) {
+    const world=document.createElement("div"); world.className="world";
+    while (map.firstChild) world.appendChild(map.firstChild);
+    map.appendChild(world);
+    control(map,"beacon",""); control(map,"return","← 回到原视野");
+  }
+  function position(map) {
+    const s=scene[map.dataset.map], w=map.clientWidth, h=map.clientHeight;
+    const card=map.querySelector(".legend-card");
+    let cardX=clamp(s.x*w,2,1.85*w-card.offsetWidth-2);
+    if (s.x===.54 && map.dataset.map==="deps") cardX=Math.min(cardX,w-card.offsetWidth-8);
+    card.style.left=cardX+"px";
+    card.style.top=clamp(s.y*h,2,h-card.offsetHeight-2)+"px";
+    map.querySelector(".world").style.transform="translateX("+(-s.pan*w)+"px)";
+    map.style.backgroundPositionX=(8-s.pan*w)+"px";
+  }
+  function route(map) {
+    const svg = map.querySelector("svg");
+    const canvas = svg.getBoundingClientRect();
+    if (!canvas.width) return;
+    const obstacles = [...map.querySelectorAll(".node:not([hidden]),.legend-card")].map(node=>node.getBoundingClientRect());
+    for (const group of map.querySelectorAll("[data-wire]")) {
+      if (group.hasAttribute("hidden")) continue;
+      const [from,to] = group.dataset.wire.split(" ");
+      const box = key => map.querySelector('[data-node="'+key+'"]').getBoundingClientRect();
+      const a = box(from), b = box(to);
+      const x1=a.right-canvas.left, x2=b.left-canvas.left-1;
+      const y1=(a.top+a.bottom)/2-canvas.top+(from==="check" ? (to==="reject" ? 6 : -6) : 0);
+      const y2=(b.top+b.bottom)/2-canvas.top+(to==="service" && from==="audit" ? 8 : 0);
+      const dx = Math.max(8,(x2-x1)*.56);
+      const path = group.querySelector(".wire");
+      if (to==="unavailable") {
+        const xStart=a.x+a.width/2-canvas.left, xEnd=b.x+b.width/2-canvas.left;
+        const yStart=a.bottom-canvas.top, yEnd=b.top-canvas.top;
+        const middle=(yStart+yEnd)/2;
+        path.setAttribute("d", "M "+xStart+" "+yStart+" C "+xStart+" "+middle+" "+xEnd+" "+middle+" "+xEnd+" "+yEnd);
+      } else {
+        path.setAttribute("d", "M "+x1+" "+y1+" C "+(x1+dx)+" "+y1+" "+(x2-dx)+" "+y2+" "+x2+" "+y2);
+      }
+      const label = group.querySelector(".value");
+      if (label) {
+        label.removeAttribute("hidden");
+        const at = path.getPointAtLength(path.getTotalLength()*(to==="reject" ? .7 : .57));
+        label.setAttribute("x",at.x);
+        label.setAttribute("y",at.y-(canvas.width<500 ? (to==="reject" ? -24 : 27) : 13));
+        const rect = label.getBoundingClientRect();
+        if (obstacles.some(box => rect.right+3>box.left && rect.left-3<box.right && rect.bottom+2>box.top && rect.top-2<box.bottom)) label.setAttribute("hidden","");
+      }
+    }
+  }
+  function targetPoints(map) {
+    const nodes=Array.from(map.querySelectorAll(".node[data-folded]"));
+    if (nodes.length) return nodes.map(node=>{
+      const r=node.getBoundingClientRect();
+      return {x:r.x+r.width/2,y:r.y+r.height/2};
+    });
+    return Array.from(map.querySelectorAll("g[data-folded] .wire"),path=>
+      path.getPointAtLength(path.getTotalLength()/2).matrixTransform(path.getScreenCTM()));
+  }
+  function signals(map) {
+    const key=map.dataset.map, s=scene[key], beacon=map.querySelector(".beacon"), back=map.querySelector(".return");
+    beacon.hidden=true; back.hidden=s.home===null;
+    if (!state[key]) return;
+    const r=map.getBoundingClientRect();
+    const outside=targetPoints(map).filter(p=>p.x<r.left || p.x>r.right);
+    if (!outside.length) return;
+    const target=outside[0], right=target.x>r.right;
+    const count=outside.filter(p=>(p.x>r.right)===right).length;
+    const name=count+(key==="loop" ? " 步" : " 条关系");
+    beacon.textContent = right ? "右侧还有 "+name+" →" : "← 左侧还有 "+name;
+    beacon.setAttribute("aria-label","定位到"+(right?"右侧":"左侧")+"的 "+name);
+    beacon.style.top=clamp(target.y-r.top,26,r.height-26)+"px";
+    beacon.style.right=right ? "5px" : "auto"; beacon.style.left=right ? "auto" : "5px";
+    beacon.hidden=false;
+  }
+  const timers=new WeakMap();
+  function flash(map) {
+    clearTimeout(timers.get(map));
+    const items=map.querySelectorAll("[data-folded]");
+    items.forEach(item=>item.classList.toggle("found",state[map.dataset.map]));
+    timers.set(map,setTimeout(()=>items.forEach(item=>item.classList.remove("found")),1300));
+  }
+  function locate(map) {
+    const key=map.dataset.map,s=scene[key],r=map.getBoundingClientRect();
+    const target=targetPoints(map).find(p=>p.x<r.left || p.x>r.right);
+    if (target) {
+      if (s.home===null) s.home=s.pan;
+      const landing=target.x>r.right ? .77 : .23;
+      s.pan=clamp(s.pan+(target.x-r.left-r.width*landing)/r.width,0,.85);
+      render();
+      map.querySelector(".return").focus({preventScroll:true});
+    }
+    flash(map); remember();
+  }
+  function render(animate=false) {
+    root.querySelector("h3").textContent=state.view==="loop" ? "重读已保存的闭环" : "订单模块的文件依赖";
+    for (const tab of tabs) tab.setAttribute("aria-selected",String(tab.dataset.view===state.view));
+    for (const map of maps) {
+      const key = map.dataset.map;
+      map.hidden = key!==state.view;
+      map.querySelector(".legend").setAttribute("aria-expanded",String(state[key]));
+      const steps=map.querySelectorAll(".node[data-folded]").length;
+      const count=steps ? steps+" 步" : map.querySelectorAll("g[data-folded]").length+" 条关系";
+      map.querySelector(".quantity").textContent=(state[key] ? "收起 " : "展开 ")+count;
+      for (const target of map.querySelectorAll("[data-folded]")) {
+        const wasHidden = target.hasAttribute("hidden");
+        target.toggleAttribute("hidden",!state[key]);
+        target.classList.toggle("appearing",animate && wasHidden && state[key]);
+      }
+      if (!map.hidden) {position(map);route(map);signals(map);}
+    }
+  }
+  function remember() {
+    window.openai?.setWidgetState?.({modelContent:{view:state.view,loop:state.loop,deps:state.deps},privateContent:{scene:JSON.parse(JSON.stringify(scene))}})?.catch(() => {});
+  }
+  function choose(view) {
+    state.view=view;
+    status.textContent="";
+    render(); remember();
+  }
+  for (const tab of tabs) {
+    tab.addEventListener("click",() => choose(tab.dataset.view));
+    tab.addEventListener("keydown",event => {
+      if (!["ArrowLeft","ArrowRight","Home","End"].includes(event.key)) return;
+      event.preventDefault();
+      const other = event.key==="Home" ? tabs[0] : event.key==="End" ? tabs[1] : tabs.find(item=>item!==tab);
+      other.focus(); choose(other.dataset.view);
+    });
+  }
+  for (const map of maps) {
+    const key=map.dataset.map, s=scene[key], card=map.querySelector(".legend-card"), trigger=map.querySelector(".legend");
+    let gesture=null, suppressClick=false;
+    trigger.addEventListener("click",() => {
+      state[key]=!state[key]; render(true); flash(map); remember();
+      const hint=map.querySelector(".beacon");
+      status.textContent = (key==="loop" ? "读不到源码时的两个步骤" : "审计依赖关系")+(state[key] ? "已展开" : "已收起")+(hint.hidden ? "" : "。"+hint.textContent);
+    });
+    trigger.addEventListener("keydown",event=>{
+      const shift={ArrowLeft:[-12,0],ArrowRight:[12,0],ArrowUp:[0,-12],ArrowDown:[0,12]}[event.key];
+      if(!shift) return;
+      event.preventDefault();
+      s.x=(card.offsetLeft+shift[0])/map.clientWidth; s.y=(card.offsetTop+shift[1])/map.clientHeight;
+      render();remember();
+    });
+    map.querySelector(".beacon").addEventListener("click",()=>locate(map));
+    map.querySelector(".return").addEventListener("click",()=>{
+      if(s.home===null)return;
+      s.pan=s.home; s.home=null; render();trigger.focus({preventScroll:true});remember();
+    });
+    map.addEventListener("pointerdown",e=>{
+      if(e.button!==0 || gesture || e.target.closest(".return,.beacon")) return;
+      const drag=card.contains(e.target);
+      if(!drag && e.target.closest(".node")) return;
+      gesture={id:e.pointerId,drag,ox:e.clientX,oy:e.clientY,x:card.offsetLeft,y:card.offsetTop,pan:s.pan,moved:false};
+    });
+    map.addEventListener("pointermove",e=>{
+      if(!gesture || gesture.id!==e.pointerId) return;
+      const dx=e.clientX-gesture.ox,dy=e.clientY-gesture.oy;
+      if(!gesture.moved && Math.hypot(dx,dy)<5) return;
+      if(!gesture.moved){gesture.moved=true;map.setPointerCapture(e.pointerId);card.classList.toggle("moving",gesture.drag);}
+      if(gesture.drag) {
+        s.x=clamp(gesture.x+dx,2,map.clientWidth*1.85-card.offsetWidth-2)/map.clientWidth;
+        s.y=clamp(gesture.y+dy,2,map.clientHeight-card.offsetHeight-2)/map.clientHeight;
+      } else s.pan=clamp(gesture.pan-dx/map.clientWidth,0,.85);
+      render();
+    });
+    const finish=e=>{
+      if(!gesture||gesture.id!==e.pointerId) return;
+      suppressClick=gesture.moved;
+      if(suppressClick){remember();window.setTimeout(()=>{suppressClick=false},0);}
+      gesture=null;card.classList.remove("moving");
+      if(map.hasPointerCapture(e.pointerId))map.releasePointerCapture(e.pointerId);
+    };
+    map.addEventListener("pointerup",finish);map.addEventListener("pointercancel",finish);
+    map.addEventListener("pointerleave",()=>{if(gesture&&!gesture.moved)gesture=null;});
+    map.addEventListener("click",e=>{if(suppressClick){e.preventDefault();e.stopImmediatePropagation();}},true);
+  }
+  function restore(saved) {
+    const data=saved?.modelContent;
+    if (data) {
+      if (["loop","deps"].includes(data.view)) state.view=data.view;
+      for (const key of ["loop","deps"]) if (typeof data[key]==="boolean") state[key]=data[key];
+    }
+    for (const id of ["loop","deps"]) {
+      const input=saved?.privateContent?.scene?.[id], s=scene[id];
+      if(!input)continue;
+      if(Number.isFinite(input.x))s.x=clamp(input.x,0,1.85);
+      if(Number.isFinite(input.y))s.y=clamp(input.y,0,1);
+      if(Number.isFinite(input.pan))s.pan=clamp(input.pan,0,.85);
+      s.home=Number.isFinite(input.home)?clamp(input.home,0,.85):null;
+    }
+    render();
+  }
+  restore(window.openai?.widgetState);
+  window.addEventListener("openai:set_globals",e=>{if (e.detail?.globals && "widgetState" in e.detail.globals) restore(e.detail.globals.widgetState);});
+  const observer = new ResizeObserver(()=>render());
+  observer.observe(root);
+})();
+</script>
+</body>
+</html>
