@@ -2,18 +2,18 @@
 
 ## 当前结论与入口
 
-任务分支 `codex/feat-loop-example-highlights`，批准单 `20157ee`，本地 `dev` 基线 `e865d8d`。行为候选 `4ba7e75` 已完成制作、校验、两种格式的读回和双图试读。独审结论见[审查原文](review.md)。当前等作者试读；收到对本候选的接受或合并指示后，由执行办理本地合并。未合入 dev，未推送、发布或变更主分支。后续归档提交仅含回执与审查原文。
+任务分支 `codex/feat-loop-example-highlights`，批准单 `20157ee`，本地 `dev` 基线 `e865d8d`。行为候选 `167172a` 已将有示例闭环的路线选择移入左侧工具栏，完成安装包自测与 R3 独审。独审结论见[审查原文](review.md)。当前等作者试读；收到对本候选的接受或合并指示后，由执行办理本地合并。未合入 dev，未推送、发布或变更主分支。后续归档提交仅含回执与审查原文。
 
 | 入口 | 试读动作 |
 | --- | --- |
-| [闭环图 · 同一份数量校验，两种订单结果](http://127.0.0.1:4358/#aftertaste-loop/quantity-examples/check) | 在「示例路线」选 “04”，看校验、建单、追加。点建单核对源码，再换 “4.5”，看它在哪里抛错。 |
-| [依赖图 · 订单参与文件](http://127.0.0.1:4358/#canvas-reading) | 打开顶栏的闭环目录，选「同一份数量校验，两种订单结果」。点选 rules.mjs 与 service.mjs 之间的线，区分参与文件标记和当前依赖理由。可点「阅读此闭环」再后退。 |
+| [闭环图 · 同一份数量校验，两种订单结果](http://127.0.0.1:4359/#aftertaste-loop/quantity-examples/check) | 点左栏第三个分岔图标，在「示例路线」选 “04”，看校验、建单、追加。点建单核对源码，再换 “4.5”，看它在哪里抛错。 |
+| [依赖图 · 订单参与文件](http://127.0.0.1:4359/#canvas-reading) | 打开顶栏的闭环目录，选「同一份数量校验，两种订单结果」。点选 rules.mjs 与 service.mjs 之间的线，区分参与文件标记和当前依赖理由。可点「阅读此闭环」再后退。 |
 
 作者可在闭环图主动展开「通过和拒绝后，各自会发生什么？」比较两条分岔；切回「查看全图」后保留自己的开关和拖放。作者的路线辨认、源码往返与依赖图选线观感仍待反馈。
 
 ## 依据与验证
 
-- 依据 [D054 原单](task.md)及[作者截图反馈 A1](amendments.md)。R1 行为候选 `0e3d60b` 已独审，作者随后要求改为发光路线；R2 视觉候选 `4ba7e75` 接续。按已有能力增量使用 Spec Kit v1.4.0 的 specify／spec-template、plan／plan-template、tasks／tasks-template。分别针对 007、008、009 检查真实功能路径与 plan、tasks、模型及契约，解析三份官方模板；本批核宪法、现行 R16–R18 与上下游。编码前按 analyze 核本批三个需求的覆盖，007 FR-028 → T056／SC-024，008 FR-011 → T014／SC-011，009 FR-015 → T039／SC-015。三项均有对应场景，沿用 D042、D052、D053 的画布与固定源码流程，无新依赖或需裁决的契约缺口。未重建分支或重跑无关历史设计。
+- 依据 [D054 原单](task.md)及[作者试读调整 A1、A2](amendments.md)。R1 行为候选 `0e3d60b` 已独审，作者随后要求改为发光路线；R2 视觉候选 `4ba7e75` 接续。按已有能力增量使用 Spec Kit v1.4.0 的 specify／spec-template、plan／plan-template、tasks／tasks-template。分别针对 007、008、009 检查真实功能路径与 plan、tasks、模型及契约，解析三份官方模板；本批核宪法、现行 R16–R18 与上下游。编码前按 analyze 核本批三个需求的覆盖，007 FR-028 → T056／SC-024，008 FR-011 → T014／SC-011，009 FR-015 → T039／SC-015。三项均有对应场景，沿用 D042、D052、D053 的画布与固定源码流程，无新依赖或需裁决的契约缺口。未重建分支或重跑无关历史设计。
 - 安装包试读项目由[订单样例](../../../../../tests/fixtures/loop-examples.mjs)复用 D051 原始讲解及 D053 问句构建。固定源码 `4be951b2bf9aae434e0acc3e1aeab3e4e0cf0734`。每例独立从空集合开始。`rules.mjs` 将文本转成数值并检查整数与范围，`service.mjs` 先建对象再追加。页面与 CLI 读到固定版，样例工作区的规则文件另有内容。示例使用可选的 `examples`；无此字段的既有成品可直接读，个人布局格式沿用现状。
 - Windows、Node 24.11.1。根目录运行 `npm run typecheck`、`npm pack --pack-destination .local/D054/r1`，从生成的 tgz 运行 `npm install --offline --omit=dev --prefix .local/D054/r1/install`。R1 安装包 SHA-256 `B15B34D4F47B7E6469125C936244C21B4A79740D3CADAEEB896226B76A45866B`。用 `AFTERTASTE_BUILD=.local/D054/r1/install/node_modules/aftertaste-reader/dist` 运行样例；安装包的 create-loop、read-loop JSON 和 Markdown 核对通过。包内指南随包安装。
 - `node --test tests/integration/loops.test.mjs` 7 项通过。错误输入具体定位到 inputPath 与示例步骤下标，未发布闭环；合法回访保留顺序。`node --test tests/unit/switch-legends.test.mjs` 4 项通过，包括临时显出端点时受控边仍可隐藏。单元读取同轮构建的 dist。[集成断言](../../../../../tests/integration/loops.test.mjs) · [单元断言](../../../../../tests/unit/switch-legends.test.mjs)
@@ -30,12 +30,16 @@
 
 首次 Edge 执行记录在 `.local/D054/browser-ae9o94/`。键盘打开示例菜单并按向下键后，焦点回到已选第一项。此时面板已打开；延后送达的 toggle 回调会再次聚焦已选项。本轮改由原生弹出时的 autofocus 定位当前项，选例没有延后改焦点的回调。另一次 Edge 在窗口变窄后即时测量未取得正确位置，截图时已就位（`browser-swPXwK`）。用三个本机浏览器核实原生 popover 的 CSS 锚定位随按钮排布，改由该机制计算位置，去掉监听器，再按原断言与双图流程重验。
 
+工具栏候选再经类型检查、打包、离线安装。Edge 158.0.4370.33、Chrome 158.0.8127.38 和 Firefox 159.0 在同包串行运行 `node tests/browser/loop-examples.mjs` 全部通过。实查鼠标选例、键盘上下／末项／确认、Esc 回焦、点外关闭、当前例名、无示例及依赖图专用工具显隐，以及 1000 × 650 窗口锚定。收起后例名放在图名旁，为左侧节点留出空间。[实际选择面板](../../../../../.local/D054/browser-IoB5gx/route-menu.png) · [独审](review.md#r3--2026-11-25)。Chrome、Firefox 自测分别在 `.local/D054/browser-Tl8GB9/` 和 `.local/D054/browser-a3Xh0U/`。本轮未作手机专项。
+
+按作者要求，将原三条执行提交标题改为与 dev 一致的类型前缀加中文目的。R1 `0e3d60b → 886448b`，R2 `4ba7e75 → e3dea7f`，归档 `0c61a50 → 3f0780c`。三对 Git tree SHA 逐项相同，保留两轮独审原文的原始提交引用。本机 `.local/D054/r3/reviewed-history.bundle` 已通过 `git bundle verify`，基线为原批准提交 `20157ee`。
+
 ## 资源与交回
 
-作者试读使用 R2 最终安装包，SHA-256 `7F5E44DC2BCAFD28EFA28B7B58D5A22C9A0C97AA4D27A83BD9900098DBBAEBC9`。服务监听 `127.0.0.1:4358`，PID `12684`，以 `.local/D054/r2-final/install/` 的包读取 `.local/D054/r2-final/project/` 独立资料。试读期间保留该服务和目录。重启前确认端口空闲，从仓库根运行：
+作者试读使用 R3 安装包，SHA-256 `93D82C1380366D5E9FFAE6F66E2AC8E01F46065BD0E16AA62740188670373114`。服务监听 `127.0.0.1:4359`，PID `17628`；`.local/D054/toolbar/install/` 的包读取 `.local/D054/r3/project/`。资料复制自 R2 作者试读现场，保留已有布局与问句开关。首页 HTTP 200，已核两个示例与两个参与文件。R2 原试读仍保留在 4358（PID 12684）。试读期间保留该服务和目录。重启前确认端口空闲，从仓库根运行：
 
 ```powershell
-& .local/D009/runtime/node.exe .local/D054/r2-final/install/node_modules/aftertaste-reader/dist/cli/main.js serve --project (Resolve-Path .local/D054/r2-final/project).Path --port 4358
+& .local/D009/runtime/node.exe .local/D054/toolbar/install/node_modules/aftertaste-reader/dist/cli/main.js serve --project (Resolve-Path .local/D054/r3/project).Path --port 4359
 ```
 
 验收后若要停止服务，先核监听 PID 和命令行仍对应上述项目及安装目录，再停止该进程。测试浏览器与临时监听已由脚本关闭。`4317`、`4351` 至 `4357` 的原资料与服务本单未操作。
