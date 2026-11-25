@@ -676,3 +676,6 @@
 .rearrange-dialog h2 { margin: 0; font-size: 1.15rem; }
 .rearrange-dialog p { margin: 12px 0 18px; line-height: 1.6; }
 .rearrange-dialog .canvas-actions { justify-content: flex-end; }
+
+/* Let an explicitly opened note sit above neighboring hand-placed cards. */
+.loop-canvas .vue-flow__node:has(.loop-annotation.raised) { z-index: 2 !important; }

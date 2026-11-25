@@ -14,6 +14,7 @@ import DependencyDots from './DependencyDots.vue';
 import DependencyCard from './DependencyCard.vue';
 import LoopRelations from './LoopRelations.vue';
 import type { NoteQuote } from '../core/notes.js';
+import LoopAnnotation from './LoopAnnotation.vue';
 import LoopReading from './LoopReading.vue';
 import { groupBounds, maxZoom, minZoom, moveMembers, nodeSize, rearrange, reconcileLayout, renewedPaths, updateGroup } from '../core/canvas-layout.js';
 import type { CanvasGroup, CanvasLayout, Point } from '../core/canvas-layout.js';
@@ -59,7 +60,7 @@ function pointAtCard(event: PointerEvent) {
 }
 function beginPointer(event: PointerEvent) {
   if (event.pointerType === 'touch') { hoverNode.value = ''; focusNode.value = ''; }
-  startSelection(event);
+  if (!(event.target instanceof Element && event.target.closest('.loop-annotation'))) startSelection(event);
 }
 function focusCard(event: FocusEvent) {
   focusNode.value = event.target instanceof Element && event.target.matches(':focus-visible') ? cardId(event.target) : '';
@@ -174,6 +175,23 @@ const routeIssue = computed(() => {
 });
 const routeFiles = computed(() => new Set(routeIssue.value ? [] : route.value?.paths));
 const loop = computed(() => reading.value && 'result' in reading.value ? reading.value.result : undefined);
+const readingPanel = ref<InstanceType<typeof LoopReading>>();
+const noteChoices = ref(new Map<string, boolean>());
+const raisedNote = ref('');
+function setNote(id: string, open: boolean) {
+  noteChoices.value.set(id, open);
+  raisedNote.value = open ? id : '';
+}
+function selectCard(id: string, annotated: boolean) {
+  if (annotated) setNote(id, true);
+  selectDetail(id);
+}
+async function readAnnotation(id: string, source: boolean) {
+  selectDetail(id);
+  panelOpen.value = true;
+  await nextTick();
+  readingPanel.value?.showAnnotation(source);
+}
 const stepNavigation = computed(() => {
   const graph = loop.value?.loop;
   if (!graph) return [];
@@ -186,7 +204,7 @@ const stepNavigation = computed(() => {
   return actions.map(action => ({ ...action, title: [t(action.label), graph.nodes.find(node => node.id === action.id)?.title].filter(Boolean).join(' · ') }));
 });
 const nodes = computed(() => loop.value ?
-  loop.value.loop.nodes.map(node => ({ key: node.id, label: node.title, entry: node.id === loop.value?.loop.entry,
+  loop.value.loop.nodes.map(node => ({ key: node.id, label: node.title, step: node, entry: node.id === loop.value?.loop.entry,
     order: loop.value?.loop.reading_order.indexOf(node.id) ?? -1 })) :
   (dependency.value?.graph.nodes ?? []).map(node => ({ key: node.path, label: node.path, analysis: node.analysis })));
 const ids = computed(() => reading.value ? readingIds(reading.value) : []);
@@ -203,6 +221,48 @@ const visibleLegends = computed(() => legends.value.filter(legend => !loop.value
 const visibleKeys = computed(() => new Set([...nodes.value.map(node => node.key), ...visibleLegends.value.map(legend => legendKey(legend.id))]));
 const visibleGroups = computed(() => (layout.value?.groups ?? []).map(group =>
   ({ ...group, members: group.members.filter(id => visibleKeys.value.has(id)) })).filter(group => group.members.length));
+// Short bounds along the actual curves also cover bottom ports, returns and library links.
+const noteEdgeBounds = computed(() => {
+  if (!loop.value?.loop.nodes.some(step => step.annotation)) return [];
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  const bounds = [];
+  for (const curve of routes.value.values()) {
+    path.setAttribute('d', curve);
+    const length = path.getTotalLength();
+    const segments = Math.min(48, Math.max(1, Math.ceil(length / 32)));
+    let a = path.getPointAtLength(0);
+    for (let i = 1; i <= segments; i++) {
+      const b = path.getPointAtLength(length * i / segments);
+      bounds.push({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) });
+      a = b;
+    }
+  }
+  return bounds;
+});
+// The annotation lives outside the measured card, so its disclosure never moves ports or writes layout.
+const defaultOpenNotes = computed(() => {
+  const open = new Set<string>();
+  if (!loop.value || !layout.value || paneSize.value.width <= 760) return open;
+  const { positions } = layout.value;
+  const { x, y, zoom } = viewport.value;
+  const groupHeaders = visibleGroups.value.map(group => groupBounds(positions, group.members, dimensions));
+  for (const step of loop.value.loop.nodes) {
+    if (!step.annotation) continue;
+    const p = positions[step.id]!;
+    const right = p.x + 240, top = p.y + nodeSize.height, bottom = top + 208;
+    if (right * zoom + x > paneSize.value.width || bottom * zoom + y > paneSize.value.height) continue;
+    const overlaps = (q: Point, width: number, height: number) =>
+      q.x < right && q.x + width > p.x && q.y < bottom && q.y + height > top;
+    if ([...visibleKeys.value].some(id => id !== step.id && overlaps(positions[id]!, nodeSize.width, nodeSize.height))) continue;
+    if (loop.value.loop.nodes.some(other => other.annotation && other.id !== step.id &&
+      overlaps(positions[other.id]!, 240, nodeSize.height + 208))) continue;
+    if (noteEdgeBounds.value.some(line => line.x < right && line.x + line.width > p.x &&
+      line.y < bottom && line.y + line.height > top + 18)) continue;
+    if (groupHeaders.some(header => overlaps(header, header.width, 40))) continue;
+    open.add(step.id);
+  }
+  return open;
+});
 const selectedLegend = computed(() => legends.value.find(legend => legendKey(legend.id) === selected.value));
 const usedLibraries = computed(() => legends.value.filter(legend => legend.uses.some(use => use.path === selected.value)));
 const hasNodes = computed(() => ids.value.length > 0);
@@ -838,6 +898,8 @@ async function relayout() {
   rearrangeDialog.value.close();
   if (!editable.value || !idle.value || !layout.value || !reading.value) return;
   clearSelection();
+  noteChoices.value.clear();
+  raisedNote.value = '';
   changed(rearrange(layout.value, ids.value, reading.value.relations));
   render();
   await setViewport(layout.value.viewport);
@@ -979,10 +1041,13 @@ onUnmounted(() => {
               :status="t(data.analysis === 'unreviewed' ? 'canvasReviewPending' : 'canvasReviewed')"
               :aria-pressed="selected === data.key" :data-box-selected="picked.has(data.key) || undefined" @click="selectDetail(data.key)" />
             <button v-else type="button" class="file-node loop-node" :data-step="data.key" :aria-pressed="selected === data.key"
-              :data-box-selected="picked.has(data.key) || undefined" :title="data.label" @click="selectDetail(data.key)">
+              :data-box-selected="picked.has(data.key) || undefined" :title="data.label" @click="selectCard(data.key, !!data.step.annotation)">
               <small class="loop-node-number">{{ String(data.order + 1).padStart(2, '0') }}<template v-if="data.entry"> · {{ t('loopEntry') }}</template></small>
               <span>{{ data.label }}</span>
             </button>
+            <LoopAnnotation v-if="loopId && data.step.annotation" :step="data.step" :language="language"
+              :open="noteChoices.get(data.key) ?? defaultOpenNotes.has(data.key)" :raised="raisedNote === data.key"
+              @toggle="setNote(data.key, $event)" @read="readAnnotation(data.key, $event)" />
             <Handle id="out" type="source" :position="Position.Right" />
           </template>
           <template #node-canvasLegend="{ data }">
@@ -1072,7 +1137,7 @@ onUnmounted(() => {
             <span aria-hidden="true" class="loop-nav-tip">{{ item.title }}</span>
           </button>
         </nav>
-        <LoopReading v-if="loop" :reading="loop" :language="language" :selected="selected" :active="active" :panel-open="panelOpen" :legend-selected="!!selectedLegend" @select="selectDetail" @add-to-notes="emit('addToNotes', $event)" />
+        <LoopReading v-if="loop" ref="readingPanel" :reading="loop" :language="language" :selected="selected" :active="active" :panel-open="panelOpen" :legend-selected="!!selectedLegend" @select="selectDetail" @add-to-notes="emit('addToNotes', $event)" />
         <template v-if="!loopId && hasSelection && !groupEditor">
           <section class="canvas-summary" :aria-label="t(selectedEdge ? 'canvasRelationshipDetails' : selectedNode ? 'canvasSelected' : 'canvasSelectedLibrary')"
             @keydown.esc.stop="clearDetail()">

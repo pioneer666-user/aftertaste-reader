@@ -7,10 +7,12 @@
 | `format`、`id` | 版本及路径对应的闭环 ID。 |
 | `source_commit`、`project_prefix` | 完整 Git 提交和仓库内的项目相对前缀，根项目为空。源码位置由它们和节点的项目相对路径组成。 |
 | `title`、`goal`、`explanation` | 闭环标题、目标与独立串讲 Markdown。 |
-| `nodes` | 每节点含 `id`、`path`、`block_id`、`title`、`explanation`、可选 `hint`。程序补充 `block_explanation` 及对照块的 `lines:{start,end}`。纯讲解块无范围。不同节点可引用同一个块，用于不同教学步骤。 |
+| `nodes` | 每节点含 `id`、`path`、`block_id`、`title`、`explanation`、可选 `hint` 和节点说明 `annotation`。程序补充 `block_explanation` 及对照块的 `lines:{start,end}`。纯讲解块无范围。不同节点可引用同一个块，用于不同教学步骤。 |
 | `entry`、`edges` | 入口节点 ID 与边列表。边含 `from`、`to`、`reason`，支持分支、汇合及环。各节点从入口可达。 |
 | `reading_order` | 每个节点 ID 恰好出现一次，允许独立于边方向安排读法。 |
 | `legends` | 实际采用的库图例快照，沿用 [图例结构](../004-dependency-graph/contracts/cli.md#库图例)，用法为本路线明确使用的参与文件。 |
+
+步骤可含`annotation?: string`；存在时须为非空白、合法 Unicode 的 Markdown，保留原文。身份为闭环 ID 与步骤 ID。
 
 节点可附 `library_uses: [{id,reason}]`。每步每库唯一，ID 需已选且包含本步文件用法，reason 说明本步作用。缺省表示没有确定的步骤关联。
 

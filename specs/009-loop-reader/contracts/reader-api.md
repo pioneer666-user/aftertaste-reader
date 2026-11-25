@@ -23,3 +23,5 @@ D043 从笔记打开步骤时使用当前闭环的既有 GET。以闭环 ID 和�
 直接打开带步骤引文片段的本机阅读地址时，使用同一回访路径并以该步骤作为初始阅读位置。
 
 两图 GET 均附分层输入 `relations`，包含有向边端点 `edges` 与库的画布键和目标 `libraries: [{id,targets}]`。闭环另附入口优先的 `order`。旧图仅有文件用法时目标为空；完整个人坐标及组成员仍按原契约往返。
+
+GET /api/loops/:id 的 result.loop.nodes 可有 annotation；依据对应 node_id 的 result.sources 显示固定行或原诊断。折展和选步均无布局写入。

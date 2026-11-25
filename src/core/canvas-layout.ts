@@ -90,6 +90,7 @@ export interface LayoutRelations {
   edges: { from: string; to: string }[];
   libraries: { id: string; targets: string[] }[];
   order?: string[];
+  annotatedSteps?: string[];
 }
 
 const maxRows = 6;
@@ -179,25 +180,32 @@ function layeredPositions(ids: readonly string[], relations: LayoutRelations) {
 
   // Balance each band over short columns. Each column straddles the same midline.
   const points = new Map<string, Point>();
-  let tallest = 1;
-  let widest = 1;
-  for (const band of bands.values()) {
-    const columns = Math.ceil(band.length / maxRows);
-    tallest = Math.max(tallest, Math.ceil(band.length / columns));
-    widest = Math.max(widest, columns);
-  }
-  let x = 72;
+  const annotated = new Set(relations.annotatedSteps);
+  const columns: { ids: string[]; x: number; offsets: number[]; span: number }[] = [];
+  let tallest = 0, widest = 1, x = 72;
   const pitch = 82, within = 32, between = 108;
   for (const [, band] of [...bands].sort(([a], [b]) => a - b)) {
-    const columns = Math.ceil(band.length / maxRows);
+    const count = Math.ceil(band.length / maxRows);
+    widest = Math.max(widest, count);
     let index = 0;
-    for (let col = 0; col < columns; col++) {
-      const rows = Math.ceil((band.length - index) / (columns - col));
-      for (let row = 0; row < rows; row++) {
-        points.set(band[index++]!, { x, y: 80 + ((tallest - rows) / 2 + row) * pitch });
+    for (let col = 0; col < count; col++) {
+      const rows = Math.ceil((band.length - index) / (count - col));
+      const ids = band.slice(index, index + rows);
+      const offsets = [0];
+      for (const id of ids.slice(0, -1)) {
+        // Reserve room below an annotated row without moving its connection ports.
+        offsets.push(offsets.at(-1)! + pitch + (annotated.has(id) ? 198 : 0));
       }
-      x += nodeSize.width + (col + 1 === columns ? between : within);
+      const span = offsets.at(-1)!;
+      columns.push({ ids, x, offsets, span });
+      tallest = Math.max(tallest, span);
+      x += nodeSize.width + (col + 1 === count ? between : within);
+      index += rows;
     }
+  }
+  for (const column of columns) {
+    const top = 80 + (tallest - column.span) / 2;
+    column.ids.forEach((id, i) => points.set(id, { x: column.x, y: top + column.offsets[i]! }));
   }
   // File-only loop legends keep a layout identity without reserving visible space.
   hidden.forEach((id, i) => points.set(id, { x, y: 80 + i * pitch }));
