@@ -7,7 +7,7 @@ import { applyGraphUpdate, cli, createCanvasProject, repository } from '../fixtu
 import { api, audit, createLegendProject, readJSON, rules, service, standardLegend, updatedDescription, writeJSON } from '../fixtures/dependency-legends.mjs';
 import { fixedArgs, orderId, orderInput } from '../fixtures/loop-authoring.mjs';
 
-const root = path.join(repository, '.local/D015');
+const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D015');
 await mkdir(root, { recursive: true });
 const fixture = async (tag, create = createCanvasProject) => create(path.join(await mkdtemp(path.join(root, tag + '-')), 'project'));
 const document = (project, file) => path.join(project.data, 'current', file + '.md');
@@ -39,10 +39,18 @@ function failure({ status, stderr }, code, exitCode = 1) {
 test('订单新建和读回分别保存分支、顺序与原块，缺少已讲解文件时不写成品', async () => {
   const project = await fixture('order');
   const graph = await readFile(project.graph);
-  const first = success(run(...createArgs(project, await inputFile(project, 'order'))));
+  const annotated = structuredClone(orderInput);
+  annotated.nodes[1].annotation = '能转成数字的 `0` **低于下限**。';
+  annotated.nodes[4].annotation = '规则抛出异常，集合仍为空。';
+  const invalid = structuredClone(annotated);
+  invalid.nodes[1].annotation = '   ';
+  const invalidNote = failure(run(...createArgs(project, await inputFile(project, 'empty-note', invalid))), 'LOOP_INPUT_INVALID', 2);
+  assert.equal(invalidNote.context.field, '$.nodes[1].annotation');
+  const first = success(run(...createArgs(project, await inputFile(project, 'order', annotated))));
   assert.equal(first.source_commit, project.commit);
   const result = success(readLoop(project));
   assert.deepEqual(result.loop, await readJSON(stored(project)));
+  assert.deepEqual(result.loop.nodes.map(node => node.annotation), annotated.nodes.map(node => node.annotation));
   assert.deepEqual(result.loop.reading_order, orderInput.reading_order);
   assert.deepEqual(result.loop.edges, orderInput.edges);
   assert.equal(result.loop.nodes.filter(node => node.path === rules).length, 2);
@@ -50,6 +58,7 @@ test('订单新建和读回分别保存分支、顺序与原块，缺少已讲�
   assert.deepEqual(result.sources.find(source => source.node_id === 'check').lines, git(project, 'show', project.commit + ':' + rules).trimEnd().split('\n'));
   const markdown = readLoop(project, orderId, '--format', 'markdown');
   assert.equal(markdown.status, 0, markdown.stderr);
+  assert.ok(markdown.stdout.includes(annotated.nodes[1].annotation));
   assert.match(markdown.stdout, /假设示例[\s\S]*原集合仍为空/u);
   assert.match(markdown.stdout, /规则转换并检查边界 → 无效数量让创建提前结束/u);
   assert.doesNotMatch(markdown.stdout, /export function|WORKTREE_ONLY/u);

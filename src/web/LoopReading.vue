@@ -36,6 +36,15 @@ function addSelection() {
   window.getSelection()?.removeAllRanges();
   clearSelection();
 }
+const annotationHeading = ref<HTMLElement>();
+function showAnnotation(showSource: boolean) {
+  if (showSource) {
+    pinned.value = true;
+    openPreview();
+    nextTick(() => sourcePanel.value?.querySelector<HTMLButtonElement>('button')?.focus());
+  } else annotationHeading.value?.focus();
+}
+defineExpose({ showAnnotation });
 const stepHeading = ref<HTMLElement>();
 const sourceTrigger = ref<HTMLButtonElement>();
 const sourcePanel = ref<HTMLElement>();
@@ -195,6 +204,10 @@ onUnmounted(() => window.clearTimeout(closeTimer));
     <h2 ref="stepHeading" class="loop-step-heading" tabindex="-1" aria-live="polite">{{ step.title }}</h2>
     <div class="loop-step-reading">
       <div data-quote-field="explanation" class="markdown loop-step-explanation" v-html="renderMarkdown(step.explanation)"></div>
+      <template v-if="step.annotation">
+        <h3 ref="annotationHeading" tabindex="-1">{{ t('loopAnnotation') }}</h3>
+        <div class="markdown" v-html="renderMarkdown(step.annotation)"></div>
+      </template>
       <template v-if="step.hint">
         <h3>{{ t('loopHint') }}</h3>
         <div data-quote-field="hint" class="markdown loop-step-hint" v-html="renderMarkdown(step.hint)"></div>

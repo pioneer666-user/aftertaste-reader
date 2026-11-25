@@ -66,7 +66,16 @@ try {
       const title = await loop.locator('.loop-overview-link').boundingBox();
       const hint = await loop.locator('.canvas-node-hint').boundingBox();
       assert.ok(title.x + title.width < hint.x && title.width > 80, 'title and hint at ' + width);
-      if (openPanel) assert.ok(hint.x + hint.width <= (await panel.boundingBox()).x);
+      if (openPanel) {
+        const drawer = await panel.boundingBox();
+        const header = await panel.locator('.loop-step-nav').boundingBox();
+        const button = await toggle.boundingBox();
+        assert.ok(hint.x + hint.width <= drawer.x);
+        assert.ok(button.x >= drawer.x && button.x - drawer.x < 20, 'collapse at left of drawer');
+        assert.ok(button.y >= header.y && button.y + button.height <= header.y + header.height, 'collapse within header');
+        await page.mouse.move(0, 0);
+        assert.equal(await toggle.locator('span').evaluate(el => getComputedStyle(el).opacity), '1');
+      }
     }
   }
   await page.getByLabel('Interface language').selectOption('zh-CN');

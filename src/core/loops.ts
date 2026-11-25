@@ -25,10 +25,11 @@ interface LoopNode {
   title: string;
   explanation: string;
   hint?: string;
+  annotation?: string;
   library_uses?: { id: string; reason: string }[];
 }
 
-interface SavedNode extends LoopNode {
+export interface SavedNode extends LoopNode {
   block_explanation: string;
   lines?: LineRange;
 }
@@ -115,6 +116,7 @@ function readNode(data: Record<string, unknown>, v: Fields, field: string): Loop
   }) : undefined;
   return { ...(uses && { library_uses: uses }), id: data.id, path: data.path, block_id: data.block_id,
     title: v.text(data.title, field + '.title'), explanation: v.text(data.explanation, field + '.explanation'),
+    ...(Object.hasOwn(data, 'annotation') ? { annotation: v.text(data.annotation, field + '.annotation') } : {}),
     ...(Object.hasOwn(data, 'hint') ? { hint: v.text(data.hint, field + '.hint') } : {}) };
 }
 
@@ -171,7 +173,7 @@ export function parseLoopInput(value: unknown): LoopInput {
   const v: Fields = new Fields('LOOP_INPUT_INVALID');
   const data = v.object(value, ['format', ...routeKeys], ['legends'], '$');
   if (data.format !== loopInputFormat) v.fail('$.format', 'FORMAT');
-  const route = readRoute(data, v, (value, field) => readNode(v.object(value, nodeKeys, ['hint', 'library_uses'], field), v, field));
+  const route = readRoute(data, v, (value, field) => readNode(v.object(value, nodeKeys, ['annotation', 'hint', 'library_uses'], field), v, field));
   const participants = new Set(route.nodes.map(node => node.path));
   const ids = new Set<string>();
   const legends = Object.hasOwn(data, 'legends') ? v.array(data.legends, '$.legends').map((value, index) => {
@@ -206,7 +208,7 @@ export function parseSavedLoop(raw: string, id: string): SavedLoop {
   }
   if (data.project_prefix !== '' && !isSourcePath(data.project_prefix)) v.fail('$.project_prefix', 'PATH');
   const route = readRoute<SavedNode>(data, v, (value, field) => {
-    const node = v.object(value, [...nodeKeys, 'block_explanation'], ['hint', 'lines', 'library_uses'], field);
+    const node = v.object(value, [...nodeKeys, 'block_explanation'], ['annotation', 'hint', 'lines', 'library_uses'], field);
     const lines = readRange(node.lines);
     if (Object.hasOwn(node, 'lines') && !lines) v.fail(field + '.lines', 'RANGE');
     return { ...readNode(node, v, field), block_explanation: v.text(node.block_explanation, field + '.block_explanation'),

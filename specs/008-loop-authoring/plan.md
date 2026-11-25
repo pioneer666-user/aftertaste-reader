@@ -12,6 +12,8 @@
 
 Skill 引导选定有固定源码和有效讲解依据的路线。CLI 校验并一次发布闭环 current，随后独立从磁盘读回讲解，按原 Git 引用读取对应源码。
 
+在输入和成品共用的节点解析中检查可选 annotation 字符串，沿已校验步骤保存。JSON 与 Markdown 读回都按步骤呈现；取源沿用该步骤的固定引用。
+
 ## Technical Context
 
 **Language/Version** TypeScript 5.9、Node.js 24、Git 2.45+

@@ -83,6 +83,7 @@ export class LoopReaderService {
     const ids = new Set([...loop.reading_order, ...loop.legends.map(legend => legendKey(legend.id))]);
     const graphVersion = createHash('sha256').update(JSON.stringify([projectRoot, id, raw])).digest('hex');
     const relations = { order: [loop.entry, ...loop.reading_order.filter(id => id !== loop.entry)],
+      annotatedSteps: loop.nodes.filter(node => node.annotation).map(node => node.id),
       edges: loop.edges.map(({ from, to }) => ({ from, to })),
       libraries: loop.legends.map(legend => ({ id: legendKey(legend.id),
         targets: loop.nodes.filter(node => node.library_uses?.some(use => use.id === legend.id)).map(node => node.id) })) };

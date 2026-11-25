@@ -30,3 +30,5 @@ Markdown 模式输出目标、串讲、顺序、来源定位、已存块解释�
 - `LOOP_PATH_UNSAFE` 拒绝不安全的资料入口，`LOOP_READ_FAILED` 和 `LOOP_WRITE_FAILED` 给出失败类别与位置。失败的同名创建保留旧成果；未发布的创建可用原 ID 重试。
 
 D043 的 revise-step 以固定提交、原文件 SHA-256、闭环 ID、步骤 ID 和字段为条件，stdin 仅为该字段的新讲解。成品与固定源码校验后同目录安全替换，重新读回核对。具体调用见[修订命令](../../../skills/aftertaste-reader/references/tools.md#revise-current)。
+
+create-loop 的 nodes[i].annotation 接受可选非空 Markdown 字符串。read-loop 在 JSON 中原样返回，在 Markdown 中于该步列出「节点说明」。缺字段的 v1 成品仍可读。
