@@ -90,3 +90,7 @@ tests/
 ## D042 · 依赖图与闭环往返
 
 底条与边缘把手共用 DependencyCanvas 的 panelOpen。右栏承载完整来路和出口；摘要保留直接换步。
+
+## D053 · 留在原视野展开两步
+
+在 `src/web/DependencyCanvas.vue` 接入现有读写流程。复用依赖图个人布局契约。开关取自本闭环 current/loop.json，展开写本闭环 layout.json。 复用原固定源码、布局修订和候选验证机制。

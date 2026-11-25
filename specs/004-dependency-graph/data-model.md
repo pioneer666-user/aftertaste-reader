@@ -10,7 +10,7 @@
 
 - nodes: 仅含 path、analysis 的数组；path 项目相对规范 Git 路径，同图唯一且大小写敏感；analysis 仅 unreviewed 或 reviewed。
 - edges: 包含 dependency、dependent、reason 和选填的 label、color 的数组；端点均已登记，同对端点唯一；reason 是非空且 Unicode 完好的说明（不得放源码）。方向 dependency → dependent；允许自环与循环。
-- legends: 当前图独立的库实例及使用关系。实例和文件各有独立身份。字段、校验和更新规则见 [库图例](contracts/cli.md#库图例)。
+- legends: 当前图独立的库或开关实例。库保存使用关系，开关引用本图的节点和关系。实例和文件各有独立身份。字段、校验和更新规则见 [库图例](contracts/cli.md#库图例)。
 - 所有路径沿 002 路径约束；核源码沿现有 UTF-8 普通文本读取契约。结构字段不允许未知项，避免未识别数据被更新丢弃。图不保存项目绝对路径、源码、讲解完成或理解状态。
 
 每条边和逐文件库用法可分别选填 `label`（Unicode 完好、非空白的单行普通文字）及 `color`（`theme`、`red`、`green`）。缺省配色随当前主题，缺省短文本时只画线。
@@ -50,3 +50,9 @@ GraphDiagnostic: code、field（JSON 字段定位）、message、nextStep、para
 `legendRemove` 使用同一凭据发布过程，图例的键为 `legend:<id>`。该键可出现在 `removals`、`registered`、`confirmed`，与文件路径无冲突。旧凭据继续读取。
 
 D012 的 `paths` 和 D013 第一候选的 `removals` 可按原快照读取，D012 路径取该发布摘要作标记。旧格式无法证明跨直接编辑的重加身份。仅有失配的旧移除标记时，画布展示带诊断的只读预览。可恢复匹配的图及凭据，或在确要重新移除相关节点时，用正式工具显式移除凭据中的全部路径，随后按需登记。参见[画布数据模型](../007-dependency-canvas/data-model.md#图与布局协调)。
+
+## D053 · 从问句了解次要依赖
+
+legendUpserts 用 type=switch 提交完整 question、nodes、edges。库沿用原局部更新；legendRemove 可移除任一类型。
+
+`nodes` 引用本图文件路径。`edges` 每项写 `{from,to}`，文件边从 dependency 到 dependent，库用法从 `legend:<id>` 到使用文件。每类目标唯一，合计至少一项。`type` 省略或为 `library` 时按库结构读取，库的来源字段仍为 `kind`。

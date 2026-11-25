@@ -147,3 +147,7 @@ D028 在 `src/web/DependencyCanvas.vue`、`canvas.css`、`canvas-position.ts` �
 ## D042 · 依赖图与闭环往返
 
 App 共用目录，以独立的页面选择记录闭环 ID。DependencyCanvas 按选择读取映射，再与正在显示的图匹配，历史回访重新核对。卡片标记和关系选取都独立于个人布局。
+
+## D053 · 按问句展开关系并定位
+
+在 `src/web/DependencyCanvas.vue` 接入现有读写流程。layout.expanded 为打开的图例画布键列表，缺省为空。positions 包含全部真实成员，groups 保留已分组的成员，包括暂时收起的目标。 复用原固定源码、布局修订和候选验证机制。

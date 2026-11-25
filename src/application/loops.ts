@@ -1,3 +1,4 @@
+import { isLibrary, isSwitchDefinition } from '../core/dependency-graph.js';
 import path from 'node:path';
 import { DocumentError, explanationSize, physicalLineCount } from '../core/document-blocks.js';
 import { isLoopId, loopFormat, LoopError, parseLoopInput, parseSavedLoop } from '../core/loops.js';
@@ -72,9 +73,10 @@ export class LoopService {
       if (!block.body.trim() || explanationSize(block.body) === 0) throw blockError(context, 'EXPLANATION_EMPTY');
       savedNodes.push({ ...node, block_explanation: block.body, ...(block.lines ? { lines: block.lines } : {}) });
     }
-    const library = legends.length ? (await this.graphs.queryLegends(fixed)).legends : [];
+    const library = legends.some(item => !isSwitchDefinition(item)) ? (await this.graphs.queryLegends(fixed)).legends : [];
     const savedLegends = legends.map(selection => {
-      const legend = library.find(legend => legend.id === selection.id);
+      if (isSwitchDefinition(selection)) return selection;
+      const legend = library.filter(isLibrary).find(legend => legend.id === selection.id);
       const invalidLegend = (filePath?: string) => new LoopError('LOOP_LEGEND_INVALID', '闭环图例或指定用法不在固定版本文件图中。',
         '查询该版本图例和参与文件的用法后重新选择。', { legendId: selection.id, ...(filePath ? { path: filePath } : {}) });
       if (!legend) throw invalidLegend();
@@ -165,7 +167,7 @@ export function loopMarkdown(result: ReadingLoop): string {
     const ref = [inlineCode(node.path), `块 ${inlineCode(node.block_id)}`,
       node.lines ? `第 ${node.lines.start}–${node.lines.end} 行` : '纯讲解'].join(' · ');
     parts.push(`### ${index + 1}. ${title(nodeId)}`, ref, node.explanation);
-    for (const use of node.library_uses ?? []) parts.push(`**${oneLine(loop.legends.find(legend => legend.id === use.id)!.name)}**${edgeNote(use)} ${use.reason}`);
+    for (const use of node.library_uses ?? []) parts.push(`**${oneLine(loop.legends.filter(isLibrary).find(legend => legend.id === use.id)!.name)}**${edgeNote(use)} ${use.reason}`);
     if (node.annotation) parts.push('**节点说明**', node.annotation);
     if (node.hint) parts.push(`**提示** ${node.hint}`);
     const problem = problems.get(nodeId);
@@ -177,6 +179,10 @@ export function loopMarkdown(result: ReadingLoop): string {
   if (loop.legends.length) {
     parts.push('## 图例');
     for (const legend of loop.legends) {
+      if (!isLibrary(legend)) {
+        parts.push(`### ${oneLine(legend.question)}`, [...legend.nodes, ...legend.edges.map(e => e.from + ' → ' + e.to)].map(inlineCode).join('、'));
+        continue;
+      }
       parts.push(`### ${oneLine(legend.name)}`, legend.description, legend.uses.map(use =>
         `- ${inlineCode(use.path)}${edgeNote(use)} · ${use.reason.trim().replace(/\r\n|\r|\n/gu, '\n  ')}`).join('\n'));
     }

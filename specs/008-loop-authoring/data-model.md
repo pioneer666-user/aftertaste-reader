@@ -10,7 +10,7 @@
 | `nodes` | 每节点含 `id`、`path`、`block_id`、`title`、`explanation`、可选 `hint` 和节点说明 `annotation`。程序补充 `block_explanation` 及对照块的 `lines:{start,end}`。纯讲解块无范围。不同节点可引用同一个块，用于不同教学步骤。 |
 | `entry`、`edges` | 入口节点 ID 与边列表。边含 `from`、`to`、`reason`，可选 `label`、`color` 遵循[共用标注规则](../004-dependency-graph/data-model.md#dependencygraph)，支持分支、汇合及环。各节点从入口可达。 |
 | `reading_order` | 每个节点 ID 恰好出现一次，允许独立于边方向安排读法。 |
-| `legends` | 实际采用的库图例快照，沿用 [图例结构](../004-dependency-graph/contracts/cli.md#库图例)，用法为本路线明确使用的参与文件。 |
+| `legends` | 本路线的开关定义及实际采用的库图例快照。库快照沿用 [图例结构](../004-dependency-graph/contracts/cli.md#库图例)，用法为本路线明确使用的参与文件。 |
 
 步骤可含`annotation?: string`；存在时须为非空白、合法 Unicode 的 Markdown，保留原文。身份为闭环 ID 与步骤 ID。
 
@@ -23,3 +23,7 @@
 ## 同提交的步骤定位及修订
 
 剪贴板标识为 `aftertaste-loop-step/v1`。JSON 的 `loop_id`、`step_id` 和 `source_commit` 取自保存的成品；选文时增加 `field`（explanation 或 hint）与原样 `selection`。整步省略这两项。两个步骤可共享来源块。修订从磁盘最新成品核对原版本，只替换指定节点字段，验证固定来源后安全替换。运行时 sources 不进入成品。
+
+## D053 · 为闭环自拟一个问句
+
+开关包含 id、type=switch、question、nodes（步骤 id）、edges（{from,to} 对）。至少一个目标，库选择沿用 id、paths。

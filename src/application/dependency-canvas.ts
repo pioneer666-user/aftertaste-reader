@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { layoutGraph, layoutPath } from '../core/canvas-layout.js';
-import { canvasIds, legendKey, GraphError, graphPath, isCanvasId, isLegendKey, parseGraph } from '../core/dependency-graph.js';
+import { canvasIds, isLibrary, legendKey, GraphError, graphPath, isCanvasId, isLegendKey, parseGraph } from '../core/dependency-graph.js';
 import type { DependencyGraph, RemovalMarks } from '../core/dependency-graph.js';
 import { CanvasLayoutService } from './canvas-layout.js';
 import type { LayoutReading, LayoutStore, LayoutTarget } from './canvas-layout.js';
@@ -42,8 +42,9 @@ export class DependencyCanvasService {
     const nodeRemovals = Object.fromEntries(Object.entries(state.removals)
       .filter(([id]) => ids.has(id) && (registered.has(id) || isLegendKey(id))));
     const version = JSON.stringify([history, [...state.registered].sort(), [...confirmed].sort()]);
-    const relations = { edges: graph.edges.map(edge => ({ from: edge.dependency, to: edge.dependent })),
-      libraries: (graph.legends ?? []).map(legend => ({ id: legendKey(legend.id), targets: legend.uses.map(use => use.path) })) };
+    const switches = (graph.legends ?? []).filter(legend => !isLibrary(legend)).map(legend => legendKey(legend.id));
+    const relations = { ...(switches.length && { switches }), edges: graph.edges.map(edge => ({ from: edge.dependency, to: edge.dependent })),
+      libraries: (graph.legends ?? []).filter(isLibrary).map(legend => ({ id: legendKey(legend.id), targets: legend.uses.map(use => use.path) })) };
     return { graph, ids, confirmed, nodeRemovals, receiptProblem, relations,
       graphVersion: createHash('sha256').update(JSON.stringify([this.reader.projectRoot, layoutGraph, raw, version])).digest('hex') };
   }

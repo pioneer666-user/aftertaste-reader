@@ -222,3 +222,7 @@ const result = receive('revise-step', process.execPath, [cli, 'revise-step',
 ```
 
 核退出码和 JSON。校验或内容冲突失败保住原件；锁冲突先核是否有进行中的修订。读回失败须报告已尝试发布、重查当前成品。原始 read-loop 响应不能当写回输入。
+
+### 开关图例的读写
+
+依赖图用 `apply-graph` 按 id 增改或移除，`validate-graph` 检查最终引用，`query-legends` 返回该类型的原始字段。闭环用 `create-loop` 接受本图开关，`read-loop` 读回。两者的 `nodes` 为本图稳定节点身份，`edges` 为有向的 `{from,to}` 对；库用法的起点写作 `legend:<库 id>`。至少有一项目标。遇到错误按诊断的数组项和字段修正输入。制作样例见 [生成](generation.md)和[闭环](loops.md)。

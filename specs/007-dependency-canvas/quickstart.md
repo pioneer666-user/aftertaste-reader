@@ -47,3 +47,7 @@ D014 构建后串行执行 `node --test tests/integration/dependency-legends.tes
 ## D049 · 双图遮线与重排
 
 构建后运行 `node tests/browser/canvas-reading-layout.mjs`。脚本从仓内样例生成隔离项目，在两图比较遮挡卡内部的同一块像素，切换选择、拖图例与组、取消和确认重排，并对照两份布局文件。密集闭环记录 18 个并列样例的子列位置和净空。运行 `node tests/browser/canvas-routing-alignment.mjs` 复核分岔、贴边箭头与组吸附。
+
+## D053 · 两图试读
+
+在仓库根运行 `npm run build`，再执行 `node tests/browser/switch-legends.mjs`。脚本以隔离的固定源码项目验证两图。此分册核对的场景为切换依赖图的审计线，选线读理由、与库卡分组后重开。

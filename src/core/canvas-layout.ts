@@ -1,4 +1,4 @@
-import { isCanvasId } from './dependency-graph.js';
+import { isCanvasId, isLegendKey } from './dependency-graph.js';
 import type { RemovalMarks } from './dependency-graph.js';
 
 export interface Point { x: number; y: number }
@@ -9,6 +9,7 @@ export interface CanvasLayout {
   positions: Record<string, Point>;
   groups: CanvasGroup[];
   viewport: Viewport;
+  expanded?: string[];
 }
 
 export const nodeSize = { width: 212, height: 56 };
@@ -46,7 +47,9 @@ function coordinate(value: unknown, field: string): number {
 }
 
 export function parseLayout(value: unknown, source: 'file' | 'request' = 'file', acceptsId: (id: string) => boolean = isCanvasId): CanvasLayout {
-  const { positions, groups, viewport } = layoutObject(value, ['positions', 'groups', 'viewport'], '$.layout');
+  const keys = ['positions', 'groups', 'viewport'];
+  if (value && typeof value === 'object' && Object.hasOwn(value, 'expanded')) keys.push('expanded');
+  const { positions, groups, viewport, expanded } = layoutObject(value, keys, '$.layout');
   const positionsField = '$.layout.positions';
   if (!positions || typeof positions !== 'object' || Array.isArray(positions) !== (source === 'request')) invalid(positionsField);
   let entries: [string, unknown][];
@@ -82,7 +85,9 @@ export function parseLayout(value: unknown, source: 'file' | 'request' = 'file',
   });
   const { x, y, zoom } = layoutObject(viewport, ['x', 'y', 'zoom'], '$.layout.viewport');
   if (typeof zoom !== 'number' || !Number.isFinite(zoom) || zoom < minZoom || zoom > maxZoom) invalid('$.layout.viewport.zoom');
-  return { positions: coordinates, groups: parsedGroups,
+  if (expanded !== undefined && (!Array.isArray(expanded) || new Set(expanded).size !== expanded.length ||
+      expanded.some(id => typeof id !== 'string' || !isLegendKey(id) || !Object.hasOwn(coordinates, id)))) invalid('$.layout.expanded');
+  return { positions: coordinates, groups: parsedGroups, ...(Array.isArray(expanded) && expanded.length && { expanded }),
     viewport: { x: coordinate(x, '$.layout.viewport.x'), y: coordinate(y, '$.layout.viewport.y'), zoom } };
 }
 
@@ -91,6 +96,7 @@ export interface LayoutRelations {
   libraries: { id: string; targets: string[] }[];
   order?: string[];
   annotatedSteps?: string[];
+  switches?: string[];
 }
 
 const maxRows = 6;
@@ -101,7 +107,8 @@ const rowHeight = 104;
 function layeredPositions(ids: readonly string[], relations: LayoutRelations) {
   const libraries = new Set(relations.libraries.map(item => item.id));
   const order = relations.order ?? [...ids].sort();
-  const nodes = order.filter(id => !libraries.has(id));
+  const switches = new Set(relations.switches);
+  const nodes = order.filter(id => !libraries.has(id) && !switches.has(id));
   const outgoing = new Map(nodes.map(id => [id, [] as string[]]));
   const incoming = new Map(nodes.map(id => [id, [] as string[]]));
   for (const { from, to } of relations.edges) {
@@ -172,6 +179,7 @@ function layeredPositions(ids: readonly string[], relations: LayoutRelations) {
       for (const parent of incoming.get(id)!.sort(byDepth).reverse()) stack.push(parent);
     }
   }
+  for (const id of switches) add(id, -1);
   const hidden = [];
   for (const { id, targets } of [...relations.libraries].sort((a, b) => a.id.localeCompare(b.id))) {
     if (relations.order && !targets.length) hidden.push(id);
@@ -224,7 +232,7 @@ export function rearrange(layout: CanvasLayout, ids: readonly string[], relation
       next.positions[library.id] = layout.positions[library.id]!;
     }
   }
-  return { ...next, groups: layout.groups };
+  return { ...next, groups: layout.groups, ...(layout.expanded && { expanded: layout.expanded }) };
 }
 
 export function renewedPaths(ids: readonly string[], before: RemovalMarks, after: RemovalMarks): Set<string> {
@@ -283,7 +291,7 @@ export function reconcileLayout(layout: CanvasLayout, ids: readonly string[], re
     placements.get(id)!]));
   const groups = layout.groups.map(group => ({ ...group, members: group.members.filter(id => current.has(id)) }))
     .filter(group => group.members.length);
-  return { ...layout, positions, groups };
+  return { ...layout, positions, groups, ...(layout.expanded && { expanded: layout.expanded.filter(id => current.has(id) && relations.switches?.includes(id)) }) };
 }
 
 function outsidePoint(existing: Point[]): Point {

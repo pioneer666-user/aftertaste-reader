@@ -73,3 +73,9 @@ apply 返回 {graph, removedEdges, affectedDependents}；query 返回模型查�
 ## 兼容与边界
 
 原 pin/read/create-document/validate-document 行为保持。新增 verify 不重 pin 来源。现有图仅支持本版字段，手编合法数据可独立校验；不引入迁移器。普通目录大小写别名依真实文件系统解析，Git 路径不折叠；现存 symlink/junction/硬链接拒绝。未实现多进程协调、恶意并发目录替换、断电恢复或跨版本更新。
+
+## D053 · 从问句了解次要依赖
+
+legendUpserts 用 type=switch 提交完整 question、nodes、edges。库沿用原局部更新；legendRemove 可移除任一类型。
+
+`nodes` 引用本图文件路径。`edges` 每项写 `{from,to}`，文件边从 dependency 到 dependent，库用法从 `legend:<id>` 到使用文件。每类目标唯一，合计至少一项。`type` 省略或为 `library` 时按库结构读取，库的来源字段仍为 `kind`。

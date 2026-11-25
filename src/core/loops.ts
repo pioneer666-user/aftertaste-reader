@@ -1,6 +1,6 @@
 import { edgeAnnotationKeys, readEdgeAnnotation, type EdgeAnnotation } from './edge-annotation.js';
-import { GraphError, isLegendId, parseLibraryLegends } from './dependency-graph.js';
-import type { LibraryLegend } from './dependency-graph.js';
+import { GraphError, checkSwitchTargets, isLegendId, isLibrary, isSwitchDefinition, legendKey, parseLegends, readSwitch } from './dependency-graph.js';
+import type { GraphLegend, SwitchLegend } from './dependency-graph.js';
 import { readRange } from './document-blocks.js';
 import type { LineRange } from './document-blocks.js';
 import { isSourcePath } from './source-path.js';
@@ -51,7 +51,7 @@ interface Route<Node> {
 }
 
 export interface LoopInput extends Route<LoopNode> {
-  legends: LegendSelection[];
+  legends: (LegendSelection | SwitchLegend)[];
 }
 
 export interface SavedLoop extends Route<SavedNode> {
@@ -59,7 +59,7 @@ export interface SavedLoop extends Route<SavedNode> {
   id: string;
   source_commit: string;
   project_prefix: string;
-  legends: LibraryLegend[];
+  legends: GraphLegend[];
 }
 
 export function isNodeId(value: unknown): value is string {
@@ -74,10 +74,10 @@ const routeKeys = ['title', 'goal', 'explanation', 'entry', 'nodes', 'edges', 'r
 const nodeKeys = ['id', 'path', 'block_id', 'title', 'explanation'];
 
 class Fields {
-  constructor(private readonly code: 'LOOP_INPUT_INVALID' | 'LOOP_INVALID') {}
+  constructor(private readonly code: 'LOOP_INPUT_INVALID' | 'LOOP_INVALID', private readonly artifactPath?: string) {}
 
   fail(field: string, reason: string): never {
-    throw new LoopError(this.code, '闭环字段无效。', '按闭环契约核对字段和引用，再重试。', { field, reason });
+    throw new LoopError(this.code, '闭环字段无效。', '按闭环契约核对字段和引用，再重试。', { field, reason, ...(this.artifactPath && { path: this.artifactPath }) });
   }
 
   object(value: unknown, required: string[], optional: string[], field: string): Record<string, unknown> {
@@ -173,6 +173,15 @@ function checkStepUses(nodes: LoopNode[], paths: Map<string, Set<string>>, v: Fi
   }));
 }
 
+function checkRouteSwitches(route: Route<LoopNode>, legends: (LegendSelection | GraphLegend)[], v: Fields) {
+  const nodes = new Set(route.reading_order);
+  const pairs = new Set(route.edges.map(edge => JSON.stringify([edge.from, edge.to])));
+  for (const node of route.nodes) for (const use of node.library_uses ?? []) pairs.add(JSON.stringify([legendKey(use.id), node.id]));
+  legends.forEach((legend, i) => {
+    if (isSwitchDefinition(legend)) checkSwitchTargets(legend, `$.legends[${i}]`, nodes, pairs, (f, r) => v.fail(f, r));
+  });
+}
+
 export function parseLoopInput(value: unknown): LoopInput {
   const v: Fields = new Fields('LOOP_INPUT_INVALID');
   const data = v.object(value, ['format', ...routeKeys], ['legends'], '$');
@@ -182,6 +191,11 @@ export function parseLoopInput(value: unknown): LoopInput {
   const ids = new Set<string>();
   const legends = Object.hasOwn(data, 'legends') ? v.array(data.legends, '$.legends').map((value, index) => {
     const field = '$.legends[' + index + ']';
+    if (isSwitchDefinition(value)) {
+      const legend = readSwitch(value, field, (f, r) => v.fail(f, r));
+      v.unique(ids, legend.id, field + '.id');
+      return legend;
+    }
     const legend = v.object(value, ['id', 'paths'], [], field);
     if (!isLegendId(legend.id)) v.fail(field + '.id', 'LEGEND_ID');
     v.unique(ids, legend.id, field + '.id');
@@ -195,12 +209,13 @@ export function parseLoopInput(value: unknown): LoopInput {
     if (!paths.length) v.fail(field + '.paths', 'MISSING_USE');
     return { id: legend.id, paths };
   }) : [];
-  checkStepUses(route.nodes, new Map(legends.map(legend => [legend.id, new Set(legend.paths)])), v);
+  checkStepUses(route.nodes, new Map(legends.filter((legend): legend is LegendSelection => 'paths' in legend).map(legend => [legend.id, new Set(legend.paths)])), v);
+  checkRouteSwitches(route, legends, v);
   return { ...route, legends };
 }
 
 export function parseSavedLoop(raw: string, id: string): SavedLoop {
-  const v: Fields = new Fields('LOOP_INVALID');
+  const v: Fields = new Fields('LOOP_INVALID', `docs/aftertaste/loops/${id}/current/loop.json`);
   let value: unknown;
   try { value = JSON.parse(raw.replace(/^\uFEFF/u, '')); }
   catch { v.fail('$', 'JSON'); }
@@ -218,13 +233,14 @@ export function parseSavedLoop(raw: string, id: string): SavedLoop {
     return { ...readNode(node, v, field), block_explanation: v.text(node.block_explanation, field + '.block_explanation'),
       ...(lines ? { lines } : {}) };
   });
-  let legends: LibraryLegend[];
-  try { legends = parseLibraryLegends(data.legends, new Set(route.nodes.map(node => node.path))); }
+  let legends: GraphLegend[];
+  try { legends = parseLegends(data.legends, new Set(route.nodes.map(node => node.path))); }
   catch (error) {
     if (!(error instanceof GraphError)) throw error;
     v.fail(error.diagnostics[0]?.field ?? '$.legends', error.diagnostics[0]?.code ?? error.code);
   }
-  if (legends.some(legend => legend.uses.length === 0)) v.fail('$.legends', 'MISSING_USE');
-  checkStepUses(route.nodes, new Map(legends.map(legend => [legend.id, new Set(legend.uses.map(use => use.path))])), v);
+  checkRouteSwitches(route, legends, v);
+  if (legends.filter(isLibrary).some(legend => legend.uses.length === 0)) v.fail('$.legends', 'MISSING_USE');
+  checkStepUses(route.nodes, new Map(legends.filter(isLibrary).map(legend => [legend.id, new Set(legend.uses.map(use => use.path))])), v);
   return { format: loopFormat, id, source_commit: data.source_commit, project_prefix: data.project_prefix, ...route, legends };
 }
