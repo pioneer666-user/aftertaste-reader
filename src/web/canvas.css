@@ -669,7 +669,7 @@
 .foreground-edges .route-band {
   stroke: var(--route-glow); stroke-width: 8; opacity: .78; filter: blur(3px); stroke-linecap: round;
 }
-.foreground-edges .route-band ~ path:last-of-type { stroke-width: 3.5; }
+.foreground-edges .route-band ~ path[marker-end] { stroke-width: 3.5; }
 .foreground-edges .edge-focus-ring { stroke: var(--focus); stroke-width: 8; stroke-dasharray: 3 3; }
 .foreground-edges .selected-curve { stroke-width: 3.8; }
 .foreground-edges circle { fill: currentColor; stroke: var(--paper); stroke-width: 1; }
@@ -738,3 +738,12 @@
 .switch-pulse { outline: 2px solid var(--direct-edge); outline-offset: 2px; }
 .edge-ink.switch-pulse { outline: none; }
 .edge-ink.switch-pulse .vue-flow__edge-path { opacity: 1; }
+
+.foreground-edges .preview-trace { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .foreground-edges .preview-trace {
+    display: initial; stroke: var(--route-ink); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 9 110;
+    animation: preview-trace 520ms ease-out both;
+  }
+  @keyframes preview-trace { from { stroke-dashoffset: 10; } to { stroke-dashoffset: -100; opacity: 0; } }
+}

@@ -16,6 +16,8 @@ import DependencyDots from './DependencyDots.vue';
 import DependencyCard from './DependencyCard.vue';
 import LoopRelations from './LoopRelations.vue';
 import type { NoteQuote } from '../core/notes.js';
+import LoopStepPreview from './LoopStepPreview.vue';
+import { useStepPreview } from './step-preview-state.js';
 import LoopAnnotation from './LoopAnnotation.vue';
 import LoopExamplePicker from './LoopExamplePicker.vue';
 import LoopReading from './LoopReading.vue';
@@ -65,7 +67,7 @@ function pointAtCard(event: PointerEvent) {
 }
 function beginPointer(event: PointerEvent) {
   if (event.pointerType === 'touch') { hoverNode.value = ''; focusNode.value = ''; }
-  if (!(event.target instanceof Element && event.target.closest('.loop-annotation'))) startSelection(event);
+  if (!(event.target instanceof Element && event.target.closest('.loop-annotation, .loop-step-preview'))) startSelection(event);
 }
 function focusCard(event: FocusEvent) {
   focusNode.value = event.target instanceof Element && event.target.matches(':focus-visible') ? cardId(event.target) : '';
@@ -296,6 +298,18 @@ function revealStep(id: string) {
   }
 }
 const visibleKeys = computed(() => new Set([...nodes.value.map(node => node.key), ...visibleLegends.value.map(legend => legendKey(legend.id))]));
+const { owner: previewStep, leaving: previewLeaving, ...preview } = useStepPreview(
+  () => !!loopRoute && props.active && idle.value && !props.toolsCovered && !groupEditor.value && !loading.value && !box.value,
+  id => !!id && visibleKeys.value.has(id),
+);
+const placedStep = ref('');
+const previewEdge = computed(() => {
+  const steps = example.value?.steps;
+  const id = placedStep.value;
+  if (!steps || !id || id !== previewStep.value || steps[0] === id) return '';
+  const from = new Set(steps.flatMap((step, i) => step === id && i > 0 ? [steps[i - 1]!] : []));
+  return from.size === 1 ? edgeId([...from][0]!, id) : '';
+});
 const visibleGroups = computed(() => (layout.value?.groups ?? []).map(group =>
   ({ ...group, members: group.members.filter(id => visibleKeys.value.has(id)) })).filter(group => group.members.length));
 // Short bounds along the actual curves also cover bottom ports, returns and library links.
@@ -912,6 +926,7 @@ function trackControl(event: KeyboardEvent) {
       if (helpOpen) event.preventDefault();
     }
   }
+  if (event.type === 'keydown' && !event.defaultPrevented) preview.escape(event, graphArea.value);
   if (event.key !== 'Control') return;
   const editing = event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]');
   ctrlHeld.value = event.type === 'keydown' && !editing;
@@ -1114,7 +1129,8 @@ onUnmounted(() => {
       </div>
       <section ref="graphArea" class="graph-area" :class="{ 'node-relations-active': litNode }" :aria-label="t(loopId ? 'loopGraph' : 'dependencyCanvas')"
         :data-tool="effectiveTool" tabindex="0" @keydown="selectionKeys"
-        @pointerover="pointAtCard" @pointerleave="hoverNode = ''" @focusin="focusCard" @focusout="focusNode = ''"
+        @pointerover="pointAtCard($event); loopId && preview.point($event)" @pointerout="loopId && preview.point($event)" @pointerleave="hoverNode = ''"
+        @focusin="focusCard($event); loopId && preview.focus($event)" @focusout="focusNode = ''; loopId && preview.blur($event)"
         @pointerdown.capture="beginPointer" @pointermove="moveSelection" @pointerup="finishSelection"
         @pointercancel="cancelPointer($event); interruptDrag()" @lostpointercapture="cancelPointer">
         <section v-if="routeChoice" class="route-actions" :inert="toolsCovered" :aria-label="t('loopCatalog')">
@@ -1165,10 +1181,13 @@ onUnmounted(() => {
               :status="t(data.analysis === 'unreviewed' ? 'canvasReviewPending' : 'canvasReviewed')"
               :aria-pressed="selected === data.key" :data-box-selected="picked.has(data.key) || undefined" @click="selectDetail(data.key)" />
             <button v-else type="button" class="file-node loop-node" :class="{ 'switch-pulse': pulse.has(nodeId(data.key)) }" :data-step="data.key" v-bind="memberAttributes(data.key)" :aria-pressed="selected === data.key"
-              :data-box-selected="picked.has(data.key) || undefined" :title="data.label" @click="selectCard(data.key, !!data.step.annotation)">
+              :data-box-selected="picked.has(data.key) || undefined" :aria-describedby="placedStep === data.key ? flowId + '-step-preview' : undefined" @click="selectCard(data.key, !!data.step.annotation)">
               <small class="loop-node-number">{{ String(data.order + 1).padStart(2, '0') }}<template v-if="data.entry"> · {{ t('loopEntry') }}</template></small>
               <span>{{ data.label }}</span>
             </button>
+            <LoopStepPreview v-if="loopId && previewStep === data.key" :id="flowId + '-step-preview'" :step-id="data.key"
+              :explanation="data.step.explanation" :language="language" :leaving="previewLeaving"
+              @placed="shown => { if (shown) placedStep = data.key; else if (placedStep === data.key) placedStep = '' }" />
             <LoopAnnotation v-if="loopId && data.step.annotation" :step="data.step" :language="language" :pane-width="annotationPaneWidth"
               :open="noteChoices.get(data.key) ?? defaultOpenNotes.has(data.key)" :raised="raisedNote === data.key"
               @bounds="noteBounds(nodeId(data.key), $event)" @toggle="setNote(data.key, $event)" @read="readAnnotation(data.key, $event)" />
@@ -1204,6 +1223,7 @@ onUnmounted(() => {
                 <path v-if="edge.id === focusedEdgeId" class="edge-focus-ring" :d="routes.get(edge.id)" />
                 <path :d="routes.get(edge.id)" :class="{ 'library-use': edge.source.startsWith('legend:'), 'selected-curve': edge.id === selectedEdgeId }"
                   :marker-end="`url('#${getMarkerId(edge.markerEnd, flowId)}')`" />
+                <path v-if="edge.id === previewEdge" class="preview-trace" :d="routes.get(edge.id)" pathLength="100" />
                 <circle v-if="edge.id === selectedEdgeId" :cx="curves.get(edge.id)?.start.x" :cy="curves.get(edge.id)?.start.y" r="4" />
               </g>
               <g v-for="item in edgeLabels" :key="'label-' + item.id" class="edge-label" :style="{ color: item.color }"

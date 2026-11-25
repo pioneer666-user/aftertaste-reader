@@ -1,0 +1,183 @@
+import assert from 'node:assert/strict';
+import { cp, mkdir, mkdtemp, readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { chromium, firefox } from 'playwright';
+import { build, repository } from '../fixtures/dependency-canvas.mjs';
+import { writeJSON } from '../fixtures/dependency-legends.mjs';
+import { exampleId, examples } from '../fixtures/loop-examples.mjs';
+import { createPreviewProject, previewId } from '../fixtures/loop-step-preview.mjs';
+
+const base = path.join(repository, '.local/D055');
+await mkdir(base, { recursive: true });
+const run = await mkdtemp(path.join(base, 'browser-'));
+const project = path.join(run, 'project');
+if (process.env.AFTERTASTE_TRIAL_PROJECT) await cp(process.env.AFTERTASTE_TRIAL_PROJECT, project, { recursive: true });
+else await createPreviewProject(project);
+const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
+const reader = await startReader(project, 0);
+const engine = process.env.AFTERTASTE_BROWSER ?? 'msedge';
+let browser;
+try {
+  browser = engine === 'firefox' ? await firefox.launch() : await chromium.launch({ channel: engine });
+  console.log(engine, browser.version(), run);
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page.setDefaultTimeout(7000);
+  const errors = [], writes = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('request', r => { if (r.method() === 'PUT') writes.push(r.url()); });
+  const graph = page.locator('.loop-canvas:visible');
+  const card = id => graph.locator('[data-step="' + id + '"]');
+  const preview = graph.locator('.loop-step-preview:popover-open');
+  const shown = id => graph.locator('.loop-step-preview:popover-open[data-preview-for="' + id + '"]').waitFor();
+  const gone = () => preview.waitFor({ state: 'hidden' });
+  const open = async (id, step = 'check') => {
+    await page.goto('about:blank');
+    await page.goto(reader.url + '#aftertaste-loop/' + id + '/' + step);
+    await graph.locator('[data-reading-step="' + step + '"]').waitFor();
+  };
+  const pick = async i => {
+    await graph.getByRole('button', { name: '示例路线', exact: true }).click();
+    await graph.locator('.example-panel:popover-open').getByRole('button', { name: examples[i].name }).click();
+  };
+  const rect = async locator => locator.evaluate(el => {
+    const { left, top, right, bottom, width, height } = el.getBoundingClientRect();
+    return { left, top, right, bottom, width, height };
+  });
+  const point = async (id, verify = true) => { await card(id).hover(); if (verify) await shown(id); };
+  const empty = () => page.mouse.move(1430, 10);
+  const layout = path.join(project, 'docs/aftertaste/loops', previewId, 'layout.json');
+  const original = await readFile(layout);
+  await open(exampleId);
+  await point('build');
+  assert.match(await preview.innerText(), /假设集合起初为空.*集合本身仍为空/u);
+  assert.equal(await card('build').getAttribute('title'), null);
+  // Frame the card from below so the group action lands directly above its upper left corner.
+  await graph.getByRole('button', { name: '选择工具', exact: true }).click();
+  const groupCard = await rect(card('build'));
+  await page.mouse.move(groupCard.right + 16, groupCard.bottom + 18);
+  await page.mouse.down(); await page.mouse.move(groupCard.left - 16, groupCard.top - 54, { steps: 8 }); await page.mouse.up();
+  const group = graph.locator('.canvas-group-float button').first();
+  await group.waitFor(); await point('build');
+  assert.ok(await group.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+  }), 'the group action remains reachable beside the step preview');
+  await group.click(); await graph.locator('.canvas-selection-form input').waitFor();
+  await open(previewId);
+  await point('build', false);
+  await empty(); await page.waitForTimeout(380); assert.equal(await preview.count(), 0);
+  await pick(0);
+  const before = await graph.locator('.vue-flow__transformationpane').getAttribute('style');
+  const history = await page.evaluate(() => window.history.length);
+  // Capture both animations as they actually play. A screenshot alone cannot verify the exit.
+  await page.evaluate(() => {
+    window.samples = [];
+    document.addEventListener('transitionstart', e => {
+      if (e.propertyName !== 'opacity' || !e.target.matches('.preview-motion')) return;
+      const el = e.target, name = el.closest('.leaving') ? 'preview-out' : 'preview-in';
+      setTimeout(() => window.samples.push({ name, opacity: Number(getComputedStyle(el).opacity) }), 40);
+    });
+  });
+  await point('build'); await page.waitForTimeout(180);
+  assert.equal(await preview.locator('strong').innerText(), '此时集合仍是空的。');
+  assert.deepEqual(await preview.locator('code').allTextContents(), ['4', '1']);
+  const paper = preview.locator('.preview-paper');
+  const b = await rect(paper), c = await rect(card('build'));
+  assert.ok(b.bottom <= c.top && c.top - b.bottom < 16);
+  assert.equal(await paper.evaluate(el => getComputedStyle(el, '::before').width), '3px');
+  const mode = await paper.evaluate(el => CSS.supports('corner-shape', 'squircle') ? getComputedStyle(el).cornerShape : el.hasAttribute('data-reader-corner') && 'fallback');
+  assert.ok(mode, 'native or painted continuous corner');
+  assert.equal(await graph.locator('.preview-trace').count(), 1);
+  await page.screenshot({ path: path.join(run, 'build.png') });
+  // Cross the narrow gap slowly, including a pause inside the tail.
+  const tip = await preview.evaluate(el => el.getBoundingClientRect().left + parseFloat(el.style.getPropertyValue('--preview-tail')));
+  await page.mouse.move(tip, c.top + 3); await page.mouse.move(tip, c.top - 4);
+  await page.waitForTimeout(220); await shown('build');
+  await page.mouse.move(tip, b.top + 20, { steps: 12 }); await preview.locator('strong').dblclick();
+  assert.ok((await page.evaluate(() => getSelection().toString())).trim());
+  await empty(); await gone(); await page.waitForTimeout(60);
+  const samples = await page.evaluate(() => window.samples);
+  console.log('corners and animation samples', mode, samples);
+  for (const name of ['preview-in', 'preview-out']) assert.ok(samples.some(s => s.name.includes(name) && s.opacity > 0 && s.opacity < 1), name);
+  await point('build');
+  await page.keyboard.press('Tab'); await card('check').focus(); await shown('check');
+  await empty(); await point('check'); await page.waitForTimeout(180);
+  assert.equal(await graph.locator('.preview-trace').count(), 0);
+  assert.equal(await page.evaluate(() => window.history.length), history);
+  await card('check').click(); await shown('check');
+  const note = card('check').locator('..').locator('.loop-annotation.expanded');
+  assert.ok((await rect(note)).top >= (await rect(preview.locator('.preview-paper'))).bottom);
+  await page.screenshot({ path: path.join(run, 'two-notes.png') });
+  await note.locator('.annotation-link').last().click();
+  const source = page.locator('.loop-source-panel:visible');
+  assert.match(await source.innerText(), /Number.isInteger/);
+  await source.getByRole('button').click();
+  await point('append'); assert.match(await preview.innerText(), /一条订单/u);
+  assert.equal(await preview.locator('li').count(), 2);
+  assert.match(await preview.locator('pre').innerText(), /orders.push/);
+  await empty();
+  await page.keyboard.press('Tab'); await card('append').focus(); await shown('append');
+  await card('append').press('Tab');
+  if (await preview.locator('.preview-body').evaluate(el => el === document.activeElement)) await page.keyboard.press('Tab');
+  const link = preview.getByRole('link');
+  await page.waitForFunction(() => document.activeElement?.matches('.preview-body a'));
+  assert.equal(await link.getAttribute('rel'), 'noopener noreferrer');
+  const popup = page.waitForEvent('popup'); await link.press('Enter'); await (await popup).close();
+  await link.press('Escape'); await gone();
+  assert.ok(await card('append').evaluate(el => document.activeElement === el));
+  await page.waitForTimeout(400); assert.equal(await preview.count(), 0);
+  await card('append').press('Enter');
+  await graph.locator('[data-reading-step=append]').waitFor();
+  await pick(1); await point('reject'); assert.ok(await preview.locator('small').isVisible());
+  assert.match(await preview.innerText(), /抛出异常/);
+  await page.locator('[popovertarget=reader-theme-menu]').click();
+  await page.locator('[data-theme-choice=black]').click();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await point('reject');
+  assert.equal(await preview.locator('.preview-motion').evaluate(el => getComputedStyle(el).transitionDuration), '0s');
+  await page.screenshot({ path: path.join(run, 'reject-dark.png') });
+  assert.equal(await graph.locator('.vue-flow__transformationpane').getAttribute('style'), before);
+  assert.deepEqual(await readFile(layout), original);
+  assert.deepEqual(writes, []);
+  console.log('history before/after intentional selection', history, await page.evaluate(() => window.history.length));
+  const saved = async action => {
+    const response = page.waitForResponse(r => r.request().method() === 'PUT');
+    await action(); assert.equal((await response).status(), 200);
+  };
+  const reject = await rect(card('reject'));
+  await saved(async () => {
+    const x = reject.left + 40, y = reject.top + 26;
+    await page.mouse.move(x, y); await page.mouse.down();
+    await page.mouse.move(x + 36, y + 24, { steps: 6 }); await gone(); await page.mouse.up();
+  });
+  await saved(() => graph.locator('.canvas-zoom button').last().click());
+  // Set edge cases only in this independent copy, then read them through the normal route.
+  const state = JSON.parse(original), view = state.layout.viewport;
+  const area = await rect(graph.locator('.graph-area')), inspector = await rect(graph.locator('.canvas-inspector'));
+  state.layout.positions.build = { x: (inspector.left - area.left - view.x - 75) / view.zoom, y: 180 };
+  state.layout.positions.check = { x: 355, y: (area.height - 112 - view.y) / view.zoom };
+  await writeJSON(layout, state); await open(previewId, 'build'); await card('build').hover({ position: { x: 20, y: 30 } }); await shown('build');
+  assert.ok((await rect(preview.locator('.preview-paper'))).right <= (await rect(graph.locator('.canvas-inspector'))).left);
+  const rightTail = await preview.evaluate(el => el.getBoundingClientRect().left + parseFloat(el.style.getPropertyValue('--preview-tail')));
+  const edgeCard = await rect(card('build')); assert.ok(rightTail >= edgeCard.left && rightTail <= edgeCard.right);
+  await page.screenshot({ path: path.join(run, 'right-edge.png') });
+  await card('check').click(); await note.locator('.annotation-paper').waitFor();
+  assert.ok(await note.evaluate(el => el.classList.contains('above')));
+  await card('check').hover(); await page.waitForTimeout(400);
+  if (await preview.isVisible()) {
+    const p = await rect(preview.locator('.preview-paper')), n = await rect(note);
+    assert.ok(p.right <= n.left || p.left >= n.right || p.bottom <= n.top || p.top >= n.bottom);
+  }
+  state.layout.positions.build = { x: 370, y: -34 };
+  await writeJSON(layout, state); await open(previewId, 'build'); await point('build', false);
+  await page.waitForTimeout(400); assert.equal(await preview.count(), 0);
+  await card('build').press('Enter'); await graph.locator('[data-reading-step=build]').waitFor();
+  await page.getByRole('button', { name: '文件依赖图', exact: true }).click();
+  const dep = page.locator('.dependency-canvas:visible');
+  await dep.locator('[data-file="src/rules.mjs"]').hover(); await page.waitForTimeout(400);
+  assert.equal(await page.locator('.loop-step-preview:popover-open').count(), 0);
+  assert.ok(await dep.locator('.edge-lit').count() > 0);
+  assert.deepEqual(errors, []);
+  console.log('Order previews, pointer, keyboard, edges, notes, source and layout checks passed.');
+} finally { await browser?.close(); await reader.server.close(); }
