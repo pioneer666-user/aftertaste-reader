@@ -3,7 +3,7 @@ import test from 'node:test';
 import { applyGraph, graphFormat, parseGraph, parseUpdate, updateFormat } from '../../dist/core/dependency-graph.js';
 import { defaultLayout, parseLayout, rearrange, reconcileLayout } from '../../dist/core/canvas-layout.js';
 import { parseLoopInput } from '../../dist/core/loops.js';
-import { switchVisibility } from '../../dist/core/switch-visibility.js';
+import { relationKey, switchVisibility } from '../../dist/core/switch-visibility.js';
 import { orderInput } from '../fixtures/loop-authoring.mjs';
 
 const edge = { from: 'a.js', to: 'b.js' };
@@ -59,4 +59,13 @@ test('关合时保存全部成员，重排保留展开，重建身份丢弃旧�
   for (const expanded of [['legend:missing'], ['a.js'], ['legend:one','legend:one']]) {
     assert.throws(() => parseLayout({ ...layout, expanded }), { code: 'LAYOUT_INVALID' });
   }
+});
+
+test('示例能单独显出目标，未走的受控边仍听从原开关', () => {
+  const example = { nodes: new Set([edge.from, edge.to]), edges: new Set() };
+  assert.equal(switchVisibility([one], [], example).node(edge.from), true);
+  assert.equal(switchVisibility([one], [], example).edge(edge.from, edge.to), false);
+  example.edges.add(relationKey(edge.from, edge.to));
+  assert.equal(switchVisibility([one], [], example).edge(edge.from, edge.to), true);
+  assert.equal(switchVisibility([one], []).node(edge.from), false);
 });

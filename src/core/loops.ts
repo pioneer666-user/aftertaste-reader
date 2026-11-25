@@ -40,7 +40,14 @@ interface LegendSelection {
   paths: string[];
 }
 
+interface LoopExample {
+  name: string;
+  scenario: string;
+  steps: string[];
+}
+
 interface Route<Node> {
+  examples?: LoopExample[];
   title: string;
   goal: string;
   explanation: string;
@@ -163,7 +170,21 @@ function readRoute<Node extends LoopNode>(data: Record<string, unknown>, v: Fiel
   });
   if (seen.size !== nodes.length) v.fail('$.reading_order', 'MISSING_NODE');
 
-  return { title: v.text(data.title, '$.title'), goal: v.text(data.goal, '$.goal'),
+  const names = new Set<string>();
+  const examples = Object.hasOwn(data, 'examples') ? v.array(data.examples, '$.examples').map((value, index) => {
+    const field = '$.examples[' + index + ']';
+    const example = v.object(value, ['name', 'scenario', 'steps'], [], field);
+    const name = v.text(example.name, field + '.name').trim();
+    v.unique(names, name, field + '.name');
+    const steps = v.array(example.steps, field + '.steps').map((id, i) => nodeId(id, field + '.steps[' + i + ']'));
+    if (!steps.length) v.fail(field + '.steps', 'EMPTY_ROUTE');
+    for (let i = 1; i < steps.length; i++) {
+      if (!outgoing.get(steps[i - 1]!)?.has(steps[i]!)) v.fail(field + '.steps[' + i + ']', 'MISSING_DIRECTED_EDGE');
+    }
+    return { name, scenario: v.text(example.scenario, field + '.scenario'), steps };
+  }) : undefined;
+
+  return { ...(examples && { examples }), title: v.text(data.title, '$.title'), goal: v.text(data.goal, '$.goal'),
     explanation: v.text(data.explanation, '$.explanation'), entry, nodes, edges, reading_order };
 }
 
@@ -184,7 +205,7 @@ function checkRouteSwitches(route: Route<LoopNode>, legends: (LegendSelection | 
 
 export function parseLoopInput(value: unknown): LoopInput {
   const v: Fields = new Fields('LOOP_INPUT_INVALID');
-  const data = v.object(value, ['format', ...routeKeys], ['legends'], '$');
+  const data = v.object(value, ['format', ...routeKeys], ['legends', 'examples'], '$');
   if (data.format !== loopInputFormat) v.fail('$.format', 'FORMAT');
   const route = readRoute(data, v, (value, field) => readNode(v.object(value, nodeKeys, ['annotation', 'hint', 'library_uses'], field), v, field));
   const participants = new Set(route.nodes.map(node => node.path));
@@ -219,7 +240,7 @@ export function parseSavedLoop(raw: string, id: string): SavedLoop {
   let value: unknown;
   try { value = JSON.parse(raw.replace(/^\uFEFF/u, '')); }
   catch { v.fail('$', 'JSON'); }
-  const data = v.object(value, ['format', 'id', 'source_commit', 'project_prefix', ...routeKeys, 'legends'], [], '$');
+  const data = v.object(value, ['format', 'id', 'source_commit', 'project_prefix', ...routeKeys, 'legends'], ['examples'], '$');
   if (data.format !== loopFormat) v.fail('$.format', 'FORMAT');
   if (!isLoopId(data.id) || data.id !== id) v.fail('$.id', 'ID_MISMATCH');
   if (typeof data.source_commit !== 'string' || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(data.source_commit)) {

@@ -142,3 +142,7 @@ US2 在 US1 的已保存读回上增加图例。US3 复用已具备阅读与图�
 ## D053 · 留在原视野展开两步
 
 - [x] T038 [US4] 在 `src/web/DependencyCanvas.vue` 落实 FR-014，沿对应契约串行验证 SC-014。
+
+## D054
+
+- [x] T039 [US5] 在 `src/web/DependencyCanvas.vue` 落实 FR-015。选「04」仅标记 check → build → append，切到「4.5」仅标记 check → reject。问句收起或展开时均核对节点、线、开关和选例前后布局。（SC-015）

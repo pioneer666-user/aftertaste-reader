@@ -25,3 +25,7 @@ node tests/fixtures/loop-authoring.mjs $trial
 ## D053 · 两图试读
 
 在仓库根运行 `npm run build`，再执行 `node tests/browser/switch-legends.mjs`。脚本以隔离的固定源码项目验证两图。此分册核对的场景为读回 quantity-outcomes 的问句、两个步骤及固定源码。
+
+## D054 · 生成示例并试读
+
+在仓库构建后，从新建的空运行目录生成订单项目。若验证已安装的包，先将进程变量 `AFTERTASTE_BUILD` 指向安装包的 `dist`。执行 `node tests/fixtures/loop-examples.mjs <运行目录>/project`，经 CLI 制作两例并核对两种读回。再用 `node tests/browser/loop-examples.mjs` 串行验证双图；`AFTERTASTE_TRIAL_PROJECT` 可指向刚创建的项目，浏览器检查使用其独立副本。

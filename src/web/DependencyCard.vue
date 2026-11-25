@@ -75,7 +75,6 @@ button.package-card {
 .package-card[aria-pressed="true"] .card-surface { fill: var(--library-picked); stroke: var(--library-ink); }
 .dependency-card[data-route-member] .card-surface { fill: var(--route-surface); stroke: var(--route-ink); stroke-width: 3; }
 .dependency-card[data-route-member][aria-pressed="true"] .card-surface { stroke: var(--action); stroke-width: 4; }
-.dependency-card[data-route-member] .card-name::before { content: '◆'; color: var(--route-ink); font-size: .7em; margin-right: .45em; }
 .card-focus, .card-pick { fill: none; stroke: none; }
 .dependency-card[data-box-selected="true"] .card-pick { stroke: var(--focus); stroke-width: 7; stroke-dasharray: 5 4; }
 button.dependency-card:focus-visible { outline: none; }

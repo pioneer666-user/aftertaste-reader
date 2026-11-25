@@ -260,3 +260,22 @@ test('读取拒绝外部链接、硬链接及损坏成品，创建保护已有�
   failure(readLoop(project, 'bad'), 'LOOP_INVALID');
   failure(run(...createArgs(project, input, 'bad')), 'LOOP_EXISTS');
 });
+
+test('示例引用只沿已有教学边，保留重访并在发布前定位非法输入', async () => {
+  const project = await fixture('examples');
+  const example = { name: '重复检查', scenario: '推演两次检查。', steps: ['check', 'resume', 'check', 'stop'] };
+  const input = { ...orderInput, edges: [...orderInput.edges, { from: 'resume', to: 'check', reason: '测试用回边。' }], examples: [example] };
+  for (const [steps, index, reason] of [
+    [['check', 'absent'], 1, 'UNKNOWN_NODE'], [['start', 'store'], 1, 'MISSING_DIRECTED_EDGE'],
+    [['stop', 'check'], 1, 'MISSING_DIRECTED_EDGE'],
+  ]) {
+    const file = await inputFile(project, 'invalid', { ...input, examples: [example, { ...example, name: '坏例', steps }] });
+    const error = failure(run(...createArgs(project, file)), 'LOOP_INPUT_INVALID', 2);
+    assert.equal(error.context.inputPath, file);
+    assert.equal(error.context.field, '$.examples[1].steps[' + index + ']');
+    assert.equal(error.context.reason, reason);
+    await assert.rejects(readFile(stored(project)), { code: 'ENOENT' });
+  }
+  success(run(...createArgs(project, await inputFile(project, 'revisit', input))));
+  assert.deepEqual(success(readLoop(project)).loop.examples, [example]);
+});
