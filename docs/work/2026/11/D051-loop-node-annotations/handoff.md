@@ -2,7 +2,19 @@
 
 ## 当前结论与入口
 
-**候选 `5d0ba32` 已完成自测与独立复核，保留在 `codex/feat-loop-node-annotations`，待作者试读。** 讲解 AI 可以给单个闭环步骤写 Markdown 短注。读者可点「节点说明」收起，点同一张步骤卡再展开，也能对照该步固定提交的源码。[批准单与样式依据](task.md) · [两轮独审原文](review.md)
+**当前试读候选为 `e441bad`（A1）。** 打开闭环右侧阅读栏，点顶行左侧的向右箭头即可收起。收起后可从画布右边缘中部重新展开。[稀疏图](http://127.0.0.1:4352/#aftertaste-loop/quantity-text/check) · [手摆密图](http://127.0.0.1:4352/#aftertaste-loop/annotated-inputs/paths) · [依赖图](http://127.0.0.1:4352/#canvas-reading) · [调整依据](amendments.md)
+
+安装包串行运行 `tests/browser/loop-reading-panel.mjs` 通过，覆盖 780、820、1440 像素宽桌面及 390 像素模拟触屏。独审在桌面及窄窗实测位置、点按、Enter、空格和底部讲解入口，结论通过。实体触屏及作者观感待验。[桌面截图](../../../../../.local/D051/panel-top/panel-aaMvMY/branch-reading.png) · [窄窗截图](../../../../../.local/D051/panel-top/panel-aaMvMY/narrow-reading.png) · [独审 R3](review.md#r3--2026-11-25--a1-独审通过)
+
+新服务监听 `127.0.0.1:4352`，交接时 PID `29576`。该服务使用试读项目副本，新包 SHA-256 为 `8964cd5c1689c965b9635c1bfacfb42f77bc115b67606785dff9a564616bd70c`。两个闭环接口返回 200，页面样式文件与安装包哈希一致。需要重启时，在仓库根目录运行：
+
+```powershell
+& .local/D009/runtime/node.exe .local/D051/panel-top/installed/node_modules/aftertaste-reader/dist/cli/main.js serve --project (Resolve-Path .local/D051/panel-top/project).Path --port 4352
+```
+
+## 原注释候选与试读记录（4351）
+
+候选 `5d0ba32` 已完成自测与独立复核。讲解 AI 可以给单个闭环步骤写 Markdown 短注。读者可点「节点说明」收起，点同一张步骤卡再展开，也能对照该步固定提交的源码。[批准单与样式依据](task.md) · [两轮独审原文](review.md)
 
 | 试读入口 | 可直接体验的动作 |
 | --- | --- |
