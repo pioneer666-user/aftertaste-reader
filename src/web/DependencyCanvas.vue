@@ -241,16 +241,18 @@ function switchChange(legend: SwitchLegend) {
   const next = open ? expanded.value.filter(id => id !== key) : [...expanded.value, key];
   const after = switchVisibility(switches.value, next);
   const nodes = legend.nodes.filter(id => visibility.value.node(id) !== after.node(id));
-  const edges = legend.edges.filter(({ from, to }) => visibility.value.edge(from, to) !== after.edge(from, to)).map(e => edgeId(e.from, e.to));
+  const changedNodes = new Set(nodes);
+  const edges = legend.edges.filter(({ from, to }) => visibility.value.edge(from, to) !== after.edge(from, to) &&
+    !changedNodes.has(from) && !changedNodes.has(to)).map(e => edgeId(e.from, e.to));
   return { next, open, nodes, edges };
 }
 const switchHints = computed(() => new Map(switches.value.map(legend => {
   const { open, nodes, edges } = switchChange(legend);
-  const count = legend.nodes.length ? nodes.length : edges.length;
-  const unit = legend.nodes.length ? (loop.value ? 'Steps' : 'Files') : 'Relations';
+  const count = nodes.length || edges.length;
+  const unit = nodes.length || (!edges.length && legend.nodes.length) ? (loop.value ? 'Steps' : 'Files') : 'Relations';
   return [legend.id, t(open ? 'switchClose' : 'switchOpen') + ' ' + count + ' ' + t('switch' + unit)];
 })));
-const disclosure = shallowRef<{ id: string; nodes: string[]; edges: string[]; unit: string }>();
+const disclosure = shallowRef<{ id: string; nodes: string[]; edges: string[] }>();
 const pulse = shallowRef(new Set<string>());
 let pulseTimer: ReturnType<typeof setTimeout>;
 function toggleSwitch(legend: SwitchLegend) {
@@ -259,15 +261,16 @@ function toggleSwitch(legend: SwitchLegend) {
   clearSelection();
   changed({ ...layout.value, expanded: change.next });
   disclosure.value = change.open ? undefined : { id: legend.id, nodes: change.nodes,
-    edges: legend.nodes.length ? [] : change.edges, unit: legend.nodes.length ? (loop.value ? 'Steps' : 'Files') : 'Relations' };
+    edges: change.edges };
   clearTimeout(pulseTimer);
   pulse.value = new Set(change.open ? [] : [...change.nodes.map(nodeId), ...change.edges]);
   pulseTimer = setTimeout(() => { pulse.value = new Set(); }, 1300);
   render();
   if (selectedEdgeId.value && !getEdges.value.some(edge => edge.id === selectedEdgeId.value)) selectedEdgeId.value = '';
 }
-function focusSwitch() {
-  if (disclosure.value) graphArea.value?.querySelector<HTMLButtonElement>('[data-legend="' + CSS.escape(disclosure.value.id) + '"]')?.focus({ preventScroll: true });
+function focusSwitch(id: string) {
+  const source = graphArea.value?.querySelector<HTMLButtonElement>('[data-legend="' + CSS.escape(id) + '"]');
+  (source ?? graphArea.value)?.focus({ preventScroll: true });
 }
 function revealStep(id: string) {
   if (!layout.value || visibility.value.node(id)) return;
@@ -287,12 +290,14 @@ const disclosedPoints = computed(() => {
   if (!current) return [];
   const points = current.nodes.flatMap(id => {
     const node = findNode(nodeId(id));
-    return node ? [[{ x: node.position.x + node.dimensions.width / 2, y: node.position.y + node.dimensions.height / 2 }]] : [];
+    return node ? [{ unit: loop.value ? 'Steps' : 'Files', points: [{
+      x: node.position.x + node.dimensions.width / 2, y: node.position.y + node.dimensions.height / 2,
+    }] }] : [];
   });
   for (const id of current.edges) {
     const curve = curves.value.get(id);
-    if (curve) points.push(Array.from({ length: curve.segments.length + 1 }, (_, i) =>
-      curve.path.getPointAtLength(curve.length * i / curve.segments.length)));
+    if (curve) points.push({ unit: 'Relations', points: Array.from({ length: curve.segments.length + 1 }, (_, i) =>
+      curve.path.getPointAtLength(curve.length * i / curve.segments.length)) });
   }
   return points;
 });
@@ -307,14 +312,14 @@ const defaultOpenNotes = computed(() => {
   const { x, y, zoom } = viewport.value;
   const groupHeaders = visibleGroups.value.map(group => groupBounds(positions, group.members, dimensions));
   for (const step of loop.value.loop.nodes) {
-    if (!step.annotation) continue;
+    if (!step.annotation || !visibility.value.node(step.id)) continue;
     const p = positions[step.id]!;
     const right = p.x + 240, top = p.y + nodeSize.height, bottom = top + 208;
     if (right * zoom + x > annotationPaneWidth.value || bottom * zoom + y > paneSize.value.height) continue;
     const overlaps = (q: Point, width: number, height: number) =>
       q.x < right && q.x + width > p.x && q.y < bottom && q.y + height > top;
     if ([...visibleKeys.value].some(id => id !== step.id && overlaps(positions[id]!, nodeSize.width, nodeSize.height))) continue;
-    if (loop.value.loop.nodes.some(other => other.annotation && other.id !== step.id &&
+    if (loop.value.loop.nodes.some(other => other.annotation && visibility.value.node(other.id) && other.id !== step.id &&
       overlaps(positions[other.id]!, 240, nodeSize.height + 208))) continue;
     if (noteEdgeBounds.value.some(line => line.x < right && line.x + line.width > p.x &&
       line.y < bottom && line.y + line.height > top + 18)) continue;
@@ -1188,9 +1193,9 @@ onUnmounted(() => {
             :class="{ 'switch-pulse': pulse.has(edge.id) }" :lit="litNode === edge.source || litNode === edge.target" :active="selectedEdgeId === edge.id"
             @keydown.esc.stop="selectedEdge && closeEdge()" @keyboard-focus="focusedEdgeId = $event ? edge.id : ''" @inspect="selectEdge(edge.id)" /></template>
         </VueFlow>
-        <SwitchDirections v-if="disclosure && active && expanded.includes(legendKey(disclosure.id))" :key="disclosure.id"
+        <SwitchDirections v-if="switches.length" v-show="active" :source="disclosure?.id"
           :targets="disclosedPoints" :viewport="viewport" :width="annotationPaneWidth" :height="paneSize.height"
-          :unit="t('switch' + disclosure.unit)" :language="language" @navigate="mapNavigate($event, true)"
+          :language="language" @navigate="mapNavigate($event, true)"
           @return-focus="focusSwitch" />
         <svg v-if="guides.length" class="canvas-alignment" aria-hidden="true">
           <g :transform="`translate(${viewport.x} ${viewport.y}) scale(${viewport.zoom})`">

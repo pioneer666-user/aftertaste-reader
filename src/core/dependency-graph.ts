@@ -232,12 +232,13 @@ export function parseLegends(value: unknown, paths: ReadonlySet<string>): GraphL
   });
 }
 
-function checkGraphSwitches(legends: readonly GraphLegend[], paths: ReadonlySet<string>, pairs: Set<string>, v: Fields) {
+function checkGraphSwitches(legends: readonly GraphLegend[], paths: ReadonlySet<string>, pairs: Set<string>, v: Fields,
+  fields?: ReadonlyMap<string, string>) {
   for (const legend of legends.filter(isLibrary)) {
     for (const use of legend.uses) pairs.add(JSON.stringify([legendKey(legend.id), use.path]));
   }
   legends.forEach((legend, i) => {
-    if (!isLibrary(legend)) checkSwitchTargets(legend, `$.legends[${i}]`, paths, pairs, (f, r) => v.fail(r, f, { id: legend.id }));
+    if (!isLibrary(legend)) checkSwitchTargets(legend, fields?.get(legend.id) ?? `$.legends[${i}]`, paths, pairs, (f, r) => v.fail(r, f, { id: legend.id }));
   });
 }
 
@@ -365,8 +366,10 @@ export function applyGraph(original: DependencyGraph, update: GraphUpdate): {
   } : legend]));
   update.legendRemove.forEach(id => legends.delete(id));
   const fields = new Fields('GRAPH_INPUT_INVALID');
+  const locations = new Map((original.legends ?? []).map((item, i) => [item.id, `$.legends[${i}]`]));
   update.legendUpserts.forEach((patch, index) => {
     const field = `$.legendUpserts[${index}]`;
+    locations.set(patch.id, field);
     const previous = legends.get(patch.id);
     if (previous && (previous.type === 'switch') !== (patch.type === 'switch')) fields.fail('GRAPH_LEGEND_TYPE', field + '.type');
     if (patch.type === 'switch') {
@@ -377,7 +380,7 @@ export function applyGraph(original: DependencyGraph, update: GraphUpdate): {
     legends.set(patch.id, completeLegend({ ...(previous && isLibrary(previous) ? previous : {}), ...patch }, fields, field));
   });
   checkGraphSwitches([...legends.values()], new Set(nodes.keys()),
-    new Set(edges.map(edge => JSON.stringify([edge.dependency, edge.dependent]))), fields);
+    new Set(edges.map(edge => JSON.stringify([edge.dependency, edge.dependent]))), fields, locations);
   return { graph: { format: graphFormat, source_commit: original.source_commit,
     nodes: [...nodes.values()].sort((a, b) => compare(a.path, b.path)), edges: edges.sort(edgeOrder),
     ...(legends.size ? { legends: [...legends.values()].sort((a, b) => compare(a.id, b.id)) } : {}) },

@@ -21,6 +21,8 @@ test('同图引用校验于最终关系，错类型、重复、空目标和跨�
       e => e.code === 'GRAPH_INVALID' && e.diagnostics[0].field.startsWith('$.legends[0]') && !!e.context.graphPath);
   }
   assert.throws(() => apply(graph, { remove: ['a.js'] }), { code: 'GRAPH_INPUT_INVALID' });
+  assert.throws(() => apply(graph, { remove: ['a.js'], legendRemove: ['one'] }),
+    e => e.diagnostics[0].field === '$.legends[1].nodes[0]');
   assert.deepEqual(apply(graph, { remove: ['a.js'], legendRemove: ['one', 'two'] }).nodes.map(n => n.path), ['b.js']);
   const updated = apply(graph, { legendUpserts: [{ ...two, question: '何时写日志？' }] });
   assert.deepEqual(updated.legends[0], one);

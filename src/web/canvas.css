@@ -716,4 +716,4 @@
 .switch-directions:has([data-direction="Bottom"]) .switch-return { bottom: 52px; }
 .switch-pulse { outline: 2px solid var(--direct-edge); outline-offset: 2px; }
 .edge-ink.switch-pulse { outline: none; }
-.edge-ink.switch-pulse .vue-flow__edge-path { stroke: var(--direct-edge); stroke-width: 4; }
+.edge-ink.switch-pulse .vue-flow__edge-path { opacity: 1; }

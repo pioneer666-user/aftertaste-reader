@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyGraphUpdate, cli } from './dependency-canvas.mjs';
@@ -20,6 +20,23 @@ export async function createSwitchProject(target) {
   for (let i = 0; i < 2; i++) await applyGraphUpdate(project, { legendUpserts: [auditTrail] });
   assert.deepEqual(result('query-legends', ...fixed, '--id', auditTrail.id).legends, [auditTrail]);
   assert.ok(result('validate-graph', ...fixed).mechanicallyValid);
+  const badPath = path.join(dir, 'bad-switch.json');
+  await writeJSON(badPath, { format: 'aftertaste-dependency-update/v1', legendUpserts: [{ ...auditTrail, id: 'invalid-ref',
+    edges: [{ from: audit, to: 'missing.mjs' }] }] });
+  const failure = spawnSync(process.execPath, [cli, 'apply-graph', ...fixed, '--input', badPath], { encoding: 'utf8', windowsHide: true });
+  const error = JSON.parse(failure.stderr).error;
+  assert.equal(error.context.inputPath, badPath);
+  assert.equal(error.diagnostics[0].field, '$.legendUpserts[0].edges[0]');
+  const stored = await readJSON(project.graph);
+  const originalIndex = stored.legends.findIndex(item => item.id === auditTrail.id);
+  // Drop a library and remove the audit edge. The rejected update points into the original graph.
+  await writeJSON(badPath, { format: 'aftertaste-dependency-update/v1', legendRemove: ['number'],
+    reviews: [{ path: service, analysis: 'reviewed', dependencies: [] }] });
+  const invalidated = spawnSync(process.execPath, [cli, 'apply-graph', ...fixed, '--input', badPath], { encoding: 'utf8', windowsHide: true });
+  const storedError = JSON.parse(invalidated.stderr).error;
+  assert.equal(storedError.context.graphPath, 'docs/aftertaste/dependency-graph.json');
+  assert.equal(storedError.diagnostics[0].field, `$.legends[${originalIndex}].edges[0]`);
+  assert.deepEqual(await readJSON(project.graph), stored);
   const input = await readJSON(path.join(dir, 'quantity-edges.json'));
   const outcomes = { type: 'switch', id: 'outcomes', question: '通过和拒绝后，各自会发生什么？',
     nodes: ['append', 'reject'], edges: [] };

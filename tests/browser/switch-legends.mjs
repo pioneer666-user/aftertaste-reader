@@ -3,7 +3,7 @@ import { cp, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { build, repository } from '../fixtures/dependency-canvas.mjs';
+import { applyGraphUpdate, build, repository } from '../fixtures/dependency-canvas.mjs';
 import { readJSON, writeJSON } from '../fixtures/dependency-legends.mjs';
 import { createSwitchProject, loopId } from '../fixtures/switch-legends.mjs';
 
@@ -121,6 +121,14 @@ try {
   assert.match(await question.innerText(), /展开 1 条关系/u);
   await saved(() => question.click());
   await audit.waitFor({ state: 'attached' });
+  const ink = audit.locator('.vue-flow__edge-path');
+  const opacity = () => ink.evaluate(el => Number(getComputedStyle(el).opacity));
+  await page.waitForFunction(() => {
+    const path = document.querySelector('.edge-ink.switch-pulse .vue-flow__edge-path');
+    return path && Number(getComputedStyle(path).opacity) > .95;
+  });
+  await graph.locator('.edge-ink.switch-pulse').waitFor({ state: 'detached' });
+  assert.ok(await opacity() < .2);
   assert.deepEqual(await files(), before);
   assert.equal(await graph.locator('[data-direction]').count(), 0);
   await audit.press('Enter');
@@ -165,6 +173,32 @@ try {
   await audit.press('Enter');
   assert.match(await graph.locator('.edge-details').innerText(), /新编号/u);
   await saved(() => back.press('Enter'));
+  await page.goto('about:blank');
+  const original = await readJSON(graphPath);
+  const shared = { type: 'switch', id: 'shared-file', question: '查看入口文件？', nodes: ['src/api.mjs'], edges: [] };
+  const mixed = { ...shared, id: 'audit-detail', question: '入口与审计如何配合？',
+    edges: [{ from: 'support/audit.mjs', to: 'src/service.mjs' }] };
+  await applyGraphUpdate({ projectRoot: project, commit: original.source_commit }, { legendUpserts: [shared, mixed] });
+  const combined = await readJSON(dependencyPath);
+  combined.layout.expanded = [];
+  Object.assign(combined.layout.positions, { 'legend:shared-file': { x: 360, y: 570 },
+    'legend:audit-detail': { x: 640, y: 540 }, 'legend:audit-trail': { x: 2420, y: 460 } });
+  await writeJSON(dependencyPath, combined);
+  await go('canvas-reading');
+  const a = graph.locator('[data-legend=shared-file]'), b = graph.locator('[data-legend=audit-detail]');
+  await saved(() => a.click());
+  assert.match(await b.innerText(), /展开 1 条关系/u);
+  const sourceView = await view();
+  await saved(() => b.click());
+  assert.match(await direction('Right').innerText(), /1 条关系/u);
+  await saved(() => direction('Right').click());
+  const third = graph.locator('[data-legend=audit-trail]');
+  await saved(() => third.click());
+  await saved(() => third.press('Space'));
+  assert.ok(await back.isVisible());
+  await saved(() => back.press('Enter'));
+  assert.equal(await view(), sourceView);
+  assert.ok(await b.evaluate(el => document.activeElement === el));
   await page.setViewportSize({ width: 390, height: 780 }); await go(loop + 'check');
   await graph.locator('[data-reading-step=check]').waitFor();
   assert.ok(await graph.locator('.loop-step-heading').isVisible());
