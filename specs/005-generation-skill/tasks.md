@@ -64,7 +64,7 @@
 
 - [x] T016 [US2] 由 `src/cli/main.ts` 接入 `src/adapters/project-privacy.ts` 的 Git 分类、本机忽略、记住及撤销（FR-013、FR-014）。
 - [x] T017 [US2] 连接 `skills/aftertaste-reader/references/tools.md` 与四条写入流程，按 `tests/skills/project-privacy.md` 留实际提示及 Git 前后状态（SC-009）。
-- [ ] T018 [US2] 修复 `src/adapters/personal-file.ts` 共用权限保持，串行运行 `tests/integration/personal-access.test.mjs` 及原有回归，保存 D057 回执和独审。
+- [x] T018 [US2] 修复 `src/adapters/personal-file.ts` 共用权限保持，串行运行 `tests/integration/personal-access.test.mjs` 及原有回归，保存 D057 回执和独审。
 
 ## Dependencies & Execution Order
 
