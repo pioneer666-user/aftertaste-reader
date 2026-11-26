@@ -1,11 +1,14 @@
+import { startTestReader, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import http from 'node:http';
 import { mkdtemp, mkdir, writeFile, readFile, rename, symlink, link } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { startReader } from '../../dist/server/reader.js';
 import { createReaderProject } from '../fixtures/reader-project.mjs';
+import { checkAnonymous } from '../fixtures/anonymous-reader.mjs';
+import { build } from '../fixtures/dependency-canvas.mjs';
 
 const runs = fileURLToPath(new URL(`../../.local/${process.env.AFTERTASTE_TEST_TASK ?? 'D011'}/`, import.meta.url));
 await mkdir(runs, { recursive: true });
@@ -17,11 +20,33 @@ const original = await readFile(fullDoc, 'utf8');
 let app;
 let url;
 test.before(async () => {
-  app = await startReader(fixture.projectRoot, 0);
+  app = await startTestReader(fixture.projectRoot, 0);
   url = app.url;
 });
 test.after(async () => { await app.server.close(); });
-const get = (route, options) => fetch(`${url}${route}`, options);
+const get = (route, options) => readerFetch(`${url}${route}`, options);
+
+test('anonymous requests to built assets and project routes receive only the terminal hint', async () => {
+  await checkAnonymous(url, fixture.projectRoot, build);
+});
+
+test('a second instance rejects both credentials issued by the first', async () => {
+  const other = await startTestReader(fixture.projectRoot, 0);
+  try {
+    const access = await fetch(app.entryUrl, { headers: { accept: 'application/json' } });
+    const { username, password } = await access.json();
+    const authorization = 'Basic ' + Buffer.from(username + ':' + password).toString('base64');
+    const entry = new URL(app.entryUrl);
+    const attempts = [
+      await fetch(other.url + entry.pathname + entry.search),
+      await fetch(other.url + '/api/documents', { headers: { authorization } }),
+    ];
+    for (const response of attempts) {
+      assert.equal(response.status, 403);
+      assert.ok(await response.text() === '请从启动终端打开本次阅读入口。');
+    }
+  } finally { await other.server.close(); }
+});
 
 test('built page, documents, same-name extensions and fixed source are readable', async () => {
   const page = await get('/');
@@ -88,15 +113,20 @@ test('path, encoded aliases, arbitrary resources and source override are denied'
 });
 
 test('Host, Origin and Fetch Metadata block foreign sites', async () => {
-  for (const headers of [{ Host: 'evil.invalid' }, { Origin: 'https://evil.invalid' },
+  // fetch controls Host itself. Use the actual HTTP transport with a valid launch credential.
+  const hostStatus = await new Promise((resolve, reject) => {
+    http.get(app.entryUrl, { headers: { host: 'evil.invalid' } }, response => {
+      response.resume();
+      resolve(response.statusCode);
+    }).on('error', reject);
+  });
+  assert.equal(hostStatus, 403);
+  for (const headers of [{ Origin: 'https://evil.invalid' },
     { 'Sec-Fetch-Site': 'cross-site' }, { 'Sec-Fetch-Site': 'same-site' }]) {
-    const result = await app.server.inject({ method: 'GET', url: '/api/documents', headers: { host: new URL(url).host, ...headers } });
-    assert.equal(result.statusCode, 403);
+    const result = await get('/api/documents', { headers });
+    assert.equal(result.status, 403);
   }
-  const response = await app.server.inject({ method: 'GET', url: '/api/documents', headers: {
-    host: new URL(url).host, origin: url, 'sec-fetch-site': 'same-origin',
-  } });
-  assert.equal(response.statusCode, 200);
+  assert.equal((await get('/api/documents', { headers: { origin: url, 'sec-fetch-site': 'same-origin' } })).status, 200);
 });
 
 test('links, junction and hardlink documents do not expose disk resources', async () => {
@@ -132,16 +162,16 @@ test('unreadable UTF-8 is an error and successful/failed requests leave document
 test('empty project and startup failures are distinct', async () => {
   const empty = path.join(root, 'empty');
   await mkdir(empty);
-  const reader = await startReader(empty, 0);
+  const reader = await startTestReader(empty, 0);
   const restartPort = Number(new URL(reader.url).port);
   try {
-    const list = await (await fetch(`${reader.url}/api/documents`)).json();
+    const list = await (await readerFetch(`${reader.url}/api/documents`)).json();
     assert.deepEqual(list.documents, []);
     assert.deepEqual(list.problems, []);
-    await assert.rejects(() => startReader(empty, Number(new URL(reader.url).port)), e => e.code === 'PORT_IN_USE');
+    await assert.rejects(() => startTestReader(empty, Number(new URL(reader.url).port)), e => e.code === 'PORT_IN_USE');
   } finally { await reader.server.close(); }
-  const restarted = await startReader(empty, restartPort);
-  assert.equal((await fetch(`${restarted.url}/`)).status, 200);
+  const restarted = await startTestReader(empty, restartPort);
+  assert.equal((await readerFetch(`${restarted.url}/`)).status, 200);
   await restarted.server.close();
-  await assert.rejects(() => startReader(path.join(root, 'missing'), 0), e => e.code === 'PROJECT_UNAVAILABLE');
+  await assert.rejects(() => startTestReader(path.join(root, 'missing'), 0), e => e.code === 'PROJECT_UNAVAILABLE');
 });

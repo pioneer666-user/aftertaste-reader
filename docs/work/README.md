@@ -65,5 +65,6 @@
 | D053 | [双图可拖动的文字开关图例](2026/11/D053-graph-switch-legends/task.md) |
 | D054 | [跟一个例子看闭环路线，两图共用高亮](2026/11/D054-loop-example-highlights/task.md) |
 | D055 | [闭环步骤上方的 Markdown 悬浮预览](2026/11/D055-loop-node-hover-preview/task.md) |
+| D056 | [本地阅读服务凭启动令牌访问](2026/11/D056-reader-session-access/task.md) |
 
 早期产品设计 AR1 的外层原话入口见根 README；本次归档仅处理本仓 D001—D006，外层资料仍按其原入口读取。

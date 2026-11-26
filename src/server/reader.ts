@@ -1,3 +1,4 @@
+import { contentPolicy, readerSession } from './reader-session.js';
 import { randomBytes } from 'node:crypto';
 import Fastify from 'fastify';
 import { readFile, readdir } from 'node:fs/promises';
@@ -74,28 +75,9 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   const loopStore = new LoopFileStore();
   const loops = new LoopReaderService(project, new LoopService(source, documents, new GraphService(source, graphStore), loopStore),
     loopStore, relativePath => new LayoutFileStore(project, relativePath), repository);
-  const contentPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; font-src 'self'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
-  const server = Fastify({ logger: false, trustProxy: false, exposeHeadRoutes: false });
+  const session = readerSession();
+  const server = Fastify({ logger: false, trustProxy: false, exposeHeadRoutes: false, serverFactory: session.serverFactory });
   server.addHook('onRequest', async (request, reply) => {
-    reply.headers({
-      'Cache-Control': 'no-store',
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'no-referrer',
-      'Cross-Origin-Resource-Policy': 'same-origin',
-      'X-Frame-Options': 'DENY',
-      'Content-Security-Policy': contentPolicy,
-    });
-    const address = server.server.address();
-    const actualPort = typeof address === 'object' && address ? address.port : port;
-    const host = request.headers.host;
-    const origin = request.headers.origin;
-    const site = request.headers['sec-fetch-site'];
-    if (![`127.0.0.1:${actualPort}`, `localhost:${actualPort}`].includes(host ?? '') ||
-        (origin !== undefined && origin !== `http://${host}`) ||
-        (site !== undefined && site !== 'same-origin' && site !== 'none')) {
-      return reply.code(403).send({ ok: false, error: readerProblem(new ReaderError('ACCESS_DENIED',
-        '请求来源不允许访问本地阅读资料。', '直接打开启动命令输出的本机阅读地址。')) });
-    }
     const requestPath = request.url.split('?')[0] ?? '';
     if (request.method === 'PUT' && requestPath === '/api/bookmarks') {
       if (request.headers['x-aftertaste-bookmarks'] !== '1') return reply.code(403).send({ ok: false,
@@ -218,7 +200,7 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   });
   try {
     const url = await server.listen({ host: '127.0.0.1', port });
-    return { server, url, projectRoot: project };
+    return { server, url, entryUrl: url + session.entryPath, projectRoot: project };
   } catch (error) {
     await server.close();
     if (systemCode(error) === 'EADDRINUSE') throw new ReaderError('PORT_IN_USE', '阅读端口已被占用。', '指定其他端口，或在原终端关闭属于自己的阅读服务。', { port });

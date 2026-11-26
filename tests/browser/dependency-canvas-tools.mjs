@@ -1,20 +1,18 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { release } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { build } from '../fixtures/dependency-canvas.mjs';
 import { preparePolishProject } from '../fixtures/dependency-canvas-polish.mjs';
 import { readJSON, rules, service, writeJSON } from '../fixtures/dependency-legends.mjs';
 import { orderId } from '../fixtures/loop-authoring.mjs';
 import { dependencySaved } from './dependency-controls.mjs';
 
 const { channel, run, project, source, disk } = await preparePolishProject('tools');
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const desktop = { width: 1440, height: 900 };
 const report = { channel, source, project, run, os: release(), checks: [], errors: [] };
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 const layoutRoute = '/api/dependency-layout';
 const button = (scope, name) => scope.getByRole('button', { name, exact: true });
 const near = (value, expected, tolerance = 1) => assert.ok(Math.abs(value - expected) <= tolerance,
@@ -78,7 +76,7 @@ try {
     near(r.height * v.zoom, pane.height);
   }
   async function open() {
-    await page.goto(reader.url);
+    await openReader(page, reader.url);
     await page.locator('header [data-page="canvas"]:visible').click();
     await dependencySaved(canvas);
     await canvas.locator('button[aria-label="抓手工具"]:enabled').waitFor();

@@ -1,17 +1,16 @@
+import { startTestReader, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import { chooseLoop, openCatalog } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, rename, writeFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { build, repository } from '../fixtures/dependency-canvas.mjs';
+import { repository } from '../fixtures/dependency-canvas.mjs';
 import { api, audit, legendId, readJSON, standardLegend } from '../fixtures/dependency-legends.mjs';
 import { orderId, orderInput } from '../fixtures/loop-authoring.mjs';
 import { artifact, createLoopReaderProject, explanationFile, git, legendLoopId, loopLayout } from '../fixtures/loop-reader.mjs';
 import { dependencySaved as saved, openDependencyGroups } from './dependency-controls.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
 const root = path.join(repository, '.local/' + (process.env.AFTERTASTE_TEST_TASK ?? 'D016'));
 await mkdir(root, { recursive: true });
@@ -34,7 +33,7 @@ const errors = [];
 async function openPage(context, url) {
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto(url);
+  await openReader(page, url);
   await button(page, '闭环阅读').click();
   await page.locator('#loop-navigation [data-loop]').first().waitFor();
   return page;
@@ -92,7 +91,7 @@ let context;
 let delayedRead;
 let delayedWrite;
 try {
-  reader = await startReader(project.projectRoot, 0);
+  reader = await startTestReader(project.projectRoot, 0);
   context = await browser.newContext({ viewport: { width: 1650, height: 980 } });
   context.setDefaultTimeout(10_000);
   const page = await openPage(context, reader.url);
@@ -103,7 +102,7 @@ try {
   delayedRead = releaseRead.resolve;
   const readArrived = Promise.withResolvers();
   await page.route('**' + orderRoute, async route => {
-    const response = await route.fetch();
+    const response = await fetchReaderRoute(route);
     readArrived.resolve();
     await releaseRead.promise;
     await route.fulfill({ response });
@@ -175,7 +174,7 @@ try {
   delayedWrite = releaseWrite.resolve;
   const writeReachedDisk = Promise.withResolvers();
   await page.route('**' + orderRoute + '/layout', async route => {
-    const response = await route.fetch();
+    const response = await fetchReaderRoute(route);
     writeReachedDisk.resolve(response.status());
     await releaseWrite.promise;
     await route.fulfill({ response });
@@ -257,7 +256,7 @@ try {
   await reader.server.close();
   report.checks.push('legacy dependency layout reconciles; same library has different position, membership and viewport');
 
-  reader = await startReader(project.projectRoot, 0);
+  reader = await startTestReader(project.projectRoot, 0);
   context = await browser.newContext({ viewport: { width: 1650, height: 980 } });
   context.setDefaultTimeout(10_000);
   const reopened = await openPage(context, reader.url);

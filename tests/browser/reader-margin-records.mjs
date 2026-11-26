@@ -1,7 +1,7 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { createLoopReaderProject } from '../fixtures/loop-reader.mjs';
@@ -29,8 +29,7 @@ const service = path.join(data, 'current/src/service.mjs.md');
 const original = await readFile(service, 'utf8');
 await writeFile(service, original.replace(/(<!-- aftertaste:block id=cj9208pf[^>]*-->)/u,
   '$1\n\n' + '这是一段用于核对长块中段入口的讲解。\n\n'.repeat(60)) + '\n<!-- aftertaste:block id=touch039 -->\n短块。\n<!-- aftertaste:end -->\n');
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
 const report = { run, build, engine, geometry: {}, visits: [], checks: [] };
 let browser;
@@ -41,7 +40,7 @@ try {
   page.setDefaultTimeout(6000);
   const writes = [];
   page.on('request', request => { if (request.method() === 'PUT') writes.push(request.url()); });
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   const file = name => page.locator(`#reader-navigation button[title="${name}"]`);
   await file('src/service.mjs').click();
   const first = page.locator('#zhidif44');
@@ -166,7 +165,7 @@ try {
   assert.equal(await question.getAttribute('aria-current'),'true');
   await page.close();
   const touch = await browser.newPage({ viewport:{width:390,height:844}, hasTouch:true });
-  await touch.goto(reader.url);
+  await openReader(touch, reader.url);
   await touch.getByRole('button',{name:'展开阅读导航'}).tap();
   await touch.locator('button[title="src/service.mjs"]').tap();
   const empty = touch.locator('#touch039');

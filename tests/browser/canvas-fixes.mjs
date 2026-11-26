@@ -1,3 +1,4 @@
+import { startTestReader, openReader, fetchReaderRoute, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -5,7 +6,6 @@ import { mkdir, mkdtemp, readFile, rename, unlink, writeFile } from 'node:fs/pro
 import { release } from 'node:os';
 import path from 'node:path';
 import { chromium, firefox } from 'playwright';
-import { startReader } from '../../dist/server/reader.js';
 import { applyGraphUpdate, createCanvasProject, repository } from '../fixtures/dependency-canvas.mjs';
 import { dependencyOptions, dependencySaved as saved, openDependencyGroups, refreshDependency } from './dependency-controls.mjs';
 
@@ -24,7 +24,7 @@ const write = (file, data) => writeFile(file, JSON.stringify(data, null, 2) + '\
 const viewport = page => page.locator('.vue-flow__transformationpane').evaluate(element => getComputedStyle(element).transform);
 
 async function withService(project, check) {
-  const reader = await startReader(project.projectRoot, 0);
+  const reader = await startTestReader(project.projectRoot, 0);
   const context = await browser.newContext({ viewport: { width: 1600, height: 980 } });
   const problems = [];
   context.on('page', page => {
@@ -43,7 +43,7 @@ async function withService(project, check) {
 
 async function openCanvas(context, url) {
   const page = await context.newPage();
-  await page.goto(url);
+  await openReader(page, url);
   await button(page, '文件依赖图').click();
   return page;
 }
@@ -111,7 +111,7 @@ async function emptyGraph() {
   await applyGraphUpdate(project, { remove: [rules, service, audit] });
   const final = await withService(project, async (url, context) => {
     const page = await context.newPage();
-    await page.goto(url);
+    await openReader(page, url);
     await savedAction(page, () => button(page, '文件依赖图').click());
     await page.getByText('依赖图已建立，当前没有文件。').waitFor();
     const empty = await disk(project);
@@ -190,7 +190,7 @@ async function samePath() {
         const edited = JSON.parse(originalGraph);
         edited.edges[0].reason += '（文字修订）';
         await write(project.graph, edited);
-        const preview = await fetch(url + '/api/dependency-canvas').then(response => response.json());
+        const preview = await readerFetch(url + '/api/dependency-canvas').then(response => response.json());
         assert.deepEqual(preview.layout.positions[audit], expected.positions[audit]);
         assert.deepEqual(preview.layout.groups, []);
         await writeFile(project.graph, originalGraph);
@@ -255,7 +255,7 @@ async function retainReaddedDraft() {
     assert.deepEqual(await marks(), removed);
     await applyGraphUpdate(project, { register: [audit] });
     const full = await readFile(project.graph);
-    const current = await fetch(url + '/api/dependency-canvas').then(response => response.json());
+    const current = await readerFetch(url + '/api/dependency-canvas').then(response => response.json());
     assert.notEqual(first.nodeRemovals[audit], current.nodeRemovals[audit]);
     assert.equal(current.nodeRemovals[audit], removed[audit]);
     assert.deepEqual(current.layout.positions[audit], { x: 570, y: 64 });
@@ -320,7 +320,7 @@ async function specialName() {
   await applyGraphUpdate(project, { register: [special] });
   const final = await withService(project, async (url, context) => {
     const page = await context.newPage();
-    await page.goto(url);
+    await openReader(page, url);
     await savedAction(page, () => button(page, '文件依赖图').click());
     const initial = (await disk(project)).layout;
     assert.deepEqual(initial.positions[neighbor], oldPosition);
@@ -350,7 +350,7 @@ async function lateList() {
     const page = await context.newPage();
     const intercepted = Promise.withResolvers(), releaseList = Promise.withResolvers();
     await page.route('**/api/documents', async route => {
-      const response = await route.fetch();
+      const response = await fetchReaderRoute(route);
       intercepted.resolve(await response.json());
       await releaseList.promise;
       await route.fulfill({ response });
@@ -359,7 +359,7 @@ async function lateList() {
     const refresh = button(page, '刷新资料');
     const body = () => page.locator('.explanation-pane .markdown').allTextContents();
     try {
-      await page.goto(url);
+      await openReader(page, url);
       const { documents } = await intercepted.promise;
       assert.deepEqual(documents.map(entry => entry.sourcePath), [rules]);
       await rename(waiting, file);
@@ -387,7 +387,7 @@ async function lateList() {
       await page.locator('#reader-navigation .file-list').getByTitle(service, { exact: true }).click();
       await title.filter({ hasText: service }).waitFor();
       const fresh = await context.newPage();
-      await fresh.goto(url);
+      await openReader(fresh, url);
       await fresh.locator('.document-header h1').filter({ hasText: rules }).waitFor();
       return { staleList: [rules], title: service, blocks: before.length, viewport: view, default: rules };
     } finally { releaseList.resolve(); }

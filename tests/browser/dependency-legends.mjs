@@ -1,9 +1,9 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import path from 'node:path';
 import { chromium, firefox } from 'playwright';
-import { startReader } from '../../dist/server/reader.js';
 import { applyGraphUpdate, repository } from '../fixtures/dependency-canvas.mjs';
 import { audit, createLegendProject, legendId, readJSON, rules, standardLegend, thirdPartyLegend,
   updatedDescription, writeJSON } from '../fixtures/dependency-legends.mjs';
@@ -26,7 +26,7 @@ const disk = () => readJSON(project.layout);
 const responseForLayout = page => page.waitForResponse(response => response.url().endsWith('/api/dependency-layout'));
 
 async function withService(check) {
-  const reader = await startReader(project.projectRoot, 0);
+  const reader = await startTestReader(project.projectRoot, 0);
   const context = await browser.newContext({ viewport: { width: 1650, height: 980 } });
   const errors = [];
   context.on('page', page => {
@@ -45,7 +45,7 @@ async function withService(check) {
 
 async function openCanvas(context, url) {
   const page = await context.newPage();
-  await page.goto(url);
+  await openReader(page, url);
   await button(page, '文件依赖图').click();
   return page;
 }
@@ -213,7 +213,7 @@ try {
     await page.getByRole('alert').getByText(/LAYOUT_GRAPH_CHANGED/u).waitFor();
     assert.deepEqual(await disk(), beforeRemoval);
     const fresh = await context.newPage();
-    await fresh.goto(url);
+    await openReader(fresh, url);
     await savedAction(fresh, () => button(fresh, '文件依赖图').click());
     const afterRemoval = await disk();
     const { [legendId]: _, ...positions } = beforeRemoval.layout.positions;

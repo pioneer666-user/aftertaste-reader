@@ -6,6 +6,10 @@ node <产品根>/dist/cli/main.js serve --project <绝对目录> [--port <1..655
 
 默认端口 4317。仅监听 127.0.0.1，输出 JSON ready 含 URL、projectRoot，Ctrl+C/SIGTERM 优雅关闭，退出 0。非法参数退出 2，其余启动失败退出 1，error.code 稳定。端口占用为 PORT_IN_USE，项目目录失败为 PROJECT_UNAVAILABLE/PROJECT_PATH_UNSAFE，构建缺失为 WEB_BUILD_UNAVAILABLE。不终止已占用进程。
 
+## 启动授权
+
+ready.url 为私密入口。普通地址和深链仅含位置。浏览器打开入口后自动完成 HTTP Basic 握手。程序客户端对同一入口发送 GET、Accept: application/json，取得 username、password 后仅向同一来源发送 Basic Authorization。服务退出后启动和会话凭据均失效。来源或会话无效统一返回 403 和通用提示；只有持有效令牌的浏览器握手可收到 401 挑战。
+
 ## 读取
 
 - GET / 返回预构建页面。构建 assets 使用显式资源表。
@@ -29,7 +33,7 @@ D028 的顶栏、站内访问与失效位置恢复见 [FR-011、015—016](../sp
 
 ## 访问及缓存边界
 
-Host 必须为 127.0.0.1 或 localhost 且端口与实际监听一致。Origin 若存在须精确等于该 Host 的 http 来源，Sec-Fetch-Site 若存在须为 same-origin/none。跨源读取返回 ACCESS_DENIED，无 CORS 授权。所有响应 Cache-Control no-store，nosniff，禁止 frame，CSP 仅自身脚本/样式、连接自身、禁外部图片及对象。Markdown 原生 HTML 按文本处理，图片按替代文本，链接仅允许锚点或明确 http/https/mailto，点击外链使用安全 rel，普通磁盘相对链接按文本。
+Host 必须为 127.0.0.1 或 localhost 且端口与实际监听一致。Origin 若存在须精确等于该 Host 的 http 来源，Sec-Fetch-Site 若存在须为 same-origin/none。跨源读取返回通用拒绝提示，无 CORS 授权。所有响应 Cache-Control no-store，nosniff，禁止 frame，CSP 仅自身脚本/样式、连接自身、禁外部图片及对象。Markdown 原生 HTML 按文本处理，图片按替代文本，链接仅允许锚点或明确 http/https/mailto，点击外链使用安全 rel，普通磁盘相对链接按文本。
 
 动态内容在请求和页面内存中处理。无请求日志、服务 Worker、缓存 API 或正文浏览器持久化。
 

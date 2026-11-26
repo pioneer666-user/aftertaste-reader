@@ -1,3 +1,4 @@
+import { registerEntry, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, writeFile, readFile, rename, unlink } from 'node:fs/promises';
 import path from 'node:path';
@@ -48,6 +49,7 @@ const ready = await new Promise((resolve, reject) => {
   child.stderr.on('data', chunk => { errors += chunk; });
   child.on('exit', code => { clearTimeout(timer); reject(new Error(`CLI exited ${code} ${errors}`)); });
 });
+const origin = await registerEntry(ready.url);
 assert.equal(ready.projectRoot, fixture.projectRoot);
 const report = { run, cliCwd: run, project: fixture.projectRoot, commit: fixture.commit, browsers: [] };
 const selection = process.env.AFTERTASTE_BROWSER ?? 'all';
@@ -61,9 +63,9 @@ try {
       const page = await context.newPage();
       const external = [];
       const pageErrors = [];
-      page.on('request', request => { if (!request.url().startsWith(ready.url)) external.push(request.url()); });
+      page.on('request', request => { if (!request.url().startsWith(origin)) external.push(request.url()); });
       page.on('pageerror', error => pageErrors.push(error.message));
-      await page.goto(ready.url);
+      await openReader(page, origin);
       const file = name => page.locator(`#reader-navigation button[title="src/${name}"]`);
       const heading = name => page.locator('#reading').getByRole('heading', { name, level: 1, exact: true });
       const comparison = (target = page) => target.locator('#reading .document-blocks');
@@ -113,7 +115,7 @@ try {
 
       if (name === 'edge') {
         await page.route('**/api/document?path=*rules.mjs.md', async route => {
-          const response = await route.fetch();
+          const response = await fetchReaderRoute(route);
           await new Promise(resolve => setTimeout(resolve, 300));
           await route.fulfill({ response }).catch(() => {});
         });
@@ -208,7 +210,7 @@ try {
           Object.defineProperty(window, 'localStorage', { get() { throw new Error('storage unavailable'); } });
         });
         const deniedPage = await denied.newPage();
-        await deniedPage.goto(ready.url);
+        await openReader(deniedPage, origin);
         await comparison(deniedPage).waitFor();
         await deniedPage.locator('.language-control select').selectOption('en');
         await deniedPage.getByText('Language changed for this page.', { exact: false }).waitFor();
@@ -216,7 +218,7 @@ try {
         const invalid = await browser.newContext();
         await invalid.addInitScript(() => localStorage.setItem('aftertaste.language', 'invalid'));
         const invalidPage = await invalid.newPage();
-        await invalidPage.goto(ready.url);
+        await openReader(invalidPage, origin);
         await invalidPage.getByRole('button', { name: '刷新资料' }).waitFor();
         await invalid.close();
         await rename(mirror, `${mirror}-hidden`);

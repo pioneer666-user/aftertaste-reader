@@ -1,12 +1,11 @@
+import { startTestReader, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { chooseLoop, openCatalog } from './loop-controls.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const root = path.join(repository, '.local/' + (process.env.AFTERTASTE_TEST_TASK ?? 'D032'));
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'catalog-'));
@@ -17,7 +16,7 @@ const browser = await chromium.launch({ channel: 'msedge' });
 const report = { run, build, browser: browser.version(), frames: [], writes: [], errors: [] };
 let reader;
 try {
-  reader = await startReader(project, 0);
+  reader = await startTestReader(project, 0);
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.setDefaultTimeout(8000);
   const requests = [];
@@ -32,7 +31,7 @@ try {
   const shot = name => page.screenshot({ path: path.join(run, name + '.png') });
   const bounds = selector => page.locator(selector).boundingBox();
   const waitClosed = () => drawer.waitFor({ state: 'hidden' });
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   const releaseList = Promise.withResolvers();
   await page.route('**/api/loops', async route => { await releaseList.promise; await route.continue(); }, { times: 1 });
   await button('闭环阅读').click();
@@ -198,7 +197,7 @@ try {
 
   // A long catalog can scroll independently and remembers the reader's place.
   await page.route('**/api/loops', async route => {
-    const response = await route.fetch();
+    const response = await fetchReaderRoute(route);
     const list = await response.json();
     const rows = Array.from({ length: 20 }, (_, i) => ({ ...list.loops[0], id: 'extra-' + i }));
     await route.fulfill({ json: { ...list, loops: [...list.loops, ...rows] } });

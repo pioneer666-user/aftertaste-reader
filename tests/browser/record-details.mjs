@@ -1,7 +1,7 @@
+import { startTestReader, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 
@@ -12,7 +12,6 @@ await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'details-'));
 const project = path.join(run, 'project');
 await cp(path.resolve(input), project, { recursive: true, force: false, errorOnExist: true });
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
 const report = { run, input, build, engine, geometry: {}, checks: [] };
 const mirror = 'docs/aftertaste/current/';
@@ -29,7 +28,7 @@ const marks = await load('understanding-marks.json');
 const ownBookmark = bookmarks.bookmarks.find(item => item.documentPath === rules && item.note.startsWith('这个边界例子讲得巧'));
 const ownMark = marks.marks.find(item => item.documentPath === rules);
 const noteFile = await readFile(data('notes.json'));
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 const button = (scope, name) => scope.getByRole('button', { name, exact: true });
 const pane = (page, name) => page.locator('#' + name);
 const row = (scope, text) => scope.locator('.bookmark-entry').filter({ hasText: text });
@@ -195,7 +194,7 @@ async function checkTouch(browser) {
   try {
     const page = await context.newPage();
     observe(page);
-    await page.goto(reader.url);
+    await openReader(page, reader.url);
     for (const [name, text] of [['bookmarks', ownBookmark.note], ['marks', ownMark.annotation], ['notes', orders]]) {
       await page.locator('.app-page-menu-toggle').tap();
       await page.locator('[data-page=' + name + ']').tap();
@@ -251,12 +250,12 @@ async function checkChangedDocuments(page) {
   });
   await page.route('**/api/document?*', async route => {
     if (!rulesRequest(route.request())) return route.continue();
-    const response = await route.fetch();
+    const response = await fetchReaderRoute(route);
     await release.promise;
     await route.fulfill({ response });
   });
   const started = page.waitForRequest(rulesRequest);
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   await open(page, 'bookmarks');
   try {
     await started;
@@ -363,7 +362,7 @@ async function checkMarkScrollAndEmpty(page) {
 }
 
 async function checkCorners(page) {
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   await open(page, 'bookmarks');
   const saved = pane(page, 'bookmarks');
   const entry = row(saved, ownBookmark.note);
@@ -425,7 +424,7 @@ try {
   report.version = browser.version();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   observe(page);
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   if (engine !== 'firefox') {
     await checkGeometry(page);
     await checkPrototype(page);

@@ -1,7 +1,7 @@
+import { startTestReader, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { createLoopReaderProject } from '../fixtures/loop-reader.mjs';
@@ -13,8 +13,7 @@ const run = await mkdtemp(path.join(root, 'selection-'));
 const project = path.join(run, 'project');
 if (process.env.AFTERTASTE_TRIAL_PROJECT) await cp(process.env.AFTERTASTE_TRIAL_PROJECT, project, { recursive: true });
 else await createLoopReaderProject(project);
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const server = await startReader(project, 0);
+const server = await startTestReader(project, 0);
 const loopPath = path.join(project, 'docs/aftertaste/loops/order-quantity/current/loop.json');
 const artifact = JSON.parse(await readFile(loopPath, 'utf8'));
 const notes = async () => JSON.parse(await readFile(path.join(project, 'docs/aftertaste/notes.json'), 'utf8')).notes;
@@ -74,7 +73,7 @@ try {
     report.locations[name] = JSON.parse(match[1]);
     return report.locations[name];
   }
-  await page.goto(server.url);
+  await openReader(page, server.url);
   await page.locator('[data-page=loops]').click();
   await chooseLoop(page, 'order-quantity');
   await pick('resume');
@@ -181,7 +180,7 @@ try {
   assert.equal((await notes()).find(n=>n.id===note.id).body,note.body);
   await writeFile(loopPath,JSON.stringify(artifact,null,2)+'\n');
   await page.goto('about:blank');
-  await page.goto(server.url + '#aftertaste-loop/order-quantity/resume');
+  await openReader(page, server.url + '#aftertaste-loop/order-quantity/resume');
   await lesson.waitFor();
   const back = page.locator('[data-history=back]');
   async function followResumeQuote() {
@@ -198,7 +197,7 @@ try {
   await pick('start');
   const received = Promise.withResolvers(), release = Promise.withResolvers();
   await page.route('**/api/loops/order-quantity', async route => {
-    const response = await route.fetch();
+    const response = await fetchReaderRoute(route);
     received.resolve();
     await release.promise;
     await route.fulfill({response});
@@ -216,7 +215,7 @@ try {
 
   const mobile = await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
   const small = await mobile.newPage();
-  await small.goto(server.url + '#aftertaste-loop/order-quantity/resume');
+  await openReader(small, server.url + '#aftertaste-loop/order-quantity/resume');
   const graph = small.locator('#loop-canvas-order-quantity-reading');
   await graph.locator('[data-reading-step=resume]').waitFor();
   await graph.locator('.loop-step-explanation').evaluate(el => getSelection().selectAllChildren(el));

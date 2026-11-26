@@ -1,10 +1,10 @@
+import { startTestReader, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { link, mkdir, mkdtemp, readFile, readdir, rename, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { startReader } from '../../dist/server/reader.js';
 import { createBookmarkProject, rulesPath, servicePath, sharedBlockId } from '../fixtures/bookmark-project.mjs';
 
 const base = fileURLToPath(new URL('../../.local/D019/', import.meta.url));
@@ -14,11 +14,11 @@ test('real reader API persists individual operations and protects project files'
   await mkdir(base, { recursive: true });
   const run = await mkdtemp(path.join(base, 'api-'));
   const project = await createBookmarkProject(path.join(run, 'project'));
-  let service = await startReader(project.projectRoot, 0);
+  let service = await startTestReader(project.projectRoot, 0);
   t.after(async () => { await service.server.close(); });
   const request = async (endpoint = route, init) => {
-    const response = await fetch(service.url + endpoint, init);
-    return { status: response.status, ...await response.json() };
+    const response = await readerFetch(service.url + endpoint, init);
+    return { status: response.status, ...(response.headers.get('content-type')?.includes('application/json') ? await response.json() : {}) };
   };
   const put = (body, headers = {}, endpoint = route) => request(endpoint, { method: 'PUT',
     headers: { 'content-type': 'application/json', 'x-aftertaste-bookmarks': '1', ...headers },
@@ -63,7 +63,7 @@ test('real reader API persists individual operations and protects project files'
 
   const saved = await readFile(project.bookmarks);
   await service.server.close();
-  service = await startReader(project.projectRoot, 0);
+  service = await startTestReader(project.projectRoot, 0);
   assert.deepEqual((await request()).bookmarks, JSON.parse(saved).bookmarks);
   assert.deepEqual(new Map((await request()).bookmarks.map(item => [item.id, item])),
     new Map([[first.id, { ...first, note: 'edited' }], [third.id, third]]));

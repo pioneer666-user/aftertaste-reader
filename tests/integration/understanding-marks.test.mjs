@@ -1,10 +1,10 @@
+import { startTestReader, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { link, mkdir, mkdtemp, readFile, rename, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { startReader } from '../../dist/server/reader.js';
 import { createBookmarkProject, rulesPath, servicePath, sharedBlockId } from '../fixtures/bookmark-project.mjs';
 
 const root = fileURLToPath(new URL('../../.local/D021/', import.meta.url));
@@ -20,12 +20,12 @@ test('real HTTP merges independent edits, rejects stale writes and preserves una
   const notes = path.join(directory, 'notes.json');
   await writeFile(project.bookmarks, '{"version":1,"bookmarks":[]}\n');
   await writeFile(notes, '{"version":1,"notes":[]}\n');
-  let reader = await startReader(project.projectRoot, 0);
+  let reader = await startTestReader(project.projectRoot, 0);
   t.after(() => reader.server.close());
 
   async function request(endpoint = route, init) {
-    const res = await fetch(reader.url + endpoint, init);
-    return { status: res.status, ...await res.json() };
+    const res = await readerFetch(reader.url + endpoint, init);
+    return { status: res.status, ...(res.headers.get('content-type')?.includes('application/json') ? await res.json() : {}) };
   }
   const target = { documentPath: rulesPath, blockId: sharedBlockId };
   const status = { ...target, field: 'status', previous: 'unmarked', value: 'not-understood' };
@@ -61,7 +61,7 @@ test('real HTTP merges independent edits, rejects stale writes and preserves una
   assert.equal((await put(understood)).status, 200);
 
   await reader.server.close();
-  reader = await startReader(project.projectRoot, 0);
+  reader = await startTestReader(project.projectRoot, 0);
   const saved = await readFile(file);
   const originalDoc = await readFile(project.rules);
   await writeFile(project.rules, originalDoc.toString().replace(sharedBlockId, 'changed1'));

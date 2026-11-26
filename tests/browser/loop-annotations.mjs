@@ -1,9 +1,9 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { build, repository } from '../fixtures/dependency-canvas.mjs';
+import { repository } from '../fixtures/dependency-canvas.mjs';
 import { createReadingLayoutProject } from '../fixtures/canvas-reading-layout.mjs';
 import { addAnnotationLoops } from '../fixtures/loop-annotations.mjs';
 import { chooseLoop } from './loop-controls.mjs';
@@ -14,8 +14,7 @@ const run = await mkdtemp(path.join(root, 'browser-'));
 const project = path.join(run, 'project');
 if (process.env.AFTERTASTE_ANNOTATION_INPUT) await cp(process.env.AFTERTASTE_ANNOTATION_INPUT, project, { recursive: true });
 else await addAnnotationLoops(await createReadingLayoutProject(project));
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 let browser;
 try {
   const engine = process.env.AFTERTASTE_BROWSER ?? 'msedge';
@@ -27,7 +26,7 @@ try {
   let puts = 0;
   page.on('request', req => { if (req.method() === 'PUT') puts++; });
   page.setDefaultTimeout(6500);
-  const goto = async hash => { await page.goto('about:blank'); await page.goto(reader.url + '/#' + hash); };
+  const goto = async hash => { await page.goto('about:blank'); await openReader(page, reader.url + '/#' + hash); };
   await goto('aftertaste-loop/quantity-branches/check');
   const graph = page.locator('.loop-canvas:visible');
   const card = id => graph.locator('[data-step="' + id + '"]');

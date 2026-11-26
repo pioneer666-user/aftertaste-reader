@@ -1,15 +1,14 @@
+import { startTestReader, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { link, mkdir, mkdtemp, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import test from 'node:test';
-import { build, repository } from '../fixtures/dependency-canvas.mjs';
+import { repository } from '../fixtures/dependency-canvas.mjs';
 import { api, legendId, readJSON } from '../fixtures/dependency-legends.mjs';
 import { orderId, orderInput } from '../fixtures/loop-authoring.mjs';
 import { artifact, createLoopReaderProject, explanationFile, git, legendLoopId, loopLayout } from '../fixtures/loop-reader.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D016', 'integration');
 await mkdir(root, { recursive: true });
 const route = id => '/api/loops/' + id;
@@ -20,9 +19,9 @@ const requestBody = (view, x) => ({
 
 test('real reader lists both artifacts and publishes independent layouts with revisions', async () => {
   const project = await createLoopReaderProject(path.join(await mkdtemp(path.join(root, 'reader-')), 'project'));
-  const { server, url } = await startReader(project.projectRoot, 0);
-  const get = async resource => (await fetch(url + resource)).json();
-  const put = (id, body, header = true) => fetch(url + route(id) + '/layout', {
+  const { server, url } = await startTestReader(project.projectRoot, 0);
+  const get = async resource => (await readerFetch(url + resource)).json();
+  const put = (id, body, header = true) => readerFetch(url + route(id) + '/layout', {
     method: 'PUT', headers: { 'Content-Type': 'application/json', ...(header ? { 'X-Aftertaste-Layout': '1' } : {}) },
     body: JSON.stringify(body),
   });
@@ -106,9 +105,9 @@ test('real reader lists both artifacts and publishes independent layouts with re
   nested.project_prefix = 'src';
   for (const node of nested.nodes) node.path = path.basename(node.path);
   await writeFile(path.join(nestedLoop, 'loop.json'), JSON.stringify(nested));
-  const nestedReader = await startReader(nestedRoot, 0);
+  const nestedReader = await startTestReader(nestedRoot, 0);
   try {
-    const view = await (await fetch(nestedReader.url + route(orderId) + '/route')).json();
+    const view = await (await readerFetch(nestedReader.url + route(orderId) + '/route')).json();
     assert.deepEqual(view, { ok: true, title: nested.title, source_commit: project.commit, paths: ['service.mjs', 'rules.mjs'] });
   } finally { await nestedReader.server.close(); }
 });

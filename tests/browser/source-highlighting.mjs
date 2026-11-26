@@ -1,4 +1,6 @@
+import { registerEntry, openReader, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -13,6 +15,9 @@ if (process.argv[2] === '--prepare') {
 
 const origin = new URL(process.argv[2]).origin;
 assert.equal(new URL(origin).hostname, '127.0.0.1');
+const entry = readFileSync(0, 'utf8').trim();
+assert.ok(new URL(entry).origin === origin, '启动入口应属于指定阅读实例');
+await registerEntry(entry);
 const output = path.resolve(process.argv[3]);
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ channel: 'msedge' });
@@ -44,7 +49,7 @@ async function usePage(run) {
 
 const sourceRows = page => page.locator('.document-block .source-line');
 async function openFile(page, file, block) {
-  await page.goto(blockLink(origin, file, block), { waitUntil: 'domcontentloaded' });
+  await openReader(page, blockLink(origin, file, block));
   await sourceRows(page).first().waitFor();
 }
 
@@ -142,7 +147,7 @@ try {
       await readLines(page, lines);
       await checkSamples(page, samples);
       if (file === 'config.py') {
-        const response = await page.request.get(origin + '/api/document?path=' + encodeURIComponent(documentPath(file)));
+        const response = await readerFetch(origin + '/api/document?path=' + encodeURIComponent(documentPath(file)));
         const { result } = await response.json();
         assert.deepEqual(result.sourceLines, lines);
         assert.deepEqual(result.blocks.map(block => block.lines), [{ start: 1, end: 3 }, { start: 4, end: 9 }]);

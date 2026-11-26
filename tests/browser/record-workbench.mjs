@@ -1,14 +1,13 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import { chooseNoteFilter, editorText, newQuickNote } from './note-controls.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { chmod, cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { createLoopReaderProject } from '../fixtures/loop-reader.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D035');
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'workbench-'));
@@ -31,7 +30,7 @@ const missing = '[失效的数量引用](<#aftertaste-block/docs%2Faftertaste%2F
 records.notes.push({ ...order, id: randomUUID(), revision: randomUUID(), body: '# 订单长笔记\n\n' + filler + '\n\n' + order.body + '\n\n' + missing + '\n\n' + filler });
 await writeFile(file, JSON.stringify(records));
 const report = { run, input, build, checks: [] };
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 let browser;
 try {
   browser = await chromium.launch({ channel: 'msedge' });
@@ -46,7 +45,7 @@ try {
   const button = (scope, name) => scope.getByRole('button', { name, exact: true });
   const toggle = page.locator('.reader-navigation-toggle');
   const link = markdown.getByRole('link');
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   await page.locator('[data-page=notes]').click();
   await notes.locator('.note-front').getByText('数量无效时，订单去哪了？', { exact: true }).waitFor();
   assert.equal(await notes.locator('#note-body').count(), 0);

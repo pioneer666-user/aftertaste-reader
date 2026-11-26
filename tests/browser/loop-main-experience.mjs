@@ -1,16 +1,15 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { build, repository } from '../fixtures/dependency-canvas.mjs';
+import { repository } from '../fixtures/dependency-canvas.mjs';
 import { readJSON } from '../fixtures/dependency-legends.mjs';
 import { orderId, orderInput } from '../fixtures/loop-authoring.mjs';
 import { createLoopReaderProject, legendLoopId, loopLayout } from '../fixtures/loop-reader.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
 const root = path.join(repository, '.local/' + (process.env.AFTERTASTE_TEST_TASK ?? 'D031'));
 await mkdir(root, { recursive: true });
@@ -37,13 +36,13 @@ const position = target => target.evaluate(element => {
 let reader;
 let context;
 try {
-  reader = await startReader(project.projectRoot, 0);
+  reader = await startTestReader(project.projectRoot, 0);
   context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   context.setDefaultTimeout(8000);
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => { if (request.method() === 'PUT' && request.url().includes('/api/loops/')) writes.push(request.url()); });
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   await button(page, '闭环阅读').click();
   await chooseLoop(page, orderId);
   const loop = page.locator('#loop-canvas-' + orderId + '-reading');
@@ -273,7 +272,7 @@ try {
   const touch = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const mobile = await touch.newPage();
   mobile.on('pageerror', error => errors.push(error.message));
-  await mobile.goto(reader.url);
+  await openReader(mobile, reader.url);
   await mobile.locator('.app-page-menu-toggle').click();
   await mobile.locator('[data-page="loops"]').click();
   await chooseLoop(mobile, orderId);

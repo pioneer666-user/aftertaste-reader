@@ -1,10 +1,10 @@
+import { startTestReader, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, open, readFile, writeFile, rename, link, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { createCanvasProject, applyGraphUpdate, repository } from '../fixtures/dependency-canvas.mjs';
-import { startReader } from '../../dist/server/reader.js';
 import { GraphFileStore } from '../../dist/adapters/graph-store.js';
 
 const base = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D012');
@@ -13,8 +13,8 @@ const rules = 'src/rules.mjs', service = 'src/service.mjs', audit = 'support/aud
 const group = '10000000-0000-4000-8000-000000000000';
 const publicationFailure = (projectRoot, published) => ({ code: 'GRAPH_WRITE_FAILED',
   context: { projectRoot, graphPath: 'docs/aftertaste/dependency-graph.json', published, reason: 'EPERM' } });
-const get = async url => fetch(url + '/api/dependency-canvas').then(response => response.json());
-const turn = (url, { revision, graphVersion, layout }, options = {}) => fetch(url + '/api/dependency-layout', {
+const get = async url => readerFetch(url + '/api/dependency-canvas').then(response => response.json());
+const turn = (url, { revision, graphVersion, layout }, options = {}) => readerFetch(url + '/api/dependency-layout', {
   method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1', ...options.headers },
   body: JSON.stringify({ expectedRevision: revision, revision: options.revision ?? randomUUID(), graphVersion,
     layout: { ...layout, positions: options.positions ?? Object.entries(layout.positions) } }),
@@ -26,7 +26,7 @@ test('真实项目的图和讲解读取，保存隔离、过期写入、校验�
   const protectedPaths = [fixture.graph, path.join(fixture.data, 'current/src/service.mjs.md'), path.join(fixture.projectRoot, service),
     path.join(fixture.data, 'preferences.md')];
   const before = await Promise.all(protectedPaths.map(file => readFile(file)));
-  const reader = await startReader(fixture.projectRoot, 0);
+  const reader = await startTestReader(fixture.projectRoot, 0);
   let disk;
   try {
     const first = await get(reader.url);
@@ -39,8 +39,8 @@ test('真实项目的图和讲解读取，保存隔离、过期写入、校验�
     for (const headers of [{ Origin: 'http://localhost:5555' }, { 'X-Aftertaste-Layout': '' }, { 'Sec-Fetch-Site': 'cross-site' }]) {
       assert.equal((await turn(reader.url, first, { headers })).status, 403);
     }
-    assert.equal((await fetch(reader.url + '/api/documents', { method: 'PUT' })).status, 405);
-    assert.equal((await fetch(reader.url + '/api/dependency-layout?project=elsewhere', {
+    assert.equal((await readerFetch(reader.url + '/api/documents', { method: 'PUT' })).status, 405);
+    assert.equal((await readerFetch(reader.url + '/api/dependency-layout?project=elsewhere', {
       method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1' },
       body: JSON.stringify({ expectedRevision: first.revision, revision: randomUUID(), graphVersion: first.graphVersion, layout: first.layout }),
     })).status, 400);
@@ -76,7 +76,7 @@ test('真实项目的图和讲解读取，保存隔离、过期写入、校验�
   } finally { await reader.server.close(); }
 
   const other = await createCanvasProject(path.join(run, 'two'));
-  const independent = await startReader(other.projectRoot, 0);
+  const independent = await startTestReader(other.projectRoot, 0);
   try {
     const layout = await get(independent.url);
     assert.equal(layout.revision, null);
@@ -89,7 +89,7 @@ test('真实项目的图和讲解读取，保存隔离、过期写入、校验�
 test('真实图工具发布完整快照才协调，读写失败与布局坏文件保全原件', async () => {
   const run = await mkdtemp(path.join(base, 'updates-'));
   const fixture = await createCanvasProject(path.join(run, 'project'));
-  const reader = await startReader(fixture.projectRoot, 0);
+  const reader = await startTestReader(fixture.projectRoot, 0);
   try {
     const first = await get(reader.url);
     assert.equal(first.ok, true);
@@ -199,7 +199,7 @@ test('真实图工具发布完整快照才协调，读写失败与布局坏文�
 test('原坐标在边界时向可用外侧放置并真实落盘', async () => {
   const run = await mkdtemp(path.join(base, 'coordinate-boundary-'));
   const fixture = await createCanvasProject(path.join(run, 'project'));
-  const reader = await startReader(fixture.projectRoot, 0);
+  const reader = await startTestReader(fixture.projectRoot, 0);
   try {
     const first = await get(reader.url);
     first.layout.positions[rules].x = 1e9;
@@ -219,7 +219,7 @@ test('正式重加的身份跨直接编辑和撤销保留，旧页写入始终�
   await applyGraphUpdate(fixture, { reviews: [{ path: service, analysis: 'reviewed',
     dependencies: [{ path: rules, reason: '数量校验' }] }] });
   const original = await readFile(fixture.graph);
-  let reader = await startReader(fixture.projectRoot, 0);
+  let reader = await startTestReader(fixture.projectRoot, 0);
   try {
     const first = await get(reader.url);
     first.layout.positions[audit] = { x: 722, y: 55 };
@@ -253,7 +253,7 @@ test('正式重加的身份跨直接编辑和撤销保留，旧页写入始终�
     await writeFile(fixture.graph, original);
     assert.deepEqual((await verify()).nodeRemovals, registered.nodeRemovals);
     await reader.server.close();
-    reader = await startReader(fixture.projectRoot, 0);
+    reader = await startTestReader(fixture.projectRoot, 0);
     assert.equal((await verify()).graphVersion, registered.graphVersion);
     assert.equal((await turn(reader.url, registered)).status, 200);
     graph.nodes = graph.nodes.filter(node => node.path !== audit);
@@ -276,7 +276,7 @@ test('旧标记凭据按快照迁移，发布失败和收尾中断保留可证�
   await applyGraphUpdate(fixture, { register: [audit] });
   const [proof] = JSON.parse(await readFile(receipt, 'utf8'));
   await writeFile(receipt, JSON.stringify([{ publication: proof.publication, removals: proof.removals }]));
-  const reader = await startReader(fixture.projectRoot, 0);
+  const reader = await startTestReader(fixture.projectRoot, 0);
   try {
     const legacy = await get(reader.url);
     assert.deepEqual(legacy.nodeRemovals, proof.removals);
@@ -336,7 +336,7 @@ test('首次建图失败恢复原凭据，正式 CLI 重试后可保存布局', 
   await assert.rejects(attempt(), publicationFailure(fixture.projectRoot, 0));
   for (const file of [fixture.graph, receipt]) await assert.rejects(readFile(file), { code: 'ENOENT' });
   await applyGraphUpdate(fixture, { register: [audit] });
-  const reader = await startReader(fixture.projectRoot, 0);
+  const reader = await startTestReader(fixture.projectRoot, 0);
   try {
     const current = await get(reader.url);
     assert.equal(current.layoutProblem, null);

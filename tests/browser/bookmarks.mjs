@@ -1,3 +1,4 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -6,7 +7,6 @@ import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { startReader } from '../../dist/server/reader.js';
 import { createBookmarkProject, rulesPath, servicePath, sharedBlockId } from '../fixtures/bookmark-project.mjs';
 
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
@@ -29,11 +29,11 @@ const note = '  下次回看 <b>边界</b>\n完整保留  ';
 const pureNote = '订单说明中的相同块 ID';
 
 async function session() {
-  reader = await startReader(fixture.projectRoot, 0);
+  reader = await startTestReader(fixture.projectRoot, 0);
   context = await browser.newContext({ viewport: { width: 1200, height: 720 } });
   page = await context.newPage();
   page.on('pageerror', error => report.pageErrors.push(error.message));
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   await block().waitFor();
 }
 
@@ -236,7 +236,7 @@ try {
 
   await openDocument('src/rules.mjs');
   const other = await context.newPage();
-  await other.goto(reader.url);
+  await openReader(other, reader.url);
   await block(other).waitFor();
   await draft('页面一并发新建');
   await draft('页面二并发新建', other);

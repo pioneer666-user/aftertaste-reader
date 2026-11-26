@@ -82,7 +82,7 @@ async function main(): Promise<void> {
         throw new SourceError('INVALID_ARGUMENT', '阅读端口参数无效。', '使用 1 至 65535 的整数端口。');
       }
       const reader = await startReader(projectRoot, Number(value));
-      process.stdout.write(`${JSON.stringify({ ok: true, status: 'ready', url: reader.url, projectRoot: reader.projectRoot })}\n`);
+      process.stdout.write(`${JSON.stringify({ ok: true, status: 'ready', url: reader.entryUrl, projectRoot: reader.projectRoot })}\n`);
       const stop = async () => {
         await reader.server.close();
         process.stdout.write(`${JSON.stringify({ ok: true, status: 'stopped' })}\n`);

@@ -1,3 +1,4 @@
+import { startTestReader, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import { chooseNoteFilter, editorText, newQuickNote } from './note-controls.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -7,7 +8,6 @@ import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { startReader } from '../../dist/server/reader.js';
 import { createBookmarkProject, rulesPath, servicePath, sharedBlockId } from '../fixtures/bookmark-project.mjs';
 
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
@@ -39,11 +39,11 @@ const openNotes = async (target = page) => { await button('笔记', target).clic
 const row = (text, target = page) => notes(target).locator('.note-list button').filter({ hasText: text });
 
 async function start() {
-  reader = await startReader(fixture.projectRoot, 0);
+  reader = await startTestReader(fixture.projectRoot, 0);
   context = await browser.newContext({ viewport: { width: 1200, height: 720 } });
   page = await context.newPage();
   page.on('pageerror', error => evidence.errors.push(error.message));
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
 }
 
 async function restart() {
@@ -249,7 +249,7 @@ try {
   const handler = async route => {
     if (route.request().method() !== 'PUT') return route.continue();
     if (++count === 1) {
-      const response = await route.fetch();
+      const response = await fetchReaderRoute(route);
       checkpoints.emit('committed');
       await firstWait;
       return route.fulfill({ response });
@@ -335,7 +335,7 @@ try {
     const record = (await disk()).find(note => note.body === original);
     await page.route('**/api/notes', async route => {
       assert.equal(route.request().method(), 'PUT');
-      if (committed) assert.equal((await route.fetch()).status(), 200);
+      if (committed) assert.equal((await fetchReaderRoute(route)).status(), 200);
       await route.abort('failed');
     }, { times: 1 });
     await body().fill(changed);
@@ -357,7 +357,7 @@ try {
   await button('编辑').click();
   const previous = (await disk())[0].body;
   const other = await context.newPage();
-  await other.goto(reader.url);
+  await openReader(other, reader.url);
   await openNotes(other);
   await row(previous, other).click();
   await button('编辑', other).click();

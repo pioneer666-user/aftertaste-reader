@@ -1,10 +1,10 @@
+import { startTestReader, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { startReader } from '../../dist/server/reader.js';
 import { createBookmarkProject, rulesPath, servicePath, sharedBlockId } from '../fixtures/bookmark-project.mjs';
 
 test('feedback guide reads current self-assessment separately from literal annotation', async t => {
@@ -18,11 +18,11 @@ test('feedback guide reads current self-assessment separately from literal annot
   await mkdir(root, { recursive: true });
   const run = await mkdtemp(path.join(root, 'skill-'));
   const fixture = await createBookmarkProject(path.join(run, 'project'));
-  const reader = await startReader(fixture.projectRoot, 0);
+  const reader = await startTestReader(fixture.projectRoot, 0);
   t.after(() => reader.server.close());
 
   async function save(documentPath, field, previous, value) {
-    const res = await fetch(reader.url + '/api/understanding-marks', {
+    const res = await readerFetch(reader.url + '/api/understanding-marks', {
       method: 'PUT',
       headers: { 'content-type': 'application/json', 'x-aftertaste-understanding-marks': '1' },
       body: JSON.stringify({ documentPath, blockId: sharedBlockId, field, previous, value }),

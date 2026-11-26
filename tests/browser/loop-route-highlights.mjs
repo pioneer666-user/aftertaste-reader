@@ -1,11 +1,10 @@
+import { startTestReader, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { build, repository } from '../fixtures/dependency-canvas.mjs';
+import { repository } from '../fixtures/dependency-canvas.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
 const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D042/self');
 await mkdir(root, { recursive: true });
@@ -15,7 +14,7 @@ await cp(process.env.AFTERTASTE_TRIAL_PROJECT ?? path.join(repository, '.local/2
 const model = path.join(project, 'docs/aftertaste/loops/order-quantity/current/loop.json');
 const original = JSON.parse(await readFile(model, 'utf8'));
 const report = { run, writes: [], errors: [], boxes: [] };
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 let browser;
 try {
   browser = await (engine === 'firefox' ? firefox.launch() : chromium.launch({ channel: engine === 'edge' ? 'msedge' : engine }));
@@ -49,7 +48,7 @@ try {
   const edges = () => dep.locator('.vue-flow__edge').evaluateAll(els => els.map(el => el.dataset.id).sort());
   const shot = name => page.screenshot({ path: path.join(run, name + '.png') });
   const clear = () => button(actions, '清除高亮').click();
-  await page.goto(reader.url + '#canvas-reading');
+  await openReader(page, reader.url + '#canvas-reading');
   assert.ok(await button(page, '后退').isDisabled());
   await dep.locator('[data-file]').first().waitFor();
   assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
@@ -144,7 +143,7 @@ try {
   for (const replace of [false, true]) {
     const received = Promise.withResolvers(), release = Promise.withResolvers(), done = Promise.withResolvers();
     await page.route('**/api/loops/order-quantity/route', async route => {
-      const response = await route.fetch();
+      const response = await fetchReaderRoute(route);
       received.resolve();
       await release.promise;
       try { await route.fulfill({ response }); } finally { done.resolve(); }
@@ -167,7 +166,7 @@ try {
   assert.deepEqual(report.errors, []);
   // Keep the second copy of service.mjs visible alongside the real participant.
   await page.route('**/api/dependency-canvas', async route => {
-    const response = await route.fetch();
+    const response = await fetchReaderRoute(route);
     const body = await response.json();
     body.graph.nodes.push({ path: 'other/service.mjs', analysis: 'reviewed' });
     body.layout.positions['other/service.mjs'] = { x: -160, y: 460 };
