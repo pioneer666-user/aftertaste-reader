@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { DocumentService } from '../../dist/application/document-blocks.js';
@@ -10,6 +10,7 @@ import { reviseDocument } from '../../dist/application/revisions.js';
 import { DocumentFileStore } from '../../dist/adapters/document-store.js';
 import { GitSourceRepository } from '../../dist/adapters/git-source.js';
 import { replaceCurrent } from '../../dist/adapters/replace-current.js';
+import { temporaryFilePath } from '../../dist/core/project-write-paths.js';
 import { cli, repository } from '../fixtures/dependency-canvas.mjs';
 import { artifact, createLoopReaderProject } from '../fixtures/loop-reader.mjs';
 
@@ -29,6 +30,7 @@ test('同提交修订校验原件、目标与候选，只发布所指正文', as
   }
   const target = ['--id','order-quantity','--step','resume','--field','explanation'];
   const doc = ['--document',document,'--block','m3vuiqzi'];
+  const staged = path.join(project.projectRoot, temporaryFilePath(document));
   assert.equal(invoke('revise-step',target,originalLoop,'示例','0'.repeat(40)).error.code,'REVISION_VERSION');
   assert.equal(invoke('revise-step',[...target.slice(0,3),'absent','--field','explanation'],originalLoop,'示例').error.code,'REVISION_TARGET');
   assert.equal(await readFile(loopFile,'utf8'),originalLoop);
@@ -46,6 +48,12 @@ test('同提交修订校验原件、目标与候选，只发布所指正文', as
     assert.equal(invoke('revise-document',doc,original,'有效讲解').error.code,'REVISION_BUSY');
     assert.equal(await readFile(file,'utf8'),original);
   } finally { await unlink(file+'.revision.lock'); }
+  await writeFile(staged, '遗留的本次临时位置');
+  try {
+    assert.equal(invoke('revise-document',doc,original,'有效讲解').error.code,'REVISION_BUSY');
+    assert.equal(await readFile(file,'utf8'),original);
+    assert.equal(await readFile(staged, 'utf8'), '遗留的本次临时位置');
+  } finally { await unlink(staged); }
   assert.equal(invoke('revise-document',doc,original,changed).ok,true);
   const first = await readFile(file,'utf8');
   assert.match(first,/id=m3vuiqzi lines=4-6/u);
@@ -67,4 +75,5 @@ test('同提交修订校验原件、目标与候选，只发布所指正文', as
     return replaceCurrent(...args);
   },project.projectRoot,document,project.commit,sha(latest),['newpart1'],false,'覆盖！'), {code:'REVISION_CONFLICT'});
   assert.equal(await readFile(file,'utf8'),other);
+  await assert.rejects(stat(staged), { code: 'ENOENT' });
 });

@@ -217,6 +217,7 @@ test('拒绝无效块、悬空边和同名创建，保存中断重试不伤旧�
   const retryId = 'retry';
   const retryRaw = JSON.stringify({ ...JSON.parse(old), id: retryId });
   const interrupted = new LoopFileStore(async (staging, target) => {
+    assert.equal(staging, path.join(loops(project), '.aftertaste-loop-' + retryId));
     assert.equal(target, path.join(loops(project), retryId));
     assert.equal(await readFile(path.join(staging, 'current/loop.json'), 'utf8'), retryRaw);
     failure(readLoop(project, retryId), 'LOOP_NOT_FOUND');

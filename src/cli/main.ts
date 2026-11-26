@@ -17,11 +17,13 @@ import { buffer as readBuffer } from 'node:stream/consumers';
 import { isUtf8 } from 'node:buffer';
 import { reviseDocument, reviseStep, RevisionError } from '../application/revisions.js';
 import { replaceCurrent } from '../adapters/replace-current.js';
+import { projectPrivacy } from '../adapters/project-privacy.js';
 
 const revisionOptions = ['--project', '--commit', '--expected'];
 const fixedOptions = ['--project', '--repository', '--prefix', '--commit'];
 
 const commands: Record<string, { allowed: string[]; required: string[] }> = {
+  'project-privacy': { allowed: ['--project', '--action'], required: ['--project', '--action'] },
   serve: { allowed: ['--project', '--port'], required: ['--project'] },
   pin: { allowed: ['--project', '--revision'], required: ['--project'] },
   read: { allowed: ['--project', '--commit', '--path', '--repository', '--prefix'], required: ['--project', '--commit', '--path'] },
@@ -76,7 +78,25 @@ async function main(): Promise<void> {
     const repository = new GitSourceRepository();
     const service = new FixedSourceService(repository);
     const projectRoot = options.get('--project')!;
-    if (command === 'serve') {
+    if (command === 'project-privacy') {
+      const action = options.get('--action')!;
+      requestContext = { projectRoot, action };
+      if (!['check', 'ignore', 'remember', 'forget'].includes(action)) {
+        throw new SourceError('INVALID_ARGUMENT', 'Git 可见性操作无效。', '使用 check、ignore、remember 或 forget。');
+      }
+      let payload: unknown;
+      if (action !== 'forget') {
+        const input = await readBuffer(process.stdin);
+        try {
+          if (!isUtf8(input)) throw new Error('UTF8');
+          payload = JSON.parse(input.toString('utf8'));
+        } catch {
+          throw new SourceError('INVALID_ARGUMENT', 'Git 可见性输入无效。', '从标准输入传入 UTF-8 JSON 数组。');
+        }
+      }
+      const result = await projectPrivacy(projectRoot, action, payload);
+      process.stdout.write(JSON.stringify({ ok: true, result }) + '\n');
+    } else if (command === 'serve') {
       const value = options.get('--port') ?? '4317';
       if (!/^[1-9]\d*$/u.test(value) || Number(value) > 65535) {
         throw new SourceError('INVALID_ARGUMENT', '阅读端口参数无效。', '使用 1 至 65535 的整数端口。');

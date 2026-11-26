@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { lstat, readFile, open, link, rename, unlink } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 import path from 'node:path';
@@ -8,6 +8,7 @@ import { SourceError, validateProjectRoot } from '../application/fixed-source.js
 import { GraphError, graphPath, readRemovalMarks } from '../core/dependency-graph.js';
 import type { RemovalMarks } from '../core/dependency-graph.js';
 import { dataDirectory, systemCode } from './data-directory.js';
+import { temporaryFilePath } from '../core/project-write-paths.js';
 import { isSourcePath } from '../core/source-path.js';
 
 const removalFile = 'dependency-graph-removals.json';
@@ -143,7 +144,7 @@ export class GraphFileStore implements GraphStore {
 
   private async writeReceipt(projectRoot: string, content: Buffer): Promise<void> {
     const target = await targetPath(projectRoot, false, removalFile);
-    const candidate = path.join(path.dirname(target), `.aftertaste-removals-${randomUUID()}.tmp`);
+    const candidate = path.join(path.dirname(target), path.posix.basename(temporaryFilePath(`docs/aftertaste/${removalFile}`)));
     const handle = await open(candidate, 'wx');
     let published = false;
     try {
@@ -188,7 +189,7 @@ export class GraphFileStore implements GraphStore {
         if (removed.size) await this.writeReceipt(projectRoot, proofBytes([{ publication: await publicationKey(target, raw), ...next }]));
         return;
       }
-      const candidate = path.join(path.dirname(target), `.aftertaste-graph-${randomUUID()}.tmp`);
+      const candidate = path.join(path.dirname(target), path.posix.basename(temporaryFilePath(graphPath)));
       handle = await this.io.open(candidate, 'wx');
       temporary = candidate;
       await handle.writeFile(raw, 'utf8');

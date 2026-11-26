@@ -1,5 +1,7 @@
 # HTTP Contract: 项目书签
 
+文件首次创建及替换使用[共用个人记录权限规则](../../011-project-notes/contracts/notes.md#个人记录文件权限d057)。
+
 `GET /api/bookmarks` 返回 `{ ok: true, bookmarks }`。项目由启动服务时选定。路径、块和备注结构见 [数据模型](../data-model.md)。
 
 `PUT /api/bookmarks` 需要 `Content-Type: application/json`、`X-Aftertaste-Bookmarks: 1` 和有效的本机请求来源。GET 与 PUT 均无需查询参数，PUT 成功返回保存后的完整项目列表供页面同步。

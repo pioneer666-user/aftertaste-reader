@@ -35,3 +35,6 @@ fixture 输出绝对目标路径和固定提交，产物为合成项目。将这
 ## 结果与试读
 
 [D010 证据](../../docs/work/2026/11/D010-generation-skill/evidence.md) 保存环境、候选、实际输入／动作／输出和可复建说明。[作者试读入口](../../docs/work/2026/11/D010-generation-skill/sample/README.md) 链接正式保存的讲解和固定源码定位。教学效果由作者试读判断。
+## D057 验证
+
+按 [D057 Skill 场景](../../tests/skills/project-privacy.md) 使用隔离安装包，让会话生成首批讲解并确认 Git 许可。检查配置和索引前后状态，再验证已跟踪与未忽略混合、选本机忽略、一次放行、记住和撤销。CLI 检查可使用 `tests/integration/project-privacy.test.mjs` 复跑，个人记录权限走 `tests/integration/personal-access.test.mjs`。

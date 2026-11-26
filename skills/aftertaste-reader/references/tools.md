@@ -92,6 +92,17 @@ const { file } = runSourceCli(['read', ...sourceArgs, '--path', sourcePath], max
 
 在内存中分析 `file.content`。接收失败时沿用上面的诊断方式，取得完整成功结果后再继续分块。
 
+<a id="project-privacy"></a>
+## 写入前检查 Git 可见性
+
+1. 列出本批实际要新建或修改的每个资料文件，包含空骨架，用项目相对路径。要写依赖图且已有 `docs/aftertaste/dependency-graph-removals.json`，或计划移除文件／图例节点时，把这份移除凭据也列入。工具的 JSON 输入稿放仓外。
+2. 用同包 CLI 执行 `project-privacy --project <绝对项目路径> --action check`。设置 `input: JSON.stringify(plan)`，其中 `plan` 是 `[{"path":"docs/aftertaste/current/src/rules.mjs.md","staging":"file"}]` 这样的数组。新建闭环的 `docs/aftertaste/loops/<id>/current/loop.json` 用 `"staging":"loop"`，其余生成、修订和教学资料用 `"staging":"file"`。工具展开成品和实际暂存路径。只核某个确切路径时可直接传路径字符串。结果逐项给 `path`（项目相对）、`repositoryPath`（仓库相对）、`status` 和 `remembered`，暂存项还用 `temporaryFor` 标出对应的成品。`ignored` 为已忽略且未跟踪，`unignored` 为未忽略且可能被加入提交，`tracked` 为已在索引（含刚暂存）。每批重查，路径或可见性变化先重查受影响部分。
+3. 每项均为 `ignored`、`remembered: true` 或有覆盖当前状态的明确批次许可时，继续已有写入步骤。否则指出实际可见路径或可辨认的路径组，区分可能加入提交和已在索引的文件。可将暂存项按其成品分组，明确说明哪些暂存也可能被加入提交。说明有仓库权限的人在提交并推送后可能看到哪些资料。请读者选择在本机忽略后生成、保持 Git 设置并允许继续，或先停。允许继续可选仅本批或本机记住这些文件当前的可见程度。生成请求、讲法选择、仓库资料和模型记忆不能自行放行。检查失败、未答、拒绝或答复含糊时结束本轮，保持所有依赖写入为零，包括骨架、偏好、方向、图、输入稿和正文。
+4. 读者选本机忽略时，先告知将向本仓 `.git/info/exclude` 加入获准的路径规则，再以 `--action ignore` 传入获准的 `files[].path` 字符串（包含获准的暂存路径）。共享 `.gitignore` 只按用户明确指定的范围处理，处理后重新 `check` 同一批计划。仍是 `unignored` 或 `tracked` 时定位并等待明确放行。已跟踪的文件仍在索引里，已传出的资料不会撤回。生成许可只授权生成或修订资料，Git 暂存、提交、推送、移出索引及清理历史均需另外授权。
+5. 读者明确选择记住时，以 `--action remember` 传刚获准的可见文件与状态，例如 `[{"path":"docs/aftertaste/preferences.md","status":"unignored"}]`。工具复核当前状态，保存本仓、本子项目这些文件的许可。保存失败时据实告知，重新检查后，仍符合刚取得的明确批次许可可以继续。读者要求撤销时用 `--action forget`（无需标准输入）。改选时先撤销旧记录，再按新明确选择处理。撤销许可保留已有的忽略规则。读者另行要求撤销忽略规则时，只修改确认是此前为该项目加入的条目，并重新检查。
+
+许可存在用户本机状态目录。Windows 为 `%LOCALAPPDATA%/Aftertaste Reader/state/`，POSIX 为 `${XDG_STATE_HOME:-~/.local/state}/aftertaste-reader/`。新增文件、可见性超出该文件曾获许可的状态、换仓或换子项目时重新询问。不能核验状态文件时按无有效记录处理。
+
 ## 已有命令
 
 每个参数独立传入 argv。`runSourceCli` 专用于 `pin` 和 `read`。调用表中的两条校验命令时，按[读取校验结果](#读取校验结果)处理。
