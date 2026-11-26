@@ -1,6 +1,6 @@
 {
   "name": "aftertaste-reader",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -9,6 +9,10 @@
   },
   "files": [
     "THIRD-PARTY-NOTICES.md",
+    "docs/usage/assets/alpha2-bookmark-loop.png",
+    "docs/usage/assets/alpha2-bookmark-source.png",
+    "docs/usage/assets/apache-answer-LICENSE.txt",
+    "docs/usage/assets/apache-answer-NOTICE.txt",
     "dist/**/*.js",
     "dist/web/index.html",
     "dist/web/assets/",

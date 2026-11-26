@@ -1,12 +1,24 @@
 # Aftertaste Reader · 回味
 
-用浏览器对照 Git 固定提交的源码和 AI 讲解。可以逐文件读，也可以沿跨文件的闭环追一次请求如何传递、写入和返回。讲解、闭环与个人阅读记录保存在你的项目里。
+会写基本功能，想读懂真实项目？用回味把 AI 讲解和 Git 固定提交的源码放在一起，顺着一次请求看清数据怎样传递、何时写入、最后返回什么。
 
-**首个公开试用版 `v0.1.0-alpha.1`。** 已在 Windows 上用真实的后端收藏请求走通安装、逐文件阅读、闭环分支和关闭后重开。欢迎带一个你正在读的项目试用。[下载预构建安装包](https://github.com/pioneer666-user/aftertaste-reader/releases/download/v0.1.0-alpha.1/aftertaste-reader-0.1.0-alpha.1.tgz) · [发行说明与校验值](https://github.com/pioneer666-user/aftertaste-reader/releases/tag/v0.1.0-alpha.1) · [反馈使用体验](https://github.com/pioneer666-user/aftertaste-reader/issues)
+[获取预构建安装包与校验值](https://github.com/pioneer666-user/aftertaste-reader/releases) · [快速开始](#首次安装) · [反馈使用体验](https://github.com/pioneer666-user/aftertaste-reader/issues)
+
+## 同一个收藏请求提交两次，还会再写一次数据库吗？
+
+从左到右读 Apache Answer 的收藏闭环。悬停「查现有收藏」先看查询条件，再顺着「已经收藏」或「还未收藏」看两种结果。下方的问句可展开写入事务里的复查。
+
+![回味闭环画布。请求经 Xorm 查找收藏关系，服务判断后分成首次收藏和直接返回两条路径。查询卡上方悬停预览，判断卡下方展开说明。](docs/usage/assets/alpha2-bookmark-loop.png)
+
+跟到「要写入吗？」对应的文件讲解，第 61–63 行就是分岔。假设同一用户再次收藏同一问题，且上一笔已成功，服务查到已有关系便提前返回，跳过插入和计数更新。
+
+![回味源码对照。左边是固定提交中提前返回的 Go 条件，右边解释收藏目标与现有关系如何决定分支。](docs/usage/assets/alpha2-bookmark-source.png)
+
+截图取自回味 `0.1.0-alpha.2` 和 [Apache Answer v1.5.0 的固定提交](https://github.com/apache/answer/commit/3f1ed50f6776452c11b6ffdbdc767cd1887d629b)。图中的上游代码节选按 Apache License 2.0 使用，版权归 The Apache Software Foundation。[源码位置](https://github.com/apache/answer/blob/3f1ed50f6776452c11b6ffdbdc767cd1887d629b/internal/service/collection/collection_service.go#L57-L63) · [Apache Answer 许可](docs/usage/assets/apache-answer-LICENSE.txt) · [上游 NOTICE](docs/usage/assets/apache-answer-NOTICE.txt)
 
 ## 首次安装
 
-准备 Node.js 24 LTS、npm、Git 2.45+、一个已有 Git 提交的本地项目，以及能读取本机文件和运行终端命令的 AI。确认 `node --version` 显示 `v24.x`，再用 `npm --version` 和 `git --version` 检查工具可用。
+以下命令适用于 Windows PowerShell。准备 Node.js 24 LTS、npm、Git 2.45+、一个已有 Git 提交的本地项目，以及能读取本机文件和运行终端命令的 AI。确认 `node --version` 显示 `v24.x`，再用 `npm --version` 和 `git --version` 检查工具可用。
 
 拿到回味的 `aftertaste-reader-*.tgz` 后，在 PowerShell 执行以下命令。按提示粘贴包的完整路径，再输入项目目录。npm 联网安装运行依赖。工具安装在独立目录，项目保留在原来的位置。
 
@@ -27,7 +39,11 @@ $project
 
 > 请显式读取「Skill 完整路径」，为「Git 项目完整路径」生成回味讲解。我想先读「例如登录后的数据如何保存」。先只生成一小批，读过再继续。请告诉我怎样打开第一篇。
 
-AI 会确认缺失的范围和节奏。项目还没有讲法时，AI 会给三种讲法并等你选定，后续文件讲解和闭环沿用这一选择。默认固定开始时的 HEAD，要读其他版本可以给出本地 Git 提交。生成讲解后，可以请 AI “从已有讲解里找一条能回答我的问题的闭环路线”。看过路线后选定，AI 再保存。
+AI 会确认缺失的范围和节奏。项目还没有讲法时，先从三种讲法里选一种。第一次写入前，AI 会检查这一批资料在 Git 中是否可见。如有可能纳入提交的资料，等你选择在本机忽略、按现有设置继续或暂停。默认固定开始时的 HEAD，要读其他版本可以给出本地 Git 提交。
+
+读完第一篇，可以请 AI「从已有讲解里找一条能回答我的问题的闭环路线」。选好路线后就能保存，从图上逐步对照源码。
+
+阅读服务在本机运行，讲解、闭环和个人阅读记录保存在所读项目里。生成讲解时，源码如何交给模型处理取决于你选择的 AI 宿主及其设置。
 
 ## 日常打开与关闭
 
