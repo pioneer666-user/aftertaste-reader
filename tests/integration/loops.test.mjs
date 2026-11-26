@@ -216,13 +216,16 @@ test('拒绝无效块、悬空边和同名创建，保存中断重试不伤旧�
   const { LoopFileStore } = await import('../../dist/adapters/loop-store.js');
   const retryId = 'retry';
   const retryRaw = JSON.stringify({ ...JSON.parse(old), id: retryId });
+  const stagingRoot = path.join(project.projectRoot, '.git', 'aftertaste-staging');
   const interrupted = new LoopFileStore(async (staging, target) => {
+    assert.equal(path.dirname(staging), stagingRoot);
     assert.equal(target, path.join(loops(project), retryId));
     assert.equal(await readFile(path.join(staging, 'current/loop.json'), 'utf8'), retryRaw);
     failure(readLoop(project, retryId), 'LOOP_NOT_FOUND');
     throw Object.assign(new Error('test interruption before publication'), { code: 'EIO' });
   });
   await assert.rejects(interrupted.create(project.projectRoot, retryId, retryRaw), { code: 'LOOP_WRITE_FAILED' });
+  assert.deepEqual(await readdir(stagingRoot), []);
   assert.deepEqual(await readdir(loops(project)), [orderId]);
   const orphan = await mkdtemp(path.join(loops(project), '.aftertaste-loop-'));
   await mkdir(path.join(orphan, 'current'));

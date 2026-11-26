@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, readdir, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
@@ -24,14 +24,14 @@ test('project privacy uses Git index and live excludes, with repository and subp
   await mkdir(sibling);
   await mkdir(outside);
   const git = (...args) => execFileSync('git', ['-C', repo, ...args], { env, encoding: 'utf8' });
-  const cli = (where, action, input) => {
+  const cli = (where, action, input, gitEnv = {}) => {
     const p = spawnSync(process.execPath, [process.env.AFTERTASTE_CLI ?? defaultCli, 'project-privacy', '--project', where, '--action', action],
-      { env, input: JSON.stringify(input), encoding: 'utf8', windowsHide: true });
+      { env: { ...env, ...gitEnv }, input: JSON.stringify(input), encoding: 'utf8', windowsHide: true });
     const json = JSON.parse(p.status === 0 ? p.stdout : p.stderr);
     return { status: p.status, ...json };
   };
-  const check = (where, files) => {
-    const result = cli(where, 'check', files);
+  const check = (where, files, gitEnv) => {
+    const result = cli(where, 'check', files, gitEnv);
     assert.equal(result.ok, true, JSON.stringify(result));
     return result.result.files.map(file => [file.status, file.remembered]);
   };
@@ -64,6 +64,29 @@ test('project privacy uses Git index and live excludes, with repository and subp
   assert.equal(remember.result.remembered, true);
   assert.deepEqual(check(project, [first, exception]), [['unignored', true], ['unignored', false]]);
   assert.deepEqual(check(sibling, [first]), [['unignored', false]]);
+  const [grant] = await readdir(state);
+  const lock = path.join(state, grant + '.lock');
+  await writeFile(lock, '', { flag: 'wx' });
+  const busy = cli(project, 'check', [first]);
+  assert.equal(busy.result.stateIssue, 'STATE_BUSY');
+  assert.equal(busy.result.files[0].remembered, false);
+  assert.equal(cli(project, 'forget').error.context.lock, lock);
+  await unlink(lock);
+  assert.equal(cli(project, 'forget').result.forgotten, true);
+  assert.deepEqual(check(project, [first]), [['unignored', false]]);
+  assert.equal(cli(project, 'remember', [{ path: first, status: 'unignored' }]).result.remembered, true);
+
+  const alternateIndex = path.join(outside, 'alternate-index');
+  await copyFile(path.join(repo, '.git/index'), alternateIndex);
+  await writeFile(path.join(project, first), '只在自选索引暂存');
+  execFileSync('git', ['-C', repo, 'add', '-f', '--', 'sub/' + first], { env: { ...env, GIT_INDEX_FILE: alternateIndex } });
+  assert.deepEqual(check(project, [first], { GIT_INDEX_FILE: alternateIndex }), [['tracked', false]]);
+  assert.deepEqual(check(project, [first]), [['unignored', true]]);
+  const graph = docDir + 'dependency-graph.json';
+  const receipt = docDir + 'dependency-graph-removals.json';
+  await writeFile(path.join(project, receipt), '移除历史');
+  assert.deepEqual(cli(project, 'ignore', [graph]).result.files.map(file => file.status), ['ignored']);
+  assert.deepEqual(check(project, [graph, receipt]), [['ignored', false], ['unignored', false]]);
   assert.equal(cli(project, 'remember', [{ path: tracked, status: 'unignored' }]).error.context.reason, 'VISIBILITY_CHANGED');
   const ignored = cli(project, 'ignore', [first, exception, tracked]);
   assert.deepEqual(ignored.result.files.map(file => file.status), ['ignored', 'unignored', 'tracked']);

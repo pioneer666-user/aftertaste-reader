@@ -22,3 +22,5 @@
 `project-privacy --project <绝对项目路径> --action <check|ignore|remember|forget>`。`check` 和 `ignore` 从 UTF-8 stdin 取 `docs/aftertaste/` 下的具体文件路径数组。返回 `result.files`，含项目及仓库相对路径和状态，`check` 同时返回本机许可是否覆盖。状态文件不可读取时无有效许可，`stateIssue` 可用于诊断。
 
 `ignore` 仅追加未忽略文件的路径规则到本仓 `.git/info/exclude`，保留原规则并返回复查结果。调用方先取得授权。仍可见时由读者决定下一步。 `remember` 接收含 `path` 与 `status`（`unignored` 或 `tracked`）的数组，状态变化则拒绝保存。 `forget` 无需输入，清掉当前项目许可。Git 检查失败或状态写入失败返回 `PRIVACY_CHECK_FAILED`，参数错误返回 `INVALID_ARGUMENT`。调用顺序见[随包工具说明](../../../skills/aftertaste-reader/references/tools.md#project-privacy)。
+
+可见性判断保留指向同一工作树的自选索引，Git 元数据或工作树映射不一致时停止。存在许可更新锁时 `check` 不复用旧许可，并返回 `stateIssue: "STATE_BUSY"`。更新或撤销时若锁仍存在，返回具体路径供核实和恢复。

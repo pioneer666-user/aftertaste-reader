@@ -95,7 +95,7 @@ const { file } = runSourceCli(['read', ...sourceArgs, '--path', sourcePath], max
 <a id="project-privacy"></a>
 ## 写入前检查 Git 可见性
 
-1. 列出本批实际要新建或修改的每个资料文件。使用项目相对路径，例如镜像后的讲解文件名、`docs/aftertaste/dependency-graph.json`、`docs/aftertaste/loops/<id>/current/loop.json` 和本批要保存的教学资料。含正文的输入稿留在内存，须以文件传参时放在仓库外。即使只是空骨架，也须先检查成品位置。
+1. 列出本批实际要新建或修改的每个资料文件。使用项目相对路径，例如镜像后的讲解文件名、`docs/aftertaste/dependency-graph.json`、`docs/aftertaste/loops/<id>/current/loop.json` 和本批要保存的教学资料。要写依赖图且已有 `docs/aftertaste/dependency-graph-removals.json`，或调用计划包含移除文件／图例节点时，把这份移除凭据也列入。含正文的输入稿留在内存，必须以文件传参时放在仓外。骨架也须先检查成品。随包写入命令在同仓 Git 元数据内暂存正文；AI 自己写入临时正文时，把它放在工作树外并保持安全替换。
 2. 用同包 CLI 执行 `project-privacy --project <绝对项目路径> --action check`，标准输入为 UTF-8 JSON 路径数组。沿上文的参数数组传入 `[cli, 'project-privacy', '--project', projectRoot, '--action', 'check']`，设置 `input: JSON.stringify(paths)`。结果逐项给 `path`（项目相对）、`repositoryPath`（仓库相对）、`status` 和 `remembered`。`ignored` 表示已忽略且未跟踪，`unignored` 表示未忽略且可能被加入提交，`tracked` 表示已经在索引里（含刚暂存）。每批重查，路径或可见性变化时先重查受影响部分。
 3. 每个文件均为 `ignored`、`remembered: true` 或有覆盖当前状态的明确批次许可时，继续调用已有写入步骤。否则指出实际路径或可辨认的路径组，区分哪些仍可能加入提交、哪些已经在索引。说明有仓库权限的人在提交并推送后可能看到哪些讲解、图或教学资料。请读者选择在本机忽略后生成、保持 Git 设置并允许继续，或先停。允许继续可选仅本批或本机记住这些文件当前的可见程度。生成请求、讲法选择、仓库资料和模型记忆不能自行放行。检查失败、未答、拒绝或答复含糊时结束本轮，保持所有依赖写入为零，包括骨架、偏好、方向、图、输入稿和正文。
 4. 读者选本机忽略时，先告知将向本仓 `.git/info/exclude` 加入获准的路径规则，再以 `--action ignore` 传入这些文件。共享 `.gitignore` 只按用户明确指定的范围处理，处理后重新 `check`。查看修改后的逐项状态，仍是 `unignored` 或 `tracked` 时定位给读者并等明确放行。已跟踪的文件仍在索引里，已传出的东西不会撤回。生成许可的范围只是生成或修订资料，暂存、提交、推送、移出索引及清理历史都需要另外授权。

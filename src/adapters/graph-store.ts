@@ -8,6 +8,7 @@ import { SourceError, validateProjectRoot } from '../application/fixed-source.js
 import { GraphError, graphPath, readRemovalMarks } from '../core/dependency-graph.js';
 import type { RemovalMarks } from '../core/dependency-graph.js';
 import { dataDirectory, systemCode } from './data-directory.js';
+import { gitStaging } from './git-staging.js';
 import { isSourcePath } from '../core/source-path.js';
 
 const removalFile = 'dependency-graph-removals.json';
@@ -141,9 +142,9 @@ export class GraphFileStore implements GraphStore {
       '保留布局，恢复配套的图和凭据，或用图工具明确移除凭据中的路径后按需登记。', { graphPath, receipt: removalFile });
   }
 
-  private async writeReceipt(projectRoot: string, content: Buffer): Promise<void> {
+  private async writeReceipt(projectRoot: string, staging: string, content: Buffer): Promise<void> {
     const target = await targetPath(projectRoot, false, removalFile);
-    const candidate = path.join(path.dirname(target), `.aftertaste-removals-${randomUUID()}.tmp`);
+    const candidate = path.join(staging, `removals-${randomUUID()}.tmp`);
     const handle = await open(candidate, 'wx');
     let published = false;
     try {
@@ -185,10 +186,12 @@ export class GraphFileStore implements GraphStore {
       if (raw === previous) {
         if (await this.read(projectRoot) !== previous) throw new GraphError('GRAPH_CHANGED', '原图在本次读取后已变化。',
           '重新查询后决定局部提交。', { projectRoot, graphPath, published: 0 });
-        if (removed.size) await this.writeReceipt(projectRoot, proofBytes([{ publication: await publicationKey(target, raw), ...next }]));
+        if (removed.size) await this.writeReceipt(projectRoot, await gitStaging(projectRoot, path.dirname(target)),
+          proofBytes([{ publication: await publicationKey(target, raw), ...next }]));
         return;
       }
-      const candidate = path.join(path.dirname(target), `.aftertaste-graph-${randomUUID()}.tmp`);
+      const staging = await gitStaging(projectRoot, path.dirname(target));
+      const candidate = path.join(staging, `graph-${randomUUID()}.tmp`);
       handle = await this.io.open(candidate, 'wx');
       temporary = candidate;
       await handle.writeFile(raw, 'utf8');
@@ -207,7 +210,7 @@ export class GraphFileStore implements GraphStore {
         const previousRecords = prior.unresolvedRecords ?? [{ ...prior, publication: previousKey }];
         originalReceipt = await this.readReceipt(projectRoot);
         stagedReceipt = proofBytes([...previousRecords, candidateProof]);
-        await this.writeReceipt(projectRoot, stagedReceipt);
+        await this.writeReceipt(projectRoot, staging, stagedReceipt);
       }
       try {
         if (stagedReceipt && (await this.read(projectRoot) !== previous || await targetPath(projectRoot, false) !== target)) {
@@ -219,14 +222,14 @@ export class GraphFileStore implements GraphStore {
       } catch (error) {
         // Revoke just our staged receipt if the graph was never published.
         if (stagedReceipt && (await this.readReceipt(projectRoot))?.equals(stagedReceipt)) {
-          if (originalReceipt) await this.writeReceipt(projectRoot, originalReceipt);
+          if (originalReceipt) await this.writeReceipt(projectRoot, staging, originalReceipt);
           else await unlink(await targetPath(projectRoot, false, removalFile));
         }
         throw error;
       }
       published = true;
       if (previous !== undefined) temporary = undefined;
-      if (candidateProof) await this.writeReceipt(projectRoot, proofBytes([candidateProof]));
+      if (candidateProof) await this.writeReceipt(projectRoot, staging, proofBytes([candidateProof]));
     } catch (error) {
       if (error instanceof GraphError && !published) throw error;
       throw new GraphError('GRAPH_WRITE_FAILED', '图保存失败。', '检查权限与文件系统，核对原图后重试。', { projectRoot, graphPath, published: Number(published), reason: systemCode(error) });

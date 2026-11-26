@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { DocumentService } from '../../dist/application/document-blocks.js';
@@ -67,4 +67,5 @@ test('同提交修订校验原件、目标与候选，只发布所指正文', as
     return replaceCurrent(...args);
   },project.projectRoot,document,project.commit,sha(latest),['newpart1'],false,'覆盖！'), {code:'REVISION_CONFLICT'});
   assert.equal(await readFile(file,'utf8'),other);
+  assert.deepEqual(await readdir(path.join(project.projectRoot, '.git', 'aftertaste-staging')), []);
 });

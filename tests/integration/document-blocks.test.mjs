@@ -185,8 +185,10 @@ test('文档不存在、错误 UTF-8 和无效映射均返回明确错误', asyn
 
 test('写中途或发布失败清理临时文件，已有文件完整', async () => {
   const f = await createDocumentFixture();
+  const staging = path.join(f.repositoryRoot, '.git', 'aftertaste-staging');
   const failedWrite = new DocumentFileStore({
     async open(target, flags) {
+      assert.equal(path.dirname(target), staging);
       const handle = await open(target, flags);
       const write = handle.writeFile.bind(handle);
       handle.writeFile = async text => {
@@ -199,6 +201,7 @@ test('写中途或发布失败清理临时文件，已有文件完整', async ()
   await assert.rejects(service(failedWrite).create(f, 'a.ts', plan), { code: 'DOCUMENT_WRITE_FAILED' });
   const parent = path.dirname(path.join(f.projectRoot, documentPath));
   assert.deepEqual(await readdir(parent), []);
+  assert.deepEqual(await readdir(staging), []);
   const failedPublish = new DocumentFileStore({ open, async link() { throw Object.assign(new Error(), { code: 'EPERM' }); } });
   await assert.rejects(service(failedPublish).create(f, 'a.ts', plan), { code: 'DOCUMENT_WRITE_FAILED' });
   assert.deepEqual(await readdir(parent), []);

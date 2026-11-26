@@ -36,6 +36,8 @@
 
 **D057 技术变更** TypeScript CLI 和 Node 文件适配。复用系统 Git、Windows 自带 PowerShell/.NET 文件 ACL、Linux GNU cp 的 ACL 保留及 macOS 的平台工具。资料位置与 JSON 保持原样。使用隔离安装包、Git 配置、NTFS 与 POSIX 项目验证。
 
+生成与修订的工具暂存放在同仓 Git 元数据内，同文件系统原子发布。图更新的可见范围包含实际可能更新的移除凭据。隐私检查核工作树与 Git 元数据的映射并遵从实际索引，授权状态出现更新锁时暂停复用。
+
 ## Constitution Check
 
 | 原则 | Phase 0 前检查 | Phase 1 后检查 |

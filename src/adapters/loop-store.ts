@@ -5,6 +5,7 @@ import { validateProjectRoot, SourceError } from '../application/fixed-source.js
 import type { LoopStore } from '../application/loops.js';
 import { isLoopId, LoopError } from '../core/loops.js';
 import { dataDirectory, systemCode } from './data-directory.js';
+import { gitStaging } from './git-staging.js';
 
 const directory = ['docs', 'aftertaste', 'loops'];
 const artifact = 'loop.json';
@@ -70,7 +71,7 @@ export class LoopFileStore implements LoopStore {
       const parent = await dataDirectory(projectRoot, directory, true, unsafePath);
       const target = path.join(parent, id);
       await requireUnused(target, projectRoot, loopPath);
-      staging = await mkdtemp(path.join(parent, '.aftertaste-loop-'));
+      staging = await mkdtemp(path.join(await gitStaging(projectRoot, parent), 'loop-'));
       const current = path.join(staging, 'current');
       await mkdir(current);
       const handle = await open(path.join(current, artifact), 'wx');

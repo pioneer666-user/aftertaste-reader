@@ -29,8 +29,7 @@ function isGrant(value: unknown): value is Grant {
     'status' in value && (value.status === 'unignored' || value.status === 'tracked');
 }
 
-const repoOverrides = new Set(['GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE',
-  'GIT_PREFIX', 'GIT_INTERNAL_SUPER_PREFIX', 'GIT_LITERAL_PATHSPECS', 'GIT_GLOB_PATHSPECS',
+const repoOverrides = new Set(['GIT_PREFIX', 'GIT_INTERNAL_SUPER_PREFIX', 'GIT_LITERAL_PATHSPECS', 'GIT_GLOB_PATHSPECS',
   'GIT_NOGLOB_PATHSPECS', 'GIT_ICASE_PATHSPECS']);
 
 async function git(cwd: string, args: string[], input?: string): Promise<string> {
@@ -54,10 +53,11 @@ async function git(cwd: string, args: string[], input?: string): Promise<string>
 
 async function inspect(project: ProjectMapping, paths: string[]) {
   const { projectRoot, repositoryRoot, projectPrefix } = project;
-  const actual = await git(projectRoot, ['rev-parse', '--show-toplevel', '--absolute-git-dir']);
-  const [root, gitDir, extra] = actual.replace(/\r?\n$/u, '').split(/\r?\n/u);
-  if (!root || !gitDir || extra !== undefined || await realpath(root) !== repositoryRoot ||
-      await realpath(gitDir) !== path.join(repositoryRoot, '.git')) throw failed('rev-parse', 'MAPPING_MISMATCH');
+  const actual = await git(projectRoot, ['rev-parse', '--path-format=absolute', '--show-toplevel', '--absolute-git-dir', '--git-common-dir']);
+  const [root, gitDir, common, extra] = actual.replace(/\r?\n$/u, '').split(/\r?\n/u);
+  const metadata = path.join(repositoryRoot, '.git');
+  if (!root || !gitDir || !common || extra !== undefined || await realpath(root) !== repositoryRoot ||
+      await realpath(gitDir) !== metadata || await realpath(common) !== metadata) throw failed('rev-parse', 'MAPPING_MISMATCH');
   const repositoryPaths = paths.map(file => projectPrefix ? `${projectPrefix}/${file}` : file);
   for (const file of paths) await checkTarget(projectRoot, file);
 
@@ -159,10 +159,30 @@ async function readGrants(file: string): Promise<Grant[]> {
   }
 }
 
+function stateBusy(lock: string) {
+  return new SourceError('PRIVACY_CHECK_FAILED', '本机 Git 许可正在更新或有遗留锁，不能复用旧许可。',
+    '等待进行中的许可操作结束。确认没有许可命令运行后，可删除所示遗留锁，再重新撤销或记住。',
+    { step: 'state', reason: 'STATE_BUSY', lock });
+}
+
+async function requireUnlocked(file: string): Promise<void> {
+  const lock = file + '.lock';
+  try { await lstat(lock); }
+  catch (error) {
+    if (systemCode(error) === 'ENOENT') return;
+    throw error;
+  }
+  throw stateBusy(lock);
+}
+
 async function updateGrants(project: ProjectMapping, grants?: Grant[]): Promise<void> {
   const target = await grantPath(project, !!grants);
   const lock = target + '.lock';
-  await writeFile(lock, '', { flag: 'wx', mode: 0o600 });
+  try { await writeFile(lock, '', { flag: 'wx', mode: 0o600 }); }
+  catch (error) {
+    if (systemCode(error) === 'EEXIST') throw stateBusy(lock);
+    throw error;
+  }
   try {
     if (!grants) {
       await unlink(target).catch(error => { if (systemCode(error) !== 'ENOENT') throw error; });
@@ -217,7 +237,13 @@ export async function projectPrivacy(projectRoot: string, action: string, payloa
 
     let saved: Grant[] = [];
     let stateIssue: string | undefined;
-    try { saved = await readGrants(await grantPath(project)); }
+    try {
+      const file = await grantPath(project);
+      await requireUnlocked(file);
+      const grants = await readGrants(file);
+      await requireUnlocked(file);
+      saved = grants;
+    }
     catch (error) {
       if (systemCode(error) !== 'ENOENT') stateIssue = error instanceof SourceError ? String(error.context.reason) : systemCode(error);
     }

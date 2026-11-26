@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile, readdir, symlink, rm, rmdir, link, open, rename, unlink } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile, readdir, symlink, rm, rmdir, link, open, rename, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import * as application from '../../dist/application/dependency-graph.js';
 import { FixedSourceService } from '../../dist/application/fixed-source.js';
@@ -260,11 +260,16 @@ test('存储失败注入：部分写/link/rename/碰撞保持旧图及无关文�
   assert.equal(await readFile(conflict, 'utf8'), 'pre-existing temporary');
   assert.equal(await readFile(asset, 'utf8'), 'asset');
   assert.equal(await normal.read(f.projectRoot), raw);
-  assert.deepEqual((await readdir(parent)).sort(), [path.basename(conflict), 'dependency-graph.json', 'notes.json'].sort());
+  const staging = path.join(f.repositoryRoot, '.git', 'aftertaste-staging');
+  assert.equal(path.dirname(conflict), staging);
+  assert.deepEqual(await readdir(staging), [path.basename(conflict)]);
+  assert.deepEqual((await readdir(parent)).sort(), ['dependency-graph.json', 'notes.json']);
+  assert.doesNotMatch(git(f.repositoryRoot, ['ls-files', '--others', '--exclude-standard']), /aftertaste-staging|graph-.*\.tmp/u);
 });
 
 test('发布后清理失败报告目标已更新，旧图变化不覆盖', async () => {
   const f = await createGraphFixture();
+  await appendFile(path.join(f.repositoryRoot, '.git', 'info', 'exclude'), `\n/${f.projectPrefix}/${graphPath}\n`);
   const raw = JSON.stringify(emptyGraph(f.commit));
   const cleanup = new GraphFileStore({ ...io, async unlink() { throw Object.assign(new Error(), { code: 'EPERM' }); } });
   let temporary;
@@ -276,6 +281,8 @@ test('发布后清理失败报告目标已更新，旧图变化不覆盖', async
   });
   assert.equal(await readFile(target(f), 'utf8'), raw);
   assert.equal(await readFile(temporary, 'utf8'), raw);
+  assert.equal(path.dirname(temporary), path.join(f.repositoryRoot, '.git', 'aftertaste-staging'));
+  assert.doesNotMatch(git(f.repositoryRoot, ['ls-files', '--others', '--exclude-standard']), /dependency-graph\.json|graph-.*\.tmp/u);
   // The retained hard link must be explicitly removed before the next normal operation.
   await unlink(temporary);
   const normal = new GraphFileStore();
