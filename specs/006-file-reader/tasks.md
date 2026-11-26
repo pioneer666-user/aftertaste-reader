@@ -285,7 +285,7 @@
 - [x] T088 [US15] 在 `src/server/reader.ts` 的路由分发前检查会话，`src/cli/main.ts` 在 ready 交付私密入口，更新 README、使用说明及产品 Skill。
 - [x] T089 [US15] 在 `tests/integration/file-reader.test.mjs` 和现有测试调用方从正式入口取得授权，核匿名拒绝与原有写入限制。
 - [x] T090 [US15] 在 `tests/browser/reader-session.mjs` 用独立安装包、两个项目和三个浏览器核 SC-022，完成串行回归。
-- [ ] T091 [US15] 固定候选并独审，写入 `docs/work/2026/11/D056-reader-session-access/review.md` 与 `handoff.md`，交本地试读命令。
+- [x] T091 [US15] 固定候选并独审，写入 `docs/work/2026/11/D056-reader-session-access/review.md` 与 `handoff.md`，交本地试读命令。
 - [ ] T092 [US15] 作者确认体验或明确允许后，按 `docs/development/git.md` 合入本地 dev 并更新回执。
 
 ## Dependencies & Execution Order
