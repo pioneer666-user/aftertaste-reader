@@ -1,18 +1,31 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createServer, type RequestListener } from 'node:http';
 
 export const contentPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; font-src 'self'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
-const denied = '请从启动终端打开本次阅读入口。';
+const denied = '请打开本次阅读的私密入口。';
 
-function matches(value: string | undefined, expected: string): boolean {
+export function matches(value: string | undefined, expected: string): boolean {
   if (!value || value.length !== expected.length) return false;
   const bytes = Buffer.from(value);
   const reference = Buffer.from(expected);
   return bytes.length === reference.length && timingSafeEqual(bytes, reference);
 }
 
-export function readerSession() {
-  const entryPath = '/reader-session?token=' + randomBytes(32).toString('base64url');
+export interface ReaderControl {
+  readonly key: string;
+  readonly stop: () => void;
+}
+
+export function instanceSignature(key: string, purpose: 'entry' | 'proof' | 'stop', challenge = ''): string {
+  return createHmac('sha256', key).update(purpose + ':' + challenge).digest('base64url');
+}
+
+export function readerEntryPath(token: string): string {
+  return '/reader-session?token=' + token;
+}
+
+export function readerSession(control?: ReaderControl) {
+  const entryPath = readerEntryPath(control ? instanceSignature(control.key, 'entry') : randomBytes(32).toString('base64url'));
   const password = randomBytes(32).toString('base64url');
   const authorization = 'Basic ' + Buffer.from('reader:' + password).toString('base64');
 
@@ -35,6 +48,19 @@ export function readerSession() {
         (origin === undefined || origin === `http://${host}`) &&
         (site === undefined || site === 'same-origin' || site === 'none');
       const session = matches(request.headers.authorization, authorization);
+      const challenge = request.headers['x-aftertaste-challenge'];
+      if (control && local && request.url === '/' && typeof challenge === 'string' && /^[a-f0-9]{32}$/u.test(challenge)) {
+        if (request.method === 'HEAD') {
+          response.setHeader('X-Aftertaste-Proof', instanceSignature(control.key, 'proof', challenge));
+        } else if (request.method === 'POST' &&
+            matches(typeof request.headers['x-aftertaste-stop'] === 'string' ? request.headers['x-aftertaste-stop'] : undefined,
+              instanceSignature(control.key, 'stop', challenge))) {
+          response.setHeader('X-Aftertaste-Proof', instanceSignature(control.key, 'proof', challenge));
+          response.once('finish', control.stop);
+          response.writeHead(204).end();
+          return;
+        }
+      }
       if (local && request.method === 'GET' && matches(request.url, entryPath)) {
         if (request.headers['x-aftertaste-session'] === '1') {
           // Keep one protection space per origin so re-entry replaces its cached password.
@@ -66,6 +92,10 @@ session.send();
       }
       if (!local || !session || request.url?.split('?')[0] === '/reader-session') {
         response.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }).end(denied);
+        return;
+      }
+      if (request.method === 'GET' && request.url === '/api/reader-entry' && request.headers['x-aftertaste-entry'] === '1') {
+        response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ ok: true, entryPath }));
         return;
       }
       dispatch(request, response);

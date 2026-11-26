@@ -23,7 +23,7 @@ export async function checkAnonymous(origin, project, build) {
     '/reader-session', '/reader-session?token=wrong', '/missing/private-name', '/api/loops/%xx', '/api/document?bogus=1'];
   const writes = { '/api/bookmarks': 'bookmarks', '/api/notes': 'notes', '/api/understanding-marks': 'understanding-marks',
     '/api/dependency-layout': 'layout', [loop + '/layout']: 'layout' };
-  const message = '请从启动终端打开本次阅读入口。';
+  const message = '请打开本次阅读的私密入口。';
   async function check(route, options) {
     const response = await fetch(origin + route, options);
     assert.equal(response.status, 403, route);

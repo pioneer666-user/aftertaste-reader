@@ -21,6 +21,7 @@ import DependencyDots from './DependencyDots.vue';
 import LoopThumbnail from './LoopThumbnail.vue';
 import { failed, request, requestDocument } from './reader-api.js';
 import ThemePicker from './ThemePicker.vue';
+import ReaderEntryLink from './ReaderEntryLink.vue';
 import { problemText, readLanguage, saveLanguage, translate } from './i18n.js';
 import type { Language } from './i18n.js';
 import { blockLabel } from './markdown.js';
@@ -1070,6 +1071,7 @@ onUnmounted(() => {
         :title="t('refresh')" :disabled="listLoading" @click="refresh(); refreshMarks()">
         <span class="refresh-documents-label">{{ t('refresh') }}</span><span class="refresh-documents-icon" aria-hidden="true"></span>
       </button>
+      <ReaderEntryLink :language="language" />
       <QuickNote ref="quick-note" :editor="notesEditor" :language="language" :visit="visitNoteTarget" />
       <label class="language-control"><span>{{ t('language') }}</span>
         <select :value="language" :aria-label="t('language')" @change="changeLanguage"><option value="zh-CN">简体中文</option><option value="en">English</option></select>

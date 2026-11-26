@@ -10,6 +10,8 @@
 
 ## 分项交付记录
 
+D058 的已批准要求见[讲解 AI 启动本机阅读器与复制入口](../006-file-reader/spec.md#user-story-16---请讲解-ai-打开阅读器-priority-p1)及[生成交付触发](../005-generation-skill/spec.md#functional-requirements)。位置沿用文件块与闭环步骤，本机项目隔离及重启失效沿用 D056。
+
 D057 的新增要求覆盖[讲解资料首次写入前的 Git 可见性选择](../005-generation-skill/spec.md#functional-requirements)，以及[个人记录文件权限](../011-project-notes/contracts/notes.md#个人记录文件权限d057)。实际验证以任务回执为准。
 
 下列记录对应各任务交回时的候选和证据。分项的实际验证及作者试读状态以对应回执为准。

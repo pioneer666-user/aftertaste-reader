@@ -97,13 +97,16 @@ export function isNoteHref(href: string | null | undefined): href is string {
 }
 const mirrorRoot = 'docs/aftertaste/current/';
 
+export function readingLocation(target: NoteTarget): string {
+  return 'loopId' in target ? stepLinkPrefix + target.loopId + '/' + target.stepId :
+    blockLinkPrefix + encodeURIComponent(target.documentPath) + '/' + target.blockId;
+}
+
 export function blockLink(quote: NoteQuote): string {
   // Encode Markdown punctuation and whitespace so the label renders as the original selection.
   const label = quote.text.replace(/[\t\r\n\x20-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]/gu,
     character => `&#${character.charCodeAt(0)};`);
-  const href = 'loopId' in quote ? stepLinkPrefix + quote.loopId + '/' + quote.stepId :
-    blockLinkPrefix + encodeURIComponent(quote.documentPath) + '/' + quote.blockId;
-  return `[${label}](<${href}>)`;
+  return `[${label}](<${readingLocation(quote)}>)`;
 }
 
 export function blockTarget(href: string): NoteTarget | undefined {

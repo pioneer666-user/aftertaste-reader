@@ -12,7 +12,7 @@ import { createLoopReaderProject, git } from '../fixtures/loop-reader.mjs';
 import { checkAnonymous } from '../fixtures/anonymous-reader.mjs';
 import { newQuickNote } from './note-controls.mjs';
 
-const parent = path.join(repository, '.local/D056');
+const parent = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D056');
 await mkdir(parent, { recursive: true });
 const run = await mkdtemp(path.join(parent, 'sessions-'));
 const a = await createLoopReaderProject(path.join(run, 'A'));
@@ -105,7 +105,7 @@ try {
     const fresh = await browser.newPage();
     const denied = await fresh.goto(deep);
     assert.equal(denied.status(), 403);
-    assert.equal(await fresh.locator('body').innerText(), '请从启动终端打开本次阅读入口。');
+    assert.equal(await fresh.locator('body').innerText(), '请打开本次阅读的私密入口。');
     await fresh.close();
 
     const files = await context.newPage();
@@ -120,7 +120,7 @@ try {
     const popup = context.waitForEvent('page');
     await files.getByRole('link', { name: '打开项目 B' }).click();
     const second = await popup;
-    await second.getByText('请从启动终端打开本次阅读入口。', { exact: true }).waitFor();
+    await second.getByText('请打开本次阅读的私密入口。', { exact: true }).waitFor();
     assert.equal((await second.reload()).status(), 403);
     checkingB = false;
     assert.ok(visits > 0);
