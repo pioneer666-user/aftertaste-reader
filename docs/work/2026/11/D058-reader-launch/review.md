@@ -11,3 +11,13 @@
 核对了 run5 安装包 SHA-256 `C2565FE41F41400170F8866F074C5AA35CB41AB0799BA023342C49BD4B64A9B2` 和定向检查 24/24。run5 的 Edge、Chrome 记录覆盖跨浏览器复制文件块和闭环步骤、普通链接拒绝及私密地址退出。该复制测试的首浏览器由测试直接进入。Windows 原生打开成功有 run3 证据，run5 有一次退回链接，真实聊天点击未走通。全量旧测试提前终止。 [定向检查](<D:/project/SpecDev Harness/aftertaste-reader/.local/D058/run5/reader-checks.log>) · [浏览器复制](<D:/project/SpecDev Harness/aftertaste-reader/.local/D058/run5/copy-browser.log>) · [原生打开](<D:/project/SpecDev Harness/aftertaste-reader/.local/D058/run5/native-browser.log>)
 
 审查结束时 HEAD 与候选一致，工作区干净，本轮未启动浏览器或服务。作者试读与本地合并仍按任务单交接。**采集结束，可以恢复写入。**
+
+## R2 · 2026-11-26
+
+**结论：通过。** 复核候选 `82f138d33b6aef8bfcc85e9ca54b4da9376e3c69`，审查 `d8ef377..82f138d` 的控制探测、停止流程、契约和回归。核对 run6 安装包 SHA-256 `F6BE6CA1F4AA9D7CDD9153FF2A0C3653CCED94639ADCE1C4F8A7BE80F8C2E65A`。
+
+**R1 P1 已关闭。** 首次探测超时会返回 `READER_INSTANCE_UNVERIFIED` 并保留实例登记。已核实实例后，只有收到明确不匹配的应答或连接被拒绝，停止流程才删除登记并报告 `stopped`。停止期间持续无法确认时返回 `READER_STOP_FAILED`，恢复后可再次停止。本轮定向检查 25/25，新增回归覆盖首次探测暂停、停止请求及后续探测暂停、恢复后正常停止并删除登记。端口占用、并发复用和原来源与会话保护回归通过。 [实例管理](<D:/project/SpecDev Harness/aftertaste-reader/src/server/reader-instance.ts:67>) · [定向检查](<D:/project/SpecDev Harness/aftertaste-reader/.local/D058/run6/reader-checks.log>)
+
+run6 的 Windows 原生 Chrome 记录覆盖首页、文件块、闭环步骤各打开一次，仅链接模式未打开浏览器。独立 Edge 与 Chrome 记录覆盖私密入口复制、落到同一位置、普通入口对未授权浏览器的拒绝。测试分别验证系统打开与跨浏览器复制，首个复制浏览器由测试直接进入。前一包的真实 DSH Web 聊天中，点击私密入口收到 403，复制后经地址栏等价导航可进入 `d058-order-limits/limit`，地址栏仅保留普通位置。本次修复未触及这些浏览器和会话入口。 [原生打开](<D:/project/SpecDev Harness/aftertaste-reader/.local/D058/run6/native-browser.log>) · [浏览器复制](<D:/project/SpecDev Harness/aftertaste-reader/.local/D058/run6/copy-browser.log>) · [聊天点击](<D:/project/SpecDev Harness/aftertaste-reader/.local/D058/trial/dsh-web/result.json>)
+
+本轮未重跑全量旧测试，未启动浏览器或服务。结束时 HEAD 与候选一致，工作区干净。作者试读与本地合并仍按任务单交接。**采集结束，可以恢复写入。**

@@ -295,8 +295,8 @@
 - [x] T093 [US16] 在 `src/cli/main.ts`、`src/cli/reader-launch.ts`、`src/server/reader-instance.ts` 实现 FR-024 就绪、复用、占用回退及停止。
 - [x] T094 [US16] 在 `src/server/reader-session.ts`、`src/web/ReaderEntryLink.vue` 交付可复制的同位置入口，守住 FR-006。
 - [x] T095 [US16] 在 `skills/aftertaste-reader/`、`README.md` 及 `docs/usage/file-reader.md` 对齐 005 FR-015 的启动和交付触发。
-- [ ] T096 [US16] 在 `tests/integration/reader-launch.test.mjs`、`tests/browser/reader-launch.mjs`、`tests/skills/reader-launch.md` 串行验证 SC-023 和受影响的 SC-022。
-- [ ] T097 [US16] 固定候选，在 `docs/work/2026/11/D058-reader-launch/` 归档独审和回执，交作者试读。
+- [x] T096 [US16] 在 `tests/integration/reader-launch.test.mjs`、`tests/browser/reader-launch.mjs`、`tests/skills/reader-launch.md` 串行验证 SC-023 和受影响的 SC-022。
+- [x] T097 [US16] 固定候选，在 `docs/work/2026/11/D058-reader-launch/` 归档独审和回执，交作者试读。
 - [ ] T098 [US16] 作者接受后按 `docs/development/git.md` 合本地 dev。
 
 ## Dependencies & Execution Order
