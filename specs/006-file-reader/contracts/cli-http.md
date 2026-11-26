@@ -19,6 +19,8 @@ node <产品根>/dist/cli/main.js serve --project <绝对目录> [--port <1..655
 
 启动成功输出一行 JSON，含 `ok:true`、`status:"ready"`、`projectRoot`、`reused`、普通 `location` 及 `browser:"requested"|"failed"|"skipped"`。默认 `open` 将入口交给系统默认浏览器，`requested` 表示系统接受打开请求。终端可见时也输出私密 `url`。仅链接模式或打开失败时，即便调用方重定向输出，仍返回私密 `url`。启动失败沿 CLI 错误格式和退出码，不返回 URL。登记或后台进程不可用分别为 `READER_INSTANCE_UNAVAILABLE` 或 `READER_WORKER_UNAVAILABLE`。停止返回 `stopped` 或 `not-running`，无法完成已确认实例的停止时返回 `READER_STOP_FAILED`。
 
+已有实例探测超时或结果暂不能确认时，打开及停止均返回 `READER_INSTANCE_UNVERIFIED` 并保留登记。停止请求发出后直到确认旧监听已失效才报告 `stopped`；无法确认时保留登记，可重试。
+
 授权页面从同源 `GET /api/reader-entry` 请求入口路径，附 `X-Aftertaste-Entry: 1`；响应不可缓存。加入本页最初的普通位置片段后供读者复制。启动步骤、来源、匿名拒绝和会话过期规则见下。
 
 ## 浏览器会话

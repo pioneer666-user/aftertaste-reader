@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
+import { pathToFileURL } from 'node:url';
 import { checkAnonymous } from '../fixtures/anonymous-reader.mjs';
 import { build } from '../fixtures/dependency-canvas.mjs';
 import { launchFixture } from '../fixtures/reader-launch.mjs';
@@ -122,6 +123,49 @@ test('ignores stale state and occupied ports without sending credentials to thei
     assert.equal(await (await fetch('http://127.0.0.1:' + occupied)).text(), 'unrelated');
   } finally {
     await new Promise(resolve => unrelated.close(resolve));
+  }
+});
+
+test('a temporarily unresponsive instance keeps its registration until a stop is confirmed', async () => {
+  const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
+  const secret = 'e'.repeat(64);
+  const reader = await startReader(a, 0, { key: secret, stop: () => { void reader.server.close(); } });
+  const http = reader.server.server;
+  const handle = http.listeners('request')[0];
+  let availability = 'paused';
+  http.removeListener('request', handle);
+  http.on('request', (req, res) => {
+    if (req.headers['x-aftertaste-challenge']) {
+      if (availability === 'pause-stop' && req.method === 'POST') availability = 'paused';
+      if (availability === 'paused') return;
+    }
+    handle.call(http, req, res);
+  });
+  const database = new DatabaseSync(path.join(fixture.profile, '.aftertaste-reader', 'instances.sqlite'));
+  const read = database.prepare('SELECT port, secret FROM instances_v1 WHERE project = ?');
+  const port = http.address().port;
+  database.prepare('INSERT INTO instances_v1 VALUES (?, ?, ?)').run(a, port, secret);
+  try {
+    await registerEntry(reader.entryUrl);
+    for (const operation of ['stop-reader', 'open-reader']) {
+      const { output, code } = await fixture.command(operation, a);
+      assert.equal(code, 1);
+      assert.equal(output.error.code, 'READER_INSTANCE_UNVERIFIED');
+      assert.equal(read.get(a).port, port);
+    }
+    availability = 'pause-stop';
+    const stopped = await fixture.command('stop-reader', a);
+    assert.equal(stopped.code, 1);
+    assert.equal(stopped.output.error.code, 'READER_STOP_FAILED');
+    assert.equal(read.get(a).port, port);
+    assert.equal((await fetch(reader.entryUrl)).status, 200);
+    assert.equal((await readerFetch(reader.url + '/api/documents')).status, 200);
+    availability = 'healthy';
+    assert.equal(await fixture.stop(a), 'stopped');
+    assert.equal(read.get(a), undefined);
+  } finally {
+    database.close();
+    await reader.server.close();
   }
 });
 

@@ -64,7 +64,9 @@ function validInstance(row: Record<string, unknown> | undefined): row is Instanc
     typeof row.secret === 'string' && /^[a-f0-9]{64}$/u.test(row.secret);
 }
 
-function contact(instance: Instance, stop = false): Promise<boolean> {
+type Contact = 'confirmed' | 'gone' | 'unknown';
+
+function contact(instance: Instance, stop = false): Promise<Contact> {
   const challenge = randomBytes(16).toString('hex');
   const headers: Record<string, string> = { 'X-Aftertaste-Challenge': challenge };
   if (stop) headers['X-Aftertaste-Stop'] = instanceSignature(instance.secret, 'stop', challenge);
@@ -74,23 +76,23 @@ function contact(instance: Instance, stop = false): Promise<boolean> {
       agent: false, headers, signal: AbortSignal.timeout(1500) }, response => {
       response.resume();
       const proof = response.headers['x-aftertaste-proof'];
-      resolve(response.statusCode === (stop ? 204 : 403) &&
-        matches(typeof proof === 'string' ? proof : undefined, instanceSignature(instance.secret, 'proof', challenge)));
+      const confirmed = response.statusCode === (stop ? 204 : 403) &&
+        matches(typeof proof === 'string' ? proof : undefined, instanceSignature(instance.secret, 'proof', challenge));
+      resolve(confirmed ? 'confirmed' : 'gone');
     });
-    call.once('error', () => resolve(false));
+    call.once('error', error => resolve(systemCode(error) === 'ECONNREFUSED' ? 'gone' : 'unknown'));
     call.end();
   });
 }
 
 async function stopInstance(instance: Instance) {
-  const accepted = await contact(instance, true);
   const deadline = Date.now() + 5000;
-  while (await contact(instance)) {
-    if (!accepted || Date.now() >= deadline) {
-      throw new ReaderError('READER_STOP_FAILED', '未能确认阅读服务已停止。', '稍后再次执行 stop-reader。');
-    }
+  await contact(instance, true);
+  while (Date.now() < deadline) {
+    if (await contact(instance) === 'gone') return;
     await delay(50);
   }
+  throw new ReaderError('READER_STOP_FAILED', '未能确认阅读服务已停止。', '稍后再次执行 stop-reader。');
 }
 
 async function manage(operation: InstanceOperation, input: string, port: number): Promise<InstanceReply> {
@@ -106,7 +108,12 @@ async function manage(operation: InstanceOperation, input: string, port: number)
     database.exec('CREATE TABLE IF NOT EXISTS instances_v1 (project TEXT PRIMARY KEY, port INTEGER, secret TEXT)');
     const previous = database.prepare('SELECT port, secret FROM instances_v1 WHERE project = ?').get(projectRoot);
     writingRegistry = false;
-    const running = validInstance(previous) && await contact(previous) ? previous : undefined;
+    const registered = validInstance(previous) ? previous : undefined;
+    const presence = registered ? await contact(registered) : 'gone';
+    if (presence === 'unknown') {
+      throw new ReaderError('READER_INSTANCE_UNVERIFIED', '已有阅读实例暂时无法核实。', '稍后重试。原实例登记已保留。');
+    }
+    const running = presence === 'confirmed' ? registered : undefined;
     if (operation === 'stop-reader') {
       if (running) await stopInstance(running);
       writingRegistry = true;
