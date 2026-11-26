@@ -2,11 +2,12 @@
 
 ## 当前结论与入口
 
-- **已合入本地 dev，建议作为 GitHub 预发行，公开发布待授权。** 最终候选 `992b8613fb208fa66745223ae9c2d635148d8601`，对照 `dev@88bfe50` 与批准任务 `d017c1d`。定稿包已联网干净安装并走通阅读，122 项单元和集成回归通过，R2 独审通过，未发现安装、阅读、源码隐私或数据完整性方面的阻断。
+- **[回味 v0.1.0-alpha.2 已公开预发行](https://github.com/pioneer666-user/aftertaste-reader/releases/tag/v0.1.0-alpha.2)。** 2026-11-26 作者确认「确认公开发布 alpha.2」。通过作者本机 Clash 将已验版本同步至 GitHub 的 `main` 和 `dev`，核实标签指向 `7ded4a277f322fe2e44978cb7e1e2f574205b8ee`。北京时间 15:40 公开后，已匿名打开预发行页，下载两个附件并与本地定稿逐字节核对。公开校验文件所列 SHA-256 与实收安装包相符。
+- 最终产品候选 `992b8613fb208fa66745223ae9c2d635148d8601`，对照 `dev@88bfe50` 与批准任务 `d017c1d`。定稿包已联网干净安装并走通阅读，122 项单元和集成回归通过，R2 独审通过。
 - [安装包](../../../../../.local/D059/rc2/aftertaste-reader-0.1.0-alpha.2.tgz) · [SHA256SUMS.txt](../../../../../.local/D059/rc2/SHA256SUMS.txt) · [README 本地预览](../../../../../.local/D059/rc2/README-preview.html) · [README 原文](../../../../../README.md) · [闭环首图](../../../../../docs/usage/assets/alpha2-bookmark-loop.png) · [源码对照图](../../../../../docs/usage/assets/alpha2-bookmark-source.png)
 - SHA-256 `8244c2ce281c95bae869df564ad9a6459c94b7d8bc35040227522d4141af4b6b`，2,296,085 字节。安装后逐文件核对 305 个归档成员，全部与包一致。早期 PowerShell 输出的 CRLF 使 Git 的 `sha256sum -c` 误把行末字符当成文件名，最终校验文件用 ASCII 和 LF，实际执行校验返回 OK。[校验日志](../../../../../.local/D059/rc2/checksum-verification.log)
 - 2026-11-26，作者在当前会话回复「合并到dev」，授权本地整合。README 两张图在正文宽度下的观感、分岔讲解和画布排布仍可试读。愿意亲自排布时，可拖动试读画布中的卡片和图例、调整视野，待界面显示布局已保存后把结果交回重拍。
-- 本地合并提交 `de661418508645bc9b9ef312eab86220e741e7ef`，两个父提交为 `88bfe50` 和 `fd5df41`。合并树与任务分支尖端一致，沿用候选的自测和独审。确认任务提交均已进入 `dev` 后，以 `git branch -d` 删除本地 `codex/release-alpha-2`。`main` 的公开版本仍为 alpha.1，推送、打标签和发布待授权。
+- 本地合并提交 `de661418508645bc9b9ef312eab86220e741e7ef`，两个父提交为 `88bfe50` 和 `fd5df41`。合并树与任务分支尖端一致，沿用候选的自测和独审。确认任务提交均已进入 `dev` 后，以 `git branch -d` 删除本地 `codex/release-alpha-2`。
 
 ## 依据与验证
 
