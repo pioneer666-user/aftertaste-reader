@@ -58,9 +58,19 @@
 - [x] T014 完成 docs/usage/generation-skill.md 和 specs/005-generation-skill/quickstart.md 的真实步骤，归档 sample/README.md、完整讲解、图／方向和校验摘要，以 tests/skills/generation-sample.test.mjs 在重建来源上复核（FR-008、009、SC-004）
 - [x] T015 固定候选并派独立审查，保存 docs/work/2026/11/D010-generation-skill/review.md 原文，处理问题复核并交 handoff.md（FR-009）
 
+## Phase 7: User Story 2 增量 · 写入前 Git 可见性（D057）
+
+**Independent Test** 用安装包在隔离 Git 仓和用户配置中复跑首次与混合可见性。
+
+- [x] T016 [US2] 由 `src/cli/main.ts` 接入 `src/adapters/project-privacy.ts` 的 Git 分类、本机忽略、记住及撤销（FR-013、FR-014）。
+- [x] T017 [US2] 连接 `skills/aftertaste-reader/references/tools.md` 与四条写入流程，按 `tests/skills/project-privacy.md` 留实际提示及 Git 前后状态（SC-009）。
+- [ ] T018 [US2] 修复 `src/adapters/personal-file.ts` 共用权限保持，串行运行 `tests/integration/personal-access.test.mjs` 及原有回归，保存 D057 回执和独审。
+
 ## Dependencies & Execution Order
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的边界在 US1 实测前同时写入，保护作为所有写入的前提。T007、T009、T012 可用少量组合场景串行覆盖。
+
+D057 的两条实现路径交互独立。T016 的工具结果先于 T017 的安装包行为实测。T018 的权限用例与全仓回归串行，归档前合看三条证据并派独审。
 
 ### Parallel Opportunities
 

@@ -17,3 +17,8 @@
 先实际核 current 与图版本，再登记本批节点，逐篇 create → 填正文 → validate。随后提交明确使用者的完整依赖并 validate-graph。超大警告告知用户，空正文阻止将该篇计作完成，Git 或结构失败如实保留进度。已完成文档复用，DOCUMENT_EXISTS 按保护边界处理。
 
 交付列实际文档入口、固定源码路径／提交／行范围、警告、未完成与未核对部分，方向每批检查。逐批交付后等待，连续生成在范围内继续。模板初始化与反馈维护沿 data-model，既有文档和版本冲突停止依赖写入。
+## D057 Git 可见性调用
+
+`project-privacy --project <绝对项目路径> --action <check|ignore|remember|forget>`。`check` 和 `ignore` 从 UTF-8 stdin 取 `docs/aftertaste/` 下的具体文件路径数组。返回 `result.files`，含项目及仓库相对路径和状态，`check` 同时返回本机许可是否覆盖。状态文件不可读取时无有效许可，`stateIssue` 可用于诊断。
+
+`ignore` 仅追加未忽略文件的路径规则到本仓 `.git/info/exclude`，保留原规则并返回复查结果。调用方先取得授权。仍可见时由读者决定下一步。 `remember` 接收含 `path` 与 `status`（`unignored` 或 `tracked`）的数组，状态变化则拒绝保存。 `forget` 无需输入，清掉当前项目许可。Git 检查失败或状态写入失败返回 `PRIVACY_CHECK_FAILED`，参数错误返回 `INVALID_ARGUMENT`。调用顺序见[随包工具说明](../../../skills/aftertaste-reader/references/tools.md#project-privacy)。

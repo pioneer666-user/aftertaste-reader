@@ -10,6 +10,8 @@
 
 ## 分项交付记录
 
+D057 的新增要求覆盖[讲解资料首次写入前的 Git 可见性选择](../005-generation-skill/spec.md#functional-requirements)，以及[个人记录文件权限](../011-project-notes/contracts/notes.md#个人记录文件权限d057)。实际验证以任务回执为准。
+
 下列记录对应各任务交回时的候选和证据。分项的实际验证及作者试读状态以对应回执为准。
 
 D010 于 2026-11-17 落实普通分批生成的 [Skill 入口](../../skills/aftertaste-reader/SKILL.md)、[005 规格](../005-generation-skill/spec.md) 和教学资料路径 `docs/aftertaste/preferences.md`、`reading-direction.md`。U74／U75 的唯一产品模板在 Skill 的 assets/templates，读写规则见 [005 模型](../005-generation-skill/data-model.md)。能力、实测与作者试读状态见 [D010 回执](../../docs/work/2026/11/D010-generation-skill/handoff.md)。其他分支按后续任务接入。

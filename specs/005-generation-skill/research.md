@@ -36,3 +36,7 @@
 - **Decision** 沿已有项目 Markdown 偏好保存用户选择，在两个生成入口调用同一讲解方法。
 - **Rationale** 讲法须结合用户表达与真实源码判断。旧偏好可直接读，CLI 继续负责现有的固定取源与校验。
 - **Alternatives considered** 独立设置文件会增加两处读写和冲突处理。会话内保存无法跨会话读回。
+## D057 增量研究
+
+- **决定** 使用 Git 的索引和 `check-ignore`，把未创建的具体路径交给真实忽略引擎。**依据** 仓库规则、反选和外部规则具有优先级，索引中已有的文件须先判定。**比较** 自行解析规则容易与 Git 行为分歧。[Git 忽略规范](https://git-scm.com/docs/gitignore)
+- **决定** Windows 使用带安全描述符的同目录创建，再在同一个独占句柄核验 ACL 并写正文。POSIX 在文件受保护时准备权限，再写正文。**依据** 普通临时文件继承宽松父目录权限会扩大可读范围。**比较** 写完后 chmod 或改 ACL 无法收回写入时的可见性；Windows POSIX 位也不能表达 DACL。[FileStream 创建时的访问控制](https://learn.microsoft.com/en-us/dotnet/api/system.io.filestream.-ctor?view=netframework-4.8)

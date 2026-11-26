@@ -12,6 +12,8 @@
 
 ## User Scenarios & Testing
 
+**D057 写入前确认** 制作和修订闭环沿 [005 FR-013、FR-014](../005-generation-skill/spec.md#functional-requirements) 核实际文件及许可。重读已有闭环保持只读。
+
 ### User Story 1 · 选一条路线并走完（P1）
 
 读者提出一个业务问题，得到可以从已有讲解走到结果的路线，选定后收到跨文件串讲。

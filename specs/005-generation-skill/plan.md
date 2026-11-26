@@ -6,6 +6,8 @@
 
 ## Summary
 
+**D057 增量**（`codex/fix-project-data-privacy`，批准 `e6ce8b5`，FR-013、FR-014、SC-009）。Skill 在首次写入前连接新增的 `project-privacy` CLI。CLI 按用户 Git 规则读取索引与忽略判断，固定源码仍使用独立环境。许可文件只驻留于仓外用户状态目录。笔记、书签、自评共用保存权限修复，要求沿三项原契约。
+
 **D050 增量** `teaching.md` 共用三档定义、第二档内置起始讲法和对话停等条件。`feedback.md` 沿已有写入边界维护同一偏好文件的当前讲法。`generation.md` 按源码顺序讲运行，闭环按路线回答原因。CLI 调用保持原协议。按安装包实际对话验证，见 [行为检查](../../tests/skills/generation.md#项目讲法)。
 
 **D046 增量** 共用 teaching 指南在目标块说明取值、条件、具体实现与结果，沿用已有偏好和固定源码规则。
@@ -32,6 +34,8 @@
 
 **Scale/Scope**: 普通文件新生成，逐批与连续两个节奏。无服务、页面、解析器或通用代理框架。
 
+**D057 技术变更** TypeScript CLI 和 Node 文件适配。复用系统 Git、Windows 自带 PowerShell/.NET 文件 ACL、Linux GNU cp 的 ACL 保留及 macOS 的平台工具。资料位置与 JSON 保持原样。使用隔离安装包、Git 配置、NTFS 与 POSIX 项目验证。
+
 ## Constitution Check
 
 | 原则 | Phase 0 前检查 | Phase 1 后检查 |
@@ -45,6 +49,8 @@
 两次门禁均无冲突。官方路径脚本的 BRANCH 是功能目录名，真实 Git 分支以 `git branch --show-current` 核验。每阶段前后检查 hooks，当前不存在 extensions.yml。
 
 D050 沿批准的三种讲法，写入限于经确认的目标项目 Markdown。共用单一方法和偏好，固定来源及 CLI 校验由已有实现担任。验证区分真实会话、机械读回、独审和作者试读。沿现有方案结构增量维护。
+
+D057 依据 I 将可见性取舍交还读者。依据 II 将实际索引检查与固定取源隔离，许可仓外存放，权限不明时拒绝替换。依据 III 共用 Skill 规则、CLI 和个人文件适配。依据 IV 在隔离项目留实际对话、权限及回归证据并独审。依据 V 沿现有栏目增量维护研究、模型、契约与任务。
 
 ## Project Structure
 
@@ -84,6 +90,8 @@ docs/work/2026/11/D010-generation-skill/
 ```
 
 **Structure Decision**: 沿目录规范分离产品原件、合成 fixture、可再生成沙盒和正式证据。源码工具未暴露必要缺口时保持原实现。
+
+D057 新增 `src/adapters/project-privacy.ts` 和 `src/adapters/personal-access.ts`，接入既有 CLI 与 PersonalFile。产品指南仍由 `skills/aftertaste-reader/references/tools.md` 给出单一操作入口。检查见 `tests/integration/project-privacy.test.mjs`、`tests/integration/personal-access.test.mjs` 与 `tests/skills/project-privacy.md`。
 
 ## Complexity Tracking
 
