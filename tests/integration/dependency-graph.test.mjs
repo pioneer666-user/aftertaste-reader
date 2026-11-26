@@ -6,6 +6,7 @@ import * as application from '../../dist/application/dependency-graph.js';
 import { FixedSourceService } from '../../dist/application/fixed-source.js';
 import { GitSourceRepository } from '../../dist/adapters/git-source.js';
 import { GraphFileStore } from '../../dist/adapters/graph-store.js';
+import { temporaryFilePath } from '../../dist/core/project-write-paths.js';
 import { createGraphFixture, cli, inputFile, update, review, graphPath, graphFormat, sourceText } from '../fixtures/dependency-graph.mjs';
 import { git } from '../fixtures/fixed-source.mjs';
 
@@ -260,11 +261,8 @@ test('存储失败注入：部分写/link/rename/碰撞保持旧图及无关文�
   assert.equal(await readFile(conflict, 'utf8'), 'pre-existing temporary');
   assert.equal(await readFile(asset, 'utf8'), 'asset');
   assert.equal(await normal.read(f.projectRoot), raw);
-  const staging = path.join(f.repositoryRoot, '.git', 'aftertaste-staging');
-  assert.equal(path.dirname(conflict), staging);
-  assert.deepEqual(await readdir(staging), [path.basename(conflict)]);
-  assert.deepEqual((await readdir(parent)).sort(), ['dependency-graph.json', 'notes.json']);
-  assert.doesNotMatch(git(f.repositoryRoot, ['ls-files', '--others', '--exclude-standard']), /aftertaste-staging|graph-.*\.tmp/u);
+  assert.equal(conflict, path.join(f.projectRoot, temporaryFilePath(graphPath)));
+  assert.deepEqual((await readdir(parent)).sort(), [path.basename(conflict), 'dependency-graph.json', 'notes.json'].sort());
 });
 
 test('发布后清理失败报告目标已更新，旧图变化不覆盖', async () => {
@@ -281,8 +279,13 @@ test('发布后清理失败报告目标已更新，旧图变化不覆盖', async
   });
   assert.equal(await readFile(target(f), 'utf8'), raw);
   assert.equal(await readFile(temporary, 'utf8'), raw);
-  assert.equal(path.dirname(temporary), path.join(f.repositoryRoot, '.git', 'aftertaste-staging'));
-  assert.doesNotMatch(git(f.repositoryRoot, ['ls-files', '--others', '--exclude-standard']), /dependency-graph\.json|graph-.*\.tmp/u);
+  const temporaryPath = temporaryFilePath(graphPath);
+  assert.equal(temporary, path.join(f.projectRoot, temporaryPath));
+  const untracked = () => git(f.repositoryRoot, ['ls-files', '--others', '--exclude-standard']);
+  assert.doesNotMatch(untracked(), /dependency-graph\.json/u);
+  assert.ok(untracked().includes(path.basename(temporary)));
+  await appendFile(path.join(f.repositoryRoot, '.git', 'info', 'exclude'), `\n/${f.projectPrefix}/${temporaryPath}\n`);
+  assert.ok(!untracked().includes(path.basename(temporary)));
   // The retained hard link must be explicitly removed before the next normal operation.
   await unlink(temporary);
   const normal = new GraphFileStore();

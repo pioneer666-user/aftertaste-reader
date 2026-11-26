@@ -6,6 +6,8 @@ import path from 'node:path';
 import { SourceError, validateProjectRoot } from '../application/fixed-source.js';
 import type { ProjectMapping } from '../application/fixed-source.js';
 import { isSourcePath } from '../core/source-path.js';
+import { isLoopId } from '../core/loops.js';
+import { temporaryFilePath, temporaryLoopDirectory } from '../core/project-write-paths.js';
 import { dataDirectory, systemCode } from './data-directory.js';
 import { GitSourceRepository } from './git-source.js';
 
@@ -27,6 +29,16 @@ function isDataPath(value: unknown): value is string {
 function isGrant(value: unknown): value is Grant {
   return typeof value === 'object' && value !== null && 'path' in value && isDataPath(value.path) &&
     'status' in value && (value.status === 'unignored' || value.status === 'tracked');
+}
+
+function writePaths(value: unknown): { file: string; temporary?: string } {
+  if (isDataPath(value)) return { file: value };
+  if (typeof value === 'object' && value !== null && 'path' in value && isDataPath(value.path) && 'staging' in value) {
+    if (value.staging === 'file') return { file: value.path, temporary: temporaryFilePath(value.path) };
+    const id = /^docs\/aftertaste\/loops\/([^/]+)\/current\/loop\.json$/u.exec(value.path)?.[1];
+    if (value.staging === 'loop' && isLoopId(id)) return { file: value.path, temporary: temporaryLoopDirectory(id) + '/current/loop.json' };
+  }
+  throw invalid('写入计划需要项目相对文件路径及 file 或 loop 暂存方式。');
 }
 
 const repoOverrides = new Set(['GIT_PREFIX', 'GIT_INTERNAL_SUPER_PREFIX', 'GIT_LITERAL_PATHSPECS', 'GIT_GLOB_PATHSPECS',
@@ -209,7 +221,13 @@ export async function projectPrivacy(projectRoot: string, action: string, payloa
     }
     const items = Array.isArray(payload) ? payload as unknown[] : [];
     const grants = action === 'remember' && items.every(isGrant) ? items as Grant[] : undefined;
-    const paths: unknown[] = grants ? grants.map(grant => grant.path) : items;
+    const temporaryFor = new Map<string, string>();
+    const paths: unknown[] = action === 'check' ? items.flatMap(item => {
+      const write = writePaths(item);
+      if (!write.temporary) return [write.file];
+      temporaryFor.set(write.temporary, write.file);
+      return [write.file, write.temporary];
+    }) : grants ? grants.map(grant => grant.path) : items;
     if (!paths.length || !paths.every(isDataPath) || new Set(paths).size !== paths.length || (action === 'remember' && !grants)) {
       throw invalid('需提供非空、不重复的资料文件路径；记住许可时须带实际 Git 状态。');
     }
@@ -250,7 +268,7 @@ export async function projectPrivacy(projectRoot: string, action: string, payloa
     const approvals = new Map(saved.map(grant => [grant.path, grant.status]));
     return { ...project, stateIssue, files: files.map(file => {
       const approved = approvals.get(file.path);
-      return { ...file, remembered: file.status !== 'ignored' && approved !== undefined &&
+      return { ...file, temporaryFor: temporaryFor.get(file.path), remembered: file.status !== 'ignored' && approved !== undefined &&
         visibility.indexOf(approved) >= visibility.indexOf(file.status) };
     }) };
   } catch (error) {

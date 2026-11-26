@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { chmod, mkdir, mkdtemp, readdir, readFile, stat, unlink } from 'node:fs/promises';
+import { chmod, link, mkdir, mkdtemp, open, readdir, readFile, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
@@ -23,6 +23,7 @@ function windowsAcl(target, action) {
     $me=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
     switch ($env:D057_ACL_TEST_ACTION) {
       'parent' { $acl.SetSecurityDescriptorSddlForm("D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;$me)(A;OICI;FR;;;WD)", 'Access') }
+      'restricted-parent' { $acl.SetSecurityDescriptorSddlForm("D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;$me)", 'Access') }
       'private' { $acl.SetSecurityDescriptorSddlForm("D:P(A;;FA;;;SY)(A;;FA;;;$me)", 'Access') }
       'shared' { $acl.SetSecurityDescriptorSddlForm("D:P(A;;FA;;;SY)(A;;FA;;;$me)(A;;FR;;;BG)", 'Access') }
       'read' {}
@@ -131,4 +132,40 @@ test('reader preserves private and explicitly shared access for notes, bookmarks
   assert.deepEqual(await permissions(notePath), oldPermissions);
   assert.equal((await readdir(directory)).some(file => file.endsWith('.tmp')), false);
   t.diagnostic('conflict leaves file bytes and permissions intact and removes the candidate');
+});
+
+test('lesson staging and publication inherit the destination directory', async () => {
+  await mkdir(runRoot, { recursive: true });
+  const project = await mkdtemp(path.join(runRoot, 'lesson-access-'));
+  execFileSync('git', ['-C', project, 'init', '-q'], { windowsHide: true });
+  const gitDir = path.join(project, '.git');
+  const relative = 'docs/aftertaste/current/lesson.js.md';
+  const target = path.join(project, relative);
+  const directory = path.dirname(target);
+  await mkdir(directory, { recursive: true });
+  if (windows) {
+    windowsAcl(gitDir, 'parent');
+    windowsAcl(directory, 'restricted-parent');
+    assert.match(await permissions(gitDir), /;;;WD\)/u);
+  } else {
+    await chmod(gitDir, 0o755);
+    await chmod(directory, 0o2700);
+  }
+  const build = path.resolve(repository, process.env.AFTERTASTE_BUILD ?? 'dist');
+  const { DocumentFileStore } = await import(pathToFileURL(path.join(build, 'adapters/document-store.js')));
+  const { temporaryFilePath } = await import(pathToFileURL(path.join(build, 'core/project-write-paths.js')));
+  let stagedPermissions;
+  const store = new DocumentFileStore({ open, async link(temporary, final) {
+    assert.equal(temporary, path.join(project, temporaryFilePath(relative)));
+    assert.equal(path.dirname(temporary), directory);
+    assert.equal(await readFile(temporary, 'utf8'), 'synthetic lesson');
+    stagedPermissions = await permissions(temporary);
+    if (windows) assert.doesNotMatch(stagedPermissions, /;;;WD\)/u);
+    else assert.equal((await stat(directory)).mode & 0o2777, 0o2700);
+    await link(temporary, final);
+  } });
+  await store.create(project, relative, 'synthetic lesson');
+  assert.equal(await readFile(target, 'utf8'), 'synthetic lesson');
+  assert.deepEqual(await permissions(target), stagedPermissions);
+  assert.deepEqual(await readdir(directory), [path.basename(target)]);
 });

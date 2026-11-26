@@ -4,6 +4,7 @@ import { copyFile, mkdir, mkdtemp, readFile, readdir, stat, unlink, writeFile } 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { temporaryFilePath, temporaryLoopDirectory } from '../../dist/core/project-write-paths.js';
 
 const defaultCli = fileURLToPath(new URL('../../dist/cli/main.js', import.meta.url));
 const runRoot = fileURLToPath(new URL('../../.local/D057/', import.meta.url));
@@ -87,6 +88,15 @@ test('project privacy uses Git index and live excludes, with repository and subp
   await writeFile(path.join(project, receipt), '移除历史');
   assert.deepEqual(cli(project, 'ignore', [graph]).result.files.map(file => file.status), ['ignored']);
   assert.deepEqual(check(project, [graph, receipt]), [['ignored', false], ['unignored', false]]);
+  const loop = docDir + 'loops/order/current/loop.json';
+  const plan = [{ path: graph, staging: 'file' }, { path: receipt, staging: 'file' }, { path: loop, staging: 'loop' }];
+  const planned = cli(project, 'check', plan).result.files;
+  assert.deepEqual(planned.filter(file => file.temporaryFor).map(({ path, temporaryFor, status }) => [path, temporaryFor, status]),
+    [[temporaryFilePath(graph), graph, 'unignored'], [temporaryFilePath(receipt), receipt, 'unignored'],
+      [temporaryLoopDirectory('order') + '/current/loop.json', loop, 'unignored']]);
+  const plannedPaths = planned.map(file => file.path);
+  assert.ok(cli(project, 'ignore', plannedPaths).result.files.every(file => file.status === 'ignored'));
+  assert.ok(cli(project, 'check', plan).result.files.every(file => file.status === 'ignored'));
   assert.equal(cli(project, 'remember', [{ path: tracked, status: 'unignored' }]).error.context.reason, 'VISIBILITY_CHANGED');
   const ignored = cli(project, 'ignore', [first, exception, tracked]);
   assert.deepEqual(ignored.result.files.map(file => file.status), ['ignored', 'unignored', 'tracked']);

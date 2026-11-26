@@ -1,11 +1,11 @@
-import { lstat, mkdir, mkdtemp, open, readFile, readdir, realpath, rename, rmdir, unlink } from 'node:fs/promises';
+import { lstat, mkdir, open, readFile, readdir, realpath, rename, rmdir, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
 import { validateProjectRoot, SourceError } from '../application/fixed-source.js';
 import type { LoopStore } from '../application/loops.js';
 import { isLoopId, LoopError } from '../core/loops.js';
 import { dataDirectory, systemCode } from './data-directory.js';
-import { gitStaging } from './git-staging.js';
+import { temporaryLoopDirectory } from '../core/project-write-paths.js';
 
 const directory = ['docs', 'aftertaste', 'loops'];
 const artifact = 'loop.json';
@@ -71,7 +71,14 @@ export class LoopFileStore implements LoopStore {
       const parent = await dataDirectory(projectRoot, directory, true, unsafePath);
       const target = path.join(parent, id);
       await requireUnused(target, projectRoot, loopPath);
-      staging = await mkdtemp(path.join(await gitStaging(projectRoot, parent), 'loop-'));
+      const candidate = path.join(parent, path.posix.basename(temporaryLoopDirectory(id)));
+      try { await mkdir(candidate, { mode: 0o700 }); }
+      catch (error) {
+        if (systemCode(error) !== 'EEXIST') throw error;
+        throw new LoopError('LOOP_EXISTS', '该闭环 ID 有正在使用或遗留的暂存目录。',
+          '核对成品与暂存；确认没有进行中的制作后再处理遗留目录。', { projectRoot, loopPath, staging: candidate });
+      }
+      staging = candidate;
       const current = path.join(staging, 'current');
       await mkdir(current);
       const handle = await open(path.join(current, artifact), 'wx');

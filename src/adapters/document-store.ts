@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { lstat, readFile, open, link, unlink } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 import path from 'node:path';
@@ -8,7 +7,7 @@ import { sourcePathForDocument } from '../application/document-blocks.js';
 import { validateProjectRoot, SourceError } from '../application/fixed-source.js';
 import { DocumentError } from '../core/document-blocks.js';
 import { dataDirectory, systemCode } from './data-directory.js';
-import { gitStaging } from './git-staging.js';
+import { temporaryFilePath } from '../core/project-write-paths.js';
 
 function unsafe(projectRoot: string, documentPath: string): DocumentError {
   return new DocumentError('DOCUMENT_PATH_UNSAFE', '文档路径包含链接或非普通目录/文件。', '使用指定项目中无链接的真实资料目录。', { projectRoot, documentPath });
@@ -41,7 +40,7 @@ export class DocumentFileStore implements DocumentStore {
     let published = false;
     try {
       const target = await targetPath(projectRoot, documentPath, true);
-      const candidate = path.join(await gitStaging(projectRoot, path.dirname(target)), `document-${randomUUID()}.tmp`);
+      const candidate = path.join(path.dirname(target), path.posix.basename(temporaryFilePath(documentPath)));
       handle = await this.io.open(candidate, 'wx');
       temporary = candidate;
       await handle.writeFile(raw, 'utf8');
