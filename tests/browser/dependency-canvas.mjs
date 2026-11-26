@@ -1,3 +1,4 @@
+import { registerEntry, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
@@ -25,7 +26,7 @@ async function readyProcess(command, args, pattern, extra = {}) {
     const line = await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error(`Start timed out: ${stderr}`)), 15000);
       proc.once('error', error => { clearTimeout(timer); reject(error); });
-      proc.once('exit', code => { clearTimeout(timer); reject(new Error(`Process exited ${code}: ${stdout} ${stderr}`)); });
+      proc.once('exit', code => { clearTimeout(timer); reject(new Error(`Process exited ${code}: ${stderr}`)); });
       proc.stderr.on('data', chunk => { stderr += chunk; });
       proc.stdout.on('data', chunk => {
         stdout += chunk;
@@ -45,7 +46,7 @@ async function start() {
     [cli, 'serve', '--project', fixture.projectRoot, '--port', port], /"status":"ready"/u);
   child = proc;
   report.serverPids.push(proc.pid);
-  return JSON.parse(line).url;
+  return registerEntry(JSON.parse(line).url);
 }
 
 async function stop() {
@@ -64,7 +65,7 @@ async function open(url) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
   page = await context.newPage();
   page.on('pageerror', error => problems.push(error.message));
-  await page.goto(url);
+  await openReader(page, url);
   await page.getByRole('button', { name: '文件依赖图', exact: true }).click({ timeout: 5000 });
   await node(service).waitFor();
 }
@@ -240,7 +241,7 @@ try {
   const ack = new Promise(resolve => { releaseAck = resolve; });
   const onDisk = new Promise(resolve => { reachedDisk = resolve; });
   await page.route('**/api/dependency-layout', async route => {
-    const response = await route.fetch();
+    const response = await fetchReaderRoute(route);
     reachedDisk();
     await ack;
     await route.fulfill({ response });
@@ -259,7 +260,7 @@ try {
   const delayed = await saved();
   assert.ok(delayed.viewport.zoom > report.checks.delayedAcknowledgement.zoom);
   await page.route('**/api/dependency-layout', async route => {
-    const response = await route.fetch();
+    const response = await fetchReaderRoute(route);
     assert.equal(response.status(), 200);
     await route.abort('failed');
   }, { times: 1 });
@@ -312,7 +313,7 @@ try {
   }
 
   const stale = await browser.newPage();
-  await stale.goto(url);
+  await openReader(stale, url);
   await stale.getByRole('button', { name: '文件依赖图', exact: true }).click();
   await dependencySaved(stale);
   await page.getByRole('button', { name: '缩小画布' }).click();

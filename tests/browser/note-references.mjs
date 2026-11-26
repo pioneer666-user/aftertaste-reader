@@ -1,7 +1,7 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { createLoopReaderProject } from '../fixtures/loop-reader.mjs';
@@ -18,8 +18,7 @@ else {
 const file = path.join(project, 'docs/aftertaste/notes.json');
 const disk = async () => JSON.parse(await readFile(file, 'utf8')).notes;
 const original = await disk();
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 const report = { build, run, checks: [], errors: [] };
 let browser;
 try {
@@ -28,7 +27,7 @@ try {
   const page = await context.newPage();
   page.setDefaultTimeout(6000);
   page.on('pageerror', error => report.errors.push(error.message));
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   await page.locator('#reader-navigation button[title="src/service.mjs"]').click();
   const text = '服务随后忽略这个返回值';
   const para = page.locator('#zhidif44 .explanation-text p').filter({ hasText: text });
@@ -234,7 +233,7 @@ try {
   await context.close();
   const touch = await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true, isMobile: true });
   const mobile = await touch.newPage();
-  await mobile.goto(reader.url);
+  await openReader(mobile, reader.url);
   await mobile.locator('.new-note').tap();
   const mobilePanel = mobile.locator('#quick-note'), handle = mobilePanel.locator('.quick-resize');
   await mobilePanel.locator('.quick-list button').first().waitFor();

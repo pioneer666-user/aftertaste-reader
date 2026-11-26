@@ -1,18 +1,16 @@
+import { startTestReader, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdir, mkdtemp, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { createBookmarkProject, rulesPath, servicePath, sharedBlockId } from '../fixtures/bookmark-project.mjs';
 
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
 assert.ok(['edge', 'chrome', 'firefox'].includes(engine));
-const serverModule = process.argv[2] ? pathToFileURL(path.resolve(process.argv[2], 'server/reader.js')) :
-  new URL('../../dist/server/reader.js', import.meta.url);
-const { startReader } = await import(serverModule.href);
 const root = fileURLToPath(new URL(`../../.local/${process.env.AFTERTASTE_TEST_TASK ?? 'D021'}/`, import.meta.url));
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, `${engine}-`));
@@ -53,11 +51,11 @@ async function selectFile(source, target = page) {
 }
 
 async function start() {
-  reader = await startReader(fixture.projectRoot, 0);
+  reader = await startTestReader(fixture.projectRoot, 0, process.argv[2]);
   context = await browser.newContext({ viewport: { width: 1200, height: 720 } });
   page = await context.newPage();
   page.on('pageerror', error => evidence.errors.push(error.message));
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
 }
 
 async function restart() {
@@ -181,7 +179,7 @@ try {
   evidence.checks.push('two block types, independent state and annotation, reopens, keyboard focus and filtering');
 
   const second = await context.newPage();
-  await second.goto(reader.url);
+  await openReader(second, reader.url);
   await selectFile('src/rules.mjs', second);
   await openAnnotation(second);
   await saveAnnotation('另一页已经修改', page);
@@ -214,7 +212,7 @@ try {
     const annotation = block().locator('[data-kind=mark]');
     await page.route('**/api/understanding-marks', async route => {
       if (route.request().method() !== 'PUT') return route.continue();
-      const response = await route.fetch();
+      const response = await fetchReaderRoute(route);
       await release.promise;
       await route.fulfill({ response });
     });

@@ -1,3 +1,4 @@
+import { startTestReader, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -8,7 +9,6 @@ import { GraphFileStore } from '../../dist/adapters/graph-store.js';
 import { GraphService } from '../../dist/application/dependency-graph.js';
 import { GitSourceRepository } from '../../dist/adapters/git-source.js';
 import { FixedSourceService } from '../../dist/application/fixed-source.js';
-import { startReader } from '../../dist/server/reader.js';
 import { applyGraphUpdate, cli, repository } from '../fixtures/dependency-canvas.mjs';
 import { api, audit, createLegendProject, legendId, readJSON, rules, service, standardLegend, thirdPartyLegend,
   updatedDescription, writeJSON } from '../fixtures/dependency-legends.mjs';
@@ -24,10 +24,10 @@ function result(project, command, ...args) {
   assert.equal(status, 0, stderr);
   return JSON.parse(stdout).result;
 }
-const canvas = url => fetch(url + '/api/dependency-canvas').then(response => response.json());
+const canvas = url => readerFetch(url + '/api/dependency-canvas').then(response => response.json());
 const payload = state => ({ graphVersion: state.graphVersion, expectedRevision: state.revision, revision: randomUUID(),
   layout: { ...state.layout, positions: Object.entries(state.layout.positions) } });
-const put = (url, body, route = '/api/dependency-layout') => fetch(url + route, {
+const put = (url, body, route = '/api/dependency-layout') => readerFetch(url + route, {
   method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Aftertaste-Layout': '1' }, body: JSON.stringify(body),
 });
 
@@ -88,7 +88,7 @@ test('正式 CLI 管理和校验库图例，重复提交、无效关联和文件
 
 test('真实 HTTP 仅写布局，暂缺和坏图保全原件，正式删除和重加拒绝旧快照', async () => {
   const project = await fixture('http');
-  const reader = await startReader(project.projectRoot, 0);
+  const reader = await startTestReader(project.projectRoot, 0);
   try {
     const first = await canvas(reader.url);
     const legacy = await readJSON(project.layout);
@@ -169,7 +169,7 @@ test('真实 HTTP 仅写布局，暂缺和坏图保全原件，正式删除和�
 test('库图例移除的图发布中途失败时还原凭据，正常 CLI 重试后清理落盘', async () => {
   const project = await fixture('publication');
   await applyGraphUpdate(project, { legendUpserts: [standardLegend], remove: [service] });
-  const reader = await startReader(project.projectRoot, 0);
+  const reader = await startTestReader(project.projectRoot, 0);
   try {
     const added = await canvas(reader.url);
     assert.equal((await put(reader.url, payload(added))).status, 200);

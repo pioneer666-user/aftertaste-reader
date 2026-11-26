@@ -1,13 +1,12 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { api, audit, rules, service, readJSON, writeJSON } from '../fixtures/dependency-legends.mjs';
 import { createRoutingProject, routeId } from '../fixtures/canvas-routing.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D049/self');
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'routing-'));
@@ -19,7 +18,7 @@ const beforeOnly = process.argv.includes('--before');
 const report = { build, channel, beforeOnly, checks: [], errors: [] };
 let reader, browser;
 try {
-  reader = await startReader(project, 0);
+  reader = await startTestReader(project, 0);
   browser = await (channel === 'firefox' ? firefox.launch() : chromium.launch({ channel: channel === 'edge' ? 'msedge' : channel }));
   report.version = browser.version();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -35,7 +34,7 @@ try {
     const hash = loop ? '#aftertaste-loop/' + routeId + '/choose' : '#canvas-reading';
     // A fresh navigation exercises the reader's startup deep link for each graph.
     await page.goto('about:blank');
-    await page.goto(reader.url + '/' + hash);
+    await openReader(page, reader.url + '/' + hash);
     const scope = page.locator(loop ? '.loop-canvas:visible' : '.dependency-canvas:visible');
     const node = key => scope.locator(key.startsWith('legend:') ? '[data-legend="' + key.slice(7) + '"]'
       : '[' + (loop ? 'data-step' : 'data-file') + '="' + key + '"]');

@@ -1,9 +1,9 @@
+import { startTestReader, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { startReader } from '../../dist/server/reader.js';
 import { createLoopReaderProject, explanationFile, git } from '../fixtures/loop-reader.mjs';
 
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
@@ -80,7 +80,7 @@ async function tabTo(target, key = 'Tab') {
 }
 
 try {
-  reader = await startReader(fixture.projectRoot, 0);
+  reader = await startTestReader(fixture.projectRoot, 0);
   page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
   page.on('pageerror', error => report.errors.push(error.message));
   const button = (name, scope = page) => scope.getByRole('button', { name, exact: true });
@@ -127,7 +127,7 @@ try {
     return Number(value);
   }
 
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   const topActions = ['文件讲解', '文件依赖图', '闭环阅读', '书签', '标注', '笔记'];
   assert.deepEqual(await topMenu.locator('[data-page]:visible').allTextContents().then(labels => labels.map(label => label.trim())), topActions);
   assert.equal(await button('文件讲解', topMenu).getAttribute('aria-current'), 'page');
@@ -262,7 +262,7 @@ try {
   const auditRequest = '**/api/document?path=*audit.mjs.md';
   const release = Promise.withResolvers();
   const delay = async route => {
-    const response = await route.fetch();
+    const response = await fetchReaderRoute(route);
     await release.promise;
     await route.fulfill({ response }).catch(() => {});
   };

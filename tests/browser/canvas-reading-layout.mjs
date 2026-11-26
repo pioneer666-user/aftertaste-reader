@@ -1,9 +1,9 @@
+import { startTestReader, openReader, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile, rename } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { build, repository } from '../fixtures/dependency-canvas.mjs';
+import { repository } from '../fixtures/dependency-canvas.mjs';
 import { api, legendId, rules, service, readJSON, writeJSON } from '../fixtures/dependency-legends.mjs';
 import { createReadingLayoutProject, denseId } from '../fixtures/canvas-reading-layout.mjs';
 
@@ -13,12 +13,11 @@ const run = await mkdtemp(path.join(root, 'reading-'));
 const project = path.join(run, 'project');
 if (process.env.AFTERTASTE_ROUTING_INPUT) await cp(process.env.AFTERTASTE_ROUTING_INPUT, project, { recursive: true });
 else await createReadingLayoutProject(project);
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
 const report = { channel, checks: [], errors: [] };
 let reader, browser;
 try {
-  reader = await startReader(project, 0);
+  reader = await startTestReader(project, 0);
   browser = channel === 'firefox' ? await firefox.launch() : await chromium.launch({ channel: channel === 'edge' ? 'msedge' : channel });
   report.version = browser.version();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
@@ -33,7 +32,7 @@ try {
     const file = disks[Number(loop)], other = disks[Number(!loop)];
     const initial = await readFile(file), untouched = await readFile(other);
     await page.goto('about:blank');
-    await page.goto(reader.url + (loop ? '/#aftertaste-loop/' + denseId + '/choose' : '/#canvas-reading'));
+    await openReader(page, reader.url + (loop ? '/#aftertaste-loop/' + denseId + '/choose' : '/#canvas-reading'));
     const graph = page.locator(loop ? '.loop-canvas:visible' : '.dependency-canvas:visible');
     const card = key => graph.locator(key.startsWith('legend:') ? '[data-legend="' + key.slice(7) + '"]'
       : '[' + (loop ? 'data-step' : 'data-file') + '="' + key + '"]');
@@ -182,7 +181,7 @@ try {
       await draw('all-layers');
     }
     await rename(file, file + '.saved');
-    const fresh = await (await fetch(reader.url + (loop ? '/api/loops/' + denseId : '/api/dependency-canvas'))).json();
+    const fresh = await (await readerFetch(reader.url + (loop ? '/api/loops/' + denseId : '/api/dependency-canvas'))).json();
     assert.deepEqual(fresh.layout.positions, result.positions);
     await rename(file + '.saved', file);
     const savedBeforeFailure = await readFile(file);
@@ -201,7 +200,7 @@ try {
   const touch = await browser.newPage({ viewport: { width: 1024, height: 768 }, hasTouch: true });
   for (const hash of ['#canvas-reading', '#aftertaste-loop/' + denseId + '/choose']) {
     await touch.goto('about:blank');
-    await touch.goto(reader.url + '/' + hash);
+    await openReader(touch, reader.url + '/' + hash);
     const graph = touch.locator(hash === '#canvas-reading' ? '.dependency-canvas:visible' : '.loop-canvas:visible');
     const legend = graph.locator('[data-legend="node-path"]');
     await legend.tap();

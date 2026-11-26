@@ -1,13 +1,12 @@
+import { startTestReader, openReader, fetchReaderRoute, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { copyFile, cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { createLoopReaderProject } from '../fixtures/loop-reader.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
 assert.ok(['edge', 'chrome', 'firefox'].includes(engine));
 const input = process.env.AFTERTASTE_READER_INPUT;
@@ -55,7 +54,7 @@ async function newPage(viewport = { width: 1440, height: 900 }, reducedMotion = 
       report.writes.push([request.method(), new URL(request.url()).pathname]);
     }
   });
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -141,10 +140,11 @@ async function switchWithFrames(source, keyboard, label, fast = false) {
 async function fastSwitch(source, keyboard, label) {
   const url = new URL('/api/document', reader.url);
   url.searchParams.set('path', 'docs/aftertaste/current/' + source + '.md');
-  const response = await page.request.get(url.toString());
-  assert.equal(response.status(), 200);
+  const response = await readerFetch(url.toString());
+  assert.equal(response.status, 200);
   const matcher = candidate => candidate.pathname === url.pathname && candidate.searchParams.get('path') === url.searchParams.get('path');
-  const serve = route => route.fulfill({ response });
+  const body = await response.text();
+  const serve = route => route.fulfill({ contentType: 'application/json', body });
   await page.route(matcher, serve);
   try { await switchWithFrames(source, keyboard, label, true); }
   finally { await page.unroute(matcher, serve); }
@@ -156,7 +156,7 @@ async function holdRules(operate, fail = false) {
   const gate = Promise.withResolvers();
   const handler = async route => {
     try {
-      const response = await route.fetch();
+      const response = await fetchReaderRoute(route);
       fetched.resolve(response.status());
       await gate.promise;
       await (fail ? route.abort('failed') : route.fulfill({ response })).catch(() => {});
@@ -229,7 +229,7 @@ async function placeholderCoverage(screenshot, stacked = false) {
 }
 
 try {
-  reader = await startReader(project, 0);
+  reader = await startTestReader(project, 0);
   browser = engine === 'firefox' ? await firefox.launch({ headless: true }) :
     await chromium.launch({ channel: engine === 'edge' ? 'msedge' : 'chrome', headless: true });
   report.browser = browser.version();

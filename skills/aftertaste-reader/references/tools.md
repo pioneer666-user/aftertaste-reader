@@ -106,7 +106,7 @@ const { file } = runSourceCli(['read', ...sourceArgs, '--path', sourcePath], max
 | query-graph | `query-graph` + sourceArgs + `--path 项目相对路径`。查询已有局部与状态，缺图报 GRAPH_NOT_FOUND |
 | query-legends | `query-legends` + sourceArgs，可加 `--id 图例ID`。只读查询本图图例和使用文件，缺图报 GRAPH_NOT_FOUND |
 | validate-graph | `validate-graph` + sourceArgs。缺图报错，校验读取无写入 |
-| serve | `serve --project projectRoot`，可加 `--port 端口`。提供本地阅读页，允许摆放图中对象并保存布局，stdout 的 ready.url 为入口，终端 Ctrl+C 关闭。源码使用各文档头提交 |
+| serve | `serve --project projectRoot`，可加 `--port 端口`。提供本地阅读页，允许摆放图中对象并保存布局，请使用者在自己的终端执行命令并打开 stdout 的 ready.url。它含私密令牌，AI 不在回复、日志或项目文件中转述；重启后使用新入口，终端 Ctrl+C 关闭。源码使用各文档头提交 |
 
 图输入使用当前格式，以下路径仅为合成示意，实际必须核固定源码。
 

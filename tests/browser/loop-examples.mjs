@@ -1,7 +1,7 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { readJSON, writeJSON } from '../fixtures/dependency-legends.mjs';
@@ -13,8 +13,7 @@ const run = await mkdtemp(path.join(base, 'browser-'));
 const project = path.join(run, 'project');
 if (process.env.AFTERTASTE_TRIAL_PROJECT) await cp(process.env.AFTERTASTE_TRIAL_PROJECT, project, { recursive: true });
 else await createExampleProject(project);
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 let browser;
 try {
   const engine = process.env.AFTERTASTE_BROWSER ?? 'msedge';
@@ -38,7 +37,7 @@ try {
   const modelDir = path.join(project, 'docs/aftertaste/loops', exampleId);
   const layout = path.join(modelDir, 'layout.json');
   const model = path.join(modelDir, 'current/loop.json');
-  const go = async hash => { await page.goto('about:blank'); await page.goto(reader.url + hash); };
+  const go = async hash => { await page.goto('about:blank'); await openReader(page, reader.url + hash); };
   const view = () => loop.locator('.vue-flow__transformationpane').evaluate(el => el.style.transform);
   const steps = () => loop.locator('[data-step]').evaluateAll(els => els.map(el => el.dataset.step).sort());
   const saved = async action => {

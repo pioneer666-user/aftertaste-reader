@@ -13,9 +13,13 @@ D010 合成样例使用 tests/fixtures/reader-project.mjs 重建到全新隔离�
 3. 切换英文并刷新，保留已保存语言。屏蔽 localStorage 后仍可切换，明确保存失败。
 4. 结构错误及范围遗漏按普通 Markdown 展示并可复制无源码诊断。移走样例 Git 后仍能列出并阅读讲解。不可读文件显示读取错误。
 5. 测试路径、Host/Origin、恶意 Markdown，核接口 no-store、CSP 和目标目录前后字节。
-6. 停服务再启动，重开仍可读。自动化依次使用 npm test 与 npm run test:browser，浏览器串行。
+6. 停服务再启动，用本次终端入口重新授权，再重开已有普通链接。自动化依次使用 npm test 与 npm run test:browser，浏览器串行。
 
 样例是合成教学资料，真实项目教学与作者体验状态由 handoff 单独记录。
+
+## D056 私密入口
+
+将进程级 AFTERTASTE_BUILD 指向干净安装包的 dist，再执行 `node tests/browser/reader-session.mjs`。脚本从安装包 CLI 读取 ready，在随机空闲端口串行验匿名资源、两项目的独立笔记、三浏览器重开及同端口重启。运行目录与报告打印到终端，仅记录判断结果。
 
 ## D022 导航与记录
 
@@ -91,4 +95,4 @@ D044 使用 D043 订单独立副本，展开第 03 步并打开《订单步骤�
 
 用 Node 24 依次执行 `npm run typecheck`、`npm pack`，在 `.local/D047/<run-id>/` 内将实际包安装到隔离目录，使用 `--omit=dev`。从仓库根运行 `node tests/browser/source-highlighting.mjs --prepare <隔离项目绝对路径>` 生成合成 Git 项目和已有讲解。用隔离安装里的 `dist/cli/main.js serve --project <隔离项目绝对路径> --port 4318` 启动，端口已占用时另选空闲回环端口。
 
-串行运行 `node tests/browser/source-highlighting.mjs http://127.0.0.1:4318 <证据目录>`。脚本用独立 Edge 上下文逐篇打开，阻断外网和写请求，核对应样例的着色、原文、行号、五套主题、长行、跨块语境与语法分块失败。首次语法暂缓时先选取原文，放行分块后复制，清除选区再检查着色。最后沿用 `tests/browser/reader-center.mjs` 回归源码区的基本布局和阅读操作。
+在另一个 PowerShell 7 终端运行 `(Read-Host -MaskInput "输入本次私密 url") | node tests/browser/source-highlighting.mjs http://127.0.0.1:4318 <证据目录>`。在遮蔽输入中提供启动终端的 url，脚本仅向指定实例取得授权。脚本用独立 Edge 上下文逐篇打开，阻断外网和写请求，核对应样例的着色、原文、行号、五套主题、长行、跨块语境与语法分块失败。首次语法暂缓时先选取原文，放行分块后复制，清除选区再检查着色。最后沿用 `tests/browser/reader-center.mjs` 回归源码区的基本布局和阅读操作。

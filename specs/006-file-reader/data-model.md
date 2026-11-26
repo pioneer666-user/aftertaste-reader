@@ -4,6 +4,10 @@
 
 启动项目使用规范化的绝对目录，无链接祖先。资料发现读取 docs/aftertaste/current，缺失目录返回空集，存在但非法/不可读返回结构化问题。条目包含 documentPath 与 sourcePath，保留目录与扩展名。非法条目单独报告，合法条目仍可选择。
 
+## 启动授权
+
+一次 serve 实例在进程内持有启动令牌和会话密码。有效入口按本实例发放会话，浏览器保存在对应来源的 HTTP 认证缓存。重启生成全新值，即使浏览器还记着旧密码也不能读取新实例。项目资料没有新增字段。
+
 ## 单次阅读
 
 DocumentService.read 返回 DocumentResult 及可选 sourceLines。raw、blocks、commit、diagnostics 均派生自同一次 UTF-8 读取。取源沿 FixedSourceService，项目到仓库映射由适配器解析，各文档独立使用头部完整提交。sourceLines 保留全部物理行，终止换行不凭空增加一行。

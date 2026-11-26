@@ -280,7 +280,17 @@
 - [x] T086 [US13] 在 App.vue、顶栏、两图和记录编辑器接通站点偏好及原位重画，实现 FR-021。
 - [x] T087 [US13] 在 tests/browser/reader-themes.mjs 及既有浏览器入口核 SC-019，更新 docs/usage/file-reader.md，冻结候选交独审。
 
+## D056 · User Story 15 - 私密进入与重开 (P1)
+
+- [x] T088 [US15] 在 `src/server/reader.ts` 的路由分发前检查会话，`src/cli/main.ts` 在 ready 交付私密入口，更新 README、使用说明及产品 Skill。
+- [x] T089 [US15] 在 `tests/integration/file-reader.test.mjs` 和现有测试调用方从正式入口取得授权，核匿名拒绝与原有写入限制。
+- [x] T090 [US15] 在 `tests/browser/reader-session.mjs` 用独立安装包、两个项目和三个浏览器核 SC-022，完成串行回归。
+- [ ] T091 [US15] 固定候选并独审，写入 `docs/work/2026/11/D056-reader-session-access/review.md` 与 `handoff.md`，交本地试读命令。
+- [ ] T092 [US15] 作者确认体验或明确允许后，按 `docs/development/git.md` 合入本地 dev 并更新回执。
+
 ## Dependencies & Execution Order
+
+D056 依次完成服务入口、调用方核验、安装包自测、固定候选独审与交回（T088—091）。作者确认是本地整合 T092 的前置。
 
 Setup → Foundational → US1 → US2 → US3 → 收尾。US2 的用例可独立验证共用结果，页面沿 US1 外壳。US3 在同一页面独立验证。T014—017 在全部故事后收束。
 

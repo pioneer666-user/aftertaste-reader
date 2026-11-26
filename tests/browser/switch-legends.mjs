@@ -1,9 +1,9 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { applyGraphUpdate, build, repository } from '../fixtures/dependency-canvas.mjs';
+import { applyGraphUpdate, repository } from '../fixtures/dependency-canvas.mjs';
 import { readJSON, writeJSON } from '../fixtures/dependency-legends.mjs';
 import { createSwitchProject, loopId } from '../fixtures/switch-legends.mjs';
 
@@ -13,8 +13,7 @@ const run = await mkdtemp(path.join(base, 'browser-'));
 const project = path.join(run, 'project');
 if (process.env.AFTERTASTE_SWITCH_PROJECT) await cp(process.env.AFTERTASTE_SWITCH_PROJECT, project, { recursive: true });
 else await createSwitchProject(project);
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 let browser;
 try {
   const engine = process.env.AFTERTASTE_BROWSER ?? 'msedge';
@@ -24,7 +23,7 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   page.setDefaultTimeout(6500);
-  const go = async hash => { await page.goto('about:blank'); await page.goto(reader.url + '/#' + hash); };
+  const go = async hash => { await page.goto('about:blank'); await openReader(page, reader.url + '/#' + hash); };
   const loop = 'aftertaste-loop/' + loopId + '/';
   const graph = page.locator('.loop-canvas:visible,.dependency-canvas:visible').last();
   const question = graph.locator('.switch-question');

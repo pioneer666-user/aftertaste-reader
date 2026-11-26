@@ -1,12 +1,11 @@
+import { startTestReader, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { chooseLoop } from './loop-controls.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const root = path.join(repository, '.local', process.env.AFTERTASTE_TEST_TASK ?? 'D034');
 await mkdir(root, { recursive: true });
 const run = await mkdtemp(path.join(root, 'panel-'));
@@ -17,7 +16,7 @@ const layout = async () => JSON.parse(await readFile(path.join(graphDir, 'layout
 const content = () => readFile(path.join(graphDir, 'current/loop.json'), 'utf8');
 const before = await content();
 const graph = JSON.parse(before);
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 let browser;
 const report = { build, run, frames: [], writes: [], errors: [] };
 try {
@@ -48,7 +47,7 @@ try {
     await page.mouse.up();
   }
   async function open() {
-    await page.goto(reader.url);
+    await openReader(page, reader.url);
     await press(page, '闭环阅读');
     await chooseLoop(page, 'order-quantity');
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
@@ -301,14 +300,14 @@ try {
   const longTitle = '订单加入集合并返回给发起这次调用的上游服务'.repeat(3);
   const extraReason = '校验成功时，可以直接阅读集合追加后的结果。';
   await mobile.route('**/api/loops/order-quantity', async route => {
-    const response = await route.fetch();
+    const response = await fetchReaderRoute(route);
     const body = await response.json();
     const model = body.result.loop;
     model.nodes.find(n => n.id === 'store').title = longTitle;
     model.edges.push({ from: 'check', to: 'store', reason: extraReason });
     await route.fulfill({ response, json: body });
   });
-  await mobile.goto(reader.url);
+  await openReader(mobile, reader.url);
   await mobile.locator('.app-page-menu-toggle').tap();
   await mobile.locator('[data-page="loops"]').tap();
   await chooseLoop(mobile, 'order-quantity');

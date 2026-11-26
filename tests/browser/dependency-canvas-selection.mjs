@@ -1,3 +1,4 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -5,7 +6,6 @@ import { once } from 'node:events';
 import { copyFile, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { api, audit, legendId, readJSON, rules, service, standardLegend, writeJSON } from '../fixtures/dependency-legends.mjs';
@@ -13,7 +13,6 @@ import { orderId, orderInput } from '../fixtures/loop-authoring.mjs';
 import { createLoopReaderProject, loopLayout } from '../fixtures/loop-reader.mjs';
 import { dependencySaved } from './dependency-controls.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
 const root = path.join(repository, '.local/' + (process.env.AFTERTASTE_TEST_TASK ?? 'D026'));
 await mkdir(root, { recursive: true });
@@ -63,7 +62,7 @@ async function newPage(viewport = desktop) {
   const page = await context.newPage();
   page.setDefaultTimeout(7000);
   page.on('pageerror', error => report.errors.push(error.message));
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   return page;
 }
 
@@ -221,7 +220,7 @@ async function checkNavigation(page) {
 try {
   browser = await (channel === 'firefox' ? firefox.launch() : chromium.launch({ channel: channel === 'edge' ? 'msedge' : channel }));
   report.version = browser.version();
-  reader = await startReader(fixture.projectRoot, 0);
+  reader = await startTestReader(fixture.projectRoot, 0);
   page = await newPage();
   await checkNavigation(page);
 
@@ -428,7 +427,7 @@ try {
   await reader.server.close();
   reader = undefined;
   await assert.rejects(fetch(stoppedUrl), TypeError);
-  reader = await startReader(fixture.projectRoot, 0);
+  reader = await startTestReader(fixture.projectRoot, 0);
   page = await newPage();
   await button(header(page), '文件依赖图').click();
   await dependencySaved(dep(page));

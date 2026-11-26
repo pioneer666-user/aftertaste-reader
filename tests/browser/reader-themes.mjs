@@ -1,7 +1,7 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { textContrast } from './theme-contrast.mjs';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
@@ -14,8 +14,7 @@ await mkdir(base, { recursive: true });
 const run = await mkdtemp(path.join(base, 'themes-' + engine + '-'));
 const project = path.join(run, 'project');
 await cp(input, project, { recursive: true, errorOnExist: true, force: false });
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const server = await startReader(project, 0);
+const server = await startTestReader(project, 0);
 const browser = await (engine === 'firefox' ? firefox.launch() : chromium.launch({ channel: engine === 'edge' ? 'msedge' : engine }));
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
 const page = await context.newPage();
@@ -93,7 +92,7 @@ async function quickEmpty() {
   await quick.getByRole('button', { name: '关闭随手记' }).click();
 }
 try {
-  await page.goto(server.url);
+  await openReader(page, server.url);
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'green');
   const block = page.locator('#x4y6az2y');
   await page.locator('.file-list button').filter({ hasText: 'rules.mjs' }).click();
@@ -250,7 +249,7 @@ try {
   await trigger.waitFor();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'black');
   const reopened = await context.newPage();
-  await reopened.goto(server.url);
+  await openReader(reopened, server.url);
   await reopened.locator('.theme-picker').waitFor();
   assert.equal(await reopened.locator('html').getAttribute('data-theme'), 'black');
   await reopened.close();

@@ -18,7 +18,7 @@ D022 浏览器回归在构建后运行 `node tests/browser/reader-navigation.mjs
 
 可从标注的「不理解」回到数量校验块，同时看到该块的收藏理由。笔记《数量无效时，订单去哪了？》的两个链接分别跳到规则文件和订单服务。两张图可用「订单数量校验怎样决定集合会不会改变」这条闭环对照查看。
 
-**每批换页面时**，使用该批已构建的 CLI，交接时核对监听进程与项目目录，重开此专用服务并刷新页面。资料目录跨批沿用，读者改过的笔记、书签、批注及个人排布会保留。在本机仓库根用 PowerShell 启动当前构建的命令如下，看到 `"status":"ready"` 即可打开上方链接。
+**每批换页面时**，使用该批已构建的 CLI，交接时核对监听进程与项目目录，重开此专用服务并刷新页面。资料目录跨批沿用，读者改过的笔记、书签、批注及个人排布会保留。在本机仓库根用 PowerShell 启动当前构建的命令如下，看到 `"status":"ready"` 后先打开该终端的私密 url 授权，再打开上方普通链接。
 
 ```powershell
 node dist/cli/main.js serve --project (Resolve-Path -LiteralPath '.local/2026-11-19-page-preview/project').Path --port 4341

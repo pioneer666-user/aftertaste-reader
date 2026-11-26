@@ -119,3 +119,7 @@ D044 沿用语言偏好的异常处理。CSS 与 SVG 可继承根色板；Canvas
 Shiki 名称和别名与 Linguist 的文件名、后缀数据匹配，构建时只输出路径关联。两个固定版本分别提供语法及文件关联，无须手维护语言名单。使用原声明随包保存语法、引擎与路径数据的再分发许可。[Linguist 路径识别](https://github.com/github-linguist/linguist/blob/main/docs/how-linguist-works.md)
 
 `tm-grammars` 的完整声明中有个别 GPL、LGPL 和 MPL 语法。本版在路径关联及 Vite 直接、嵌入加载中一并排除这九项，原声明完整随包。被排除的语言和许可证入口见 [THIRD-PARTY-NOTICES](../../THIRD-PARTY-NOTICES.md)。
+
+## D056 · 浏览器会话
+
+Cookie 会随同主机跨端口发送。原生 HTTP 认证将保护空间限定在来源，保留现有回环主机及深链。隔离原型用 XHR 在根目录握手，Edge 158、Chrome 158、Firefox 159 各自在新标签读到受保护页面。正式包另验双实例和重启。[RFC 7617 §2.2](https://www.rfc-editor.org/rfc/rfc7617.html#section-2.2)

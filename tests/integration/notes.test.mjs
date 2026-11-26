@@ -1,10 +1,10 @@
+import { startTestReader, readerFetch } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { link, mkdir, mkdtemp, readFile, rename, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { startReader } from '../../dist/server/reader.js';
 
 const root = fileURLToPath(new URL('../../.local/D020/', import.meta.url));
 
@@ -13,11 +13,11 @@ test('real HTTP restricts and atomically persists individual notes, including a 
   const run = await mkdtemp(path.join(root, 'api-'));
   const project = path.join(run, 'project');
   await mkdir(project);
-  let service = await startReader(project, 0);
+  let service = await startTestReader(project, 0);
   t.after(async () => service.server.close());
   const call = async (url = '/api/notes', init) => {
-    const response = await fetch(service.url + url, init);
-    return { status: response.status, ...await response.json() };
+    const response = await readerFetch(service.url + url, init);
+    return { status: response.status, ...(response.headers.get('content-type')?.includes('application/json') ? await response.json() : {}) };
   };
   const put = (action, headers = {}, url) => call(url, { method: 'PUT', headers: {
     'content-type': 'application/json', 'x-aftertaste-notes': '1', ...headers,
@@ -53,7 +53,7 @@ test('real HTTP restricts and atomically persists individual notes, including a 
   const file = path.join(directory, 'notes.json');
   const saved = await readFile(file);
   await service.server.close();
-  service = await startReader(project, 0);
+  service = await startTestReader(project, 0);
   assert.deepEqual((await call()).notes, [{ id: first.id, revision: newer.revision, body: newer.body, tags: first.tags }]);
 
   for (const invalid of [Buffer.from('{bad'), Buffer.from([0xff])]) {

@@ -1,7 +1,7 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { createEdgeProject, quantityId } from '../fixtures/edge-labels.mjs';
@@ -18,8 +18,7 @@ const denseFile = path.join(data, 'loops/input-comparison/current/loop.json');
 const dense = await readJSON(denseFile);
 for (const edge of dense.edges.filter(e => e.from === 'paths')) edge.label = dense.nodes.find(n => n.id === edge.to).title;
 await writeJSON(denseFile, dense);
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 let browser;
 try {
   const engine = process.env.AFTERTASTE_BROWSER ?? 'msedge';
@@ -30,7 +29,7 @@ try {
   const errors = [], writes = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', req => { if (req.method() === 'PUT') writes.push(req.url()); });
-  const go = async hash => { await page.goto('about:blank'); await page.goto(reader.url + '/#' + hash); };
+  const go = async hash => { await page.goto('about:blank'); await openReader(page, reader.url + '/#' + hash); };
   const graph = page.locator('.dependency-canvas:visible, .loop-canvas:visible').last();
   const labels = graph.locator('.edge-label text');
   const edge = (from, to) => graph.locator('[data-edge="' + from + '→' + to + '"]');

@@ -1,17 +1,16 @@
+import { startTestReader, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { readFile, writeFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { build } from '../fixtures/dependency-canvas.mjs';
 import { audit, readJSON, rules, service, writeJSON } from '../fixtures/dependency-legends.mjs';
 import { preparePolishProject } from '../fixtures/dependency-canvas-polish.mjs';
 import { dependencySaved, openDependencyGroups } from './dependency-controls.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const { channel, run, project, source, disk } = await preparePolishProject('polish');
 const routePattern = '**/api/dependency-layout';
 const report = { run, build, input: source,
@@ -229,7 +228,7 @@ async function holdResponse(action) {
   const reached = Promise.withResolvers(), released = Promise.withResolvers();
   await page.route(routePattern, async route => {
     try {
-      const result = await route.fetch();
+      const result = await fetchReaderRoute(route);
       reached.resolve({ status: result.status(), body: await result.json() });
       await released.promise;
       await route.fulfill({ response: result });
@@ -352,13 +351,13 @@ async function editBeforeCreationAck(newName) {
 }
 
 try {
-  reader = await startReader(project, 0);
+  reader = await startTestReader(project, 0);
   browser = await (channel === 'firefox' ? firefox.launch() : chromium.launch({ channel: channel === 'edge' ? 'msedge' : channel }));
   report.browser = browser.version();
   page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion: 'no-preference' });
   page.setDefaultTimeout(6500);
   page.on('pageerror', error => report.errors.push(error.message));
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   await page.locator('[data-page="canvas"]:visible').click();
   await readGraph();
   await createAndObserve('浮钮新组', rules, 'button');

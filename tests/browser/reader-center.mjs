@@ -1,8 +1,9 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { copyFile, cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { chromium, firefox } from 'playwright';
 
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
@@ -13,7 +14,6 @@ if (process.env.AFTERTASTE_D023_BUILD) {
 }
 const { build } = await import('../fixtures/dependency-canvas.mjs');
 const { createLoopReaderProject, explanationFile, git } = await import('../fixtures/loop-reader.mjs');
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')).href);
 const output = path.join(fileURLToPath(new URL('../../.local/', import.meta.url)), process.env.AFTERTASTE_TEST_TASK ?? 'D023');
 await mkdir(output, { recursive: true });
 const run = await mkdtemp(path.join(output, engine + '-'));
@@ -154,7 +154,7 @@ async function selectRange(start, end, text) {
 }
 
 try {
-  reader = await startReader(fixture.projectRoot, 0);
+  reader = await startTestReader(fixture.projectRoot, 0);
   report.url = reader.url;
   browser = engine === 'firefox' ? await firefox.launch({ headless: true }) :
     await chromium.launch({ channel: engine === 'edge' ? 'msedge' : 'chrome', headless: true });
@@ -164,7 +164,7 @@ try {
   page = await context.newPage();
   page.setDefaultTimeout(6000);
   page.on('pageerror', error => report.errors.push(error.message));
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
 
   const reading = page.locator('#reading');
   const nav = page.locator('#reader-navigation');

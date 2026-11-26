@@ -1,16 +1,15 @@
+import { startTestReader, openReader, readerFetch } from '../fixtures/reader-session.mjs';
 import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { copyFile, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
-import { build, repository } from '../fixtures/dependency-canvas.mjs';
+import { repository } from '../fixtures/dependency-canvas.mjs';
 import { readJSON, writeJSON } from '../fixtures/dependency-legends.mjs';
 import { orderId } from '../fixtures/loop-authoring.mjs';
 import { createLoopReaderProject, loopLayout } from '../fixtures/loop-reader.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const channel = process.env.AFTERTASTE_BROWSER ?? 'edge';
 const root = path.join(repository, '.local/' + (process.env.AFTERTASTE_TEST_TASK ?? 'D031'));
 await mkdir(root, { recursive: true });
@@ -30,8 +29,8 @@ let reader;
 let browser;
 
 try {
-  reader = await startReader(project.projectRoot, 0);
-  const initial = await (await fetch(new URL('/api/loops/' + orderId, reader.url))).json();
+  reader = await startTestReader(project.projectRoot, 0);
+  const initial = await (await readerFetch(new URL('/api/loops/' + orderId, reader.url))).json();
   assert.equal(initial.revision, null);
   seed = { layout: initial.layout };
   browser = await (channel === 'firefox' ? firefox.launch() : chromium.launch({ channel: channel === 'edge' ? 'msedge' : channel }));
@@ -39,7 +38,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.setDefaultTimeout(8000);
   page.on('pageerror', error => report.errors.push(error.message));
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   await button(page, '闭环阅读').click();
   await chooseLoop(page, orderId);
   const loop = page.locator('#loop-canvas-' + orderId + '-reading');

@@ -1,7 +1,7 @@
+import { startTestReader, openReader } from '../fixtures/reader-session.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { writeJSON } from '../fixtures/dependency-legends.mjs';
@@ -14,8 +14,7 @@ const run = await mkdtemp(path.join(base, 'browser-'));
 const project = path.join(run, 'project');
 if (process.env.AFTERTASTE_TRIAL_PROJECT) await cp(process.env.AFTERTASTE_TRIAL_PROJECT, project, { recursive: true });
 else await createPreviewProject(project);
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
-const reader = await startReader(project, 0);
+const reader = await startTestReader(project, 0);
 const engine = process.env.AFTERTASTE_BROWSER ?? 'msedge';
 let browser;
 try {
@@ -33,7 +32,7 @@ try {
   const gone = () => preview.waitFor({ state: 'hidden' });
   const open = async (id, step = 'check') => {
     await page.goto('about:blank');
-    await page.goto(reader.url + '#aftertaste-loop/' + id + '/' + step);
+    await openReader(page, reader.url + '#aftertaste-loop/' + id + '/' + step);
     await graph.locator('[data-reading-step="' + step + '"]').waitFor();
   };
   const pick = async i => {

@@ -1,17 +1,16 @@
+import { startTestReader, openReader, fetchReaderRoute } from '../fixtures/reader-session.mjs';
 import { chooseNoteFilter, editorText, newQuickNote } from './note-controls.mjs';
 import { chooseLoop } from './loop-controls.mjs';
 import assert from 'node:assert/strict';
 import { appendFile, copyFile, cp, mkdir, mkdtemp, readFile, rename, writeFile } from 'node:fs/promises';
 import { release } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { chromium, firefox } from 'playwright';
 import { build, repository } from '../fixtures/dependency-canvas.mjs';
 import { api, audit, legendId, readJSON, rules, service, standardLegend, writeJSON } from '../fixtures/dependency-legends.mjs';
 import { orderId, orderInput } from '../fixtures/loop-authoring.mjs';
 import { createLoopReaderProject } from '../fixtures/loop-reader.mjs';
 
-const { startReader } = await import(pathToFileURL(path.join(build, 'server/reader.js')));
 const engine = process.env.AFTERTASTE_BROWSER ?? 'edge';
 const stage = process.env.AFTERTASTE_D028_STAGE;
 const baseline = stage === 'baseline';
@@ -551,7 +550,7 @@ async function checkRecords() {
   const holdSave = async route => {
     if (route.request().method() !== 'PUT') return route.continue();
     try {
-      const response = await route.fetch();
+      const response = await fetchReaderRoute(route);
       saveReady.resolve(response.status());
       await releaseSave.promise;
       return route.fulfill({ response });
@@ -607,7 +606,7 @@ async function checkDelayedHistory() {
   const reached = Promise.withResolvers(), releaseResponse = Promise.withResolvers(), finished = Promise.withResolvers();
   await page.route('**/api/document?path=*api.mjs.md', async route => {
     try {
-      const result = await route.fetch();
+      const result = await fetchReaderRoute(route);
       reached.resolve(result.status());
       await releaseResponse.promise;
       await route.fulfill({ response: result });
@@ -831,7 +830,7 @@ async function checkTouch() {
   try {
     page.setDefaultTimeout(7000);
     page.on('pageerror', error => report.errors.push(error.message));
-    await page.goto(reader.url);
+    await openReader(page, reader.url);
     if (!await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) {
       assert.equal(engine, 'firefox', 'touch emulation must activate coarse pointer');
       report.checks.push('Firefox touch emulation kept the desktop pointer media feature');
@@ -934,13 +933,13 @@ async function checkTouch() {
 }
 
 try {
-  reader = await startReader(project, 0);
+  reader = await startTestReader(project, 0);
   browser = await (engine === 'firefox' ? firefox.launch() : chromium.launch({ channel: engine === 'edge' ? 'msedge' : engine }));
   report.browser = browser.version();
   page = await browser.newPage({ viewport: { width: 1600, height: 900 }, reducedMotion: 'reduce' });
   page.setDefaultTimeout(7000);
   page.on('pageerror', error => report.errors.push(error.message));
-  await page.goto(reader.url);
+  await openReader(page, reader.url);
   await upToDate(api);
   if (!baseline) {
     assert.equal(await arrow('back').isDisabled(), true);
