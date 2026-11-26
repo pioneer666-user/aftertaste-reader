@@ -117,7 +117,20 @@ const { file } = runSourceCli(['read', ...sourceArgs, '--path', sourcePath], max
 | query-graph | `query-graph` + sourceArgs + `--path 项目相对路径`。查询已有局部与状态，缺图报 GRAPH_NOT_FOUND |
 | query-legends | `query-legends` + sourceArgs，可加 `--id 图例ID`。只读查询本图图例和使用文件，缺图报 GRAPH_NOT_FOUND |
 | validate-graph | `validate-graph` + sourceArgs。缺图报错，校验读取无写入 |
-| serve | `serve --project projectRoot`，可加 `--port 端口`。提供本地阅读页，允许摆放图中对象并保存布局，请使用者在自己的终端执行命令并打开 stdout 的 ready.url。它含私密令牌，AI 不在回复、日志或项目文件中转述；重启后使用新入口，终端 Ctrl+C 关闭。源码使用各文档头提交 |
+| open-reader / stop-reader | 按下文[启动与交付](#reader-launch)打开或停止独立的本机服务。 |
+| serve | `serve --project projectRoot`，可加 `--port 端口`。用户也可在自己的终端前台启动，打开 stdout 的私密 `url`，Ctrl+C 关闭。 |
+
+<a id="reader-launch"></a>
+## 启动与交付
+
+用同包 CLI 运行 `open-reader --project <绝对项目路径>`；单次启动请求默认落项目首页。新成果沿生成或闭环的交付步骤，选定真实的起读位置，追加一对 `--target` 参数。把项目路径与位置作为独立参数传入。可以用 JavaScript 的 `encodeURIComponent` 构造文件位置。
+
+- 文件块位置为 `#aftertaste-block/<编码后的完整文档镜像路径>/<块ID>`，例如 `#aftertaste-block/docs%2Faftertaste%2Fcurrent%2Fsrc%2Forder.ts.md/a1b2c3d4`。
+- 闭环步骤位置为 `#aftertaste-loop/<闭环ID>/<步骤ID>`，取已读回的成品 ID，例如 `#aftertaste-loop/order-quantity/check`。
+
+按实际退出状态及 JSON 告知读者结果。就绪且 `browser:"requested"` 时告诉读者默认浏览器已收到打开请求、新成果的起读位置，以及可从阅读器顶栏「阅读链接」复制同一位置到本机另一浏览器。用户说只给链接时用 `--mode link`，它不会打开浏览器。用户索取链接、`browser:"failed"` 或宿主缺少可见交付入口时，在当前对话给用户完整的可点击、可复制私密 `url`，说明「仅本机使用，本次服务停止后失效」。若此时输出没有 `url`，用相同目标及 `--mode link` 取得，不再请求开浏览器。宿主拦截点击时，用户可复制完整链接到浏览器地址栏。启动失败时按实际诊断报告原因，保持已生成资料，不交链接。
+
+命令结束后服务继续运行。同一项目重复打开会优先复用可核实的实例。应用户请求可执行 `stop-reader --project <绝对项目路径>`。私密入口只交给当前读者，日志、项目文件及诊断使用脱敏信息；获取入口只用于交付阅读。个人记录仍按各自的读取和写入规则处理。
 
 图输入使用当前格式，以下路径仅为合成示意，实际必须核固定源码。
 

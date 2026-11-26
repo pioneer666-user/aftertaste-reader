@@ -43,7 +43,7 @@ test('a second instance rejects both credentials issued by the first', async () 
     ];
     for (const response of attempts) {
       assert.equal(response.status, 403);
-      assert.ok(await response.text() === '请从启动终端打开本次阅读入口。');
+      assert.ok(await response.text() === '请打开本次阅读的私密入口。');
     }
   } finally { await other.server.close(); }
 });

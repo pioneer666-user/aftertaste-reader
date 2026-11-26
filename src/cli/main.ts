@@ -18,6 +18,8 @@ import { isUtf8 } from 'node:buffer';
 import { reviseDocument, reviseStep, RevisionError } from '../application/revisions.js';
 import { replaceCurrent } from '../adapters/replace-current.js';
 import { projectPrivacy } from '../adapters/project-privacy.js';
+import { launchReader } from './reader-launch.js';
+import { blockTarget, readingLocation } from '../core/notes.js';
 
 const revisionOptions = ['--project', '--commit', '--expected'];
 const fixedOptions = ['--project', '--repository', '--prefix', '--commit'];
@@ -25,6 +27,8 @@ const fixedOptions = ['--project', '--repository', '--prefix', '--commit'];
 const commands: Record<string, { allowed: string[]; required: string[] }> = {
   'project-privacy': { allowed: ['--project', '--action'], required: ['--project', '--action'] },
   serve: { allowed: ['--project', '--port'], required: ['--project'] },
+  'open-reader': { allowed: ['--project', '--port', '--mode', '--target'], required: ['--project'] },
+  'stop-reader': { allowed: ['--project'], required: ['--project'] },
   pin: { allowed: ['--project', '--revision'], required: ['--project'] },
   read: { allowed: ['--project', '--commit', '--path', '--repository', '--prefix'], required: ['--project', '--commit', '--path'] },
   'create-document': {
@@ -96,10 +100,24 @@ async function main(): Promise<void> {
       }
       const result = await projectPrivacy(projectRoot, action, payload);
       process.stdout.write(JSON.stringify({ ok: true, result }) + '\n');
-    } else if (command === 'serve') {
+    } else if (command === 'serve' || command === 'open-reader' || command === 'stop-reader') {
       const value = options.get('--port') ?? '4317';
       if (!/^[1-9]\d*$/u.test(value) || Number(value) > 65535) {
         throw new SourceError('INVALID_ARGUMENT', '阅读端口参数无效。', '使用 1 至 65535 的整数端口。');
+      }
+      if (command !== 'serve') {
+        const mode = options.get('--mode') ?? 'open';
+        if (mode !== 'open' && mode !== 'link') {
+          throw new SourceError('INVALID_ARGUMENT', '阅读器打开方式无效。', '使用 --mode open 或 --mode link。');
+        }
+        const hash = options.get('--target');
+        const target = hash === undefined ? undefined : blockTarget(hash);
+        if (hash !== undefined && !target) {
+          throw new SourceError('INVALID_ARGUMENT', '阅读位置无效。', '提供文件块或闭环步骤定位。');
+        }
+        const reply = await launchReader(command, projectRoot, Number(value), mode, target ? readingLocation(target) : '');
+        process.stdout.write(JSON.stringify(reply) + '\n');
+        return;
       }
       const reader = await startReader(projectRoot, Number(value));
       process.stdout.write(`${JSON.stringify({ ok: true, status: 'ready', url: reader.entryUrl, projectRoot: reader.projectRoot })}\n`);

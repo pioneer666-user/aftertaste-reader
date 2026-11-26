@@ -8,7 +8,22 @@ node <产品根>/dist/cli/main.js serve --project <绝对目录> [--port <1..655
 
 ## 启动授权
 
-ready.url 为私密入口。普通地址和深链仅含位置。浏览器打开入口后自动完成 HTTP Basic 握手。程序客户端对同一入口发送 GET、Accept: application/json，取得 username、password 后仅向同一来源发送 Basic Authorization。服务退出后启动和会话凭据均失效。来源或会话无效统一返回 403 和通用提示；只有持有效令牌的浏览器握手可收到 401 挑战。
+现有前台 `serve` 启动方式继续适用。前台服务由原终端管理。
+
+## AI 启动与停止
+
+- `node <产品根>/dist/cli/main.js open-reader --project <绝对目录> [--port <1..65535>] [--mode <open|link>] [--target <位置片段>]`
+- `node <产品根>/dist/cli/main.js stop-reader --project <绝对目录>`
+
+省略位置时打开项目首页。文件块用 `#aftertaste-block/<encodeURIComponent(完整文档镜像路径)>/<块ID>`，闭环用 `#aftertaste-loop/<闭环ID>/<步骤ID>`。首选端口默认 4317，已有可验证的兼容后台实例优先于首选端口；首选端口被占时由系统分配实际端口。已就绪的实例在命令退出后继续服务。
+
+启动成功输出一行 JSON，含 `ok:true`、`status:"ready"`、`projectRoot`、`reused`、普通 `location` 及 `browser:"requested"|"failed"|"skipped"`。默认 `open` 将入口交给系统默认浏览器，`requested` 表示系统接受打开请求。终端可见时也输出私密 `url`。仅链接模式或打开失败时，即便调用方重定向输出，仍返回私密 `url`。启动失败沿 CLI 错误格式和退出码，不返回 URL。登记或后台进程不可用分别为 `READER_INSTANCE_UNAVAILABLE` 或 `READER_WORKER_UNAVAILABLE`。停止返回 `stopped` 或 `not-running`，无法完成已确认实例的停止时返回 `READER_STOP_FAILED`。
+
+授权页面从同源 `GET /api/reader-entry` 请求入口路径，附 `X-Aftertaste-Entry: 1`；响应不可缓存。加入本页最初的普通位置片段后供读者复制。启动步骤、来源、匿名拒绝和会话过期规则见下。
+
+## 浏览器会话
+
+交付的 `url` 为私密入口。普通地址和深链仅含位置。浏览器打开入口后自动完成 HTTP Basic 握手。程序客户端对同一入口发送 GET、Accept: application/json，取得 username、password 后仅向同一来源发送 Basic Authorization。服务退出后启动和会话凭据均失效。来源或会话无效统一返回 403 和通用提示；只有持有效令牌的浏览器握手可收到 401 挑战。
 
 ## 读取
 

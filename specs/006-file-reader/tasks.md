@@ -288,7 +288,20 @@
 - [x] T091 [US15] 固定候选并独审，写入 `docs/work/2026/11/D056-reader-session-access/review.md` 与 `handoff.md`，交本地试读命令。
 - [x] T092 [US15] 作者确认体验或明确允许后，按 `docs/development/git.md` 合入本地 dev 并更新回执。
 
+## D058 · User Story 16 - 请讲解 AI 打开阅读器 (P1)
+
+**Independent Test**：安装包对同一隔离项目先打开默认浏览器，再从页面复制入口到未授权的第二款浏览器，核同一块／步骤及普通地址。
+
+- [x] T093 [US16] 在 `src/cli/main.ts`、`src/cli/reader-launch.ts`、`src/server/reader-instance.ts` 实现 FR-024 就绪、复用、占用回退及停止。
+- [x] T094 [US16] 在 `src/server/reader-session.ts`、`src/web/ReaderEntryLink.vue` 交付可复制的同位置入口，守住 FR-006。
+- [x] T095 [US16] 在 `skills/aftertaste-reader/`、`README.md` 及 `docs/usage/file-reader.md` 对齐 005 FR-015 的启动和交付触发。
+- [ ] T096 [US16] 在 `tests/integration/reader-launch.test.mjs`、`tests/browser/reader-launch.mjs`、`tests/skills/reader-launch.md` 串行验证 SC-023 和受影响的 SC-022。
+- [ ] T097 [US16] 固定候选，在 `docs/work/2026/11/D058-reader-launch/` 归档独审和回执，交作者试读。
+- [ ] T098 [US16] 作者接受后按 `docs/development/git.md` 合本地 dev。
+
 ## Dependencies & Execution Order
+
+D058 沿用 US15 授权和现有定位。T093—095 齐备后集成执行 T096、固定候选交独审 T097。作者确认是 T098 的前置。
 
 D056 依次完成服务入口、调用方核验、安装包自测、固定候选独审与交回（T088—091）。作者确认是本地整合 T092 的前置。
 

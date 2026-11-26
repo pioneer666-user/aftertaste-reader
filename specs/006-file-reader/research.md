@@ -123,3 +123,9 @@ Shiki 名称和别名与 Linguist 的文件名、后缀数据匹配，构建时�
 ## D056 · 浏览器会话
 
 Cookie 会随同主机跨端口发送。原生 HTTP 认证将保护空间限定在来源，保留现有回环主机及深链。隔离原型用 XHR 在根目录握手，Edge 158、Chrome 158、Firefox 159 各自在新标签读到受保护页面。正式包另验双实例和重启。[RFC 7617 §2.2](https://www.rfc-editor.org/rfc/rfc7617.html#section-2.2)
+
+## D058 · 就绪与实例归属
+
+- **决定**：分离的 Node 进程通过 IPC 返回就绪，使用同用户目录的 Node 内置 SQLite 串行化登记和启停；现成的回环 HTTP 监听返回实例挑战签名。
+- **理由**：进程不继承终端输入输出，调用方能等待真实就绪。数据库由现有运行时提供，写锁在异常退出时释放，读取登记后仍需证明当前端口归属。实例密钥与 HTTP Basic 密码分离。参考 [Node 24 SQLite](https://github.com/nodejs/node/blob/v24.11.1/doc/api/sqlite.md) 和 [Node 24 子进程](https://github.com/nodejs/node/blob/v24.11.1/doc/api/child_process.md)。
+- **备选**：仅按端口或 PID 不足以确认仍是同一实例。手写锁文件需额外解决过期回收竞争。把私密链接地址仅交给 AI 会使正常打开依赖宿主和模型转述；现有浏览器授权内增加显式复制入口可与终端独立使用。

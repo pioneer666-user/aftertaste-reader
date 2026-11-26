@@ -1,4 +1,5 @@
 import { contentPolicy, readerSession } from './reader-session.js';
+import type { ReaderControl } from './reader-session.js';
 import { randomBytes } from 'node:crypto';
 import Fastify from 'fastify';
 import { readFile, readdir } from 'node:fs/promises';
@@ -46,7 +47,7 @@ export function readerProblem(error: unknown): ReaderProblem {
   return { code: 'INTERNAL_ERROR', message: '阅读服务发生未预期错误。', nextStep: '将问题标识和操作交给维护者检查。', context: {} };
 }
 
-export async function startReader(projectRoot: string, port: number = 4317) {
+export async function startReader(projectRoot: string, port: number = 4317, control?: ReaderControl) {
   const project = await readerProject(projectRoot);
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
     throw new SourceError('INVALID_ARGUMENT', '端口参数无效。', '使用 1 至 65535 的整数端口。');
@@ -75,7 +76,7 @@ export async function startReader(projectRoot: string, port: number = 4317) {
   const loopStore = new LoopFileStore();
   const loops = new LoopReaderService(project, new LoopService(source, documents, new GraphService(source, graphStore), loopStore),
     loopStore, relativePath => new LayoutFileStore(project, relativePath), repository);
-  const session = readerSession();
+  const session = readerSession(control);
   const server = Fastify({ logger: false, trustProxy: false, exposeHeadRoutes: false, serverFactory: session.serverFactory });
   server.addHook('onRequest', async (request, reply) => {
     const requestPath = request.url.split('?')[0] ?? '';
